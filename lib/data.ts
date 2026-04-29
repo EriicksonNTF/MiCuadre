@@ -1,114 +1,11 @@
-// Account Types
-export type AccountType = "cash" | "bank" | "credit"
+import type { Account, Currency } from "@/lib/types/database"
 
-export type SavingsGoal = {
-  id: string
-  name: string
-  icon: string
-  color: string
-  targetAmount: number
-  currentAmount: number
-  targetDate: string
-}
-
-export type Account = {
-  id: string
-  name: string
-  type: AccountType
-  balance: number
-  // Credit card specific
-  creditLimit?: number
-  currentDebt?: number
-  cutoffDate?: number // day of month
-  dueDate?: number // day of month
-}
-
-export type Transaction = {
-  id: string
-  title: string
-  amount: number
-  type: "income" | "expense"
-  date: string
-  category: string
-  accountId: string
-}
-
-// Mock Data
-export const accounts: Account[] = [
-  {
-    id: "cash",
-    name: "Efectivo",
-    type: "cash",
-    balance: 15420,
-  },
-  {
-    id: "bank",
-    name: "Banco Popular",
-    type: "bank",
-    balance: 87500,
-  },
-  {
-    id: "credit",
-    name: "Visa Platinum",
-    type: "credit",
-    balance: 0,
-    creditLimit: 150000,
-    currentDebt: 42350,
-    cutoffDate: 15,
-    dueDate: 5,
-  },
-]
-
-export const transactions: Transaction[] = [
-  {
-    id: "1",
-    title: "Salario",
-    amount: 85000,
-    type: "income",
-    date: "Hoy",
-    category: "income",
-    accountId: "bank",
-  },
-  {
-    id: "2",
-    title: "El Mesón de la Cava",
-    amount: 2850,
-    type: "expense",
-    date: "Hoy",
-    category: "food",
-    accountId: "credit",
-  },
-  {
-    id: "3",
-    title: "Uber",
-    amount: 450,
-    type: "expense",
-    date: "Ayer",
-    category: "transport",
-    accountId: "cash",
-  },
-  {
-    id: "4",
-    title: "Edenorte",
-    amount: 3200,
-    type: "expense",
-    date: "Ayer",
-    category: "utilities",
-    accountId: "bank",
-  },
-  {
-    id: "5",
-    title: "Caribbean Cinemas",
-    amount: 850,
-    type: "expense",
-    date: "25 Abr",
-    category: "entertainment",
-    accountId: "credit",
-  },
-]
+// Re-export types for backwards compatibility
+export type { Account, Currency } from "@/lib/types/database"
+export type AccountType = "cash" | "debit" | "credit"
 
 // Utility functions
-export function formatCurrency(amount: number, currency: "DOP" | "USD" = "DOP") {
+export function formatCurrency(amount: number, currency: Currency = "DOP") {
   return new Intl.NumberFormat(currency === "DOP" ? "es-DO" : "en-US", {
     style: "currency",
     currency: currency,
@@ -120,13 +17,59 @@ export function formatCurrency(amount: number, currency: "DOP" | "USD" = "DOP") 
 export function calculateNetBalance(accounts: Account[]): number {
   return accounts.reduce((total, account) => {
     if (account.type === "credit") {
-      return total - (account.currentDebt || 0)
+      return total - (account.current_debt || 0)
     }
     return total + account.balance
   }, 0)
 }
 
 export function getAvailableCredit(account: Account): number {
-  if (account.type !== "credit" || !account.creditLimit) return 0
-  return account.creditLimit - (account.currentDebt || 0)
+  if (account.type !== "credit" || !account.credit_limit) return 0
+  return account.credit_limit - (account.current_debt || 0)
+}
+
+export function formatDate(dateString: string, locale: "es" | "en" = "es"): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  // Check if same day
+  if (date.toDateString() === now.toDateString()) {
+    return locale === "es" ? "Hoy" : "Today"
+  }
+
+  // Check if yesterday
+  if (date.toDateString() === yesterday.toDateString()) {
+    return locale === "es" ? "Ayer" : "Yesterday"
+  }
+
+  // Otherwise return formatted date
+  return date.toLocaleDateString(locale === "es" ? "es-DO" : "en-US", {
+    day: "numeric",
+    month: "short",
+  })
+}
+
+export function getDaysUntilDue(dueDate: number): number {
+  const now = new Date()
+  const currentDay = now.getDate()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  let targetDate: Date
+  if (currentDay <= dueDate) {
+    targetDate = new Date(currentYear, currentMonth, dueDate)
+  } else {
+    targetDate = new Date(currentYear, currentMonth + 1, dueDate)
+  }
+
+  const diffTime = targetDate.getTime() - now.getTime()
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+}
+
+export function getPaymentUrgency(daysUntil: number): "urgent" | "warning" | "normal" {
+  if (daysUntil <= 3) return "urgent"
+  if (daysUntil <= 7) return "warning"
+  return "normal"
 }
