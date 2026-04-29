@@ -2,11 +2,13 @@
 
 import { Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
-import { accounts, calculateNetBalance, formatCurrency } from "@/lib/data"
+import { useAccounts } from "@/hooks/use-data"
+import { calculateNetBalance, formatCurrency } from "@/lib/data"
 
 export function BalanceCard() {
   const [showBalance, setShowBalance] = useState(true)
-  const netBalance = calculateNetBalance(accounts)
+  const { data: accounts, isLoading } = useAccounts()
+  const netBalance = accounts ? calculateNetBalance(accounts) : 0
 
   return (
     <div className="rounded-3xl bg-primary px-6 py-8 text-primary-foreground">
@@ -26,7 +28,13 @@ export function BalanceCard() {
       </div>
 
       <h2 className="mt-3 text-4xl font-bold tracking-tight">
-        {showBalance ? formatCurrency(netBalance) : "••••••••"}
+        {isLoading ? (
+          <span className="inline-block h-10 w-48 animate-pulse rounded bg-white/20" />
+        ) : showBalance ? (
+          formatCurrency(netBalance)
+        ) : (
+          "••••••••"
+        )}
       </h2>
 
       <p className="mt-2 text-xs opacity-60">

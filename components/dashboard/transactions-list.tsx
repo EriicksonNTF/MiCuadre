@@ -10,43 +10,77 @@ import {
   Banknote,
   Building2,
   CreditCard,
+  Heart,
+  Book,
+  Home,
+  Briefcase,
+  Laptop,
+  TrendingUp,
+  PlusCircle,
+  MinusCircle,
+  Circle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { transactions, accounts, formatCurrency } from "@/lib/data"
+import { useTransactions } from "@/hooks/use-data"
+import { formatCurrency, formatDate } from "@/lib/data"
+import type { AccountType } from "@/lib/types/database"
 
-const categoryIcons = {
-  food: Utensils,
-  transport: Car,
-  shopping: ShoppingBag,
-  utilities: Zap,
-  income: ArrowDownLeft,
-  entertainment: Film,
+const categoryIcons: Record<string, typeof Circle> = {
+  utensils: Utensils,
+  car: Car,
+  "shopping-bag": ShoppingBag,
+  zap: Zap,
+  film: Film,
+  heart: Heart,
+  book: Book,
+  home: Home,
+  briefcase: Briefcase,
+  laptop: Laptop,
+  "trending-up": TrendingUp,
+  "plus-circle": PlusCircle,
+  "minus-circle": MinusCircle,
+  circle: Circle,
 }
 
-const categoryColors: Record<string, string> = {
-  food: "bg-orange-50 text-orange-500",
-  transport: "bg-blue-50 text-blue-500",
-  shopping: "bg-pink-50 text-pink-500",
-  utilities: "bg-amber-50 text-amber-500",
-  income: "bg-emerald-50 text-emerald-500",
-  entertainment: "bg-violet-50 text-violet-500",
-}
-
-const accountIconsSmall = {
+const accountIconsSmall: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
-  bank: Building2,
+  debit: Building2,
   credit: CreditCard,
 }
 
 export function TransactionsList() {
-  const getAccountName = (accountId: string) => {
-    const account = accounts.find(a => a.id === accountId)
-    return account?.name || accountId
+  const { data: transactions, isLoading } = useTransactions(10)
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
+          <button className="text-xs font-medium text-accent">Ver todos</button>
+        </div>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-card" />
+          ))}
+        </div>
+      </div>
+    )
   }
 
-  const getAccountType = (accountId: string) => {
-    const account = accounts.find(a => a.id === accountId)
-    return account?.type || "cash"
+  if (!transactions || transactions.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
+          <button className="text-xs font-medium text-accent">Ver todos</button>
+        </div>
+        <div className="rounded-2xl bg-card p-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            No hay movimientos recientes
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -58,8 +92,10 @@ export function TransactionsList() {
 
       <div className="space-y-2">
         {transactions.map((transaction) => {
-          const Icon = categoryIcons[transaction.category as keyof typeof categoryIcons] || Utensils
-          const accountType = getAccountType(transaction.accountId)
+          const categoryIcon = transaction.category?.icon || "circle"
+          const Icon = categoryIcons[categoryIcon] || Circle
+          const categoryColor = transaction.category?.color || "#64748b"
+          const accountType = transaction.account?.type || "cash"
           const AccountIcon = accountIconsSmall[accountType]
 
           return (
@@ -68,23 +104,24 @@ export function TransactionsList() {
               className="flex items-center gap-4 rounded-2xl bg-card p-4"
             >
               <div
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-full",
-                  categoryColors[transaction.category] || "bg-gray-50 text-gray-500"
-                )}
+                className="flex h-10 w-10 items-center justify-center rounded-full"
+                style={{
+                  backgroundColor: `${categoryColor}15`,
+                  color: categoryColor,
+                }}
               >
                 <Icon className="h-4 w-4" />
               </div>
 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">
-                  {transaction.title}
+                  {transaction.description || transaction.category?.name || "Transacción"}
                 </p>
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <AccountIcon className="h-3 w-3" />
-                  <span>{getAccountName(transaction.accountId)}</span>
+                  <span>{transaction.account?.name || "Cuenta"}</span>
                   <span>·</span>
-                  <span>{transaction.date}</span>
+                  <span>{formatDate(transaction.date)}</span>
                 </div>
               </div>
 
@@ -99,7 +136,7 @@ export function TransactionsList() {
                 )}
               >
                 {transaction.type === "income" ? "+" : "-"}
-                {formatCurrency(transaction.amount)}
+                {formatCurrency(transaction.amount, transaction.currency)}
               </p>
             </div>
           )

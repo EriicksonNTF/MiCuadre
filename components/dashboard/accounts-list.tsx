@@ -1,23 +1,58 @@
 "use client"
 
-import { Banknote, Building2, CreditCard } from "lucide-react"
+import { Banknote, Building2, CreditCard, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { accounts, formatCurrency, getAvailableCredit } from "@/lib/data"
-import type { AccountType } from "@/lib/data"
+import { useAccounts } from "@/hooks/use-data"
+import { formatCurrency, getAvailableCredit } from "@/lib/data"
+import type { AccountType } from "@/lib/types/database"
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
-  bank: Building2,
+  debit: Building2,
   credit: CreditCard,
 }
 
 const accountColors: Record<AccountType, string> = {
   cash: "bg-emerald-50 text-emerald-600",
-  bank: "bg-blue-50 text-blue-600",
+  debit: "bg-blue-50 text-blue-600",
   credit: "bg-orange-50 text-orange-600",
 }
 
 export function AccountsList() {
+  const { data: accounts, isLoading } = useAccounts()
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm font-medium text-muted-foreground">Cuentas</p>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 animate-pulse rounded-2xl bg-card" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (!accounts || accounts.length === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm font-medium text-muted-foreground">Cuentas</p>
+        <div className="rounded-2xl border-2 border-dashed border-muted bg-card p-6 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <Plus className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <p className="mt-3 text-sm font-medium text-foreground">
+            No tienes cuentas
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Agrega tu primera cuenta para comenzar
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-sm font-medium text-muted-foreground">Cuentas</p>
@@ -60,29 +95,29 @@ export function AccountsList() {
                 <div className="text-right">
                   {isCredit ? (
                     <p className="text-sm font-semibold text-orange-600">
-                      -{formatCurrency(account.currentDebt || 0)}
+                      -{formatCurrency(account.current_debt || 0, account.currency)}
                     </p>
                   ) : (
                     <p className="text-sm font-semibold text-foreground">
-                      {formatCurrency(account.balance)}
+                      {formatCurrency(account.balance, account.currency)}
                     </p>
                   )}
                 </div>
               </div>
 
               {/* Credit card details */}
-              {isCredit && account.creditLimit && (
+              {isCredit && account.credit_limit && (
                 <div className="mt-4 space-y-2 border-t border-border pt-3">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Límite</span>
                     <span className="text-foreground">
-                      {formatCurrency(account.creditLimit)}
+                      {formatCurrency(account.credit_limit, account.currency)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Disponible</span>
                     <span className="text-accent font-medium">
-                      {formatCurrency(getAvailableCredit(account))}
+                      {formatCurrency(getAvailableCredit(account), account.currency)}
                     </span>
                   </div>
                   {/* Credit usage bar */}
@@ -90,7 +125,7 @@ export function AccountsList() {
                     <div
                       className="h-full rounded-full bg-orange-500 transition-all"
                       style={{
-                        width: `${((account.currentDebt || 0) / account.creditLimit) * 100}%`,
+                        width: `${((account.current_debt || 0) / account.credit_limit) * 100}%`,
                       }}
                     />
                   </div>
