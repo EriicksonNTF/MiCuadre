@@ -42,8 +42,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { accounts, formatCurrency, getAvailableCredit } from "@/lib/data"
-import type { AccountType } from "@/lib/data"
+import { useAccounts, useCategories, createTransaction } from "@/hooks/use-data"
+
+import { formatCurrency, getAvailableCredit } from "@/lib/data"
+import type { AccountType } from "@/lib/types/database"
+import { useMemo } from "react"
+
 
 const expenseCategories = [
   { id: "food", label: "Comida", icon: Utensils, color: "bg-orange-50 text-orange-500" },
@@ -77,7 +81,25 @@ type Currency = "DOP" | "USD"
 type TransactionType = "expense" | "income"
 
 export function ExpenseForm({ onBack }: { onBack?: () => void }) {
+  const { data: rawAccounts = [] } = useAccounts()
+  const { data: dbCategories = [] } = useCategories()
+
+  const accounts = useMemo(() => {
+    return rawAccounts.map(acc => ({
+      id: acc.id,
+      name: acc.name,
+      type: acc.type,
+      balance: acc.balance,
+      currency: acc.currency,
+      creditLimit: acc.credit_limit,
+      currentDebt: acc.current_debt,
+      cutoffDate: acc.closing_date,
+      dueDate: acc.due_date,
+    }))
+  }, [rawAccounts])
+
   const [transactionType, setTransactionType] = useState<TransactionType>("expense")
+
   const [amount, setAmount] = useState("")
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState("")
@@ -111,18 +133,45 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
     if (!parsedAmount || !description) return
     
     setIsSaving(true)
-    await new Promise(resolve => setTimeout(resolve, 800))
-    setIsSaving(false)
-    setShowSuccess(true)
-    
-    setTimeout(() => {
-      setShowSuccess(false)
-      setAmount("")
-      setDescription("")
-      setCategory("")
-      setDate(new Date())
-    }, 1500)
+    try {
+      const categoryUuid = dbCategories.find(
+        c => c.name.toLowerCase() === selectedCategory.label.toLowerCase()
+      )?.id || null
+
+      const targetAccountId = accountId === "cash" 
+        ? rawAccounts.find(a => a.type === "cash")?.id || accountId 
+        : accountId
+
+      await createTransaction({
+        account_id: targetAccountId,
+        category_id: categoryUuid,
+        type: transactionType,
+        amount: parsedAmount,
+        currency: currency,
+        description: description,
+        date: date.toISOString(),
+        notes: null,
+        is_recurring: false,
+        amount_base: parsedAmount,
+        exchange_rate: 1,
+      })
+
+      setIsSaving(false)
+      setShowSuccess(true)
+      
+      setTimeout(() => {
+        setShowSuccess(false)
+        setAmount("")
+        setDescription("")
+        setCategory("")
+        setDate(new Date())
+      }, 1500)
+    } catch (error) {
+      console.error(error)
+      setIsSaving(false)
+    }
   }
+
 
   const isValid = parsedAmount !== null && parsedAmount > 0 && description.length > 0
 

@@ -14,8 +14,11 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { accounts, formatCurrency, getAvailableCredit } from "@/lib/data"
-import type { AccountType } from "@/lib/data"
+import { useAccounts } from "@/hooks/use-data"
+import { formatCurrency, getAvailableCredit } from "@/lib/data"
+import type { AccountType } from "@/lib/types/database"
+import { useMemo } from "react"
+
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
@@ -30,7 +33,24 @@ const accountGradients: Record<AccountType, string> = {
 }
 
 export function AccountsScreen() {
+  const { data: rawAccounts = [] } = useAccounts()
+
+  const accounts = useMemo(() => {
+    return rawAccounts.map(acc => ({
+      id: acc.id,
+      name: acc.name,
+      type: acc.type,
+      balance: acc.balance,
+      currency: acc.currency,
+      creditLimit: acc.credit_limit,
+      currentDebt: acc.current_debt,
+      cutoffDate: acc.closing_date,
+      dueDate: acc.due_date,
+    }))
+  }, [rawAccounts])
+
   const [showTransfer, setShowTransfer] = useState(false)
+
   const [fromAccount, setFromAccount] = useState<string>("")
   const [toAccount, setToAccount] = useState<string>("")
   const [transferAmount, setTransferAmount] = useState("")

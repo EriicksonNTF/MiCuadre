@@ -25,8 +25,10 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { accounts, transactions, formatCurrency, getAvailableCredit } from "@/lib/data"
-import type { Account, AccountType, Transaction } from "@/lib/data"
+import { useAccounts, useTransactions } from "@/hooks/use-data"
+import { formatCurrency, getAvailableCredit, formatDate } from "@/lib/data"
+import type { AccountType } from "@/lib/types/database"
+
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
@@ -79,8 +81,58 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const [paymentAmount, setPaymentAmount] = useState("")
   const [isPaying, setIsPaying] = useState(false)
 
+  const { data: rawAccounts = [] } = useAccounts()
+  const { data: rawTransactions = [] } = useTransactions(100)
+
+  const accounts = useMemo(() => {
+    return rawAccounts.map(acc => ({
+      id: acc.id,
+      name: acc.name,
+      type: acc.type,
+      balance: acc.balance,
+      currency: acc.currency,
+      creditLimit: acc.credit_limit,
+      currentDebt: acc.current_debt,
+      cutoffDate: acc.closing_date,
+      dueDate: acc.due_date,
+    }))
+  }, [rawAccounts])
+
   const account = accounts.find((a) => a.id === accountId)
   const Icon = account ? accountIcons[account.type] : Banknote
+
+  const nameToSlug: Record<string, string> = {
+    'Comida': 'food',
+    'Transporte': 'transport',
+    'Entretenimiento': 'entertainment',
+    'Compras': 'shopping',
+    'Servicios': 'utilities',
+    'Salud': 'health',
+    'Educacion': 'education',
+    'Hogar': 'other',
+    'Supermercado': 'shopping',
+    'Suscripciones': 'utilities',
+    'Otros Gastos': 'other',
+    'Salario': 'income',
+    'Freelance': 'income',
+    'Inversiones': 'income',
+    'Regalos': 'other',
+    'Reembolsos': 'income',
+    'Otros Ingresos': 'income',
+  }
+
+  const transactions = useMemo(() => {
+    return rawTransactions.map(tx => ({
+      id: tx.id,
+      accountId: tx.account_id,
+      title: tx.description || "Sin descripción",
+      category: nameToSlug[tx.category?.name || ""] || "other",
+      amount: tx.amount,
+      type: tx.type,
+      date: formatDate(tx.date),
+    }))
+  }, [rawTransactions])
+
 
   const accountTransactions = useMemo(() => {
     return transactions.filter((tx) => tx.accountId === accountId)
