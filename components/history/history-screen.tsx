@@ -58,7 +58,7 @@ const categoryColors: Record<string, string> = {
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
-  bank: Building2,
+  debit: Building2,
   credit: CreditCard,
 }
 

@@ -32,13 +32,13 @@ import type { AccountType } from "@/lib/types/database"
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
-  bank: Building2,
+  debit: Building2,
   credit: CreditCard,
 }
 
 const accountGradients: Record<AccountType, string> = {
   cash: "from-emerald-500 to-emerald-600",
-  bank: "from-blue-500 to-blue-600",
+  debit: "from-blue-500 to-blue-600",
   credit: "from-orange-500 to-orange-600",
 }
 

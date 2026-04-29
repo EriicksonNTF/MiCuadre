@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import {
   Target,
   Plus,
@@ -14,6 +15,8 @@ import {
   X,
   ChevronRight,
   TrendingUp,
+  Wallet,
+  Calendar,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -137,9 +140,10 @@ export function GoalsScreen() {
             const progress = (goal.currentAmount / goal.targetAmount) * 100
 
             return (
-              <div
+              <Link
                 key={goal.id}
-                className="rounded-2xl bg-card p-5"
+                href={`/goals/${goal.id}`}
+                className="block rounded-2xl bg-card p-5 transition-transform active:scale-[0.98]"
               >
                 <div className="flex items-start gap-4">
                   <div
@@ -190,7 +194,10 @@ export function GoalsScreen() {
 
                     {/* Add Money Button */}
                     <button
-                      onClick={() => setShowAddMoney(goal.id)}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        setShowAddMoney(goal.id)
+                      }}
                       className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-muted text-sm font-medium text-foreground transition-colors hover:bg-muted/80"
                     >
                       <Plus className="h-4 w-4" />
@@ -198,7 +205,7 @@ export function GoalsScreen() {
                     </button>
                   </div>
                 </div>
-              </div>
+              </Link>
             )
           })}
         </div>
@@ -207,9 +214,10 @@ export function GoalsScreen() {
       {/* Add Money Modal */}
       {showAddMoney && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-card p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+          <div className="w-full max-w-md rounded-t-3xl bg-card max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 flex items-center justify-between border-b bg-card p-6">
+              <h2 className="text-xl font-bold text-foreground">
                 Agregar a la meta
               </h2>
               <button
@@ -220,10 +228,12 @@ export function GoalsScreen() {
               </button>
             </div>
 
-            <div className="mt-6">
-              <p className="text-sm font-medium text-muted-foreground text-center mb-4">
+            <div className="space-y-6 px-6 pb-32">
+              <p className="text-center text-lg font-medium text-foreground">
                 ¿Cuánto quieres ahorrar?
               </p>
+              
+              {/* Amount Input */}
               <div className="flex items-center justify-center gap-2">
                 <span className="text-2xl font-medium text-muted-foreground">RD$</span>
                 <input
@@ -238,7 +248,7 @@ export function GoalsScreen() {
               </div>
 
               {/* Quick amounts */}
-              <div className="mt-6 flex justify-center gap-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 {[500, 1000, 2000, 5000].map((amount) => (
                   <button
                     key={amount}
@@ -249,11 +259,14 @@ export function GoalsScreen() {
                   </button>
                 ))}
               </div>
+            </div>
 
+            {/* Sticky Button */}
+            <div className="sticky bottom-0 border-t bg-card p-6 pb-safe">
               <Button
                 onClick={handleAddMoney}
                 disabled={!addAmount || parseFloat(addAmount) <= 0}
-                className="mt-6 h-12 w-full rounded-2xl text-base font-semibold bg-accent hover:bg-accent/90"
+                className="h-14 w-full rounded-2xl text-base font-semibold"
               >
                 Agregar al ahorro
               </Button>
@@ -265,9 +278,10 @@ export function GoalsScreen() {
       {/* Add Goal Modal */}
       {showAddGoal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-card p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
+          <div className="w-full max-w-md rounded-t-3xl bg-card max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 flex items-center justify-between border-b bg-card p-6">
+              <h2 className="text-xl font-bold text-foreground">
                 Nueva meta
               </h2>
               <button

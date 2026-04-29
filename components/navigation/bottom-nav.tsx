@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Plus, Wallet, Target, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
   { href: "/", icon: Home, label: "Inicio" },
@@ -15,6 +16,13 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname()
+  const { user, loading } = useAuth()
+
+  if (loading) return null
+
+  const isAuthPage = pathname.startsWith('/auth')
+
+  if (isAuthPage || !user) return null
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-lg">

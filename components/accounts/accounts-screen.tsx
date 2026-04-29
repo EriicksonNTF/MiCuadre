@@ -22,13 +22,13 @@ import { useMemo } from "react"
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
-  bank: Building2,
+  debit: Building2,
   credit: CreditCard,
 }
 
 const accountGradients: Record<AccountType, string> = {
   cash: "from-emerald-500 to-emerald-600",
-  bank: "from-blue-500 to-blue-600",
+  debit: "from-blue-500 to-blue-600",
   credit: "from-orange-500 to-orange-600",
 }
 
@@ -50,6 +50,32 @@ export function AccountsScreen() {
   }, [rawAccounts])
 
   const [showTransfer, setShowTransfer] = useState(false)
+  const [showCreateAccount, setShowCreateAccount] = useState(false)
+
+  // Create account form state
+  const [accountName, setAccountName] = useState("")
+  const [accountType, setAccountType] = useState<"cash" | "debit" | "credit">("cash")
+  const [accountCurrency, setAccountCurrency] = useState<"DOP" | "USD">("DOP")
+  const [initialBalance, setInitialBalance] = useState("")
+  const [creditLimit, setCreditLimit] = useState("")
+  const [closingDate, setClosingDate] = useState("")
+  const [dueDate, setDueDate] = useState("")
+  const [isCreating, setIsCreating] = useState(false)
+
+  const handleCreateAccount = async () => {
+    if (!accountName || !initialBalance) return
+    setIsCreating(true)
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    setIsCreating(false)
+    setShowCreateAccount(false)
+    setAccountName("")
+    setAccountType("cash")
+    setAccountCurrency("DOP")
+    setInitialBalance("")
+    setCreditLimit("")
+    setClosingDate("")
+    setDueDate("")
+  }
 
   const [fromAccount, setFromAccount] = useState<string>("")
   const [toAccount, setToAccount] = useState<string>("")
@@ -164,6 +190,7 @@ export function AccountsScreen() {
         </Button>
         <Button
           variant="outline"
+          onClick={() => setShowCreateAccount(true)}
           className="h-12 flex-1 gap-2 rounded-2xl"
         >
           <Plus className="h-4 w-4" />
@@ -174,8 +201,22 @@ export function AccountsScreen() {
       {/* Transfer Modal */}
       {showTransfer && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-card p-6">
-            <div className="flex items-center justify-between">
+          <div className="w-full max-w-md rounded-t-3xl bg-card max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 flex items-center justify-between border-b bg-card p-6">
+              <h2 className="text-xl font-bold text-foreground">
+                Transferir dinero
+              </h2>
+              <button
+                onClick={() => setShowTransfer(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <div className="space-y-6 px-6 pb-32">
               <h2 className="text-lg font-semibold text-foreground">
                 Transferir dinero
               </h2>
@@ -274,13 +315,191 @@ export function AccountsScreen() {
                 </div>
               </div>
 
-              {/* Confirm Button */}
+              {/* Confirm Button - Sticky at bottom */}
               <Button
                 onClick={handleTransfer}
                 disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || isTransferring}
-                className="h-12 w-full rounded-2xl text-base font-semibold"
+                className="h-12 w-full rounded-2xl text-base font-semibold mt-4"
               >
                 {isTransferring ? "Transfiriendo..." : "Confirmar transferencia"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Account Modal */}
+      {showCreateAccount && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-t-3xl bg-card max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 flex items-center justify-between border-b bg-card p-6">
+              <h2 className="text-xl font-bold text-foreground">
+                Nueva cuenta
+              </h2>
+              <button
+                onClick={() => setShowCreateAccount(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <div className="space-y-6 px-6 pb-32">
+              {/* Account Name */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Nombre de la cuenta
+                </label>
+                <input
+                  type="text"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="Ej: Mi cuenta principal"
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
+                />
+              </div>
+
+              {/* Account Type */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Tipo de cuenta
+                </label>
+                <div className="flex gap-3">
+                  {[
+                    { value: "cash", label: "Efectivo", icon: Banknote },
+                    { value: "debit", label: "Débito", icon: Building2 },
+                    { value: "credit", label: "Crédito", icon: CreditCard },
+                  ].map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => setAccountType(value as typeof accountType)}
+                      className={cn(
+                        "flex flex-1 flex-col items-center gap-2 rounded-2xl border border-border p-4 transition-all",
+                        accountType === value
+                          ? "border-primary bg-primary/10"
+                          : "bg-background hover:border-primary/50"
+                      )}
+                    >
+                      <Icon className={cn("h-6 w-6", accountType === value ? "text-primary" : "text-muted-foreground")} />
+                      <span className={cn("text-sm font-medium", accountType === value ? "text-primary" : "text-muted-foreground")}>
+                        {label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Moneda
+                </label>
+                <div className="flex gap-3">
+                  {(["DOP", "USD"] as const).map((curr) => (
+                    <button
+                      key={curr}
+                      onClick={() => setAccountCurrency(curr)}
+                      className={cn(
+                        "flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border px-4 py-4 font-medium transition-all",
+                        accountCurrency === curr
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "bg-background text-muted-foreground hover:border-primary/50"
+                      )}
+                    >
+                      {curr === "DOP" ? "RD$" : "US$"} - {curr}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Initial Balance */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">
+                  Balance inicial
+                </label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-muted-foreground">
+                    {accountCurrency === "DOP" ? "RD$" : "US$"}
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={initialBalance}
+                    onChange={(e) => setInitialBalance(e.target.value.replace(/[^0-9.]/g, ""))}
+                    placeholder="0"
+                    className="w-full rounded-2xl border border-border bg-background py-4 pl-14 pr-4 text-xl font-bold text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Credit Card Fields */}
+              {accountType === "credit" && (
+                <div className="space-y-4 rounded-2xl bg-muted/50 p-4">
+                  <p className="text-sm font-medium text-foreground">Detalles de tarjeta de crédito</p>
+                  
+                  {/* Credit Limit */}
+                  <div>
+                    <label className="mb-2 block text-xs text-muted-foreground">
+                      Límite de crédito
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                        {accountCurrency === "DOP" ? "RD$" : "US$"}
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={creditLimit}
+                        onChange={(e) => setCreditLimit(e.target.value.replace(/[^0-9.]/g, ""))}
+                        placeholder="0"
+                        className="w-full rounded-xl border border-border bg-background py-3 pl-10 pr-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Closing Date */}
+                  <div>
+                    <label className="mb-2 block text-xs text-muted-foreground">
+                      Día de cierre (1-31)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={closingDate}
+                      onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+                      placeholder="15"
+                      className="w-full rounded-xl border border-border bg-background py-3 px-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Due Date */}
+                  <div>
+                    <label className="mb-2 block text-xs text-muted-foreground">
+                      Fecha de pago (1-31)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+                      placeholder="10"
+                      className="w-full rounded-xl border border-border bg-background py-3 px-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Save Button - Fixed at bottom */}
+            <div className="sticky bottom-0 border-t bg-card p-6 pb-safe">
+              <Button
+                onClick={handleCreateAccount}
+                disabled={!accountName || !initialBalance || isCreating}
+                className="h-14 w-full rounded-2xl text-base font-semibold"
+              >
+                {isCreating ? "Creando cuenta..." : "Guardar cuenta"}
               </Button>
             </div>
           </div>

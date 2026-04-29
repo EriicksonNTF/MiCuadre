@@ -23,9 +23,9 @@ export function calculateNetBalance(accounts: Account[]): number {
   }, 0)
 }
 
-export function getAvailableCredit(account: Account): number {
-  if (account.type !== "credit" || !account.credit_limit) return 0
-  return account.credit_limit - (account.current_debt || 0)
+export function getAvailableCredit(account: Partial<Account> & { creditLimit?: number | null; currentDebt?: number | null; type?: string }): number {
+  if (account.type !== "credit" || !account.creditLimit) return 0
+  return account.creditLimit - (account.currentDebt || 0)
 }
 
 export function formatDate(dateString: string, locale: "es" | "en" = "es"): string {

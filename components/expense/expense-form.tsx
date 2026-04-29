@@ -46,7 +46,6 @@ import { useAccounts, useCategories, createTransaction } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
 import type { AccountType } from "@/lib/types/database"
-import { useMemo } from "react"
 
 
 const expenseCategories = [
@@ -73,7 +72,7 @@ const incomeCategories = [
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
-  bank: Building2,
+  debit: Building2,
   credit: CreditCard,
 }
 
