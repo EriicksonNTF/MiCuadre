@@ -1,0 +1,338 @@
+"use client"
+
+import { useState, useMemo } from "react"
+import {
+  Search,
+  SlidersHorizontal,
+  X,
+  ChevronDown,
+  Utensils,
+  Car,
+  Zap,
+  Film,
+  ShoppingBag,
+  Heart,
+  GraduationCap,
+  Plane,
+  MoreHorizontal,
+  Banknote,
+  Building2,
+  CreditCard,
+  TrendingUp,
+  TrendingDown,
+  ArrowUpDown,
+  Calendar,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { transactions, accounts, formatCurrency } from "@/lib/data"
+import type { Transaction, AccountType } from "@/lib/data"
+
+const categoryIcons: Record<string, typeof Utensils> = {
+  food: Utensils,
+  transport: Car,
+  utilities: Zap,
+  entertainment: Film,
+  shopping: ShoppingBag,
+  health: Heart,
+  education: GraduationCap,
+  travel: Plane,
+  income: TrendingUp,
+  other: MoreHorizontal,
+}
+
+const categoryColors: Record<string, string> = {
+  food: "bg-orange-100 text-orange-600",
+  transport: "bg-blue-100 text-blue-600",
+  utilities: "bg-yellow-100 text-yellow-600",
+  entertainment: "bg-purple-100 text-purple-600",
+  shopping: "bg-pink-100 text-pink-600",
+  health: "bg-red-100 text-red-600",
+  education: "bg-indigo-100 text-indigo-600",
+  travel: "bg-cyan-100 text-cyan-600",
+  income: "bg-emerald-100 text-emerald-600",
+  other: "bg-gray-100 text-gray-600",
+}
+
+const accountIcons: Record<AccountType, typeof Banknote> = {
+  cash: Banknote,
+  bank: Building2,
+  credit: CreditCard,
+}
+
+type TransactionType = "all" | "income" | "expense"
+type DateRange = "today" | "week" | "month" | "all"
+
+export function HistoryScreen() {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [typeFilter, setTypeFilter] = useState<TransactionType>("all")
+  const [accountFilter, setAccountFilter] = useState<string>("all")
+  const [dateFilter, setDateFilter] = useState<DateRange>("month")
+  const [showFilters, setShowFilters] = useState(false)
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((tx) => {
+      // Search filter
+      if (searchQuery && !tx.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false
+      }
+      // Type filter
+      if (typeFilter !== "all" && tx.type !== typeFilter) {
+        return false
+      }
+      // Account filter
+      if (accountFilter !== "all" && tx.accountId !== accountFilter) {
+        return false
+      }
+      return true
+    })
+  }, [searchQuery, typeFilter, accountFilter, dateFilter])
+
+  const totalIncome = filteredTransactions
+    .filter((tx) => tx.type === "income")
+    .reduce((sum, tx) => sum + tx.amount, 0)
+
+  const totalExpenses = filteredTransactions
+    .filter((tx) => tx.type === "expense")
+    .reduce((sum, tx) => sum + tx.amount, 0)
+
+  return (
+    <div className="min-h-screen bg-background pb-28">
+      {/* Header */}
+      <header className="px-6 pb-4 pt-8">
+        <h1 className="text-2xl font-bold text-foreground">Historial</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Todas tus transacciones
+        </p>
+      </header>
+
+      {/* Search Bar */}
+      <div className="px-6 pt-2">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar transacciones..."
+              className="h-12 w-full rounded-2xl bg-card pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              "flex h-12 w-12 items-center justify-center rounded-2xl transition-colors",
+              showFilters ? "bg-primary text-primary-foreground" : "bg-card text-foreground"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      {showFilters && (
+        <div className="mt-4 space-y-4 px-6">
+          {/* Type Filter */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Tipo</p>
+            <div className="flex gap-2">
+              {[
+                { value: "all", label: "Todos", icon: ArrowUpDown },
+                { value: "income", label: "Ingresos", icon: TrendingUp },
+                { value: "expense", label: "Gastos", icon: TrendingDown },
+              ].map((option) => {
+                const Icon = option.icon
+                return (
+                  <button
+                    key={option.value}
+                    onClick={() => setTypeFilter(option.value as TransactionType)}
+                    className={cn(
+                      "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors",
+                      typeFilter === option.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card text-foreground"
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Account Filter */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Cuenta</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setAccountFilter("all")}
+                className={cn(
+                  "rounded-xl px-4 py-2.5 text-xs font-medium transition-colors",
+                  accountFilter === "all"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-card text-foreground"
+                )}
+              >
+                Todas
+              </button>
+              {accounts.map((account) => {
+                const Icon = accountIcons[account.type]
+                return (
+                  <button
+                    key={account.id}
+                    onClick={() => setAccountFilter(account.id)}
+                    className={cn(
+                      "flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-colors",
+                      accountFilter === account.id
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-card text-foreground"
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {account.name}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Date Filter */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Período</p>
+            <div className="flex gap-2">
+              {[
+                { value: "today", label: "Hoy" },
+                { value: "week", label: "7 días" },
+                { value: "month", label: "Este mes" },
+                { value: "all", label: "Todo" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setDateFilter(option.value as DateRange)}
+                  className={cn(
+                    "flex-1 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors",
+                    dateFilter === option.value
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-card text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Cards */}
+      <div className="mt-6 flex gap-3 px-6">
+        <div className="flex-1 rounded-2xl bg-card p-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+              <TrendingUp className="h-4 w-4 text-emerald-600" />
+            </div>
+            <span className="text-xs text-muted-foreground">Ingresos</span>
+          </div>
+          <p className="mt-2 text-lg font-bold text-emerald-600">
+            +{formatCurrency(totalIncome)}
+          </p>
+        </div>
+        <div className="flex-1 rounded-2xl bg-card p-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            </div>
+            <span className="text-xs text-muted-foreground">Gastos</span>
+          </div>
+          <p className="mt-2 text-lg font-bold text-red-600">
+            -{formatCurrency(totalExpenses)}
+          </p>
+        </div>
+      </div>
+
+      {/* Transaction List */}
+      <div className="mt-6 px-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">
+            Transacciones
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            {filteredTransactions.length} resultados
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-2">
+          {filteredTransactions.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                No se encontraron transacciones
+              </p>
+            </div>
+          ) : (
+            filteredTransactions.map((tx) => {
+              const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
+              const account = accounts.find((a) => a.id === tx.accountId)
+              const AccountIcon = account ? accountIcons[account.type] : Banknote
+
+              return (
+                <div
+                  key={tx.id}
+                  className="flex items-center gap-4 rounded-2xl bg-card p-4"
+                >
+                  {/* Category Icon */}
+                  <div
+                    className={cn(
+                      "flex h-11 w-11 items-center justify-center rounded-full",
+                      categoryColors[tx.category] || categoryColors.other
+                    )}
+                  >
+                    <CategoryIcon className="h-5 w-5" />
+                  </div>
+
+                  {/* Transaction Details */}
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {tx.title}
+                    </p>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <AccountIcon className="h-3 w-3" />
+                        <span>{account?.name}</span>
+                      </div>
+                      <span>·</span>
+                      <span>{tx.date}</span>
+                    </div>
+                  </div>
+
+                  {/* Amount */}
+                  <p
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      tx.type === "income"
+                        ? "text-emerald-600"
+                        : "text-foreground"
+                    )}
+                  >
+                    {tx.type === "income" ? "+" : "-"}
+                    {formatCurrency(tx.amount)}
+                  </p>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,16 @@
+
+Boton Enviar:
+Darle funcionalidad, ahora no se me ocurre nada, pero necesita tener algo
+
+Boton pagar:
+Crear otra ventana donde se muestren las tarjetas y los balances proximos a vencer y que tengan integracion con pagar tarjeta, detalla mas sobre esta idea.
+
+Boton Escanear:
+Tendra la funcion de poder capturar una imagen de una factura y se creara una transacccion sin guardar que presentara en pantalla con los campos completos de:
+Fecha
+Monto
+Tipo de gasto
+Nota (Algo que diga la factura)
+
+Todo esto se integraga con una IA que pueda hacer todo lo del boton escanerar.
+
