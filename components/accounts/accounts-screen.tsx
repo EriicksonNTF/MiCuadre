@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   Banknote,
@@ -17,8 +17,6 @@ import { Button } from "@/components/ui/button"
 import { useAccounts } from "@/hooks/use-data"
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
 import type { AccountType } from "@/lib/types/database"
-import { useMemo } from "react"
-
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
@@ -77,6 +75,7 @@ export function AccountsScreen() {
     setDueDate("")
   }
 
+  // Transfer form state
   const [fromAccount, setFromAccount] = useState<string>("")
   const [toAccount, setToAccount] = useState<string>("")
   const [transferAmount, setTransferAmount] = useState("")
@@ -120,12 +119,10 @@ export function AccountsScreen() {
                 accountGradients[account.type]
               )}
             >
-              {/* Card pattern */}
               <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/10" />
               <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-white/5" />
 
               <div className="relative">
-                {/* Top row */}
                 <div className="flex items-start justify-between">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
                     <Icon className="h-5 w-5" />
@@ -133,12 +130,10 @@ export function AccountsScreen() {
                   <ChevronRight className="h-5 w-5 opacity-50" />
                 </div>
 
-                {/* Account name */}
                 <p className="mt-6 text-sm font-medium opacity-80">
                   {account.name}
                 </p>
 
-                {/* Balance */}
                 <p className="mt-1 text-2xl font-bold">
                   {isCredit
                     ? `-${formatCurrency(account.currentDebt || 0)}`
@@ -146,7 +141,6 @@ export function AccountsScreen() {
                   }
                 </p>
 
-                {/* Credit card details */}
                 {isCredit && account.creditLimit && (
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between text-sm opacity-80">
@@ -155,7 +149,6 @@ export function AccountsScreen() {
                         {formatCurrency(getAvailableCredit(account))}
                       </span>
                     </div>
-                    {/* Usage bar */}
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
                       <div
                         className="h-full rounded-full bg-white transition-all"
@@ -200,127 +193,68 @@ export function AccountsScreen() {
 
       {/* Transfer Modal */}
       {showTransfer && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-t-3xl bg-card max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="sticky top-0 flex items-center justify-between border-b bg-card p-6">
-              <h2 className="text-xl font-bold text-foreground">
-                Transferir dinero
-              </h2>
-              <button
-                onClick={() => setShowTransfer(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
-              >
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowTransfer(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
+              <h2 className="text-lg font-semibold">Transferir dinero</h2>
+              <button onClick={() => setShowTransfer(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
                 <X className="h-4 w-4" />
               </button>
             </div>
-
-            {/* Form Content */}
-            <div className="space-y-6 px-6 pb-32">
-              <h2 className="text-lg font-semibold text-foreground">
-                Transferir dinero
-              </h2>
-              <button
-                onClick={() => setShowTransfer(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              {/* From Account */}
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Desde
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {accounts
-                    .filter(a => a.type !== "credit")
-                    .map((account) => {
+            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
+              <div className="pb-safe-areas space-y-4">
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {accounts.filter(a => a.type !== "credit").map((account) => {
                       const Icon = accountIcons[account.type]
                       const isSelected = fromAccount === account.id
                       return (
-                        <button
-                          key={account.id}
-                          onClick={() => setFromAccount(account.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-1 rounded-xl p-3 transition-all",
-                            isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground"
-                          )}
-                        >
+                        <button key={account.id} onClick={() => setFromAccount(account.id)}
+                          className={cn("flex flex-col items-center gap-1 rounded-xl p-3 transition-all", isSelected ? "bg-primary text-primary-foreground" : "bg-muted")}>
                           <Icon className="h-4 w-4" />
                           <span className="text-xs font-medium">{account.name}</span>
                         </button>
                       )
                     })}
+                  </div>
+                </div>
+                <div className="flex justify-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Hacia</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {accounts.map((account) => {
+                      const Icon = accountIcons[account.type]
+                      const isSelected = toAccount === account.id
+                      const isDisabled = fromAccount === account.id
+                      return (
+                        <button key={account.id} onClick={() => !isDisabled && setToAccount(account.id)} disabled={isDisabled}
+                          className={cn("flex flex-col items-center gap-1 rounded-xl p-3 transition-all", isDisabled && "opacity-30 cursor-not-allowed", isSelected ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                          <Icon className="h-4 w-4" />
+                          <span className="text-xs font-medium">{account.name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
+                  <div className="flex items-center gap-2 rounded-xl bg-muted p-4">
+                    <span className="text-lg font-medium text-muted-foreground">RD$</span>
+                    <input type="text" inputMode="decimal" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0"
+                      className="flex-1 bg-transparent text-2xl font-bold outline-none" />
+                  </div>
                 </div>
               </div>
-
-              {/* Arrow */}
-              <div className="flex justify-center">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </div>
-
-              {/* To Account */}
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Hacia
-                </p>
-                <div className="grid grid-cols-3 gap-2">
-                  {accounts.map((account) => {
-                    const Icon = accountIcons[account.type]
-                    const isSelected = toAccount === account.id
-                    const isDisabled = fromAccount === account.id
-                    return (
-                      <button
-                        key={account.id}
-                        onClick={() => !isDisabled && setToAccount(account.id)}
-                        disabled={isDisabled}
-                        className={cn(
-                          "flex flex-col items-center gap-1 rounded-xl p-3 transition-all",
-                          isDisabled && "opacity-30 cursor-not-allowed",
-                          isSelected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="text-xs font-medium">{account.name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Amount */}
-              <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Monto
-                </p>
-                <div className="flex items-center gap-2 rounded-xl bg-muted p-4">
-                  <span className="text-lg font-medium text-muted-foreground">RD$</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={transferAmount}
-                    onChange={(e) => setTransferAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-                    placeholder="0"
-                    className="flex-1 bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
-                  />
-                </div>
-              </div>
-
-              {/* Confirm Button - Sticky at bottom */}
-              <Button
-                onClick={handleTransfer}
-                disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || isTransferring}
-                className="h-12 w-full rounded-2xl text-base font-semibold mt-4"
-              >
+            </div>
+            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card">
+              <Button onClick={handleTransfer} disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || isTransferring}
+                className="h-12 w-full rounded-xl text-base font-semibold">
                 {isTransferring ? "Transfiriendo..." : "Confirmar transferencia"}
               </Button>
             </div>
@@ -330,175 +264,81 @@ export function AccountsScreen() {
 
       {/* Create Account Modal */}
       {showCreateAccount && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-t-3xl bg-card max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="sticky top-0 flex items-center justify-between border-b bg-card p-6">
-              <h2 className="text-xl font-bold text-foreground">
-                Nueva cuenta
-              </h2>
-              <button
-                onClick={() => setShowCreateAccount(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
-              >
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowCreateAccount(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
+              <h2 className="text-lg font-semibold">Nueva cuenta</h2>
+              <button onClick={() => setShowCreateAccount(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
                 <X className="h-4 w-4" />
               </button>
             </div>
-
-            {/* Form Content */}
-            <div className="space-y-6 px-6 pb-32">
-              {/* Account Name */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">
-                  Nombre de la cuenta
-                </label>
-                <input
-                  type="text"
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                  placeholder="Ej: Mi cuenta principal"
-                  className="w-full rounded-2xl border border-border bg-background px-4 py-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
-                />
-              </div>
-
-              {/* Account Type */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">
-                  Tipo de cuenta
-                </label>
-                <div className="flex gap-3">
-                  {[
-                    { value: "cash", label: "Efectivo", icon: Banknote },
-                    { value: "debit", label: "Débito", icon: Building2 },
-                    { value: "credit", label: "Crédito", icon: CreditCard },
-                  ].map(({ value, label, icon: Icon }) => (
-                    <button
-                      key={value}
-                      onClick={() => setAccountType(value as typeof accountType)}
-                      className={cn(
-                        "flex flex-1 flex-col items-center gap-2 rounded-2xl border border-border p-4 transition-all",
-                        accountType === value
-                          ? "border-primary bg-primary/10"
-                          : "bg-background hover:border-primary/50"
-                      )}
-                    >
-                      <Icon className={cn("h-6 w-6", accountType === value ? "text-primary" : "text-muted-foreground")} />
-                      <span className={cn("text-sm font-medium", accountType === value ? "text-primary" : "text-muted-foreground")}>
-                        {label}
-                      </span>
-                    </button>
-                  ))}
+            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
+              <div className="pb-safe-areas space-y-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Nombre de la cuenta</label>
+                  <input type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Ej: Mi cuenta principal"
+                    className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
                 </div>
-              </div>
-
-              {/* Currency */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">
-                  Moneda
-                </label>
-                <div className="flex gap-3">
-                  {(["DOP", "USD"] as const).map((curr) => (
-                    <button
-                      key={curr}
-                      onClick={() => setAccountCurrency(curr)}
-                      className={cn(
-                        "flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border px-4 py-4 font-medium transition-all",
-                        accountCurrency === curr
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "bg-background text-muted-foreground hover:border-primary/50"
-                      )}
-                    >
-                      {curr === "DOP" ? "RD$" : "US$"} - {curr}
-                    </button>
-                  ))}
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Tipo de cuenta</label>
+                  <div className="flex gap-3">
+                    {[{ value: "cash", label: "Efectivo", icon: Banknote }, { value: "debit", label: "Débito", icon: Building2 }, { value: "credit", label: "Crédito", icon: CreditCard }].map(({ value, label, icon: Icon }) => (
+                      <button key={value} onClick={() => setAccountType(value as typeof accountType)}
+                        className={cn("flex flex-1 flex-col items-center gap-2 rounded-2xl border border-border p-4", accountType === value ? "border-primary bg-primary/10" : "")}>
+                        <Icon className={cn("h-6 w-6", accountType === value ? "text-primary" : "text-muted-foreground")} />
+                        <span className={cn("text-sm font-medium", accountType === value ? "text-primary" : "text-muted-foreground")}>{label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              {/* Initial Balance */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">
-                  Balance inicial
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-muted-foreground">
-                    {accountCurrency === "DOP" ? "RD$" : "US$"}
-                  </span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={initialBalance}
-                    onChange={(e) => setInitialBalance(e.target.value.replace(/[^0-9.]/g, ""))}
-                    placeholder="0"
-                    className="w-full rounded-2xl border border-border bg-background py-4 pl-14 pr-4 text-xl font-bold text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
-                  />
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Moneda</label>
+                  <div className="flex gap-3">
+                    {(["DOP", "USD"] as const).map((curr) => (
+                      <button key={curr} onClick={() => setAccountCurrency(curr)}
+                        className={cn("flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border px-4 py-3 font-medium", accountCurrency === curr ? "border-primary bg-primary/10 text-primary" : "")}>
+                        {curr === "DOP" ? "RD$" : "US$"} - {curr}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-
-              {/* Credit Card Fields */}
-              {accountType === "credit" && (
-                <div className="space-y-4 rounded-2xl bg-muted/50 p-4">
-                  <p className="text-sm font-medium text-foreground">Detalles de tarjeta de crédito</p>
-                  
-                  {/* Credit Limit */}
-                  <div>
-                    <label className="mb-2 block text-xs text-muted-foreground">
-                      Límite de crédito
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        {accountCurrency === "DOP" ? "RD$" : "US$"}
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        value={creditLimit}
-                        onChange={(e) => setCreditLimit(e.target.value.replace(/[^0-9.]/g, ""))}
-                        placeholder="0"
-                        className="w-full rounded-xl border border-border bg-background py-3 pl-10 pr-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
-                      />
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Balance inicial</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-muted-foreground">{accountCurrency === "DOP" ? "RD$" : "US$"}</span>
+                    <input type="text" inputMode="decimal" value={initialBalance} onChange={(e) => setInitialBalance(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0"
+                      className="w-full rounded-2xl border border-border bg-background py-4 pl-14 pr-4 text-xl font-bold" />
+                  </div>
+                </div>
+                {accountType === "credit" && (
+                  <div className="space-y-4 rounded-2xl bg-muted/50 p-4">
+                    <p className="text-sm font-medium">Detalles de tarjeta de crédito</p>
+                    <div>
+                      <label className="mb-2 block text-xs text-muted-foreground">Límite de crédito</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">{accountCurrency === "DOP" ? "RD$" : "US$"}</span>
+                        <input type="text" inputMode="decimal" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0"
+                          className="w-full rounded-xl border border-border bg-background py-3 pl-10 pr-4" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs text-muted-foreground">Día de cierre (1-31)</label>
+                      <input type="text" inputMode="numeric" value={closingDate} onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="15"
+                        className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs text-muted-foreground">Fecha de pago (1-31)</label>
+                      <input type="text" inputMode="numeric" value={dueDate} onChange={(e) => setDueDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="10"
+                        className="w-full rounded-xl border border-border bg-background py-3 px-4" />
                     </div>
                   </div>
-
-                  {/* Closing Date */}
-                  <div>
-                    <label className="mb-2 block text-xs text-muted-foreground">
-                      Día de cierre (1-31)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={closingDate}
-                      onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
-                      placeholder="15"
-                      className="w-full rounded-xl border border-border bg-background py-3 px-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
-                    />
-                  </div>
-
-                  {/* Due Date */}
-                  <div>
-                    <label className="mb-2 block text-xs text-muted-foreground">
-                      Fecha de pago (1-31)
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={dueDate}
-                      onChange={(e) => setDueDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
-                      placeholder="10"
-                      className="w-full rounded-xl border border-border bg-background py-3 px-4 text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
-                    />
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-
-            {/* Save Button - Fixed at bottom */}
-            <div className="sticky bottom-0 border-t bg-card p-6 pb-safe">
-              <Button
-                onClick={handleCreateAccount}
-                disabled={!accountName || !initialBalance || isCreating}
-                className="h-14 w-full rounded-2xl text-base font-semibold"
-              >
+            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card safe-area-bottom">
+              <Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || isCreating}
+                className="h-12 w-full rounded-xl text-base font-semibold">
                 {isCreating ? "Creando cuenta..." : "Guardar cuenta"}
               </Button>
             </div>

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   ChevronLeft,
   ChevronRight,
@@ -17,14 +18,17 @@ import {
   LogOut,
   User,
   Smartphone,
+  Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Switch } from "@/components/ui/switch"
+import { createClient } from "@/lib/supabase/client"
 
 type Currency = "DOP" | "USD"
 
 export function SettingsScreen() {
+  const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [primaryCurrency, setPrimaryCurrency] = useState<Currency>("DOP")
   const [notifications, setNotifications] = useState({
@@ -35,6 +39,8 @@ export function SettingsScreen() {
   })
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const themeOptions = [
     { value: "light", label: "Claro", icon: Sun },
@@ -43,6 +49,18 @@ export function SettingsScreen() {
   ] as const
 
   const currentThemeOption = themeOptions.find((t) => t.value === theme)
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      router.push("/auth/login")
+    } catch (error) {
+      console.error("Logout error:", error)
+      setIsLoggingOut(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background pb-28">
@@ -219,11 +237,32 @@ export function SettingsScreen() {
           </div>
         </div>
 
-        {/* Logout */}
-        <button className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 p-4 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+        {/* Logout Button */}
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 p-4 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+        >
           <LogOut className="h-5 w-5" />
           <span className="font-medium">Cerrar sesión</span>
         </button>
+
+        {/* Danger Zone */}
+        <div className="mt-6">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-red-600">
+            Zona peligrosa
+          </h2>
+          <div className="overflow-hidden rounded-2xl bg-red-50/50">
+            <button className="flex w-full items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                </div>
+                <p className="font-medium text-red-600">Eliminar cuenta</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-red-400" />
+            </button>
+          </div>
+        </div>
 
         {/* Version */}
         <p className="mt-6 text-center text-xs text-muted-foreground">
@@ -306,6 +345,44 @@ export function SettingsScreen() {
                   <span className="text-sm opacity-70">{option.symbol}</span>
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4"
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-t-3xl bg-card p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-red-100">
+              <LogOut className="h-6 w-6 text-red-600" />
+            </div>
+            <h2 className="mt-4 text-center text-xl font-bold text-foreground">
+              ¿Cerrar sesión?
+            </h2>
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.
+            </p>
+            <div className="mt-6 space-y-3">
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="h-12 w-full rounded-2xl bg-red-500 text-base font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
+              >
+                {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
+              </button>
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="h-12 w-full rounded-2xl bg-muted text-base font-semibold text-foreground transition-colors"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>

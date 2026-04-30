@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { formatCurrency } from "@/lib/data"
+import { useGoals, createGoal, addGoalContribution } from "@/hooks/use-data"
 
 type SavingsGoal = {
   id: string
@@ -32,7 +33,7 @@ type SavingsGoal = {
   targetDate: string
 }
 
-const initialGoals: SavingsGoal[] = [
+const mockGoals: SavingsGoal[] = [
   {
     id: "1",
     name: "Fondo de emergencia",
@@ -74,13 +75,15 @@ const goalIcons = [
 ]
 
 export function GoalsScreen() {
-  const [goals] = useState<SavingsGoal[]>(initialGoals)
+  const { data: dbGoals, isLoading } = useGoals()
+  
+  const [localGoals] = useState<SavingsGoal[]>(mockGoals)
   const [showAddGoal, setShowAddGoal] = useState(false)
   const [showAddMoney, setShowAddMoney] = useState<string | null>(null)
   const [addAmount, setAddAmount] = useState("")
 
-  const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0)
-  const totalTarget = goals.reduce((sum, goal) => sum + goal.targetAmount, 0)
+  const totalSaved = localGoals.reduce((sum, goal) => sum + goal.currentAmount, 0)
+  const totalTarget = localGoals.reduce((sum, goal) => sum + goal.targetAmount, 0)
 
   const handleAddMoney = () => {
     // In real app, this would update state/backend
@@ -135,7 +138,7 @@ export function GoalsScreen() {
         </div>
 
         <div className="mt-4 space-y-4">
-          {goals.map((goal) => {
+          {localGoals.map((goal) => {
             const Icon = goal.icon
             const progress = (goal.currentAmount / goal.targetAmount) * 100
 
