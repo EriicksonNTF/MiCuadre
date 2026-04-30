@@ -1,6 +1,6 @@
 "use client"
 
-import useSWR from "swr"
+import useSWR, { mutate } from "swr"
 import { createClient } from "@/lib/supabase/client"
 import type {
   Account,
@@ -165,6 +165,7 @@ export async function createAccount(account: Omit<Account, "id" | "user_id" | "c
     .single()
 
   if (error) throw error
+  mutate("accounts")
   return data
 }
 
@@ -181,6 +182,52 @@ export async function createTransaction(
     .single()
 
   if (error) throw error
+
+  // Update account balance based on transaction type
+  if (transaction.type === "income") {
+    const { data: account } = await supabase
+      .from("accounts")
+      .select("balance, type")
+      .eq("id", transaction.account_id)
+      .single()
+    
+    if (account) {
+      const newBalance = Number(account.balance) + transaction.amount
+      await supabase
+        .from("accounts")
+        .update({ balance: newBalance })
+        .eq("id", transaction.account_id)
+    }
+  } else if (transaction.type === "expense") {
+    const { data: account } = await supabase
+      .from("accounts")
+      .select("balance, type")
+      .eq("id", transaction.account_id)
+      .single()
+    
+    if (account) {
+      if (account.type === "credit") {
+        // Credit card: increase debt
+        const newDebt = Number(account.balance) + transaction.amount // balance stores current debt for credit
+        await supabase
+          .from("accounts")
+          .update({ current_debt: newDebt })
+          .eq("id", transaction.account_id)
+      } else {
+        // Regular account: decrease balance
+        const newBalance = Math.max(0, Number(account.balance) - transaction.amount)
+        await supabase
+          .from("accounts")
+          .update({ balance: newBalance })
+          .eq("id", transaction.account_id)
+      }
+    }
+  }
+
+  // Mutate transactions and accounts
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  mutate("accounts")
+
   return data
 }
 
@@ -233,6 +280,7 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
     .single()
 
   if (error) throw error
+  mutate("goals")
   return data
 }
 
@@ -287,6 +335,7 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
       .eq("id", contribution.goal_id)
   }
 
+  mutate("goals")
   return newContribution
 }
 
@@ -359,7 +408,16 @@ export async function createTransfer(transfer: {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    console.error("Transfer error:", error)
+    throw error
+  }
+  
+  // Mutate cache to refresh data
+  mutate("accounts")
+  mutate(["transactions", 10])
+  mutate(["transfers", 100])
+  
   return data
 }
 
@@ -382,6 +440,11 @@ export async function payCreditCard(payment: {
 
   if (!creditCard) throw new Error("Credit card not found")
 
+  // Validate payment amount
+  if (payment.amount > Number(creditCard.current_debt)) {
+    throw new Error("No puedes pagar más que la deuda actual")
+  }
+
   // Reduce credit card debt
   const newDebt = Math.max(0, Number(creditCard.current_debt) - payment.amount)
   await supabase
@@ -397,6 +460,11 @@ export async function payCreditCard(payment: {
     .single()
 
   if (!sourceAccount) throw new Error("Source account not found")
+
+  // Validate source has enough balance
+  if (Number(sourceAccount.balance) < payment.amount) {
+    throw new Error("Fondos insuficientes en la cuenta de origen")
+  }
 
   // Deduct from source
   const newSourceBalance = Number(sourceAccount.balance) - payment.amount
@@ -418,7 +486,15 @@ export async function payCreditCard(payment: {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    console.error("Payment error:", error)
+    throw error
+  }
+
+  // Mutate cache
+  mutate("accounts")
+  mutate(["transactions", 10])
+  
   return data
 }
 
@@ -481,4 +557,37 @@ export async function createCategory(category: Omit<Category, "id" | "user_id" |
 
   if (error) throw error
   return data
+}
+
+export async function updateAccount(id: string, updates: Partial<Account>) {
+  const { data, error } = await supabase
+    .from("accounts")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteAccount(id: string) {
+  // Check if account has transactions
+  const { data: txs, error: txsError } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("account_id", id)
+    .limit(1)
+
+  if (txsError) throw txsError
+  if (txs && txs.length > 0) {
+    throw new Error("No se puede eliminar una cuenta con transacciones asociadas")
+  }
+
+  const { error } = await supabase
+    .from("accounts")
+    .delete()
+    .eq("id", id)
+
+  if (error) throw error
 }

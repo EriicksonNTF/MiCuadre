@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useAccounts, payCreditCard } from "@/hooks/use-data"
 import { formatCurrency, getPaymentUrgency, getDaysUntilDue } from "@/lib/data"
+import { PaymentSlider } from "@/components/payment-slider"
 
 export default function PayPage() {
   const router = useRouter()
@@ -247,25 +248,13 @@ export default function PayPage() {
             </div>
 
             <div className="pb-6 pt-4">
-              <Button
-                onClick={handlePay}
+              <PaymentSlider
+                amount={parsedAmount}
+                currency={selectedSource?.currency || "DOP"}
+                recipientName={selectedCreditCard?.name || ""}
+                onConfirm={handlePay}
                 disabled={!isValid || isPaying}
-                className={cn(
-                  "h-14 w-full rounded-2xl text-base font-semibold transition-all",
-                  showSuccess ? "bg-emerald-500" : "bg-red-500 hover:bg-red-600"
-                )}
-              >
-                {showSuccess ? (
-                  <span className="flex items-center gap-2">
-                    <Check className="h-5 w-5" />
-                    Pagado!
-                  </span>
-                ) : isPaying ? (
-                  "Procesando..."
-                ) : (
-                  `Pagar ${formatCurrency(parsedAmount)}`
-                )}
-              </Button>
+              />
               <button
                 onClick={() => setStep("amount")}
                 className="mt-3 h-12 w-full text-sm text-muted-foreground"

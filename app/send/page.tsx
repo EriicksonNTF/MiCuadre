@@ -11,12 +11,18 @@ import {
   Banknote,
   Building2,
   User,
+  Plus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useAccounts, useBeneficiaries, createTransfer } from "@/hooks/use-data"
+import { useAccounts, useBeneficiaries, createTransfer, createBeneficiary } from "@/hooks/use-data"
 import { formatCurrency } from "@/lib/data"
+import { PaymentSlider } from "@/components/payment-slider"
+import { mutate } from "swr"
+import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { notify } from "@/lib/notifications"
+import { EventBus } from "@/lib/event-bus"
 
 export default function SendPage() {
   const router = useRouter()
@@ -32,6 +38,37 @@ export default function SendPage() {
   const [description, setDescription] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+
+  const [showAddBeneficiary, setShowAddBeneficiary] = useState(false)
+  const [newBeneficiaryName, setNewBeneficiaryName] = useState("")
+  const [newBeneficiaryAccount, setNewBeneficiaryAccount] = useState("")
+  const [isAddingBeneficiary, setIsAddingBeneficiary] = useState(false)
+
+  const handleAddBeneficiary = async () => {
+    if (!newBeneficiaryName || !newBeneficiaryAccount) return
+    setIsAddingBeneficiary(true)
+    try {
+      const newBen = await createBeneficiary({
+        name: newBeneficiaryName,
+        account_reference: newBeneficiaryAccount,
+        bank_name: null,
+        notes: null,
+        is_favorite: false,
+      })
+      mutate("beneficiaries")
+      setRecipientType("beneficiary")
+      setSelectedRecipient(newBen.id)
+      setShowAddBeneficiary(false)
+      setNewBeneficiaryName("")
+      setNewBeneficiaryAccount("")
+      notify({ title: "Beneficiario agregado", message: `${newBeneficiaryName} fue agregado correctamente.` })
+      EventBus.emit({ type: "beneficiary_created", payload: { name: newBeneficiaryName } })
+    } catch (error) {
+      console.error("Error creating beneficiary:", error)
+    } finally {
+      setIsAddingBeneficiary(false)
+    }
+  }
 
   const nonCreditAccounts = useMemo(() => 
     accounts.filter(a => a.type !== "credit"), 
@@ -73,6 +110,8 @@ export default function SendPage() {
       })
       setIsSending(false)
       setShowSuccess(true)
+      notify({ title: "Transferencia completada", message: "Los fondos fueron enviados exitosamente." })
+      EventBus.emit({ type: "transfer_completed" })
       setTimeout(() => router.push("/"), 1500)
     } catch (error) {
       console.error("Transfer error:", error)
@@ -163,7 +202,16 @@ export default function SendPage() {
             {/* Recipient Selection */}
             {recipientType === "beneficiary" && (
               <div>
-                <p className="mb-3 text-sm font-medium text-muted-foreground">Beneficiario</p>
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-medium text-muted-foreground">Beneficiario</p>
+                  <button
+                    onClick={() => setShowAddBeneficiary(true)}
+                    className="flex items-center gap-1 text-sm font-medium text-primary"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Nuevo
+                  </button>
+                </div>
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -357,19 +405,13 @@ export default function SendPage() {
 
             {/* Send Button */}
             <div className="pb-6 pt-4">
-              <Button
-                onClick={handleSend}
+              <PaymentSlider
+                amount={parsedAmount}
+                currency={selectedSourceAccount?.currency || "DOP"}
+                recipientName={recipientType === "beneficiary" ? selectedBeneficiary?.name || "" : accounts.find(a => a.id === selectedRecipient)?.name || ""}
+                onConfirm={handleSend}
                 disabled={!isValid || isSending}
-                className="h-14 w-full rounded-2xl text-base font-semibold"
-              >
-                {showSuccess ? (
-                  "Enviado!"
-                ) : isSending ? (
-                  "Enviando..."
-                ) : (
-                  `Enviar RD$${parsedAmount.toLocaleString()}`
-                )}
-              </Button>
+              />
               <button
                 onClick={() => setStep("amount")}
                 className="mt-3 h-12 w-full text-sm text-muted-foreground"
@@ -380,6 +422,45 @@ export default function SendPage() {
           </div>
         )}
       </div>
+
+      {/* Add Beneficiary Modal */}
+      {showAddBeneficiary && (
+        <BaseModalForm
+          title="Nuevo beneficiario"
+          onClose={() => setShowAddBeneficiary(false)}
+          footer={
+            <Button
+              onClick={handleAddBeneficiary}
+              disabled={!newBeneficiaryName || !newBeneficiaryAccount || isAddingBeneficiary}
+              className="h-14 w-full rounded-2xl text-base font-semibold"
+            >
+              {isAddingBeneficiary ? "Agregando..." : "Agregar beneficiario"}
+            </Button>
+          }
+        >
+          <div className="space-y-4 pt-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">Nombre</label>
+              <Input
+                value={newBeneficiaryName}
+                onChange={e => setNewBeneficiaryName(e.target.value)}
+                placeholder="Ej. Juan Pérez"
+                className="h-12"
+              />
+            </div>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-muted-foreground">Número de cuenta</label>
+              <Input
+                value={newBeneficiaryAccount}
+                onChange={e => setNewBeneficiaryAccount(e.target.value)}
+                placeholder="000000000"
+                className="h-12"
+                inputMode="numeric"
+              />
+            </div>
+          </div>
+        </BaseModalForm>
+      )}
     </div>
   )
 }

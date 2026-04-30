@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -24,13 +24,17 @@ import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
-
-type Currency = "DOP" | "USD"
+import { useProfile, updateProfile } from "@/hooks/use-data"
+import type { Theme, Currency } from "@/lib/types/database"
 
 export function SettingsScreen() {
   const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
+  const { data: profile } = useProfile()
+
   const [primaryCurrency, setPrimaryCurrency] = useState<Currency>("DOP")
+  const [currentTheme, setCurrentTheme] = useState<Theme>(theme)
+  const [isLoadingTheme, setIsLoadingTheme] = useState(true)
   const [notifications, setNotifications] = useState({
     transactions: true,
     goals: true,
@@ -40,7 +44,40 @@ export function SettingsScreen() {
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  useEffect(() => {
+    if (profile) {
+      if (profile.preferred_currency) {
+        setPrimaryCurrency(profile.preferred_currency)
+      }
+      if (profile.theme) {
+        setCurrentTheme(profile.theme)
+        setTheme(profile.theme)
+      }
+      setIsLoadingTheme(false)
+    }
+  }, [profile, setTheme])
+
+  const handleThemeChange = async (newTheme: Theme) => {
+    setCurrentTheme(newTheme)
+    setTheme(newTheme)
+    try {
+      await updateProfile({ theme: newTheme })
+    } catch (error) {
+      console.error("Failed to update theme in profile:", error)
+    }
+  }
+
+  const handleCurrencyChange = async (newCurrency: Currency) => {
+    setPrimaryCurrency(newCurrency)
+    try {
+      await updateProfile({ preferred_currency: newCurrency })
+    } catch (error) {
+      console.error("Failed to update currency in profile:", error)
+    }
+  }
 
   const themeOptions = [
     { value: "light", label: "Claro", icon: Sun },
@@ -48,7 +85,7 @@ export function SettingsScreen() {
     { value: "system", label: "Sistema", icon: Monitor },
   ] as const
 
-  const currentThemeOption = themeOptions.find((t) => t.value === theme)
+  const currentThemeOption = themeOptions.find((t) => t.value === currentTheme)
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -81,18 +118,20 @@ export function SettingsScreen() {
 
       <div className="mx-auto max-w-md px-6 pt-6">
         {/* Profile Section */}
-        <div className="rounded-2xl bg-card p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-emerald-600">
-              <User className="h-7 w-7 text-white" />
+        <Link href="/profile" className="block">
+          <div className="rounded-2xl bg-card p-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-emerald-600">
+                <User className="h-7 w-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-foreground">Usuario Demo</p>
+                <p className="text-sm text-muted-foreground">demo@finwallet.app</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>
-            <div className="flex-1">
-              <p className="font-semibold text-foreground">Usuario Demo</p>
-              <p className="text-sm text-muted-foreground">demo@finwallet.app</p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </div>
-        </div>
+        </Link>
 
         {/* Appearance Section */}
         <div className="mt-6">
@@ -214,9 +253,9 @@ export function SettingsScreen() {
           </h2>
           <div className="overflow-hidden rounded-2xl bg-card">
             {[
-              { icon: Shield, label: "Seguridad", href: "#" },
-              { icon: HelpCircle, label: "Ayuda y soporte", href: "#" },
-              { icon: Smartphone, label: "Acerca de", href: "#" },
+              { icon: Shield, label: "Seguridad", href: "/settings/security" },
+              { icon: HelpCircle, label: "Ayuda y soporte", href: "/settings/help" },
+              { icon: Smartphone, label: "Acerca de", href: "/settings/about" },
             ].map((item, index) => (
               <div key={item.label}>
                 {index > 0 && <div className="mx-4 h-px bg-border" />}
@@ -252,7 +291,7 @@ export function SettingsScreen() {
             Zona peligrosa
           </h2>
           <div className="overflow-hidden rounded-2xl bg-red-50/50">
-            <button className="flex w-full items-center justify-between p-4">
+            <button onClick={() => setShowDeleteAccount(true)} className="flex w-full items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                   <Trash2 className="h-5 w-5 text-red-600" />
@@ -270,117 +309,123 @@ export function SettingsScreen() {
         </p>
       </div>
 
-      {/* Theme Picker Modal */}
+      {/* Theme Picker Modal - iOS optimized */}
       {showThemePicker && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4"
-          onClick={() => setShowThemePicker(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-3xl bg-card p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-foreground">
-              Seleccionar tema
-            </h2>
-            <div className="mt-4 space-y-2">
-              {themeOptions.map((option) => {
-                const Icon = option.icon
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => {
-                      setTheme(option.value)
-                      setShowThemePicker(false)
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-4 rounded-2xl p-4 transition-colors",
-                      theme === option.value
-                        ? "bg-accent text-accent-foreground"
-                        : "bg-muted text-foreground"
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="font-medium">{option.label}</span>
-                  </button>
-                )
-              })}
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowThemePicker(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
+              <h2 className="text-lg font-semibold">Seleccionar tema</h2>
+              <button onClick={() => setShowThemePicker(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                <ChevronRight className="h-4 w-4 rotate-90" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
+              <div className="pb-safe-areas space-y-2">
+                {themeOptions.map((option) => {
+                  const Icon = option.icon
+                  return (
+                    <button key={option.value} onClick={() => { handleThemeChange(option.value); setShowThemePicker(false); }}
+                      className={cn("flex w-full items-center gap-4 rounded-2xl p-4 transition-colors", currentTheme === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
+                      <Icon className="h-5 w-5" />
+                      <span className="font-medium">{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Currency Picker Modal */}
+      {/* Currency Picker Modal - iOS optimized */}
       {showCurrencyPicker && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4"
-          onClick={() => setShowCurrencyPicker(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-3xl bg-card p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-foreground">
-              Moneda principal
-            </h2>
-            <div className="mt-4 space-y-2">
-              {[
-                { value: "DOP", label: "Peso Dominicano", symbol: "RD$" },
-                { value: "USD", label: "Dólar Estadounidense", symbol: "US$" },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  onClick={() => {
-                    setPrimaryCurrency(option.value as Currency)
-                    setShowCurrencyPicker(false)
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-between rounded-2xl p-4 transition-colors",
-                    primaryCurrency === option.value
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-muted text-foreground"
-                  )}
-                >
-                  <span className="font-medium">{option.label}</span>
-                  <span className="text-sm opacity-70">{option.symbol}</span>
-                </button>
-              ))}
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowCurrencyPicker(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
+              <h2 className="text-lg font-semibold">Moneda principal</h2>
+              <button onClick={() => setShowCurrencyPicker(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                <ChevronRight className="h-4 w-4 rotate-90" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
+              <div className="pb-safe-areas space-y-2">
+                {[{ value: "DOP", label: "Peso Dominicano", symbol: "RD$" }, { value: "USD", label: "Dólar Estadounidense", symbol: "US$" }].map((option) => (
+                  <button key={option.value} onClick={() => { handleCurrencyChange(option.value as Currency); setShowCurrencyPicker(false); }}
+                    className={cn("flex w-full items-center justify-between rounded-2xl p-4 transition-colors", primaryCurrency === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
+                    <span className="font-medium">{option.label}</span>
+                    <span className="text-sm opacity-70">{option.symbol}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Logout Confirmation Modal */}
+      {/* Logout Confirmation Modal - iOS optimized */}
       {showLogoutConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4"
-          onClick={() => setShowLogoutConfirm(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-t-3xl bg-card p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex h-12 w-12 mx-auto items-center justify-center rounded-full bg-red-100">
-              <LogOut className="h-6 w-6 text-red-600" />
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowLogoutConfirm(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex-none flex items-center justify-center px-5 py-6 border-b bg-card">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+                <LogOut className="h-7 w-7 text-red-600" />
+              </div>
             </div>
-            <h2 className="mt-4 text-center text-xl font-bold text-foreground">
-              ¿Cerrar sesión?
-            </h2>
-            <p className="mt-2 text-center text-sm text-muted-foreground">
-              Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.
-            </p>
-            <div className="mt-6 space-y-3">
-              <button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="h-12 w-full rounded-2xl bg-red-500 text-base font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-50"
-              >
+            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
+              <div className="pb-safe-areas space-y-2 text-center">
+                <h2 className="text-xl font-bold">¿Cerrar sesión?</h2>
+                <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
+              </div>
+            </div>
+            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card safe-area-bottom space-y-3">
+              <button onClick={handleLogout} disabled={isLoggingOut}
+                className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
                 {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
               </button>
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="h-12 w-full rounded-2xl bg-muted text-base font-semibold text-foreground transition-colors"
-              >
+              <button onClick={() => setShowLogoutConfirm(false)}
+                className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Account Modal - iOS optimized */}
+      {showDeleteAccount && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowDeleteAccount(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
+              <div className="w-9" />
+              <h2 className="text-lg font-semibold">Eliminar cuenta?</h2>
+              <button onClick={() => setShowDeleteAccount(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+                <ChevronRight className="h-4 w-4 rotate-90" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
+              <div className="pb-safe-areas space-y-2 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mx-auto mb-4">
+                  <Trash2 className="h-7 w-7 text-red-600" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Esta acción es permanente. Todos tus datos, transacciones, metas y cuentas serán eliminados para siempre y no podrán ser recuperados.
+                </p>
+              </div>
+            </div>
+            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card safe-area-bottom space-y-3">
+              <button onClick={() => {
+                alert("Función próximamente")
+                setShowDeleteAccount(false)
+              }}
+                className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600">
+                Eliminar cuenta
+              </button>
+              <button onClick={() => setShowDeleteAccount(false)}
+                className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
                 Cancelar
               </button>
             </div>

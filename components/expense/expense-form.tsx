@@ -45,6 +45,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { useAccounts, useCategories, createTransaction } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
+import { notify } from "@/lib/notifications"
+import { EventBus } from "@/lib/event-bus"
 import type { AccountType } from "@/lib/types/database"
 
 
@@ -155,6 +157,14 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         exchange_rate: 1,
       })
 
+      notify({ 
+        title: transactionType === "income" ? "Ingreso registrado" : "Gasto registrado", 
+        message: transactionType === "income" 
+          ? `Se agregó un ingreso de ${formatCurrency(parsedAmount)}` 
+          : `Se registró un gasto de ${formatCurrency(parsedAmount)}`
+      })
+      EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount } })
+      
       setIsSaving(false)
       setShowSuccess(true)
       

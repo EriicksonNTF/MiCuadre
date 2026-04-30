@@ -1,0 +1,48 @@
+{
+  "name": "MiCuadre - Finanzas Personales",
+  "short_name": "MiCuadre",
+  "description": "App de finanzas personales en pesos dominicanos",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "categories": ["finance", "productivity"],
+  "lang": "es",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Nueva Transacción",
+      "short_name": "Agregar",
+      "description": "Registrar un nuevo gasto o ingreso",
+      "url": "/expense",
+      "icons": [{ "src": "/icon.svg", "sizes": "96x96" }]
+    },
+    {
+      "name": "Mis Cuentas",
+      "short_name": "Cuentas",
+      "description": "Ver todas tus cuentas",
+      "url": "/accounts",
+      "icons": [{ "src": "/icon.svg", "sizes": "96x96" }]
+    }
+  ]
+}

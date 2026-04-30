@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { mutate } from "swr"
 import {
   ChevronLeft,
   Banknote,
@@ -22,12 +24,17 @@ import {
   Calendar,
   AlertTriangle,
   X,
+  Settings,
+  Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useAccounts, useTransactions } from "@/hooks/use-data"
+import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { notify } from "@/lib/notifications"
+import { EventBus } from "@/lib/event-bus"
+import { useAccounts, useTransactions, updateAccount, deleteAccount } from "@/hooks/use-data"
 import { formatCurrency, getAvailableCredit, formatDate } from "@/lib/data"
-import type { AccountType } from "@/lib/types/database"
+import type { AccountType, Currency } from "@/lib/types/database"
 
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
@@ -75,11 +82,23 @@ interface AccountDetailProps {
 }
 
 export function AccountDetail({ accountId }: AccountDetailProps) {
+  const router = useRouter()
   const [dateFilter, setDateFilter] = useState<DateRange>("month")
   const [showPayment, setShowPayment] = useState(false)
   const [paymentSource, setPaymentSource] = useState<string>("")
   const [paymentAmount, setPaymentAmount] = useState("")
   const [isPaying, setIsPaying] = useState(false)
+
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [editForm, setEditForm] = useState<{ name: string; type: AccountType; currency: Currency }>({ 
+    name: "", 
+    type: "debit", 
+    currency: "DOP" 
+  })
+  const [isEditing, setIsEditing] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState("")
 
   const { data: rawAccounts = [] } = useAccounts()
   const { data: rawTransactions = [] } = useTransactions(100)
@@ -136,7 +155,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
   const accountTransactions = useMemo(() => {
     return transactions.filter((tx) => tx.accountId === accountId)
-  }, [accountId])
+  }, [accountId, transactions])
 
   const monthlyIncome = accountTransactions
     .filter((tx) => tx.type === "income")
@@ -156,6 +175,38 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     setShowPayment(false)
     setPaymentSource("")
     setPaymentAmount("")
+  }
+
+  const handleEditSubmit = async () => {
+    if (!editForm.name) return
+    setIsEditing(true)
+    try {
+      await updateAccount(accountId, editForm)
+      mutate("accounts")
+      notify({ title: "Cuenta actualizada", message: "Los cambios fueron guardados exitosamente." })
+      EventBus.emit({ type: "account_updated", payload: { name: editForm.name } })
+      setShowEditModal(false)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setIsEditing(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true)
+    setDeleteError("")
+    try {
+      await deleteAccount(accountId)
+      mutate("accounts")
+      notify({ title: "Cuenta eliminada", message: "La cuenta fue eliminada." })
+      EventBus.emit({ type: "account_deleted" })
+      router.push("/accounts")
+    } catch (error) {
+      setDeleteError("No se pudo eliminar la cuenta. Verifica que no tenga transacciones.")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const parsedAmount = parseFloat(paymentAmount.replace(/[^0-9.]/g, "")) || 0
@@ -180,13 +231,32 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           accountGradients[account.type]
         )}
       >
-        {/* Back button */}
-        <Link
-          href="/accounts"
-          className="mb-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Link>
+        {/* Header Actions */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            href="/accounts"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setEditForm({ name: account.name, type: account.type, currency: account.currency || "DOP" })
+                setShowEditModal(true)
+              }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+            >
+              <Settings className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+            >
+              <Trash2 className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
 
         {/* Account info */}
         <div className="flex items-center gap-3">
@@ -511,6 +581,132 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </div>
         </div>
       )}
-    </div>
-  )
-}
+
+      {/* Edit Modal */}
+      {showEditModal && (
+        <BaseModalForm
+          title="Editar cuenta"
+          onClose={() => setShowEditModal(false)}
+          footer={
+            <Button
+              onClick={handleEditSubmit}
+              disabled={!editForm.name || isEditing}
+              className="h-12 w-full rounded-2xl text-base font-semibold"
+            >
+              {isEditing ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Nombre</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                  placeholder="Ej. Cuenta de Ahorros"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Tipo</label>
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  {[
+                    { id: "cash", label: "Efectivo", icon: Banknote },
+                    { id: "debit", label: "Débito", icon: Building2 },
+                    { id: "credit", label: "Crédito", icon: CreditCard },
+                  ].map((type) => {
+                    const TypeIcon = type.icon
+                    const isSelected = editForm.type === type.id
+                    return (
+                      <button
+                        key={type.id}
+                        onClick={() => setEditForm({ ...editForm, type: type.id as AccountType })}
+                        className={cn(
+                          "flex flex-col items-center gap-2 rounded-xl p-3 transition-all",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        )}
+                      >
+                        <TypeIcon className="h-5 w-5" />
+                        <span className="text-xs font-medium">{type.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Moneda</label>
+                <div className="mt-1 flex gap-2">
+                  {(["DOP", "USD"] as Currency[]).map((currency) => (
+                    <button
+                      key={currency}
+                      onClick={() => setEditForm({ ...editForm, currency })}
+                      className={cn(
+                        "flex-1 rounded-xl p-3 text-sm font-medium transition-all",
+                        editForm.currency === currency
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground"
+                      )}
+                    >
+                      {currency}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </BaseModalForm>
+        )}
+
+        {/* Delete Modal */}
+        {showDeleteModal && (
+          <BaseModalForm
+            title="Eliminar cuenta"
+            onClose={() => {
+              setShowDeleteModal(false)
+              setDeleteError("")
+            }}
+            footer={
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeleteError("")
+                  }}
+                  className="flex-1 h-12 rounded-2xl"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="flex-1 h-12 rounded-2xl bg-red-600 text-white hover:bg-red-700"
+                >
+                  {isDeleting ? "Eliminando..." : "Eliminar"}
+                </Button>
+              </div>
+            }
+          >
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+                <Trash2 className="h-8 w-8 text-red-600" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                ¿Estás seguro de que deseas eliminar la cuenta <span className="font-semibold text-foreground">{account.name}</span>? 
+                Esta acción no se puede deshacer.
+              </p>
+              {deleteError && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-red-600">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-xs text-left">{deleteError}</span>
+                </div>
+              )}
+            </div>
+          </BaseModalForm>
+        )}
+      </div>
+    )
+  }

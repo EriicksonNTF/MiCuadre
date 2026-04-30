@@ -14,8 +14,13 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useAccounts } from "@/hooks/use-data"
+import { PaymentSlider } from "@/components/payment-slider"
+import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { notify } from "@/lib/notifications"
+import { EventBus } from "@/lib/event-bus"
+import { useAccounts, createAccount, createTransfer } from "@/hooks/use-data"
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
+import { createAccountSchema, transferSchema, parseAmount, getFieldError } from "@/lib/validation"
 import type { AccountType } from "@/lib/types/database"
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
@@ -60,19 +65,63 @@ export function AccountsScreen() {
   const [dueDate, setDueDate] = useState("")
   const [isCreating, setIsCreating] = useState(false)
 
+  // Touched state for create account form
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
+
+  const createAccountErrors = useMemo(() => ({
+    name: getFieldError(createAccountSchema, "name", accountName),
+    initialBalance: getFieldError(createAccountSchema, "initialBalance", initialBalance),
+    creditLimit: accountType === "credit" ? getFieldError(createAccountSchema, "creditLimit", creditLimit) : undefined,
+    closingDate: accountType === "credit" ? getFieldError(createAccountSchema, "closingDate", closingDate) : undefined,
+    dueDate: accountType === "credit" ? getFieldError(createAccountSchema, "dueDate", dueDate) : undefined,
+  }), [accountName, accountType, initialBalance, creditLimit, closingDate, dueDate])
+
+  const handleBlur = (field: string) => {
+    setTouchedFields(prev => ({ ...prev, [field]: true }))
+  }
+
   const handleCreateAccount = async () => {
-    if (!accountName || !initialBalance) return
+    setTouchedFields({ name: true, initialBalance: true })
+    const result = createAccountSchema.safeParse({
+      name: accountName,
+      type: accountType,
+      currency: accountCurrency,
+      initialBalance,
+      creditLimit: accountType === "credit" ? creditLimit : undefined,
+      closingDate: accountType === "credit" ? closingDate : undefined,
+      dueDate: accountType === "credit" ? dueDate : undefined,
+    })
+    if (!result.success) return
     setIsCreating(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsCreating(false)
-    setShowCreateAccount(false)
-    setAccountName("")
-    setAccountType("cash")
-    setAccountCurrency("DOP")
-    setInitialBalance("")
-    setCreditLimit("")
-    setClosingDate("")
-    setDueDate("")
+    try {
+      await createAccount({
+        name: accountName,
+        type: accountType,
+        currency: accountCurrency,
+        balance: parseAmount(initialBalance),
+        credit_limit: accountType === "credit" ? parseAmount(creditLimit) : null,
+        current_debt: 0,
+        minimum_payment: null,
+        color: "from-slate-500 to-gray-500",
+        icon: "Wallet",
+        is_active: true,
+        closing_date: accountType === "credit" && closingDate ? parseInt(closingDate) : null,
+        due_date: accountType === "credit" && dueDate ? parseInt(dueDate) : null,
+      })
+      notify({ title: "Cuenta creada", message: "Tu cuenta fue creada correctamente." })
+      EventBus.emit({ type: "account_created", payload: { name: accountName } })
+      setShowCreateAccount(false)
+      setAccountName("")
+      setAccountType("cash")
+      setAccountCurrency("DOP")
+      setInitialBalance("")
+      setCreditLimit("")
+      setClosingDate("")
+      setDueDate("")
+      setTouchedFields({})
+    } finally {
+      setIsCreating(false)
+    }
   }
 
   // Transfer form state
@@ -85,6 +134,8 @@ export function AccountsScreen() {
     if (!fromAccount || !toAccount || !transferAmount) return
     setIsTransferring(true)
     await new Promise(resolve => setTimeout(resolve, 1000))
+    notify({ title: "Transferencia exitosa", message: "Se han transferido los fondos." })
+    EventBus.emit({ type: "transfer_completed" })
     setIsTransferring(false)
     setShowTransfer(false)
     setFromAccount("")
@@ -106,7 +157,18 @@ export function AccountsScreen() {
 
       {/* Account Cards */}
       <div className="space-y-4 px-6 pt-4">
-        {accounts.map((account) => {
+        {accounts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed p-8 text-center bg-card/50">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
+              <Banknote className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">No tienes cuentas</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Crea tu primera cuenta para empezar a administrar tu dinero.
+            </p>
+          </div>
+        ) : (
+          accounts.map((account) => {
           const Icon = accountIcons[account.type]
           const isCredit = account.type === "credit"
 
@@ -168,7 +230,7 @@ export function AccountsScreen() {
               </div>
             </Link>
           )
-        })}
+        }))}
       </div>
 
       {/* Action Buttons */}
@@ -193,19 +255,22 @@ export function AccountsScreen() {
 
       {/* Transfer Modal */}
       {showTransfer && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowTransfer(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
-            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
-              <h2 className="text-lg font-semibold">Transferir dinero</h2>
-              <button onClick={() => setShowTransfer(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
-              <div className="pb-safe-areas space-y-4">
-                <div>
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
+        <BaseModalForm
+          title="Transferir dinero"
+          onClose={() => setShowTransfer(false)}
+          footer={
+            <PaymentSlider
+              amount={parsedTransferAmount}
+              currency={accounts.find(a => a.id === fromAccount)?.currency || "DOP"}
+              recipientName={accounts.find(a => a.id === toAccount)?.name || "la cuenta"}
+              onConfirm={handleTransfer}
+              disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || isTransferring}
+            />
+          }
+        >
+          <div className="pb-safe-areas space-y-4">
+            <div>
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
                   <div className="grid grid-cols-3 gap-2">
                     {accounts.filter(a => a.type !== "credit").map((account) => {
                       const Icon = accountIcons[account.type]
@@ -251,32 +316,24 @@ export function AccountsScreen() {
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card">
-              <Button onClick={handleTransfer} disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || isTransferring}
-                className="h-12 w-full rounded-xl text-base font-semibold">
-                {isTransferring ? "Transfiriendo..." : "Confirmar transferencia"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        </BaseModalForm>
       )}
 
       {/* Create Account Modal */}
       {showCreateAccount && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowCreateAccount(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
-            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
-              <h2 className="text-lg font-semibold">Nueva cuenta</h2>
-              <button onClick={() => setShowCreateAccount(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
-              <div className="pb-safe-areas space-y-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Nombre de la cuenta</label>
+        <BaseModalForm
+          title="Nueva cuenta"
+          onClose={() => setShowCreateAccount(false)}
+          footer={
+            <Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || isCreating}
+              className="h-12 w-full rounded-xl text-base font-semibold">
+              {isCreating ? "Creando cuenta..." : "Guardar cuenta"}
+            </Button>
+          }
+        >
+          <div className="pb-safe-areas space-y-5">
+            <div>
+              <label className="mb-2 block text-sm font-medium">Nombre de la cuenta</label>
                   <input type="text" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Ej: Mi cuenta principal"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
                 </div>
@@ -335,15 +392,7 @@ export function AccountsScreen() {
                   </div>
                 )}
               </div>
-            </div>
-            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card safe-area-bottom">
-              <Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || isCreating}
-                className="h-12 w-full rounded-xl text-base font-semibold">
-                {isCreating ? "Creando cuenta..." : "Guardar cuenta"}
-              </Button>
-            </div>
-          </div>
-        </div>
+        </BaseModalForm>
       )}
     </div>
   )

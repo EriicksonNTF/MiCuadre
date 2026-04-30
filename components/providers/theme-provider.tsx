@@ -1,8 +1,7 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
-
-type Theme = "light" | "dark" | "system"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import type { Theme } from "@/lib/types/database"
 
 type ThemeProviderContextType = {
   theme: Theme
@@ -16,18 +15,33 @@ const ThemeProviderContext = createContext<ThemeProviderContextType>({
   resolvedTheme: "light",
 })
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("system")
+interface ThemeProviderProps {
+  children: React.ReactNode
+  initialTheme?: Theme
+  onThemeChange?: (theme: Theme) => void
+}
+
+export function ThemeProvider({ children, initialTheme, onThemeChange }: ThemeProviderProps) {
+  const [theme, setThemeState] = useState<Theme>(initialTheme || "system")
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light")
   const [mounted, setMounted] = useState(false)
 
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState(newTheme)
+    onThemeChange?.(newTheme)
+  }, [onThemeChange])
+
   useEffect(() => {
     setMounted(true)
-    const stored = localStorage.getItem("theme") as Theme | null
-    if (stored) {
-      setTheme(stored)
+    if (initialTheme) {
+      setThemeState(initialTheme)
+    } else {
+      const stored = localStorage.getItem("theme") as Theme | null
+      if (stored) {
+        setThemeState(stored)
+      }
     }
-  }, [])
+  }, [initialTheme])
 
   useEffect(() => {
     if (!mounted) return

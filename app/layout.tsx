@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { BottomNav } from '@/components/navigation/bottom-nav'
@@ -7,10 +7,30 @@ import './globals.css'
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  themeColor: '#000000',
+}
+
 export const metadata: Metadata = {
-  title: 'FinWallet - Tu dinero, simplificado',
-  description: 'Dashboard de finanzas personales en pesos dominicanos',
+  title: 'MiCuadre - Tus finanzas simplificadas',
+  description: 'App de finanzas personales en pesos dominicanos',
   generator: 'v0.app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'MiCuadre',
+    startupImage: [
+      {
+        url: '/apple-icon.png',
+        media: '(device-width: 768px)',
+      },
+    ],
+  },
   icons: {
     icon: [
       {
@@ -27,6 +47,18 @@ export const metadata: Metadata = {
       },
     ],
     apple: '/apple-icon.png',
+    other: [
+      {
+        url: '/icon-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        url: '/icon-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
   },
 }
 
@@ -37,9 +69,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="bg-background">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="theme-color" content="#000000" />
+      </head>
       <body className="font-sans antialiased">
         {children}
         <BottomNav />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/service-worker.js')
+                  .then(reg => console.log('SW registered:', reg.scope))
+                  .catch(err => console.log('SW registration failed:', err));
+              }
+            `,
+          }}
+        />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
