@@ -3,6 +3,7 @@
   "short_name": "MiCuadre",
   "description": "App de finanzas personales en pesos dominicanos",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "portrait-primary",
@@ -31,7 +32,8 @@
     {
       "src": "/icon.svg",
       "sizes": "any",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
   "screenshots": [],

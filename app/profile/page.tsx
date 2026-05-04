@@ -1,60 +1,80 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import {
-  ChevronLeft,
-  User,
-  Camera,
-  Save,
-  X,
-  Edit3,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+import { ChevronLeft, User, Camera, Save, X, Edit3 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
 import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
+import { useToast } from "@/hooks/use-toast"
+
+const supabase = createClient()
+
+function formatDate(value?: string | null) {
+  if (!value) return "-"
+  return new Date(value).toLocaleDateString("es-DO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+}
 
 export default function ProfilePage() {
   const { data: profile, isLoading, mutate } = useProfile()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [name, setName] = useState("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const displayName = useMemo(() => {
+    if (profile?.full_name) return profile.full_name
+    return [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Sin nombre"
+  }, [profile?.first_name, profile?.full_name, profile?.last_name])
+
+  const joinedDate = useMemo(() => {
+    return formatDate(profile?.created_at ?? user?.created_at)
+  }, [profile?.created_at, user?.created_at])
+
   useEffect(() => {
-    if (profile) {
-      const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || ""
-      setName(fullName)
-    }
+    if (!profile) return
+    setName(profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "")
   }, [profile])
 
   const handleStartEdit = () => {
-    const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || ""
-    setName(fullName)
+    setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
     setIsEditing(true)
   }
 
   const handleCancel = () => {
     setIsEditing(false)
-    setName("")
+    setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const nameParts = name.trim().split(" ")
+      const fullName = name.trim()
+      const nameParts = fullName.split(" ").filter(Boolean)
       const firstName = nameParts[0] || null
       const lastName = nameParts.slice(1).join(" ") || null
+
       await updateProfile({
+        full_name: fullName || null,
         first_name: firstName,
         last_name: lastName,
+        email: user?.email ?? null,
       })
+
       await mutate()
       setIsEditing(false)
+      toast({ title: "Perfil actualizado", description: "Tus cambios se guardaron correctamente." })
     } catch (error) {
       console.error("Error updating profile:", error)
+      toast({ title: "Error", description: "No se pudo actualizar el perfil." })
     } finally {
       setIsSaving(false)
     }
@@ -66,13 +86,34 @@ export default function ProfilePage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !user) return
 
-    // Handle photo upload here
-    console.log("Photo selected:", file.name)
+    setIsUploading(true)
+    try {
+      const extension = file.name.split(".").pop() || "jpg"
+      const filePath = `${user.id}/avatar.${extension}`
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true, contentType: file.type })
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
+      await updateProfile({ avatar_url: data.publicUrl })
+      await mutate()
+
+      toast({ title: "Perfil actualizado", description: "Foto de perfil actualizada." })
+    } catch (error) {
+      console.error("Error uploading avatar:", error)
+      toast({ title: "Error", description: "No se pudo actualizar la foto de perfil." })
+    } finally {
+      setIsUploading(false)
+      e.target.value = ""
+    }
   }
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-background pb-28">
         <div className="mx-auto max-w-md px-6 py-4">
@@ -92,7 +133,6 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-background pb-28">
-      {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center justify-between">
@@ -106,17 +146,20 @@ export default function ProfilePage() {
       </div>
 
       <div className="mx-auto max-w-md px-6 pt-6">
-        {/* Profile Display */}
         <div className="rounded-2xl bg-card p-6">
-          {/* Avatar Section */}
           <div className="mb-6 flex flex-col items-center">
             <div className="relative">
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-accent to-emerald-600">
-                <User className="h-12 w-12 text-white" />
-              </div>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="Avatar" className="h-24 w-24 rounded-full object-cover" />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-accent to-emerald-600">
+                  <User className="h-12 w-12 text-white" />
+                </div>
+              )}
               <button
                 onClick={handlePhotoClick}
-                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary shadow-lg"
+                disabled={isUploading}
+                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary shadow-lg disabled:opacity-50"
               >
                 <Camera className="h-4 w-4 text-primary-foreground" />
               </button>
@@ -130,11 +173,8 @@ export default function ProfilePage() {
             </div>
           </div>
 
-{/* Name Field */}
           <div className="mb-4">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Nombre
-            </label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>
             {isEditing ? (
               <input
                 type="text"
@@ -144,57 +184,35 @@ export default function ProfilePage() {
                 placeholder="Tu nombre"
               />
             ) : (
-              <p className="rounded-xl bg-muted px-4 py-3 text-foreground">
-                {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "Sin nombre"}
-              </p>
+              <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{displayName}</p>
             )}
           </div>
 
-          {/* Email Field */}
+          <div className="mb-4">
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Correo electrónico</label>
+            <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{user?.email || profile?.email || "Sin correo"}</p>
+          </div>
+
           <div className="mb-6">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Correo electrónico
-            </label>
-            <p className="rounded-xl bg-muted px-4 py-3 text-foreground">
-              {user?.email || "Sin correo"}
-            </p>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Cuenta creada</label>
+            <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{joinedDate}</p>
           </div>
 
-          {/* Email Field */}
-<div className="mb-6">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">
-              Correo electrónico
-            </label>
-            <p className="rounded-xl bg-muted px-4 py-3 text-foreground">
-              {user?.email || "Sin correo"}
-            </p>
-          </div>
-
-          {/* Action Buttons */}
           {isEditing ? (
             <div className="flex gap-3">
-              <Button
-                onClick={handleCancel}
-                variant="outline"
-                className="flex-1"
-                disabled={isSaving}
-              >
+              <Button onClick={handleCancel} variant="outline" className="flex-1" disabled={isSaving}>
                 <X className="h-4 w-4" />
                 Cancelar
               </Button>
-              <Button
-                onClick={handleSave}
-                className="flex-1"
-                disabled={isSaving}
-              >
+              <Button onClick={handleSave} className="flex-1" disabled={isSaving}>
                 <Save className="h-4 w-4" />
                 {isSaving ? "Guardando..." : "Guardar"}
               </Button>
             </div>
           ) : (
-            <Button onClick={handleStartEdit} className="w-full">
+            <Button onClick={handleStartEdit} className="w-full" disabled={isUploading}>
               <Edit3 className="h-4 w-4" />
-              Editar
+              {isUploading ? "Subiendo foto..." : "Editar"}
             </Button>
           )}
         </div>

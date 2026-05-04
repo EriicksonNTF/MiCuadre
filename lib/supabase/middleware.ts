@@ -1,6 +1,45 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const publicRoutes = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/auth/login',
+  '/auth/sign-up',
+  '/auth/forgot-password',
+  '/auth/error',
+  '/auth/callback',
+  '/auth/sign-up-success',
+]
+
+const protectedRoutes = [
+  '/',
+  '/dashboard',
+  '/accounts',
+  '/transactions',
+  '/history',
+  '/goals',
+  '/settings',
+  '/expense',
+  '/notifications',
+  '/onboarding',
+  '/send',
+  '/pay',
+  '/profile',
+  '/scan',
+]
+
+function matchesRoute(pathname: string, routes: string[]) {
+  return routes.some((route) =>
+    route === '/'
+      ? pathname === '/'
+      : pathname === route || pathname.startsWith(`${route}/`)
+  )
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -37,22 +76,26 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect routes that require authentication
-  const protectedRoutes = ['/dashboard', '/accounts', '/goals', '/history', '/settings', '/expense', '/notifications', '/onboarding', '/send', '/pay', '/profile', '/scan']
-  const isProtectedRoute = protectedRoutes.some(route => 
-    request.nextUrl.pathname.startsWith(route) || request.nextUrl.pathname === '/'
-  )
+  const pathname = request.nextUrl.pathname
+  const isPublicRoute = matchesRoute(pathname, publicRoutes)
+  const isProtectedRoute = matchesRoute(pathname, protectedRoutes)
+  const isEmailVerified = Boolean(user?.email_confirmed_at)
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from auth pages
-  if (user && request.nextUrl.pathname.startsWith('/auth')) {
+  if (user && !isEmailVerified && pathname !== '/verify-email') {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/verify-email'
+    return NextResponse.redirect(url)
+  }
+
+  if (user && isEmailVerified && (isPublicRoute || pathname === '/verify-email')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 

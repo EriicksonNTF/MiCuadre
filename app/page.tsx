@@ -7,12 +7,16 @@ import { BalanceCard } from "@/components/dashboard/balance-card"
 import { AccountsList } from "@/components/dashboard/accounts-list"
 import { QuickActions } from "@/components/dashboard/quick-actions"
 import { TransactionsList } from "@/components/dashboard/transactions-list"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function DashboardPage() {
   const router = useRouter()
   const [isReady, setIsReady] = useState(false)
+  const { loading } = useAuth()
 
   useEffect(() => {
+    if (loading) return
+
     const onboardingCompleted =
       typeof window !== "undefined" &&
       window.localStorage.getItem("onboarding_completed") === "true"
@@ -23,9 +27,15 @@ export default function DashboardPage() {
     }
 
     setIsReady(true)
-  }, [router])
+  }, [loading, router])
 
-  if (!isReady) return null
+  if (loading || !isReady) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Verificando sesion...</p>
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen bg-background">

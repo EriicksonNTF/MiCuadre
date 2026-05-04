@@ -4,6 +4,8 @@ import Link from "next/link"
 import { ChevronLeft, Eye, EyeOff, Shield, Smartphone, Clock, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SecurityPage() {
   const [currentPassword, setCurrentPassword] = useState("")
@@ -13,15 +15,35 @@ export default function SecurityPage() {
   const [showNew, setShowNew] = useState(false)
   const [isChanging, setIsChanging] = useState(false)
   const [showLogoutDevices, setShowLogoutDevices] = useState(false)
+  const { toast } = useToast()
 
   const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) return
+    if (newPassword.length < 8) {
+      toast({ title: "Error", description: "La contraseña debe tener al menos 8 caracteres." })
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Error", description: "Las contraseñas no coinciden." })
+      return
+    }
+
     setIsChanging(true)
-    await new Promise(r => setTimeout(r, 1000))
-    setIsChanging(false)
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+      toast({ title: "Contraseña actualizada", description: "Tu contraseña fue cambiada exitosamente." })
+    } catch (error) {
+      console.error("Password update error:", error)
+      toast({ title: "Error", description: "No se pudo actualizar la contraseña." })
+    } finally {
+      setIsChanging(false)
+    }
   }
 
   const isValid = currentPassword.length >= 8 && newPassword.length >= 8 && newPassword === confirmPassword

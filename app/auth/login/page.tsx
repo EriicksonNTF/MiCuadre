@@ -91,7 +91,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       className="h-11"
                     />
-                    <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
+                     <Link href="/forgot-password" className="text-xs text-primary hover:underline">
                       Olvidaste tu contrasena?
                     </Link>
                   </div>
@@ -106,12 +106,9 @@ export default function LoginPage() {
                 </div>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   No tienes cuenta?{' '}
-                  <Link
-                    href="/auth/sign-up"
-                    className="text-primary hover:underline underline-offset-4"
-                  >
-                    Registrate
-                  </Link>
+                    <Link href="/register" className="text-primary hover:underline underline-offset-4">
+                      Registrate
+                    </Link>
                 </div>
               </form>
             </CardContent>

@@ -333,6 +333,7 @@ export async function updateProfile(updates: Partial<Profile>) {
     .single()
 
   if (error) throw error
+  mutate("profile")
   return data
 }
 

@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
             {message && <p className="rounded-md bg-emerald-500/10 p-2 text-sm text-emerald-600">{message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>{loading ? "Enviando..." : "Enviar enlace"}</Button>
           </form>
-          <Link href="/auth/login" className="mt-4 block text-center text-sm text-primary hover:underline">Volver a iniciar sesion</Link>
+          <Link href="/login" className="mt-4 block text-center text-sm text-primary hover:underline">Volver a iniciar sesion</Link>
         </CardContent>
       </Card>
     </div>

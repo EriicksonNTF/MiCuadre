@@ -47,6 +47,9 @@ export function SettingsScreen() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showDeleteAccount, setShowDeleteAccount] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
+  const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
 
   useEffect(() => {
     if (profile) {
@@ -95,10 +98,64 @@ export function SettingsScreen() {
     try {
       const supabase = createClient()
       await supabase.auth.signOut()
-      router.push("/auth/login")
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("onboarding_completed")
+      }
+      setShowLogoutConfirm(false)
+      router.replace("/login")
+      router.refresh()
+      setTimeout(() => {
+        window.location.replace("/login")
+      }, 0)
     } catch (error) {
       console.error("Logout error:", error)
+    } finally {
       setIsLoggingOut(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    const keyword = deleteConfirmationText.trim().toUpperCase()
+    if (keyword !== "DELETE" && keyword !== "ELIMINAR") {
+      setDeleteAccountError('Escribe "DELETE" o "ELIMINAR" para confirmar.')
+      return
+    }
+
+    setIsDeletingAccount(true)
+    setDeleteAccountError(null)
+
+    try {
+      const response = await fetch("/api/account/delete", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null
+        throw new Error(payload?.error || "No se pudo eliminar la cuenta")
+      }
+
+      const supabase = createClient()
+      await supabase.auth.signOut()
+
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("onboarding_completed")
+      }
+
+      setShowDeleteAccount(false)
+      setDeleteConfirmationText("")
+      router.replace("/login")
+      router.refresh()
+      setTimeout(() => {
+        window.location.replace("/login")
+      }, 0)
+    } catch (error) {
+      console.error("Delete account flow error:", error)
+      setDeleteAccountError("No se pudo completar la solicitud. Intenta de nuevo.")
+    } finally {
+      setIsDeletingAccount(false)
     }
   }
 
@@ -417,15 +474,28 @@ export function SettingsScreen() {
                 <p className="text-sm text-muted-foreground">
                   Esta acción es permanente. Todos tus datos, transacciones, metas y cuentas serán eliminados para siempre y no podrán ser recuperados.
                 </p>
+                <div className="text-left">
+                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    Escribe DELETE o ELIMINAR para confirmar
+                  </label>
+                  <input
+                    value={deleteConfirmationText}
+                    onChange={(event) => setDeleteConfirmationText(event.target.value)}
+                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"
+                    placeholder="DELETE"
+                  />
+                </div>
+                {deleteAccountError && (
+                  <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                    {deleteAccountError}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card safe-area-bottom space-y-3">
-              <button onClick={() => {
-                alert("Función próximamente")
-                setShowDeleteAccount(false)
-              }}
-                className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600">
-                Eliminar cuenta
+              <button onClick={handleDeleteAccount} disabled={isDeletingAccount}
+                className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
+                {isDeletingAccount ? "Procesando..." : "Eliminar cuenta"}
               </button>
               <button onClick={() => setShowDeleteAccount(false)}
                 className="h-12 w-full rounded-xl bg-muted text-base font-semibold">

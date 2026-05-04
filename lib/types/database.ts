@@ -11,8 +11,11 @@ export type Language = "es" | "en"
 
 export interface Profile {
   id: string
+  email: string | null
+  full_name: string | null
   first_name: string | null
   last_name: string | null
+  avatar_url: string | null
   preferred_currency: Currency
   language: Language
   theme: Theme

@@ -142,10 +142,7 @@ export default function SignUpPage() {
                 </div>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   Ya tienes cuenta?{' '}
-                  <Link
-                    href="/auth/login"
-                    className="text-primary hover:underline underline-offset-4"
-                  >
+                  <Link href="/login" className="text-primary hover:underline underline-offset-4">
                     Inicia sesion
                   </Link>
                 </div>
