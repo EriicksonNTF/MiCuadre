@@ -86,6 +86,7 @@ export default function SendPage() {
   const selectedBeneficiary = beneficiaries.find(b => b.id === selectedRecipient)
   const parsedAmount = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0
   const availableBalance = selectedSourceAccount?.balance || 0
+  const exceedsBalance = parsedAmount > availableBalance
 
   const handleAmountChange = (value: string) => {
     const cleaned = value.replace(/[^0-9.]/g, "")
@@ -94,7 +95,7 @@ export default function SendPage() {
     setAmount(cleaned)
   }
 
-  const isValid = parsedAmount > 0 && parsedAmount <= availableBalance && selectedRecipient
+  const isValid = parsedAmount > 0 && !exceedsBalance && selectedRecipient
 
   const handleSend = async () => {
     if (!isValid) return
@@ -110,11 +111,15 @@ export default function SendPage() {
       })
       setIsSending(false)
       setShowSuccess(true)
-      notify({ title: "Transferencia completada", message: "Los fondos fueron enviados exitosamente." })
+      notify({ title: "Transferencia realizada", message: "Movimiento creado con éxito y balance actualizado." })
       EventBus.emit({ type: "transfer_completed" })
       setTimeout(() => router.push("/"), 1500)
     } catch (error) {
       console.error("Transfer error:", error)
+      notify({
+        title: "No se pudo enviar",
+        message: "Ese monto supera tu balance disponible. Intenta con un monto menor.",
+      })
       setIsSending(false)
     }
   }
@@ -333,6 +338,11 @@ export default function SendPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Disponible: {formatCurrency(availableBalance)}
               </p>
+              {exceedsBalance && (
+                <p className="mt-1 text-xs text-red-500">
+                  No puedes mover más dinero del que tienes en esta cuenta.
+                </p>
+              )}
             </div>
 
             {/* Quick amounts */}
@@ -361,11 +371,11 @@ export default function SendPage() {
 
             {/* Continue Button */}
             <div className="pb-6 pt-4">
-              <Button
-                onClick={() => setStep("confirm")}
-                disabled={parsedAmount <= 0 || parsedAmount > availableBalance}
-                className="h-14 w-full rounded-2xl text-base font-semibold"
-              >
+                <Button
+                  onClick={() => setStep("confirm")}
+                  disabled={parsedAmount <= 0 || exceedsBalance}
+                  className="h-14 w-full rounded-2xl text-base font-semibold"
+                >
                 Continuar
               </Button>
             </div>

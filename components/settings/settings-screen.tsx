@@ -23,6 +23,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Switch } from "@/components/ui/switch"
+import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
 import { setPreferredCurrency } from "@/lib/data"
@@ -50,19 +51,6 @@ export function SettingsScreen() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
-
-  useEffect(() => {
-    const hasOpenModal = showThemePicker || showCurrencyPicker || showLogoutConfirm || showDeleteAccount
-    if (hasOpenModal) {
-      document.body.classList.add("modal-open")
-    } else {
-      document.body.classList.remove("modal-open")
-    }
-
-    return () => {
-      document.body.classList.remove("modal-open")
-    }
-  }, [showThemePicker, showCurrencyPicker, showLogoutConfirm, showDeleteAccount])
 
   useEffect(() => {
     if (profile) {
@@ -384,76 +372,43 @@ export function SettingsScreen() {
 
       {/* Theme Picker Modal - iOS optimized */}
       {showThemePicker && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowThemePicker(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
-            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
-              <h2 className="text-lg font-semibold">Seleccionar tema</h2>
-              <button onClick={() => setShowThemePicker(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                <ChevronRight className="h-4 w-4 rotate-90" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
-              <div className="pb-safe-areas space-y-2">
-                {themeOptions.map((option) => {
-                  const Icon = option.icon
-                  return (
-                    <button key={option.value} onClick={() => { handleThemeChange(option.value); setShowThemePicker(false); }}
-                      className={cn("flex w-full items-center gap-4 rounded-2xl p-4 transition-colors", currentTheme === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
-                      <Icon className="h-5 w-5" />
-                      <span className="font-medium">{option.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+        <BaseModalForm title="Seleccionar tema" onClose={() => setShowThemePicker(false)}>
+          <div className="space-y-2 pb-2">
+            {themeOptions.map((option) => {
+              const Icon = option.icon
+              return (
+                <button key={option.value} onClick={() => { handleThemeChange(option.value); setShowThemePicker(false); }}
+                  className={cn("flex w-full items-center gap-4 rounded-2xl p-4 transition-colors", currentTheme === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
+                  <Icon className="h-5 w-5" />
+                  <span className="font-medium">{option.label}</span>
+                </button>
+              )
+            })}
           </div>
-        </div>
+        </BaseModalForm>
       )}
 
       {/* Currency Picker Modal - iOS optimized */}
       {showCurrencyPicker && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowCurrencyPicker(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
-            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
-              <h2 className="text-lg font-semibold">Moneda principal</h2>
-              <button onClick={() => setShowCurrencyPicker(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                <ChevronRight className="h-4 w-4 rotate-90" />
+        <BaseModalForm title="Moneda principal" onClose={() => setShowCurrencyPicker(false)}>
+          <div className="space-y-2 pb-2">
+            {[{ value: "DOP", label: "Peso Dominicano", symbol: "RD$" }, { value: "USD", label: "Dólar Estadounidense", symbol: "US$" }].map((option) => (
+              <button key={option.value} onClick={() => { handleCurrencyChange(option.value as Currency); setShowCurrencyPicker(false); }}
+                className={cn("flex w-full items-center justify-between rounded-2xl p-4 transition-colors", primaryCurrency === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
+                <span className="font-medium">{option.label}</span>
+                <span className="text-sm opacity-70">{option.symbol}</span>
               </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
-              <div className="pb-safe-areas space-y-2">
-                {[{ value: "DOP", label: "Peso Dominicano", symbol: "RD$" }, { value: "USD", label: "Dólar Estadounidense", symbol: "US$" }].map((option) => (
-                  <button key={option.value} onClick={() => { handleCurrencyChange(option.value as Currency); setShowCurrencyPicker(false); }}
-                    className={cn("flex w-full items-center justify-between rounded-2xl p-4 transition-colors", primaryCurrency === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
-                    <span className="font-medium">{option.label}</span>
-                    <span className="text-sm opacity-70">{option.symbol}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
-        </div>
+        </BaseModalForm>
       )}
 
       {/* Logout Confirmation Modal - iOS optimized */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowLogoutConfirm(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
-            <div className="flex-none flex items-center justify-center px-5 py-6 border-b bg-card">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-                <LogOut className="h-7 w-7 text-red-600" />
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
-              <div className="pb-safe-areas space-y-2 text-center">
-                <h2 className="text-xl font-bold">¿Cerrar sesión?</h2>
-                <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
-              </div>
-            </div>
-            <div className="sticky bottom-0 flex-none border-t bg-card px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))] safe-area-bottom space-y-3">
+        <BaseModalForm
+          onClose={() => setShowLogoutConfirm(false)}
+          footer={
+            <div className="space-y-3">
               <button onClick={handleLogout} disabled={isLoggingOut}
                 className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
                 {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
@@ -463,49 +418,25 @@ export function SettingsScreen() {
                 Cancelar
               </button>
             </div>
+          }
+        >
+          <div className="space-y-2 py-2 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+              <LogOut className="h-7 w-7 text-red-600" />
+            </div>
+            <h2 className="text-xl font-bold">¿Cerrar sesión?</h2>
+            <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
           </div>
-        </div>
+        </BaseModalForm>
       )}
 
       {/* Delete Account Modal - iOS optimized */}
       {showDeleteAccount && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowDeleteAccount(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
-            <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
-              <div className="w-9" />
-              <h2 className="text-lg font-semibold">Eliminar cuenta?</h2>
-              <button onClick={() => setShowDeleteAccount(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
-                <ChevronRight className="h-4 w-4 rotate-90" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto px-5 py-4 overscroll-contain">
-              <div className="pb-safe-areas space-y-2 text-center">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100 mx-auto mb-4">
-                  <Trash2 className="h-7 w-7 text-red-600" />
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Esta acción es permanente. Todos tus datos, transacciones, metas y cuentas serán eliminados para siempre y no podrán ser recuperados.
-                </p>
-                <div className="text-left">
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Escribe DELETE o ELIMINAR para confirmar
-                  </label>
-                  <input
-                    value={deleteConfirmationText}
-                    onChange={(event) => setDeleteConfirmationText(event.target.value)}
-                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"
-                    placeholder="DELETE"
-                  />
-                </div>
-                {deleteAccountError && (
-                  <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                    {deleteAccountError}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="sticky bottom-0 flex-none border-t bg-card px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))] safe-area-bottom space-y-3">
+        <BaseModalForm
+          title="Eliminar cuenta"
+          onClose={() => setShowDeleteAccount(false)}
+          footer={
+            <div className="space-y-3">
               <button onClick={handleDeleteAccount} disabled={isDeletingAccount}
                 className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
                 {isDeletingAccount ? "Procesando..." : "Eliminar cuenta"}
@@ -515,8 +446,33 @@ export function SettingsScreen() {
                 Cancelar
               </button>
             </div>
+          }
+        >
+          <div className="space-y-3 py-1 text-center">
+            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="h-7 w-7 text-red-600" />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Esta acción es permanente. Todos tus datos, transacciones, metas y cuentas serán eliminados para siempre y no podrán ser recuperados.
+            </p>
+            <div className="text-left">
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Escribe DELETE o ELIMINAR para confirmar
+              </label>
+              <input
+                value={deleteConfirmationText}
+                onChange={(event) => setDeleteConfirmationText(event.target.value)}
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"
+                placeholder="DELETE"
+              />
+            </div>
+            {deleteAccountError && (
+              <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                {deleteAccountError}
+              </p>
+            )}
           </div>
-        </div>
+        </BaseModalForm>
       )}
     </div>
   )

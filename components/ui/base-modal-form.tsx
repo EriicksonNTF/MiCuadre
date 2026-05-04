@@ -1,7 +1,9 @@
 "use client"
 import React from "react"
-import { X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { X } from "lucide-react"
+import { useIsMobile } from "@/components/ui/use-mobile"
+import { MobileFullscreenForm } from "@/components/ui/mobile-fullscreen-form"
 
 export function BaseModalForm({
   title,
@@ -16,12 +18,28 @@ export function BaseModalForm({
   onClose?: () => void
   contentClassName?: string
 }) {
+  const isMobile = useIsMobile()
+
   React.useEffect(() => {
+    if (isMobile) return
     document.body.classList.add("modal-open")
     return () => {
       document.body.classList.remove("modal-open")
     }
-  }, [])
+  }, [isMobile])
+
+  if (isMobile) {
+    return (
+      <MobileFullscreenForm
+        title={title}
+        onClose={onClose}
+        footer={footer}
+        contentClassName={contentClassName}
+      >
+        {children}
+      </MobileFullscreenForm>
+    )
+  }
 
   return (
     <>

@@ -426,7 +426,24 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
       .eq("id", contribution.goal_id)
   }
 
+  await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_id: contribution.account_id,
+    category_id: null,
+    type: "expense",
+    amount: contribution.amount,
+    currency: "DOP",
+    amount_base: contribution.amount,
+    exchange_rate: 1,
+    description: "Aporte a meta de ahorro",
+    date: contribution.date,
+    notes: contribution.notes || null,
+    is_recurring: false,
+  })
+
   mutate("goals")
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  mutate("accounts")
   return newContribution
 }
 
@@ -445,7 +462,7 @@ export async function createTransfer(transfer: {
   // Get current balances
   const { data: fromAccount } = await supabase
     .from("accounts")
-    .select("balance, type")
+    .select("balance, type, currency")
     .eq("id", transfer.from_account_id)
     .single()
 
@@ -453,7 +470,7 @@ export async function createTransfer(transfer: {
 
   if (transfer.amount <= 0) throw new Error("Monto inválido")
   if (Number(fromAccount.balance) < transfer.amount) {
-    throw new Error("Fondos insuficientes en la cuenta de origen")
+    throw new Error("Ese monto supera tu balance disponible.")
   }
 
   // Deduct from source account
@@ -464,14 +481,17 @@ export async function createTransfer(transfer: {
     .eq("id", transfer.from_account_id)
 
   // Add to destination if internal account
+  let internalDestinationName: string | null = null
+
   if (transfer.to_account_id) {
     const { data: toAccount } = await supabase
       .from("accounts")
-      .select("balance")
+      .select("balance, name")
       .eq("id", transfer.to_account_id)
       .single()
 
     if (toAccount) {
+      internalDestinationName = toAccount.name || null
       const newToBalance = Number(toAccount.balance) + transfer.amount
       await supabase
         .from("accounts")
@@ -499,10 +519,46 @@ export async function createTransfer(transfer: {
     console.error("Transfer error:", error)
     throw error
   }
+
+  const destinationLabel = transfer.to_beneficiary_id
+    ? "beneficiario"
+    : internalDestinationName || "cuenta destino"
+
+  await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_id: transfer.from_account_id,
+    category_id: null,
+    type: "expense",
+    amount: transfer.amount,
+    currency: transfer.currency,
+    amount_base: transfer.amount,
+    exchange_rate: 1,
+    description: transfer.description || `Transferencia enviada a ${destinationLabel}`,
+    date: new Date().toISOString(),
+    notes: transfer.description || null,
+    is_recurring: false,
+  })
+
+  if (transfer.to_account_id) {
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: transfer.to_account_id,
+      category_id: null,
+      type: "income",
+      amount: transfer.amount,
+      currency: transfer.currency,
+      amount_base: transfer.amount,
+      exchange_rate: 1,
+      description: transfer.description || "Transferencia recibida",
+      date: new Date().toISOString(),
+      notes: null,
+      is_recurring: false,
+    })
+  }
   
   // Mutate cache to refresh data
   mutate("accounts")
-  mutate(["transactions", 10])
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate(["transfers", 100])
   
   return data
@@ -550,7 +606,7 @@ export async function payCreditCard(payment: {
 
   // Validate source has enough balance
   if (Number(sourceAccount.balance) < payment.amount) {
-    throw new Error("Fondos insuficientes en la cuenta de origen")
+    throw new Error("Disponible insuficiente en la cuenta origen para este pago")
   }
 
   // Deduct from source
@@ -595,7 +651,7 @@ export async function payCreditCard(payment: {
 
   // Mutate cache
   mutate("accounts")
-  mutate(["transactions", 10])
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   
   return data
 }
@@ -612,6 +668,7 @@ export async function createBeneficiary(beneficiary: Omit<Beneficiary, "id" | "u
     .single()
 
   if (error) throw error
+  mutate("beneficiaries")
   return data
 }
 

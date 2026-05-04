@@ -23,7 +23,6 @@ import {
   MoreHorizontal,
   Calendar,
   AlertTriangle,
-  X,
   Settings,
   Trash2,
 } from "lucide-react"
@@ -194,7 +193,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       setPaymentSource("")
       setPaymentAmount("")
     } catch {
-      notify({ title: "Error", message: "No se pudo completar el pago." })
+      notify({
+        title: "No se pudo completar el pago",
+        message: "Verifica deuda de la tarjeta y disponible en la cuenta origen.",
+      })
     } finally {
       setIsPaying(false)
     }
@@ -496,29 +498,33 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
       {/* Payment Modal */}
       {showPayment && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-3xl bg-card p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">
-                Pagar tarjeta
-              </h2>
-              <button
-                onClick={() => setShowPayment(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-muted"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Current debt */}
-            <div className="mt-4 rounded-2xl bg-orange-50 p-4">
+        <BaseModalForm
+          title="Pagar tarjeta"
+          onClose={() => setShowPayment(false)}
+          contentClassName="space-y-4"
+          footer={
+            <Button
+              onClick={handlePayment}
+              disabled={
+                !paymentSource ||
+                parsedAmount <= 0 ||
+                (sourceAccount && parsedAmount > sourceAccount.balance) ||
+                isPaying
+              }
+              className="h-12 w-full rounded-2xl text-base font-semibold"
+            >
+              {isPaying ? "Procesando..." : `Pagar ${formatCurrency(parsedAmount)}`}
+            </Button>
+          }
+        >
+            <div className="rounded-2xl bg-orange-50 p-4">
               <p className="text-xs text-orange-600">Deuda actual</p>
               <p className="mt-1 text-2xl font-bold text-orange-600">
                 {formatCurrency(account.currentDebt || 0)}
               </p>
             </div>
 
-            <div className="mt-6 space-y-4">
+            <div className="space-y-4 pb-2">
               {/* Source Account */}
               <div>
                 <p className="mb-2 text-xs font-medium text-muted-foreground">
@@ -599,26 +605,23 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               {sourceAccount && parsedAmount > sourceAccount.balance && (
                 <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-red-600">
                   <AlertTriangle className="h-4 w-4" />
-                  <span className="text-xs">Fondos insuficientes</span>
+                  <span className="text-xs">Ese monto supera tu balance disponible.</span>
                 </div>
               )}
-
-              {/* Confirm Button */}
-              <Button
-                onClick={handlePayment}
-                disabled={
-                  !paymentSource ||
-                  parsedAmount <= 0 ||
-                  (sourceAccount && parsedAmount > sourceAccount.balance) ||
-                  isPaying
-                }
-                className="h-12 w-full rounded-2xl text-base font-semibold"
-              >
-                {isPaying ? "Procesando..." : `Pagar ${formatCurrency(parsedAmount)}`}
-              </Button>
+              {sourceAccount && (
+                <p className={cn(
+                  "text-xs",
+                  parsedAmount > sourceAccount.balance
+                    ? "text-red-500"
+                    : Number(sourceAccount.balance) <= 1000
+                      ? "text-amber-600"
+                      : "text-muted-foreground"
+                )}>
+                  Disponible: {formatCurrency(Number(sourceAccount.balance || 0))}
+                </p>
+              )}
             </div>
-          </div>
-        </div>
+        </BaseModalForm>
       )}
 
       {/* Edit Modal */}

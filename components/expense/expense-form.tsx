@@ -115,6 +115,11 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   const CategoryIcon = selectedCategory?.icon || MoreHorizontal
   const selectedAccount = accounts.find(a => a.id === accountId)
   const isCredit = selectedAccount?.type === "credit"
+  const availableAmount = selectedAccount
+    ? isCredit
+      ? getAvailableCredit(selectedAccount)
+      : Number(selectedAccount.balance)
+    : 0
 
   const parsedAmount = useMemo(() => {
     const cleaned = amount.replace(/[^0-9.]/g, "")
@@ -132,6 +137,16 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
 
   const handleSave = async () => {
     if (!parsedAmount || !description) return
+
+    if (transactionType === "expense" && parsedAmount > availableAmount) {
+      notify({
+        title: isCredit ? "Crédito insuficiente" : "Saldo insuficiente",
+        message: isCredit
+          ? `Este gasto excede tu crédito disponible. Disponible en tarjeta: ${formatCurrency(availableAmount)}.`
+          : `Ese monto supera tu balance disponible. Disponible: ${formatCurrency(availableAmount)}.`,
+      })
+      return
+    }
     
     setIsSaving(true)
     try {
@@ -160,8 +175,8 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
       notify({ 
         title: transactionType === "income" ? "Ingreso registrado" : "Gasto registrado", 
         message: transactionType === "income" 
-          ? `Se agregó un ingreso de ${formatCurrency(parsedAmount)}` 
-          : `Se registró un gasto de ${formatCurrency(parsedAmount)}`
+          ? `Movimiento creado con éxito por ${formatCurrency(parsedAmount)}` 
+          : `Movimiento creado con éxito por ${formatCurrency(parsedAmount)}`
       })
       EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount } })
       
@@ -174,6 +189,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         setDescription("")
         setCategory("")
         setDate(new Date())
+        onBack?.()
       }, 1500)
     } catch (error) {
       console.error(error)
@@ -182,7 +198,8 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   }
 
 
-  const isValid = parsedAmount !== null && parsedAmount > 0 && description.length > 0
+  const exceedsAvailable = transactionType === "expense" && parsedAmount !== null && parsedAmount > availableAmount
+  const isValid = parsedAmount !== null && parsedAmount > 0 && description.length > 0 && !exceedsAvailable
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -335,12 +352,26 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
           
           {/* Show available balance/credit */}
           {selectedAccount && (
-            <p className="mt-2 px-1 text-xs text-muted-foreground">
+            <p className={cn(
+              "mt-2 px-1 text-xs",
+              exceedsAvailable
+                ? "text-red-500"
+                : availableAmount <= 1000
+                  ? "text-amber-600"
+                  : "text-muted-foreground"
+            )}>
               {isCredit ? (
                 <>Disponible: {formatCurrency(getAvailableCredit(selectedAccount))}</>
               ) : (
                 <>Balance: {formatCurrency(selectedAccount.balance)}</>
               )}
+            </p>
+          )}
+          {exceedsAvailable && (
+            <p className="mt-1 px-1 text-xs text-red-500">
+              {isCredit
+                ? "Este gasto excede tu crédito disponible."
+                : "No puedes mover más dinero del que tienes en esta cuenta."}
             </p>
           )}
         </div>

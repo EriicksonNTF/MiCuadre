@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Home, Plus, Wallet, Target, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -17,13 +18,25 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname()
   const { user, loading } = useAuth()
+  const [isMobileFormOpen, setIsMobileFormOpen] = useState(false)
+
+  useEffect(() => {
+    const update = () => {
+      setIsMobileFormOpen(document.body.classList.contains("mobile-form-open"))
+    }
+
+    update()
+    const observer = new MutationObserver(update)
+    observer.observe(document.body, { attributes: true, attributeFilter: ["class"] })
+    return () => observer.disconnect()
+  }, [])
 
   if (loading) return null
 
   const isAuthPage = pathname.startsWith('/auth')
   const isOnboardingPage = pathname.startsWith('/onboarding')
 
-  if (isAuthPage || isOnboardingPage || !user) return null
+  if (isAuthPage || isOnboardingPage || !user || isMobileFormOpen) return null
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-lg">

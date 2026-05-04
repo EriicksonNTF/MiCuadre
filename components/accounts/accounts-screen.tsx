@@ -171,6 +171,8 @@ export function AccountsScreen() {
   }
 
   const parsedTransferAmount = parseFloat(transferAmount.replace(/[^0-9.]/g, "")) || 0
+  const selectedFromAccount = accounts.find((a) => a.id === fromAccount)
+  const exceedsFromBalance = Boolean(selectedFromAccount && parsedTransferAmount > selectedFromAccount.balance)
 
   return (
     <div className="min-h-screen bg-background pb-nav-safe">
@@ -291,7 +293,7 @@ export function AccountsScreen() {
               currency={accounts.find(a => a.id === fromAccount)?.currency || "DOP"}
               recipientName={accounts.find(a => a.id === toAccount)?.name || "la cuenta"}
               onConfirm={handleTransfer}
-              disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || isTransferring}
+              disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring}
             />
           }
         >
@@ -341,6 +343,23 @@ export function AccountsScreen() {
                     <input type="text" inputMode="decimal" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0"
                       className="flex-1 bg-transparent text-2xl font-bold outline-none" />
                   </div>
+                  {selectedFromAccount && (
+                    <p className={cn(
+                      "mt-2 text-xs",
+                      exceedsFromBalance
+                        ? "text-red-500"
+                        : selectedFromAccount.balance <= 1000
+                          ? "text-amber-600"
+                          : "text-muted-foreground"
+                    )}>
+                      Disponible: {formatCurrency(selectedFromAccount.balance)}
+                    </p>
+                  )}
+                  {exceedsFromBalance && (
+                    <p className="mt-1 text-xs text-red-500">
+                      Ese monto supera tu balance disponible. Disponible: {formatCurrency(selectedFromAccount?.balance || 0)}.
+                    </p>
+                  )}
                 </div>
               </div>
         </BaseModalForm>

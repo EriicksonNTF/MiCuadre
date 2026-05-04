@@ -85,6 +85,11 @@ export function GoalsScreen() {
   const [contributionAccountId, setContributionAccountId] = useState("")
 
   const goals = dbGoals || []
+  const contributionAccount = accounts.find((account) => account.id === contributionAccountId)
+  const parsedContributionAmount = parseAmount(addMoneyAmount)
+  const exceedsContributionBalance = Boolean(
+    contributionAccount && parsedContributionAmount > Number(contributionAccount.balance || 0)
+  )
 
   const totalSaved = goals.reduce((sum, goal) => sum + (goal.current_amount || 0), 0)
   const totalTarget = goals.reduce((sum, goal) => sum + (goal.target_amount || 0), 0)
@@ -142,6 +147,12 @@ export function GoalsScreen() {
     setAddMoneyAmountError(undefined)
 
     if (!showAddMoney || !contributionAccountId) return
+    if (exceedsContributionBalance) {
+      const available = Number(contributionAccount?.balance || 0)
+      setAddMoneyAmountError(`Disponible: ${formatCurrency(available)}. Intenta con un monto menor.`)
+      notify({ title: "Saldo insuficiente", message: "Ese monto supera tu balance disponible." })
+      return
+    }
 
     try {
       await addGoalContribution({
@@ -151,7 +162,7 @@ export function GoalsScreen() {
         date: new Date().toISOString(),
         notes: null,
       })
-      notify({ title: "Dinero agregado", message: "Tu dinero fue agregado exitosamente." })
+      notify({ title: "Aporte registrado", message: "Movimiento creado con éxito y meta actualizada." })
       EventBus.emit({ type: "money_added", payload: { amount: addMoneyAmount } })
       setShowAddMoney(null)
       setAddMoneyAmount("")
@@ -314,11 +325,11 @@ export function GoalsScreen() {
             setContributionAccountId("")
           }}
           footer={
-            <Button
-              onClick={handleAddMoney}
-              disabled={!addMoneyAmount || parseFloat(addMoneyAmount) <= 0 || !contributionAccountId}
-              className="h-14 w-full rounded-2xl text-base font-semibold"
-            >
+              <Button
+                onClick={handleAddMoney}
+                disabled={!addMoneyAmount || parseFloat(addMoneyAmount) <= 0 || !contributionAccountId || exceedsContributionBalance}
+                className="h-14 w-full rounded-2xl text-base font-semibold"
+              >
               Agregar al ahorro
             </Button>
           }
@@ -366,10 +377,22 @@ export function GoalsScreen() {
                     )}
                   >
                     <p className="text-sm font-medium text-foreground">{account.name}</p>
-                    <p className="text-xs text-muted-foreground">{formatCurrency(account.balance)}</p>
+                    <p className="text-xs text-muted-foreground">Disponible: {formatCurrency(account.balance)}</p>
                   </button>
                 ))}
               </div>
+              {contributionAccount && (
+                <p className={cn(
+                  "mt-2 text-xs",
+                  exceedsContributionBalance
+                    ? "text-red-500"
+                    : Number(contributionAccount.balance || 0) <= 1000
+                      ? "text-amber-600"
+                      : "text-muted-foreground"
+                )}>
+                  Disponible en cuenta origen: {formatCurrency(Number(contributionAccount.balance || 0))}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-wrap justify-center gap-2">
