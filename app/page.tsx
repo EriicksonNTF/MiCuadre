@@ -1,23 +1,31 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/dashboard/header"
 import { BalanceCard } from "@/components/dashboard/balance-card"
 import { AccountsList } from "@/components/dashboard/accounts-list"
 import { QuickActions } from "@/components/dashboard/quick-actions"
 import { TransactionsList } from "@/components/dashboard/transactions-list"
-import { useProfile } from "@/hooks/use-data"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { data: profile } = useProfile()
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
-    if (profile && !profile.onboarding_completed) {
+    const onboardingCompleted =
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("onboarding_completed") === "true"
+
+    if (!onboardingCompleted) {
       router.replace("/onboarding")
+      return
     }
-  }, [profile, router])
+
+    setIsReady(true)
+  }, [router])
+
+  if (!isReady) return null
 
   return (
     <main className="min-h-screen bg-background">

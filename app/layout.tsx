@@ -13,10 +13,12 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
   themeColor: '#000000',
 }
 
 export const metadata: Metadata = {
+  applicationName: 'MiCuadre',
   title: 'MiCuadre - Tus finanzas simplificadas',
   description: 'App de finanzas personales en pesos dominicanos',
   generator: 'v0.app',
@@ -31,6 +33,9 @@ export const metadata: Metadata = {
         media: '(device-width: 768px)',
       },
     ],
+  },
+  formatDetection: {
+    telephone: false,
   },
   icons: {
     icon: [
@@ -50,13 +55,13 @@ export const metadata: Metadata = {
     apple: '/apple-icon.png',
     other: [
       {
-        url: '/icon-192x192.png',
-        sizes: '192x192',
+        url: '/apple-icon.png',
+        sizes: '180x180',
         type: 'image/png',
       },
       {
-        url: '/icon-512x512.png',
-        sizes: '512x512',
+        url: '/icon-light-32x32.png',
+        sizes: '32x32',
         type: 'image/png',
       },
     ],
@@ -71,8 +76,8 @@ export default function RootLayout({
   return (
     <html lang="es" className="bg-background">
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#000000" />
       </head>

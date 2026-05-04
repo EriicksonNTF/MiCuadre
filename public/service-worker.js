@@ -3,8 +3,8 @@ const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/icon.svg',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
+  '/icon-light-32x32.png',
+  '/icon-dark-32x32.png',
   '/apple-icon.png',
   '/placeholder.svg',
 ];
@@ -69,8 +69,8 @@ self.addEventListener('push', (event) => {
   const title = data.title ?? 'MiCuadre';
   const options = {
     body: data.body ?? '',
-    icon: '/icon-192x192.png',
-    badge: '/icon-192x192.png',
+    icon: '/apple-icon.png',
+    badge: '/icon-light-32x32.png',
     data: data.url ?? '/',
   };
   

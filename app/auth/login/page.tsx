@@ -34,7 +34,11 @@ export default function LoginPage() {
         password,
       })
       if (error) throw error
-      router.push('/')
+      const onboardingCompleted =
+        typeof window !== 'undefined' &&
+        window.localStorage.getItem('onboarding_completed') === 'true'
+
+      router.push(onboardingCompleted ? '/dashboard' : '/onboarding')
       router.refresh()
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'Ha ocurrido un error')
