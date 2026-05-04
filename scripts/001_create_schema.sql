@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   language TEXT DEFAULT 'es' CHECK (language IN ('es', 'en')),
   theme TEXT DEFAULT 'light' CHECK (theme IN ('light', 'dark', 'system')),
   notifications_enabled BOOLEAN DEFAULT true,
+  onboarding_completed BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

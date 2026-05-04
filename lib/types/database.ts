@@ -17,6 +17,7 @@ export interface Profile {
   language: Language
   theme: Theme
   notifications_enabled: boolean
+  onboarding_completed: boolean
   created_at: string
   updated_at: string
 }

@@ -19,13 +19,18 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    const normalizedEmail = email.trim().toLowerCase()
+    if (!normalizedEmail || !password) {
+      setError('Correo y contrasena son requeridos')
+      return
+    }
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       })
       if (error) throw error
@@ -82,6 +87,9 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       className="h-11"
                     />
+                    <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
+                      Olvidaste tu contrasena?
+                    </Link>
                   </div>
                   {error && (
                     <p className="text-sm text-destructive bg-destructive/10 p-3 rounded-lg">

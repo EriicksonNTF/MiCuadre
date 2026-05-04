@@ -21,8 +21,9 @@ export function BottomNav() {
   if (loading) return null
 
   const isAuthPage = pathname.startsWith('/auth')
+  const isOnboardingPage = pathname.startsWith('/onboarding')
 
-  if (isAuthPage || !user) return null
+  if (isAuthPage || isOnboardingPage || !user) return null
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-lg">

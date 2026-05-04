@@ -205,6 +205,20 @@ export async function createTransaction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
+  const { data: accountForValidation } = await supabase
+    .from("accounts")
+    .select("type, balance")
+    .eq("id", transaction.account_id)
+    .single()
+
+  if (!accountForValidation) {
+    throw new Error("Cuenta no encontrada")
+  }
+
+  if (accountForValidation.type !== "credit" && transaction.type === "expense" && Number(accountForValidation.balance) < transaction.amount) {
+    throw new Error("Fondos insuficientes en la cuenta")
+  }
+
   const { data, error } = await supabase
     .from("transactions")
     .insert({ ...transaction, user_id: user.id })
@@ -213,12 +227,17 @@ export async function createTransaction(
 
   if (error) throw error
 
-  await applyAccountImpact({
-    accountId: transaction.account_id,
-    type: transaction.type,
-    amount: transaction.amount,
-    direction: 1,
-  })
+  try {
+    await applyAccountImpact({
+      accountId: transaction.account_id,
+      type: transaction.type,
+      amount: transaction.amount,
+      direction: 1,
+    })
+  } catch (impactError) {
+    await supabase.from("transactions").delete().eq("id", data.id)
+    throw impactError
+  }
 
   // Mutate transactions and accounts
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
