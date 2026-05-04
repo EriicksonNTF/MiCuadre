@@ -173,7 +173,7 @@ export function AccountsScreen() {
   const parsedTransferAmount = parseFloat(transferAmount.replace(/[^0-9.]/g, "")) || 0
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-nav-safe">
       {/* Header */}
       <header className="px-6 pb-4 pt-8">
         <h1 className="text-2xl font-bold text-foreground">Cuentas</h1>

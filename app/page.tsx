@@ -39,7 +39,7 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-6 pb-28 pt-8">
+      <div className="mx-auto max-w-md px-6 pb-nav-safe pt-8">
         <Header />
 
         <div className="mt-10">

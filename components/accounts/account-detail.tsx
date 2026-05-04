@@ -254,7 +254,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const isCredit = account.type === "credit"
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-nav-safe">
       {/* Header with gradient */}
       <div
         className={cn(

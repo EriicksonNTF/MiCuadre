@@ -52,6 +52,19 @@ export function SettingsScreen() {
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
 
   useEffect(() => {
+    const hasOpenModal = showThemePicker || showCurrencyPicker || showLogoutConfirm || showDeleteAccount
+    if (hasOpenModal) {
+      document.body.classList.add("modal-open")
+    } else {
+      document.body.classList.remove("modal-open")
+    }
+
+    return () => {
+      document.body.classList.remove("modal-open")
+    }
+  }, [showThemePicker, showCurrencyPicker, showLogoutConfirm, showDeleteAccount])
+
+  useEffect(() => {
     if (profile) {
       if (profile.preferred_currency) {
         setPrimaryCurrency(profile.preferred_currency)
@@ -160,7 +173,7 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-nav-safe">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
@@ -371,9 +384,9 @@ export function SettingsScreen() {
 
       {/* Theme Picker Modal - iOS optimized */}
       {showThemePicker && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowThemePicker(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowThemePicker(false)}>
           <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
             <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
               <h2 className="text-lg font-semibold">Seleccionar tema</h2>
               <button onClick={() => setShowThemePicker(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
@@ -400,9 +413,9 @@ export function SettingsScreen() {
 
       {/* Currency Picker Modal - iOS optimized */}
       {showCurrencyPicker && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowCurrencyPicker(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowCurrencyPicker(false)}>
           <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
             <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
               <h2 className="text-lg font-semibold">Moneda principal</h2>
               <button onClick={() => setShowCurrencyPicker(false)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
@@ -426,9 +439,9 @@ export function SettingsScreen() {
 
       {/* Logout Confirmation Modal - iOS optimized */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowLogoutConfirm(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowLogoutConfirm(false)}>
           <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
             <div className="flex-none flex items-center justify-center px-5 py-6 border-b bg-card">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
                 <LogOut className="h-7 w-7 text-red-600" />
@@ -440,7 +453,7 @@ export function SettingsScreen() {
                 <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
               </div>
             </div>
-            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card safe-area-bottom space-y-3">
+            <div className="sticky bottom-0 flex-none border-t bg-card px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))] safe-area-bottom space-y-3">
               <button onClick={handleLogout} disabled={isLoggingOut}
                 className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
                 {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
@@ -456,9 +469,9 @@ export function SettingsScreen() {
 
       {/* Delete Account Modal - iOS optimized */}
       {showDeleteAccount && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center" onClick={() => setShowDeleteAccount(false)}>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center sm:justify-center" onClick={() => setShowDeleteAccount(false)}>
           <div className="absolute inset-0 bg-black/50" />
-          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80vh]" onClick={e => e.stopPropagation()}>
+          <div className="relative w-full max-w-md rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col max-h-[85dvh] sm:max-h-[80dvh]" onClick={e => e.stopPropagation()}>
             <div className="flex-none flex items-center justify-between px-5 py-4 border-b bg-card">
               <div className="w-9" />
               <h2 className="text-lg font-semibold">Eliminar cuenta?</h2>
@@ -492,7 +505,7 @@ export function SettingsScreen() {
                 )}
               </div>
             </div>
-            <div className="flex-none px-5 py-4 pb-safe-areas border-t bg-card safe-area-bottom space-y-3">
+            <div className="sticky bottom-0 flex-none border-t bg-card px-5 py-4 pb-[calc(16px+env(safe-area-inset-bottom))] safe-area-bottom space-y-3">
               <button onClick={handleDeleteAccount} disabled={isDeletingAccount}
                 className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
                 {isDeletingAccount ? "Procesando..." : "Eliminar cuenta"}

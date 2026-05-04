@@ -416,7 +416,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
       </div>
 
       {/* Fixed Save Button */}
-      <div className="px-6 pb-28 pt-6">
+      <div className="px-6 pb-nav-safe pt-6">
         <Button
           onClick={handleSave}
           disabled={!isValid || isSaving}

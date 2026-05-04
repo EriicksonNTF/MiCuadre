@@ -216,7 +216,7 @@ export function HistoryScreen() {
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-nav-safe">
       {/* Header */}
       <header className="px-6 pb-4 pt-8">
         <h1 className="text-2xl font-bold text-foreground">Historial</h1>
@@ -405,50 +405,50 @@ export function HistoryScreen() {
               const AccountIcon = account ? accountIcons[account.type] : Banknote
 
               return (
-                <div
-                  key={tx.id}
-                  className="flex items-center gap-4 rounded-2xl bg-card p-4"
-                >
-                  {/* Category Icon */}
-                  <div
-                    className={cn(
-                      "flex h-11 w-11 items-center justify-center rounded-full",
-                      categoryColors[tx.category] || categoryColors.other
-                    )}
-                  >
-                    <CategoryIcon className="h-5 w-5" />
-                  </div>
-
-                  {/* Transaction Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-medium text-foreground">
-                      {tx.title}
-                    </p>
-                    <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <AccountIcon className="h-3 w-3" />
-                        <span>{account?.name}</span>
-                      </div>
-                      <span>·</span>
-                      <span>{formatDate(tx.date)}</span>
+                <div key={tx.id} className="overflow-hidden rounded-2xl bg-card p-4">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
+                        categoryColors[tx.category] || categoryColors.other
+                      )}
+                    >
+                      <CategoryIcon className="h-4 w-4" />
                     </div>
-                  </div>
 
-                  {/* Amount */}
-                  <p
-                    className={cn(
-                      "font-semibold tabular-nums",
-                      tx.type === "income"
-                        ? "text-emerald-600"
-                        : "text-foreground"
-                    )}
-                  >
-                    {tx.type === "income" ? "+" : "-"}
-                    {formatCurrency(tx.amount, tx.currency)}
-                  </p>
-                  <div className="ml-2 flex gap-2">
-                    <button onClick={() => openEdit(tx.id)} className="text-xs text-muted-foreground">Editar</button>
-                    <button onClick={() => setDeletingId(tx.id)} className="text-xs text-destructive">Eliminar</button>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="min-w-0 truncate text-sm font-medium text-foreground">
+                          {tx.title}
+                        </p>
+                        <p
+                          className={cn(
+                            "shrink-0 text-sm font-semibold tabular-nums",
+                            tx.type === "income" ? "text-emerald-600" : "text-foreground"
+                          )}
+                        >
+                          {tx.type === "income" ? "+" : "-"}
+                          {formatCurrency(tx.amount, tx.currency)}
+                        </p>
+                      </div>
+
+                      <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <AccountIcon className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{account?.name || "Cuenta"}</span>
+                        </div>
+                        <span className="shrink-0 text-right">{formatDate(tx.date)}</span>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap justify-end gap-3 border-t border-border/60 pt-2">
+                        <button onClick={() => openEdit(tx.id)} className="text-xs text-muted-foreground">
+                          Editar
+                        </button>
+                        <button onClick={() => setDeletingId(tx.id)} className="text-xs text-destructive">
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )
