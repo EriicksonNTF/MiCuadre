@@ -116,6 +116,7 @@ export interface Goal {
 
 export interface GoalContribution {
   id: string
+  user_id: string
   goal_id: string
   account_id: string
   amount: number

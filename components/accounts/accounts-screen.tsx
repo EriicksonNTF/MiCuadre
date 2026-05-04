@@ -131,16 +131,43 @@ export function AccountsScreen() {
   const [isTransferring, setIsTransferring] = useState(false)
 
   const handleTransfer = async () => {
-    if (!fromAccount || !toAccount || !transferAmount) return
+    const validation = transferSchema.safeParse({
+      fromAccountId: fromAccount,
+      toAccountId: toAccount,
+      amount: transferAmount,
+      description: undefined,
+    })
+
+    if (!validation.success) return
+
+    const amount = parseAmount(transferAmount)
+    const source = accounts.find((a) => a.id === fromAccount)
+    if (!source) return
+    if (amount > source.balance) {
+      notify({ title: "Fondos insuficientes", message: "La cuenta de origen no tiene balance suficiente." })
+      return
+    }
+
     setIsTransferring(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    notify({ title: "Transferencia exitosa", message: "Se han transferido los fondos." })
-    EventBus.emit({ type: "transfer_completed" })
-    setIsTransferring(false)
-    setShowTransfer(false)
-    setFromAccount("")
-    setToAccount("")
-    setTransferAmount("")
+    try {
+      await createTransfer({
+        from_account_id: fromAccount,
+        to_account_id: toAccount,
+        amount,
+        currency: source.currency,
+      })
+      notify({ title: "Transferencia exitosa", message: "Se han transferido los fondos." })
+      EventBus.emit({ type: "transfer_completed" })
+      setShowTransfer(false)
+      setFromAccount("")
+      setToAccount("")
+      setTransferAmount("")
+    } catch (error) {
+      console.error("Transfer error:", error)
+      notify({ title: "Error", message: "No se pudo completar la transferencia." })
+    } finally {
+      setIsTransferring(false)
+    }
   }
 
   const parsedTransferAmount = parseFloat(transferAmount.replace(/[^0-9.]/g, "")) || 0
@@ -198,7 +225,7 @@ export function AccountsScreen() {
 
                 <p className="mt-1 text-2xl font-bold">
                   {isCredit
-                    ? `-${formatCurrency(account.currentDebt || 0)}`
+                    ? formatCurrency(account.currentDebt || 0)
                     : formatCurrency(account.balance)
                   }
                 </p>

@@ -16,6 +16,36 @@ import type {
 
 const supabase = createClient()
 
+async function applyAccountImpact(params: {
+  accountId: string
+  type: "income" | "expense"
+  amount: number
+  direction: 1 | -1
+}) {
+  const { accountId, type, amount, direction } = params
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, type, balance, current_debt")
+    .eq("id", accountId)
+    .single()
+
+  if (!account) throw new Error("Cuenta no encontrada")
+
+  if (account.type === "credit") {
+    const signed = type === "expense" ? amount * direction : -amount * direction
+    const nextDebt = Math.max(0, Number(account.current_debt || 0) + signed)
+    await supabase.from("accounts").update({ current_debt: nextDebt }).eq("id", accountId)
+    return
+  }
+
+  const signed = type === "income" ? amount * direction : -amount * direction
+  const nextBalance = Number(account.balance) + signed
+  if (nextBalance < 0) {
+    throw new Error("Fondos insuficientes en la cuenta")
+  }
+  await supabase.from("accounts").update({ balance: nextBalance }).eq("id", accountId)
+}
+
 // Generic fetcher for Supabase
 async function fetchAccounts(): Promise<Account[]> {
   const { data, error } = await supabase
@@ -183,52 +213,93 @@ export async function createTransaction(
 
   if (error) throw error
 
-  // Update account balance based on transaction type
-  if (transaction.type === "income") {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("balance, type")
-      .eq("id", transaction.account_id)
-      .single()
-    
-    if (account) {
-      const newBalance = Number(account.balance) + transaction.amount
-      await supabase
-        .from("accounts")
-        .update({ balance: newBalance })
-        .eq("id", transaction.account_id)
-    }
-  } else if (transaction.type === "expense") {
-    const { data: account } = await supabase
-      .from("accounts")
-      .select("balance, type")
-      .eq("id", transaction.account_id)
-      .single()
-    
-    if (account) {
-      if (account.type === "credit") {
-        // Credit card: increase debt
-        const newDebt = Number(account.balance) + transaction.amount // balance stores current debt for credit
-        await supabase
-          .from("accounts")
-          .update({ current_debt: newDebt })
-          .eq("id", transaction.account_id)
-      } else {
-        // Regular account: decrease balance
-        const newBalance = Math.max(0, Number(account.balance) - transaction.amount)
-        await supabase
-          .from("accounts")
-          .update({ balance: newBalance })
-          .eq("id", transaction.account_id)
-      }
-    }
-  }
+  await applyAccountImpact({
+    accountId: transaction.account_id,
+    type: transaction.type,
+    amount: transaction.amount,
+    direction: 1,
+  })
 
   // Mutate transactions and accounts
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
 
   return data
+}
+
+export async function updateTransaction(
+  id: string,
+  updates: Pick<Transaction, "account_id" | "type" | "amount" | "description" | "date" | "category_id" | "notes" | "currency" | "amount_base" | "exchange_rate" | "is_recurring">
+) {
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .single()
+
+  if (existingError || !existing) throw existingError || new Error("Transacción no encontrada")
+
+  await applyAccountImpact({
+    accountId: existing.account_id,
+    type: existing.type,
+    amount: Number(existing.amount),
+    direction: -1,
+  })
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(updates)
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    await applyAccountImpact({
+      accountId: existing.account_id,
+      type: existing.type,
+      amount: Number(existing.amount),
+      direction: 1,
+    })
+    throw error
+  }
+
+  await applyAccountImpact({
+    accountId: updates.account_id,
+    type: updates.type,
+    amount: Number(updates.amount),
+    direction: 1,
+  })
+
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  mutate("accounts")
+  return data
+}
+
+export async function deleteTransaction(id: string) {
+  const { data: existing, error: existingError } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("id", id)
+    .single()
+
+  if (existingError || !existing) throw existingError || new Error("Transacción no encontrada")
+
+  await applyAccountImpact({
+    accountId: existing.account_id,
+    type: existing.type,
+    amount: Number(existing.amount),
+    direction: -1,
+  })
+
+  const { error } = await supabase
+    .from("transactions")
+    .delete()
+    .eq("id", id)
+
+  if (error) throw error
+
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  mutate("accounts")
 }
 
 export async function updateProfile(updates: Partial<Profile>) {
@@ -305,7 +376,7 @@ export async function deleteGoal(id: string) {
   if (error) throw error
 }
 
-export async function addGoalContribution(contribution: Omit<GoalContribution, "id" | "created_at">) {
+export async function addGoalContribution(contribution: Omit<GoalContribution, "id" | "created_at" | "user_id">) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
@@ -360,6 +431,11 @@ export async function createTransfer(transfer: {
 
   if (!fromAccount) throw new Error("Account not found")
 
+  if (transfer.amount <= 0) throw new Error("Monto inválido")
+  if (Number(fromAccount.balance) < transfer.amount) {
+    throw new Error("Fondos insuficientes en la cuenta de origen")
+  }
+
   // Deduct from source account
   const newFromBalance = Number(fromAccount.balance) - transfer.amount
   await supabase
@@ -382,15 +458,6 @@ export async function createTransfer(transfer: {
         .update({ balance: newToBalance })
         .eq("id", transfer.to_account_id)
     }
-  }
-
-  // If credit card, update debt
-  if (fromAccount.type === "credit") {
-    const newDebt = Number(fromAccount.balance) + transfer.amount
-    await supabase
-      .from("accounts")
-      .update({ current_debt: newDebt })
-      .eq("id", transfer.from_account_id)
   }
 
   // Create transfer record
@@ -490,6 +557,21 @@ export async function payCreditCard(payment: {
     console.error("Payment error:", error)
     throw error
   }
+
+  await supabase.from("transactions").insert({
+    user_id: user.id,
+    account_id: payment.source_account_id,
+    category_id: null,
+    type: "expense",
+    amount: payment.amount,
+    currency: "DOP",
+    amount_base: payment.amount,
+    exchange_rate: 1,
+    description: "Pago de tarjeta de crédito",
+    date: new Date().toISOString(),
+    notes: payment.notes || null,
+    is_recurring: false,
+  })
 
   // Mutate cache
   mutate("accounts")

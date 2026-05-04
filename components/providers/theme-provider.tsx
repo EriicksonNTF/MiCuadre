@@ -22,7 +22,7 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children, initialTheme, onThemeChange }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(initialTheme || "system")
+  const [theme, setThemeState] = useState<Theme>(initialTheme || "light")
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light")
   const [mounted, setMounted] = useState(false)
 
@@ -35,11 +35,6 @@ export function ThemeProvider({ children, initialTheme, onThemeChange }: ThemePr
     setMounted(true)
     if (initialTheme) {
       setThemeState(initialTheme)
-    } else {
-      const stored = localStorage.getItem("theme") as Theme | null
-      if (stored) {
-        setThemeState(stored)
-      }
     }
   }, [initialTheme])
 
@@ -65,8 +60,6 @@ export function ThemeProvider({ children, initialTheme, onThemeChange }: ThemePr
     }
 
     updateResolvedTheme()
-    localStorage.setItem("theme", theme)
-
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
     const handleChange = () => {
       if (theme === "system") {

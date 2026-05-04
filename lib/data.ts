@@ -4,11 +4,22 @@ import type { Account, Currency } from "@/lib/types/database"
 export type { Account, Currency } from "@/lib/types/database"
 export type AccountType = "cash" | "debit" | "credit"
 
+let preferredDisplayCurrency: Currency = "DOP"
+
+export function setPreferredCurrency(currency: Currency) {
+  preferredDisplayCurrency = currency
+}
+
+export function getPreferredCurrency(): Currency {
+  return preferredDisplayCurrency
+}
+
 // Utility functions
-export function formatCurrency(amount: number, currency: Currency = "DOP") {
-  return new Intl.NumberFormat(currency === "DOP" ? "es-DO" : "en-US", {
+export function formatCurrency(amount: number, currency?: Currency) {
+  const displayCurrency = currency ?? preferredDisplayCurrency
+  return new Intl.NumberFormat(displayCurrency === "DOP" ? "es-DO" : "en-US", {
     style: "currency",
-    currency: currency,
+    currency: displayCurrency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(amount)
@@ -30,24 +41,10 @@ export function getAvailableCredit(account: Partial<Account> & { creditLimit?: n
 
 export function formatDate(dateString: string, locale: "es" | "en" = "es"): string {
   const date = new Date(dateString)
-  const now = new Date()
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-
-  // Check if same day
-  if (date.toDateString() === now.toDateString()) {
-    return locale === "es" ? "Hoy" : "Today"
-  }
-
-  // Check if yesterday
-  if (date.toDateString() === yesterday.toDateString()) {
-    return locale === "es" ? "Ayer" : "Yesterday"
-  }
-
-  // Otherwise return formatted date
   return date.toLocaleDateString(locale === "es" ? "es-DO" : "en-US", {
     day: "numeric",
     month: "short",
+    year: "numeric",
   })
 }
 

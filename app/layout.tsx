@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { BottomNav } from '@/components/navigation/bottom-nav'
+import { AppProviders } from '@/components/providers/app-providers'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -76,8 +77,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
       </head>
       <body className="font-sans antialiased">
-        {children}
-        <BottomNav />
+        <AppProviders>
+          {children}
+          <BottomNav />
+        </AppProviders>
         <script
           dangerouslySetInnerHTML={{
             __html: `

@@ -21,7 +21,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { formatCurrency } from "@/lib/data"
-import { useGoals, createGoal, addGoalContribution } from "@/hooks/use-data"
+import { useGoals, useAccounts, createGoal, addGoalContribution } from "@/hooks/use-data"
 import { createGoalSchema, addGoalContributionSchema, parseAmount, getFieldError } from "@/lib/validation"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { notify } from "@/lib/notifications"
@@ -66,6 +66,7 @@ function getIconComponent(iconName: string) {
 
 export function GoalsScreen() {
   const { data: dbGoals, isLoading } = useGoals()
+  const { data: accounts = [] } = useAccounts()
 
   const [showAddGoal, setShowAddGoal] = useState(false)
   const [showAddMoney, setShowAddMoney] = useState<string | null>(null)
@@ -81,6 +82,7 @@ export function GoalsScreen() {
 
   const [addMoneyAmount, setAddMoneyAmount] = useState("")
   const [addMoneyAmountError, setAddMoneyAmountError] = useState<string | undefined>()
+  const [contributionAccountId, setContributionAccountId] = useState("")
 
   const goals = dbGoals || []
 
@@ -139,12 +141,12 @@ export function GoalsScreen() {
     }
     setAddMoneyAmountError(undefined)
 
-    if (!showAddMoney) return
+    if (!showAddMoney || !contributionAccountId) return
 
     try {
       await addGoalContribution({
         goal_id: showAddMoney,
-        account_id: "",
+        account_id: contributionAccountId,
         amount: parseAmount(addMoneyAmount),
         date: new Date().toISOString(),
         notes: null,
@@ -153,6 +155,7 @@ export function GoalsScreen() {
       EventBus.emit({ type: "money_added", payload: { amount: addMoneyAmount } })
       setShowAddMoney(null)
       setAddMoneyAmount("")
+      setContributionAccountId("")
     } catch (error) {
       console.error("Error adding money:", error)
     }
@@ -308,11 +311,12 @@ export function GoalsScreen() {
             setShowAddMoney(null)
             setAddMoneyAmount("")
             setAddMoneyAmountError(undefined)
+            setContributionAccountId("")
           }}
           footer={
             <Button
               onClick={handleAddMoney}
-              disabled={!addMoneyAmount || parseFloat(addMoneyAmount) <= 0}
+              disabled={!addMoneyAmount || parseFloat(addMoneyAmount) <= 0 || !contributionAccountId}
               className="h-14 w-full rounded-2xl text-base font-semibold"
             >
               Agregar al ahorro
@@ -346,6 +350,27 @@ export function GoalsScreen() {
             {addMoneyAmountError && (
               <p className="text-center text-sm text-destructive">{addMoneyAmountError}</p>
             )}
+
+            <div>
+              <p className="mb-2 text-center text-sm font-medium text-muted-foreground">Cuenta origen</p>
+              <div className="grid grid-cols-2 gap-2">
+                {accounts.filter((account) => account.type !== "credit").map((account) => (
+                  <button
+                    key={account.id}
+                    onClick={() => setContributionAccountId(account.id)}
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-left transition-colors",
+                      contributionAccountId === account.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-card"
+                    )}
+                  >
+                    <p className="text-sm font-medium text-foreground">{account.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatCurrency(account.balance)}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="flex flex-wrap justify-center gap-2">
               {[500, 1000, 2000, 5000].map((amount) => (

@@ -25,6 +25,7 @@ import { useTheme } from "@/components/providers/theme-provider"
 import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
+import { setPreferredCurrency } from "@/lib/data"
 import type { Theme, Currency } from "@/lib/types/database"
 
 export function SettingsScreen() {
@@ -51,6 +52,7 @@ export function SettingsScreen() {
     if (profile) {
       if (profile.preferred_currency) {
         setPrimaryCurrency(profile.preferred_currency)
+        setPreferredCurrency(profile.preferred_currency)
       }
       if (profile.theme) {
         setCurrentTheme(profile.theme)
@@ -72,6 +74,7 @@ export function SettingsScreen() {
 
   const handleCurrencyChange = async (newCurrency: Currency) => {
     setPrimaryCurrency(newCurrency)
+    setPreferredCurrency(newCurrency)
     try {
       await updateProfile({ preferred_currency: newCurrency })
     } catch (error) {

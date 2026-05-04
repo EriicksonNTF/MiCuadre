@@ -25,7 +25,10 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useAccounts, useTransactions } from "@/hooks/use-data"
+import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { notify } from "@/lib/notifications"
+import { EventBus } from "@/lib/event-bus"
+import { useAccounts, useTransactions, updateTransaction, deleteTransaction } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/data"
 import type { AccountType } from "@/lib/types/database"
 
@@ -71,6 +74,14 @@ export function HistoryScreen() {
   const [accountFilter, setAccountFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<DateRange>("month")
   const [showFilters, setShowFilters] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editType, setEditType] = useState<"income" | "expense">("expense")
+  const [editAccountId, setEditAccountId] = useState("")
+  const [editDate, setEditDate] = useState("")
+  const [editCategoryId, setEditCategoryId] = useState<string | null>(null)
   const { data: rawAccounts = [] } = useAccounts()
 
   const { data: rawTransactions = [] } = useTransactions(100)
@@ -113,11 +124,17 @@ export function HistoryScreen() {
     return rawTransactions.map(tx => ({
       id: tx.id,
       accountId: tx.account_id,
+      categoryId: tx.category_id,
       title: tx.description || "Sin descripción",
       category: nameToSlug[tx.category?.name || ""] || "other",
       amount: tx.amount,
       type: tx.type,
-      date: formatDate(tx.date),
+      date: tx.date,
+      currency: tx.currency,
+      notes: tx.notes,
+      amount_base: tx.amount_base,
+      exchange_rate: tx.exchange_rate,
+      is_recurring: tx.is_recurring,
     }))
   }, [rawTransactions])
 
@@ -137,8 +154,58 @@ export function HistoryScreen() {
         return false
       }
       return true
-    })
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
   }, [searchQuery, typeFilter, accountFilter, dateFilter])
+
+  const openEdit = (txId: string) => {
+    const tx = transactions.find((item) => item.id === txId)
+    if (!tx) return
+    setEditingId(txId)
+    setEditAmount(String(tx.amount))
+    setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
+    setEditType(tx.type)
+    setEditAccountId(tx.accountId)
+    setEditDate(new Date(tx.date).toISOString().slice(0, 10))
+    setEditCategoryId(tx.categoryId)
+  }
+
+  const saveEdit = async () => {
+    if (!editingId || !editAccountId || !editAmount || !editDate) return
+    const amount = parseFloat(editAmount)
+    if (!amount || amount <= 0) return
+    try {
+      await updateTransaction(editingId, {
+        account_id: editAccountId,
+        type: editType,
+        amount,
+        description: editDescription || null,
+        date: new Date(`${editDate}T12:00:00`).toISOString(),
+        category_id: editCategoryId,
+        notes: null,
+        currency: "DOP",
+        amount_base: amount,
+        exchange_rate: 1,
+        is_recurring: false,
+      })
+      notify({ title: "Transacción actualizada", message: "La transacción fue editada correctamente." })
+      EventBus.emit({ type: "transaction_updated" })
+      setEditingId(null)
+    } catch (error) {
+      notify({ title: "Error", message: "No se pudo editar la transacción." })
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingId) return
+    try {
+      await deleteTransaction(deletingId)
+      notify({ title: "Transacción eliminada", message: "La transacción fue eliminada correctamente." })
+      EventBus.emit({ type: "transaction_deleted" })
+      setDeletingId(null)
+    } catch {
+      notify({ title: "Error", message: "No se pudo eliminar la transacción." })
+    }
+  }
 
   const totalIncome = filteredTransactions
     .filter((tx) => tx.type === "income")
@@ -363,7 +430,7 @@ export function HistoryScreen() {
                         <span>{account?.name}</span>
                       </div>
                       <span>·</span>
-                      <span>{tx.date}</span>
+                      <span>{formatDate(tx.date)}</span>
                     </div>
                   </div>
 
@@ -377,14 +444,49 @@ export function HistoryScreen() {
                     )}
                   >
                     {tx.type === "income" ? "+" : "-"}
-                    {formatCurrency(tx.amount)}
+                    {formatCurrency(tx.amount, tx.currency)}
                   </p>
+                  <div className="ml-2 flex gap-2">
+                    <button onClick={() => openEdit(tx.id)} className="text-xs text-muted-foreground">Editar</button>
+                    <button onClick={() => setDeletingId(tx.id)} className="text-xs text-destructive">Eliminar</button>
+                  </div>
                 </div>
               )
             })
           )}
         </div>
       </div>
+
+      {editingId && (
+        <BaseModalForm
+          title="Editar transacción"
+          onClose={() => setEditingId(null)}
+          footer={<Button onClick={saveEdit} className="h-12 w-full">Guardar cambios</Button>}
+        >
+          <div className="space-y-3 pt-2">
+            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripción" />
+            <input className="w-full rounded-xl border bg-background px-3 py-3" inputMode="decimal" value={editAmount} onChange={(e) => setEditAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Monto" />
+            <input className="w-full rounded-xl border bg-background px-3 py-3" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}>
+              <option value="income">Ingreso</option>
+              <option value="expense">Gasto</option>
+            </select>
+            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editAccountId} onChange={(e) => setEditAccountId(e.target.value)}>
+              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+            </select>
+          </div>
+        </BaseModalForm>
+      )}
+
+      {deletingId && (
+        <BaseModalForm
+          title="Eliminar transacción"
+          onClose={() => setDeletingId(null)}
+          footer={<Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminación</Button>}
+        >
+          <p className="pt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
+        </BaseModalForm>
+      )}
     </div>
   )
 }

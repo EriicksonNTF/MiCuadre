@@ -32,7 +32,7 @@ import { Button } from "@/components/ui/button"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { useAccounts, useTransactions, updateAccount, deleteAccount } from "@/hooks/use-data"
+import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard } from "@/hooks/use-data"
 import { formatCurrency, getAvailableCredit, formatDate } from "@/lib/data"
 import type { AccountType, Currency } from "@/lib/types/database"
 
@@ -91,10 +91,22 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [editForm, setEditForm] = useState<{ name: string; type: AccountType; currency: Currency }>({ 
+  const [editForm, setEditForm] = useState<{ 
+    name: string
+    type: AccountType
+    currency: Currency
+    balance: string
+    credit_limit: string
+    closing_date: string
+    due_date: string
+  }>({ 
     name: "", 
     type: "debit", 
-    currency: "DOP" 
+    currency: "DOP",
+    balance: "",
+    credit_limit: "",
+    closing_date: "",
+    due_date: "",
   })
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -170,18 +182,37 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const handlePayment = async () => {
     if (!paymentSource || !paymentAmount) return
     setIsPaying(true)
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-    setIsPaying(false)
-    setShowPayment(false)
-    setPaymentSource("")
-    setPaymentAmount("")
+    try {
+      await payCreditCard({
+        credit_account_id: accountId,
+        source_account_id: paymentSource,
+        amount: parsedAmount,
+      })
+      notify({ title: "Pago completado", message: "El pago de tarjeta fue registrado." })
+      EventBus.emit({ type: "card_payment_completed" })
+      setShowPayment(false)
+      setPaymentSource("")
+      setPaymentAmount("")
+    } catch {
+      notify({ title: "Error", message: "No se pudo completar el pago." })
+    } finally {
+      setIsPaying(false)
+    }
   }
 
   const handleEditSubmit = async () => {
     if (!editForm.name) return
     setIsEditing(true)
     try {
-      await updateAccount(accountId, editForm)
+      await updateAccount(accountId, {
+        name: editForm.name,
+        type: editForm.type,
+        currency: editForm.currency,
+        balance: Number(editForm.balance || 0),
+        credit_limit: editForm.type === "credit" ? Number(editForm.credit_limit || 0) : null,
+        closing_date: editForm.type === "credit" ? Number(editForm.closing_date || 0) : null,
+        due_date: editForm.type === "credit" ? Number(editForm.due_date || 0) : null,
+      })
       mutate("accounts")
       notify({ title: "Cuenta actualizada", message: "Los cambios fueron guardados exitosamente." })
       EventBus.emit({ type: "account_updated", payload: { name: editForm.name } })
@@ -242,7 +273,15 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           <div className="flex gap-2">
             <button
               onClick={() => {
-                setEditForm({ name: account.name, type: account.type, currency: account.currency || "DOP" })
+                setEditForm({
+                  name: account.name,
+                  type: account.type,
+                  currency: account.currency || "DOP",
+                  balance: String(account.balance || 0),
+                  credit_limit: String(account.creditLimit || 0),
+                  closing_date: String(account.cutoffDate || ""),
+                  due_date: String(account.dueDate || ""),
+                })
                 setShowEditModal(true)
               }}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
@@ -265,11 +304,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </div>
           <div>
             <p className="text-sm font-medium text-white/80">{account.name}</p>
-            <p className="text-3xl font-bold text-white">
-              {isCredit
-                ? `-${formatCurrency(account.currentDebt || 0)}`
+              <p className="text-3xl font-bold text-white">
+                {isCredit
+                ? formatCurrency(account.currentDebt || 0)
                 : formatCurrency(account.balance)}
-            </p>
+              </p>
           </div>
         </div>
 
@@ -655,6 +694,50 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   ))}
                 </div>
               </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Balance inicial</label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={editForm.balance}
+                  onChange={(e) => setEditForm({ ...editForm, balance: e.target.value.replace(/[^0-9.]/g, "") })}
+                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                />
+              </div>
+              {editForm.type === "credit" && (
+                <>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={editForm.credit_limit}
+                      onChange={(e) => setEditForm({ ...editForm, credit_limit: e.target.value.replace(/[^0-9.]/g, "") })}
+                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Día de corte</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editForm.closing_date}
+                      onChange={(e) => setEditForm({ ...editForm, closing_date: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })}
+                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Día de pago</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={editForm.due_date}
+                      onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })}
+                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </BaseModalForm>
         )}

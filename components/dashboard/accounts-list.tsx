@@ -20,6 +20,11 @@ const accountColors: Record<AccountType, string> = {
 
 export function AccountsList() {
   const { data: accounts, isLoading } = useAccounts()
+  const sortedAccounts = (accounts || []).slice().sort((a, b) => {
+    if (a.type === "credit" && b.type !== "credit") return -1
+    if (a.type !== "credit" && b.type === "credit") return 1
+    return 0
+  })
 
   if (isLoading) {
     return (
@@ -58,7 +63,7 @@ export function AccountsList() {
       <p className="text-sm font-medium text-muted-foreground">Cuentas</p>
 
       <div className="space-y-3">
-        {accounts.map((account) => {
+        {sortedAccounts.map((account) => {
           const Icon = accountIcons[account.type]
           const isCredit = account.type === "credit"
 
@@ -95,11 +100,11 @@ export function AccountsList() {
                 <div className="text-right">
                   {isCredit ? (
                     <p className="text-sm font-semibold text-orange-600">
-                      -{formatCurrency(account.current_debt || 0, account.currency)}
+                      {formatCurrency(account.current_debt || 0)}
                     </p>
                   ) : (
                     <p className="text-sm font-semibold text-foreground">
-                      {formatCurrency(account.balance, account.currency)}
+                      {formatCurrency(account.balance)}
                     </p>
                   )}
                 </div>
@@ -111,14 +116,18 @@ export function AccountsList() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Límite</span>
                     <span className="text-foreground">
-                      {formatCurrency(account.credit_limit, account.currency)}
+                      {formatCurrency(account.credit_limit)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Disponible</span>
                     <span className="text-accent font-medium">
-                      {formatCurrency(getAvailableCredit(account), account.currency)}
+                      {formatCurrency(getAvailableCredit(account))}
                     </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Próximo pago</span>
+                    <span className="text-foreground">Día {account.due_date || "-"}</span>
                   </div>
                   {/* Credit usage bar */}
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">

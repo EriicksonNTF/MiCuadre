@@ -135,6 +135,7 @@ CREATE TABLE IF NOT EXISTS public.goals (
 -- ============================================
 CREATE TABLE IF NOT EXISTS public.goal_contributions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   goal_id UUID NOT NULL REFERENCES public.goals(id) ON DELETE CASCADE,
   account_id UUID NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
   amount DECIMAL(15, 2) NOT NULL CHECK (amount > 0),
@@ -195,6 +196,7 @@ CREATE INDEX IF NOT EXISTS idx_transactions_date ON public.transactions(date DES
 CREATE INDEX IF NOT EXISTS idx_transactions_category_id ON public.transactions(category_id);
 CREATE INDEX IF NOT EXISTS idx_categories_user_id ON public.categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_goals_user_id ON public.goals(user_id);
+CREATE INDEX IF NOT EXISTS idx_goal_contributions_user_id ON public.goal_contributions(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read ON public.notifications(user_id, read);
 CREATE INDEX IF NOT EXISTS idx_beneficiaries_user_id ON public.beneficiaries(user_id);
@@ -264,18 +266,10 @@ CREATE POLICY "goals_update_own" ON public.goals FOR UPDATE USING (auth.uid() = 
 CREATE POLICY "goals_delete_own" ON public.goals FOR DELETE USING (auth.uid() = user_id);
 
 -- GOAL_CONTRIBUTIONS policies
-CREATE POLICY "goal_contributions_select" ON public.goal_contributions FOR SELECT USING (
-  EXISTS (SELECT 1 FROM public.goals WHERE goals.id = goal_contributions.goal_id AND goals.user_id = auth.uid())
-);
-CREATE POLICY "goal_contributions_insert" ON public.goal_contributions FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.goals WHERE goals.id = goal_contributions.goal_id AND goals.user_id = auth.uid())
-);
-CREATE POLICY "goal_contributions_update" ON public.goal_contributions FOR UPDATE USING (
-  EXISTS (SELECT 1 FROM public.goals WHERE goals.id = goal_contributions.goal_id AND goals.user_id = auth.uid())
-);
-CREATE POLICY "goal_contributions_delete" ON public.goal_contributions FOR DELETE USING (
-  EXISTS (SELECT 1 FROM public.goals WHERE goals.id = goal_contributions.goal_id AND goals.user_id = auth.uid())
-);
+CREATE POLICY "goal_contributions_select_own" ON public.goal_contributions FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "goal_contributions_insert_own" ON public.goal_contributions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "goal_contributions_update_own" ON public.goal_contributions FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "goal_contributions_delete_own" ON public.goal_contributions FOR DELETE USING (auth.uid() = user_id);
 
 -- NOTIFICATIONS policies
 CREATE POLICY "notifications_select_own" ON public.notifications FOR SELECT USING (auth.uid() = user_id);

@@ -20,6 +20,7 @@ import {
   MinusCircle,
   Circle,
 } from "lucide-react"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useTransactions } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/data"
@@ -56,7 +57,7 @@ export function TransactionsList() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
-          <button className="text-xs font-medium text-accent">Ver todos</button>
+          <Link href="/history" className="text-xs font-medium text-accent">Ver todos</Link>
         </div>
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
@@ -72,7 +73,7 @@ export function TransactionsList() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
-          <button className="text-xs font-medium text-accent">Ver todos</button>
+          <Link href="/history" className="text-xs font-medium text-accent">Ver todos</Link>
         </div>
         <div className="rounded-2xl bg-card p-6 text-center">
           <p className="text-sm text-muted-foreground">
@@ -87,7 +88,7 @@ export function TransactionsList() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
-        <button className="text-xs font-medium text-accent">Ver todos</button>
+        <Link href="/history" className="text-xs font-medium text-accent">Ver todos</Link>
       </div>
 
       <div className="space-y-2">
