@@ -216,7 +216,7 @@ export function HistoryScreen() {
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   return (
-    <div className="min-h-screen bg-background pb-nav-safe">
+    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       {/* Header */}
       <header className="px-6 pb-4 pt-8">
         <h1 className="text-2xl font-bold text-foreground">Historial</h1>

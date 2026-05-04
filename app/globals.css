@@ -126,7 +126,13 @@
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
+}
+
+body:not(.modal-open) {
+  overflow-y: auto !important;
 }
 
 .pb-nav-safe {
@@ -169,6 +175,12 @@
 body.modal-open {
   overflow: hidden;
   overscroll-behavior: none;
+}
+
+.app-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 /* Improved touch targets for iOS */

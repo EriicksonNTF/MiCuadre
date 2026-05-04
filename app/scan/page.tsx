@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 
 export default function ScanPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       <header className="flex items-center gap-3 px-6 pb-4 pt-8">
         <Link
           href="/"

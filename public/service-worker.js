@@ -1,4 +1,4 @@
-const CACHE_NAME = 'micuadre-v1';
+const CACHE_NAME = 'micuadre-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -41,6 +41,14 @@ self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  // Always prefer fresh document responses in web app mode
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/'))
+    );
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
@@ -48,7 +56,7 @@ self.addEventListener('fetch', (event) => {
         const responseClone = response.clone();
         
         // Cache successful responses
-        if (response.status === 200) {
+        if (response.status === 200 && event.request.destination !== 'document') {
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
           });

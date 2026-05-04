@@ -24,7 +24,7 @@ export function MobileFullscreenForm({
   }, [])
 
   return (
-    <div className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col bg-background">
+    <div data-app-modal="true" className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col bg-background">
       <div className="shrink-0 border-b px-6 py-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>

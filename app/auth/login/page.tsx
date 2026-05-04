@@ -34,9 +34,27 @@ export default function LoginPage() {
         password,
       })
       if (error) throw error
-      const onboardingCompleted =
-        typeof window !== 'undefined' &&
-        window.localStorage.getItem('onboarding_completed') === 'true'
+
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+
+      if (!userId) {
+        router.push('/dashboard')
+        router.refresh()
+        return
+      }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('id', userId)
+        .single()
+
+      const onboardingCompleted = Boolean(profile?.onboarding_completed)
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('onboarding_completed', onboardingCompleted ? 'true' : 'false')
+      }
 
       router.push(onboardingCompleted ? '/dashboard' : '/onboarding')
       router.refresh()

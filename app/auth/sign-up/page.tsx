@@ -51,11 +51,10 @@ export default function SignUpPage() {
         },
       })
       if (error) throw error
-      const onboardingCompleted =
-        typeof window !== 'undefined' &&
-        window.localStorage.getItem('onboarding_completed') === 'true'
-
-      router.push(onboardingCompleted ? '/dashboard' : '/onboarding')
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('onboarding_completed', 'false')
+      }
+      router.push('/onboarding')
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'Ha ocurrido un error')
     } finally {

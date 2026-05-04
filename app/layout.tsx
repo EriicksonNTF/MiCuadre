@@ -89,9 +89,31 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
+              document.body.classList.remove('modal-open', 'mobile-form-open');
+              window.addEventListener('pageshow', () => {
+                document.body.classList.remove('modal-open', 'mobile-form-open');
+              });
+              document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                  const hasModal = document.querySelector('[data-app-modal="true"]');
+                  if (!hasModal) {
+                    document.body.classList.remove('modal-open', 'mobile-form-open');
+                  }
+                }
+              });
+              setInterval(() => {
+                const hasModal = document.querySelector('[data-app-modal="true"]');
+                if (!hasModal) {
+                  document.body.classList.remove('modal-open', 'mobile-form-open');
+                }
+              }, 1500);
+
               if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/service-worker.js')
-                  .then(reg => console.log('SW registered:', reg.scope))
+                  .then(reg => {
+                    reg.update();
+                    console.log('SW registered:', reg.scope);
+                  })
                   .catch(err => console.log('SW registration failed:', err));
               }
             `,

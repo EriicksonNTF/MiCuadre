@@ -125,7 +125,7 @@ export function NotificationsScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-nav-safe">
+    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       {/* Header */}
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">

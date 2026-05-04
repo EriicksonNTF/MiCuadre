@@ -22,6 +22,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useProfile } from "@/hooks/use-data"
 import { updateProfile } from "@/hooks/use-data"
 import { cn } from "@/lib/utils"
 
@@ -77,16 +78,17 @@ export default function OnboardingPage() {
   const touchStartX = useRef<number | null>(null)
   const touchDeltaX = useRef(0)
   const router = useRouter()
+  const { data: profile, isLoading: profileLoading } = useProfile()
 
   useEffect(() => {
-    const onboardingCompleted =
-      typeof window !== "undefined" &&
-      window.localStorage.getItem("onboarding_completed") === "true"
+    if (profileLoading) return
+
+    const onboardingCompleted = Boolean(profile?.onboarding_completed)
 
     if (onboardingCompleted) {
       router.replace("/dashboard")
     }
-  }, [router])
+  }, [profile?.onboarding_completed, profileLoading, router])
 
   const finish = async () => {
     if (loading) return

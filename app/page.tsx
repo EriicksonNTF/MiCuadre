@@ -8,28 +8,32 @@ import { AccountsList } from "@/components/dashboard/accounts-list"
 import { QuickActions } from "@/components/dashboard/quick-actions"
 import { TransactionsList } from "@/components/dashboard/transactions-list"
 import { useAuth } from "@/hooks/use-auth"
+import { useProfile } from "@/hooks/use-data"
 
 export default function DashboardPage() {
   const router = useRouter()
   const [isReady, setIsReady] = useState(false)
   const { loading } = useAuth()
+  const { data: profile, isLoading: profileLoading } = useProfile()
 
   useEffect(() => {
-    if (loading) return
+    if (loading || profileLoading) return
 
-    const onboardingCompleted =
-      typeof window !== "undefined" &&
-      window.localStorage.getItem("onboarding_completed") === "true"
+    const onboardingCompleted = Boolean(profile?.onboarding_completed)
 
     if (!onboardingCompleted) {
       router.replace("/onboarding")
       return
     }
 
-    setIsReady(true)
-  }, [loading, router])
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("onboarding_completed", "true")
+    }
 
-  if (loading || !isReady) {
+    setIsReady(true)
+  }, [loading, profile?.onboarding_completed, profileLoading, router])
+
+  if (loading || profileLoading || !isReady) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-background">
         <p className="text-sm text-muted-foreground">Verificando sesion...</p>
@@ -38,7 +42,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="app-scroll min-h-[100dvh] overflow-y-auto bg-background">
       <div className="mx-auto max-w-md px-6 pb-nav-safe pt-8">
         <Header />
 
