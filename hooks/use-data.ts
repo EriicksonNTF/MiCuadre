@@ -37,6 +37,87 @@ let creditCycleSchemaChecked = false
 let hasCreditCycleSchema = true
 let hasNotificationMetadataSchema = true
 
+const COMMISSION_RATE = 0.0015
+const COMMISSION_CATEGORY_NAME = "Commission / Fees"
+const COMMISSION_ERROR_MESSAGE = "El monto más comisión excede tu balance disponible."
+
+function roundCurrencyAmount(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+function getCommissionAmount(amount: number): number {
+  return roundCurrencyAmount(amount * COMMISSION_RATE)
+}
+
+function sortAccountsList(accounts: Account[]): Account[] {
+  return [...accounts].sort((a, b) => {
+    if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1
+
+    const aSort = a.sort_order
+    const bSort = b.sort_order
+    if (aSort !== null && bSort !== null) return aSort - bSort
+    if (aSort !== null) return -1
+    if (bSort !== null) return 1
+
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  })
+}
+
+async function getOrCreateCommissionCategoryId(userId: string): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("name", COMMISSION_CATEGORY_NAME)
+    .eq("type", "expense")
+    .or(`is_default.eq.true,user_id.eq.${userId}`)
+    .order("is_default", { ascending: false })
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    return existing[0].id
+  }
+
+  const { data: created, error } = await supabase
+    .from("categories")
+    .insert({
+      user_id: userId,
+      name: COMMISSION_CATEGORY_NAME,
+      icon: "circle",
+      color: "#64748b",
+      type: "expense",
+      is_default: false,
+    })
+    .select("id")
+    .single()
+
+  if (error) throw error
+  return created?.id || null
+}
+
+async function ensureSufficientFundsForExpense(accountId: string, totalAmount: number) {
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, type, balance, credit_limit, current_debt")
+    .eq("id", accountId)
+    .single()
+
+  if (!account) throw new Error("Cuenta no encontrada")
+
+  if (account.type === "credit") {
+    const creditLimit = Number(account.credit_limit || 0)
+    const currentDebt = Number(account.current_debt || 0)
+    const availableCredit = creditLimit - currentDebt
+    if (totalAmount > availableCredit) {
+      throw new Error(COMMISSION_ERROR_MESSAGE)
+    }
+    return
+  }
+
+  if (Number(account.balance) < totalAmount) {
+    throw new Error(COMMISSION_ERROR_MESSAGE)
+  }
+}
+
 async function ensureCreditSchemas() {
   if (creditCycleSchemaChecked) {
     return {
@@ -243,7 +324,7 @@ async function fetchAccounts(): Promise<Account[]> {
     .order("created_at", { ascending: true })
 
   if (error) throw error
-  return data || []
+  return sortAccountsList(data || [])
 }
 
 async function fetchTransactions(limit = 10): Promise<Transaction[]> {
@@ -377,12 +458,18 @@ export function useBeneficiaries() {
 }
 
 // Mutations
-type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date"> & {
+type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date" | "sort_order" | "is_favorite" | "icon_url" | "icon_type" | "icon_value" | "primary_color" | "secondary_color" | "background_style"> & {
   statement_balance?: number | null
   pending_amount?: number | null
   paid_amount?: number | null
   cycle_start_date?: string | null
   cycle_end_date?: string | null
+  icon_url?: string | null
+  icon_type?: "emoji" | "icon" | "image" | null
+  icon_value?: string | null
+  primary_color?: string | null
+  secondary_color?: string | null
+  background_style?: string | null
 }
 
 export async function createAccount(account: NewAccountInput) {
@@ -401,23 +488,18 @@ export async function createAccount(account: NewAccountInput) {
 }
 
 export async function createTransaction(
-  transaction: Omit<Transaction, "id" | "user_id" | "created_at" | "category" | "account">
+  transaction: Omit<Transaction, "id" | "user_id" | "created_at" | "category" | "account">,
+  options?: { applyCommission?: boolean }
 ) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  const { data: accountForValidation } = await supabase
-    .from("accounts")
-    .select("type, balance")
-    .eq("id", transaction.account_id)
-    .single()
+  const applyCommission = Boolean(options?.applyCommission && transaction.type === "expense")
+  const commissionAmount = applyCommission ? getCommissionAmount(transaction.amount) : 0
+  const totalAmount = roundCurrencyAmount(transaction.amount + commissionAmount)
 
-  if (!accountForValidation) {
-    throw new Error("Cuenta no encontrada")
-  }
-
-  if (accountForValidation.type !== "credit" && transaction.type === "expense" && Number(accountForValidation.balance) < transaction.amount) {
-    throw new Error("Fondos insuficientes en la cuenta")
+  if (transaction.type === "expense") {
+    await ensureSufficientFundsForExpense(transaction.account_id, totalAmount)
   }
 
   const { data, error } = await supabase
@@ -428,6 +510,39 @@ export async function createTransaction(
 
   if (error) throw error
 
+  let commissionTxId: string | null = null
+
+  if (applyCommission && commissionAmount > 0) {
+    const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
+    const { data: commissionTx, error: commissionError } = await supabase
+      .from("transactions")
+      .insert({
+        user_id: user.id,
+        account_id: transaction.account_id,
+        category_id: commissionCategoryId,
+        type: "expense",
+        amount: commissionAmount,
+        currency: transaction.currency,
+        amount_base: commissionAmount,
+        exchange_rate: transaction.exchange_rate,
+        description: `0.15% commission of ${transaction.description || "transaction"}`,
+        date: transaction.date,
+        notes: null,
+        is_recurring: false,
+        parent_transaction_id: data.id,
+        metadata: { kind: "commission", rate: COMMISSION_RATE },
+      })
+      .select("id")
+      .single()
+
+    if (commissionError) {
+      await supabase.from("transactions").delete().eq("id", data.id)
+      throw commissionError
+    }
+
+    commissionTxId = commissionTx?.id || null
+  }
+
   try {
     await applyAccountImpact({
       accountId: transaction.account_id,
@@ -435,7 +550,19 @@ export async function createTransaction(
       amount: transaction.amount,
       direction: 1,
     })
+
+    if (commissionTxId && commissionAmount > 0) {
+      await applyAccountImpact({
+        accountId: transaction.account_id,
+        type: "expense",
+        amount: commissionAmount,
+        direction: 1,
+      })
+    }
   } catch (impactError) {
+    if (commissionTxId) {
+      await supabase.from("transactions").delete().eq("id", commissionTxId)
+    }
     await supabase.from("transactions").delete().eq("id", data.id)
     throw impactError
   }
@@ -658,6 +785,7 @@ export async function createTransfer(transfer: {
   amount: number
   currency: string
   description?: string
+  apply_commission?: boolean
 }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
@@ -672,12 +800,15 @@ export async function createTransfer(transfer: {
   if (!fromAccount) throw new Error("Account not found")
 
   if (transfer.amount <= 0) throw new Error("Monto inválido")
-  if (Number(fromAccount.balance) < transfer.amount) {
-    throw new Error("Ese monto supera tu balance disponible.")
+
+  const commissionAmount = transfer.apply_commission ? getCommissionAmount(transfer.amount) : 0
+  const totalAmount = roundCurrencyAmount(transfer.amount + commissionAmount)
+  if (Number(fromAccount.balance) < totalAmount) {
+    throw new Error(COMMISSION_ERROR_MESSAGE)
   }
 
   // Deduct from source account
-  const newFromBalance = Number(fromAccount.balance) - transfer.amount
+  const newFromBalance = Number(fromAccount.balance) - totalAmount
   await supabase
     .from("accounts")
     .update({ balance: newFromBalance })
@@ -756,6 +887,25 @@ export async function createTransfer(transfer: {
       date: getLocalDateString(),
       notes: null,
       is_recurring: false,
+    })
+  }
+
+  if (commissionAmount > 0) {
+    const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: transfer.from_account_id,
+      category_id: commissionCategoryId,
+      type: "expense",
+      amount: commissionAmount,
+      currency: transfer.currency,
+      amount_base: commissionAmount,
+      exchange_rate: 1,
+      description: `0.15% commission of ${transfer.description || "transfer"}`,
+      date: getLocalDateString(),
+      notes: null,
+      is_recurring: false,
+      metadata: { kind: "commission", rate: COMMISSION_RATE },
     })
   }
   
@@ -922,7 +1072,44 @@ export async function createCategory(category: Omit<Category, "id" | "user_id" |
     .single()
 
   if (error) throw error
+  mutate("categories")
   return data
+}
+
+export async function updateCategory(id: string, updates: Pick<Category, "name" | "icon" | "color" | "type">) {
+  const { data, error } = await supabase
+    .from("categories")
+    .update(updates)
+    .eq("id", id)
+    .eq("is_default", false)
+    .select()
+    .single()
+
+  if (error) throw error
+  mutate("categories")
+  return data
+}
+
+export async function deleteCategory(id: string, force = false) {
+  const { data: txs, error: txError } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("category_id", id)
+    .limit(1)
+
+  if (txError) throw txError
+  if (!force && txs && txs.length > 0) {
+    throw new Error("Esta categoría ya tiene movimientos asociados.")
+  }
+
+  const { error } = await supabase
+    .from("categories")
+    .delete()
+    .eq("id", id)
+    .eq("is_default", false)
+
+  if (error) throw error
+  mutate("categories")
 }
 
 export async function updateAccount(id: string, updates: Partial<Account>) {
@@ -934,7 +1121,29 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
     .single()
 
   if (error) throw error
+  mutate("accounts")
   return data
+}
+
+export async function reorderAccounts(accountIdsInOrder: string[]) {
+  if (accountIdsInOrder.length === 0) return
+
+  await Promise.all(
+    accountIdsInOrder.map((accountId, index) =>
+      supabase.from("accounts").update({ sort_order: index }).eq("id", accountId)
+    )
+  )
+
+  mutate("accounts")
+}
+
+export async function setFavoriteAccount(accountId: string) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+
+  await supabase.from("accounts").update({ is_favorite: false }).eq("user_id", user.id)
+  await supabase.from("accounts").update({ is_favorite: true }).eq("id", accountId)
+  mutate("accounts")
 }
 
 export async function deleteAccount(id: string) {

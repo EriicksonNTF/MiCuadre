@@ -52,32 +52,26 @@ import { EventBus } from "@/lib/event-bus"
 import type { AccountType } from "@/lib/types/database"
 
 
-const expenseCategories = [
-  { id: "food", label: "Comida", icon: Utensils, color: "bg-orange-50 text-orange-500" },
-  { id: "transport", label: "Transporte", icon: Car, color: "bg-blue-50 text-blue-500" },
-  { id: "shopping", label: "Compras", icon: ShoppingBag, color: "bg-pink-50 text-pink-500" },
-  { id: "utilities", label: "Servicios", icon: Zap, color: "bg-amber-50 text-amber-500" },
-  { id: "phone", label: "Celular", icon: Smartphone, color: "bg-violet-50 text-violet-500" },
-  { id: "rent", label: "Vivienda", icon: Home, color: "bg-emerald-50 text-emerald-500" },
-  { id: "entertainment", label: "Entretenimiento", icon: Film, color: "bg-red-50 text-red-500" },
-  { id: "health", label: "Salud", icon: Heart, color: "bg-rose-50 text-rose-500" },
-  { id: "education", label: "Educación", icon: GraduationCap, color: "bg-indigo-50 text-indigo-500" },
-  { id: "fitness", label: "Ejercicio", icon: Dumbbell, color: "bg-teal-50 text-teal-500" },
-  { id: "gifts", label: "Regalos", icon: Gift, color: "bg-amber-50 text-amber-600" },
-  { id: "other", label: "Otro", icon: MoreHorizontal, color: "bg-gray-50 text-gray-500" },
-]
-
-const incomeCategories = [
-  { id: "salary", label: "Salario", icon: Briefcase, color: "bg-emerald-50 text-emerald-600" },
-  { id: "freelance", label: "Freelance", icon: TrendingUp, color: "bg-blue-50 text-blue-600" },
-  { id: "gift", label: "Regalo", icon: Gift, color: "bg-pink-50 text-pink-500" },
-  { id: "other", label: "Otro", icon: MoreHorizontal, color: "bg-gray-50 text-gray-500" },
-]
-
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
   debit: Building2,
   credit: CreditCard,
+}
+
+const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: string }> = {
+  comida: { icon: Utensils, color: "bg-orange-50 text-orange-500" },
+  transporte: { icon: Car, color: "bg-blue-50 text-blue-500" },
+  compras: { icon: ShoppingBag, color: "bg-pink-50 text-pink-500" },
+  servicios: { icon: Zap, color: "bg-amber-50 text-amber-500" },
+  celular: { icon: Smartphone, color: "bg-violet-50 text-violet-500" },
+  vivienda: { icon: Home, color: "bg-emerald-50 text-emerald-500" },
+  entretenimiento: { icon: Film, color: "bg-red-50 text-red-500" },
+  salud: { icon: Heart, color: "bg-rose-50 text-rose-500" },
+  educacion: { icon: GraduationCap, color: "bg-indigo-50 text-indigo-500" },
+  ejercicio: { icon: Dumbbell, color: "bg-teal-50 text-teal-500" },
+  regalos: { icon: Gift, color: "bg-amber-50 text-amber-600" },
+  salario: { icon: Briefcase, color: "bg-emerald-50 text-emerald-600" },
+  freelance: { icon: TrendingUp, color: "bg-blue-50 text-blue-600" },
 }
 
 type Currency = "DOP" | "USD"
@@ -109,10 +103,20 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   const [accountId, setAccountId] = useState("cash")
   const [currency, setCurrency] = useState<Currency>("DOP")
   const [date, setDate] = useState<Date>(new Date())
+  const [applyCommission, setApplyCommission] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  const categories = transactionType === "expense" ? expenseCategories : incomeCategories
+  const categories = useMemo(() => {
+    const allowedTypes = transactionType === "expense" ? ["expense", "both"] : ["income", "both"]
+    return dbCategories
+      .filter((cat) => allowedTypes.includes(cat.type))
+      .map((cat) => {
+        const ui = categoryUiByName[cat.name.toLowerCase()] || { icon: MoreHorizontal, color: "bg-gray-50 text-gray-500" }
+        return { id: cat.id, label: cat.name, icon: ui.icon, color: ui.color }
+      })
+  }, [dbCategories, transactionType])
+
   const selectedCategory = categories.find(c => c.id === category) || categories[0]
   const CategoryIcon = selectedCategory?.icon || MoreHorizontal
   const selectedAccount = accounts.find(a => a.id === accountId)
@@ -129,6 +133,9 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
     return isNaN(num) ? null : num
   }, [amount])
 
+  const commissionAmount = parsedAmount ? Math.round(parsedAmount * 0.15) / 100 : 0
+  const totalWithCommission = parsedAmount ? parsedAmount + (transactionType === "expense" && applyCommission ? commissionAmount : 0) : 0
+
   const handleAmountChange = (value: string) => {
     // Only allow numbers and one decimal point
     const cleaned = value.replace(/[^0-9.]/g, "")
@@ -140,11 +147,13 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   const handleSave = async () => {
     if (!parsedAmount || !description) return
 
-    if (transactionType === "expense" && parsedAmount > availableAmount) {
+    if (transactionType === "expense" && totalWithCommission > availableAmount) {
       notify({
         title: isCredit ? "Crédito insuficiente" : "Saldo insuficiente",
         message: isCredit
           ? `Este gasto excede tu crédito disponible. Disponible en tarjeta: ${formatCurrency(availableAmount)}.`
+          : applyCommission
+          ? "El monto más comisión excede tu balance disponible."
           : `Ese monto supera tu balance disponible. Disponible: ${formatCurrency(availableAmount)}.`,
       })
       return
@@ -152,9 +161,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
     
     setIsSaving(true)
     try {
-      const categoryUuid = dbCategories.find(
-        c => c.name.toLowerCase() === selectedCategory.label.toLowerCase()
-      )?.id || null
+      const categoryUuid = selectedCategory?.id || null
 
       const targetAccountId = accountId === "cash" 
         ? rawAccounts.find(a => a.type === "cash")?.id || accountId 
@@ -172,7 +179,9 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         is_recurring: false,
         amount_base: parsedAmount,
         exchange_rate: 1,
-      })
+        parent_transaction_id: null,
+        metadata: null,
+      }, { applyCommission })
 
       notify({ 
         title: transactionType === "income" ? "Ingreso registrado" : "Gasto registrado", 
@@ -191,6 +200,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         setDescription("")
         setCategory("")
         setDate(new Date())
+        setApplyCommission(false)
         onBack?.()
       }, 1500)
     } catch (error) {
@@ -200,7 +210,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   }
 
 
-  const exceedsAvailable = transactionType === "expense" && parsedAmount !== null && parsedAmount > availableAmount
+  const exceedsAvailable = transactionType === "expense" && parsedAmount !== null && totalWithCommission > availableAmount
   const isValid = parsedAmount !== null && parsedAmount > 0 && description.length > 0 && !exceedsAvailable
 
   return (
@@ -296,6 +306,24 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
               USD
             </button>
           </div>
+
+          {transactionType === "expense" && (
+            <button
+              onClick={() => setApplyCommission((prev) => !prev)}
+              className={cn(
+                "mt-3 rounded-full px-4 py-2 text-xs font-medium transition-colors",
+                applyCommission ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground"
+              )}
+            >
+              Comisión 0.15%
+            </button>
+          )}
+
+          {transactionType === "expense" && applyCommission && parsedAmount !== null && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Comisión: {formatCurrency(commissionAmount)} · Total: {formatCurrency(totalWithCommission)}
+            </p>
+          )}
         </div>
 
         {/* Description - Small and discrete */}
@@ -381,7 +409,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
           <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">
             Categoría
           </p>
-          <Select value={category || categories[0].id} onValueChange={setCategory}>
+          <Select value={category || categories[0]?.id || ""} onValueChange={setCategory}>
             <SelectTrigger className="h-14 w-full rounded-2xl border-0 bg-card px-5 text-sm font-medium ring-1 ring-transparent focus:ring-accent">
               <SelectValue placeholder="Seleccionar categoría">
                 <div className="flex items-center gap-3">

@@ -85,3 +85,43 @@ export function getPaymentUrgency(daysUntil: number): "urgent" | "warning" | "no
   if (daysUntil <= 7) return "warning"
   return "normal"
 }
+
+export function getAccountBrandingDefaults(type: string) {
+  if (type === "credit") {
+    return {
+      iconType: "icon",
+      iconValue: "credit-card",
+      primaryColor: "#07111f",
+      secondaryColor: "#0ea5e9",
+      backgroundStyle: "gradient",
+    }
+  }
+
+  if (type === "cash") {
+    return {
+      iconType: "icon",
+      iconValue: "banknote",
+      primaryColor: "#0f766e",
+      secondaryColor: "#14b8a6",
+      backgroundStyle: "gradient",
+    }
+  }
+
+  return {
+    iconType: "icon",
+    iconValue: "building-2",
+    primaryColor: "#0b4a8a",
+    secondaryColor: "#38bdf8",
+    backgroundStyle: "gradient",
+  }
+}
+
+export function getReadableTextColor(hexColor: string): "#ffffff" | "#0b1220" {
+  const clean = hexColor.replace("#", "")
+  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean
+  const r = parseInt(full.slice(0, 2), 16)
+  const g = parseInt(full.slice(2, 4), 16)
+  const b = parseInt(full.slice(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.62 ? "#0b1220" : "#ffffff"
+}

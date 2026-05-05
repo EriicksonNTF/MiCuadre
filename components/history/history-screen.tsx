@@ -30,6 +30,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateTransaction, deleteTransaction } from "@/hooks/use-data"
+import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, formatDate } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
 import type { AccountType } from "@/lib/types/database"
@@ -93,10 +94,10 @@ type DateRange = "today" | "week" | "month" | "all"
 export function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
-  const [typeFilter, setTypeFilter] = useState<TransactionType>("all")
-  const [accountFilter, setAccountFilter] = useState<string>("all")
-  const [dateFilter, setDateFilter] = useState<DateRange>("month")
-  const [showFilters, setShowFilters] = useState(false)
+  const [typeFilter, setTypeFilter] = usePersistentState<TransactionType>("history:typeFilter", "all")
+  const [accountFilter, setAccountFilter] = usePersistentState<string>("history:accountFilter", "all")
+  const [dateFilter, setDateFilter] = usePersistentState<DateRange>("history:dateFilter", "all")
+  const [showFilters, setShowFilters] = usePersistentState("history:showFilters", false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editAmount, setEditAmount] = useState("")
@@ -134,6 +135,7 @@ export function HistoryScreen() {
       type: tx.type,
       date: tx.date,
       currency: tx.currency,
+      isCommission: tx.metadata?.kind === "commission",
       notes: tx.notes,
       amount_base: tx.amount_base,
       exchange_rate: tx.exchange_rate,
@@ -458,6 +460,11 @@ export function HistoryScreen() {
                           <span className="truncate">{account?.name || "Cuenta"}</span>
                         </div>
                         <span className="shrink-0 text-right">{formatDate(tx.date)}</span>
+                        {tx.isCommission && (
+                          <span className="inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                            Comisión 0.15%
+                          </span>
+                        )}
                       </div>
 
                       <div className="mt-2 flex flex-wrap justify-end gap-3 border-t border-border/60 pt-2">

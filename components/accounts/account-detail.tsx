@@ -33,7 +33,10 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard } from "@/hooks/use-data"
-import { formatCurrency, getAvailableCredit, formatDate } from "@/lib/data"
+import { usePersistentState } from "@/hooks/use-persistent-state"
+import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getReadableTextColor } from "@/lib/data"
+import { createClient } from "@/lib/supabase/client"
+import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import type { AccountType, Currency } from "@/lib/types/database"
 
 
@@ -41,12 +44,6 @@ const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
   debit: Building2,
   credit: CreditCard,
-}
-
-const accountGradients: Record<AccountType, string> = {
-  cash: "from-emerald-500 to-emerald-600",
-  debit: "from-blue-500 to-blue-600",
-  credit: "from-orange-500 to-orange-600",
 }
 
 const categoryIcons: Record<string, typeof Utensils> = {
@@ -75,6 +72,26 @@ const categoryColors: Record<string, string> = {
   other: "bg-gray-100 text-gray-600",
 }
 
+const DETAIL_ICON_PRESETS = [
+  { value: "banknote", label: "Efectivo", icon: Banknote },
+  { value: "building-2", label: "Banco", icon: Building2 },
+  { value: "credit-card", label: "Tarjeta", icon: CreditCard },
+  { value: "landmark", label: "Institución", icon: Building2 },
+  { value: "piggy-bank", label: "Ahorro", icon: Banknote },
+  { value: "wallet", label: "Billetera", icon: Banknote },
+]
+
+const DETAIL_EMOJI_PRESETS = ["💳", "🏦", "💵", "🪙", "🧾", "💼", "🛟", "📈"]
+
+const DETAIL_COLOR_PRESETS = [
+  { name: "Azul Banreservas", primary: "#0b4a8a", secondary: "#38bdf8" },
+  { name: "Premium oscuro", primary: "#07111f", secondary: "#0ea5e9" },
+  { name: "Efectivo esmeralda", primary: "#0f766e", secondary: "#14b8a6" },
+  { name: "Ahorro violeta", primary: "#4338ca", secondary: "#8b5cf6" },
+  { name: "Acento naranja", primary: "#b45309", secondary: "#fb923c" },
+  { name: "Cielo claro", primary: "#0369a1", secondary: "#38bdf8" },
+]
+
 type DateRange = "week" | "month" | "all"
 
 interface AccountDetailProps {
@@ -83,7 +100,7 @@ interface AccountDetailProps {
 
 export function AccountDetail({ accountId }: AccountDetailProps) {
   const router = useRouter()
-  const [dateFilter, setDateFilter] = useState<DateRange>("month")
+  const [dateFilter, setDateFilter] = usePersistentState<DateRange>(`account:${accountId}:dateFilter`, "all")
   const [showPayment, setShowPayment] = useState(false)
   const [paymentSource, setPaymentSource] = useState<string>("")
   const [paymentAmount, setPaymentAmount] = useState("")
@@ -99,6 +116,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     credit_limit: string
     closing_date: string
     due_date: string
+    icon_url: string
+    icon_type: "emoji" | "icon" | "image"
+    icon_value: string
+    primary_color: string
+    secondary_color: string
+    background_style: string
   }>({ 
     name: "", 
     type: "debit", 
@@ -107,10 +130,17 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     credit_limit: "",
     closing_date: "",
     due_date: "",
+    icon_url: "",
+    icon_type: "icon",
+    icon_value: "building-2",
+    primary_color: "#0b4a8a",
+    secondary_color: "#38bdf8",
+    background_style: "gradient",
   })
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState("")
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
 
   const { data: rawAccounts = [] } = useAccounts()
   const { data: rawTransactions = [] } = useTransactions(100)
@@ -130,7 +160,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }, [rawAccounts])
 
   const account = accounts.find((a) => a.id === accountId)
-  const Icon = account ? accountIcons[account.type] : Banknote
 
   const nameToSlug: Record<string, string> = {
     'Comida': 'food',
@@ -160,14 +189,24 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       category: nameToSlug[tx.category?.name || ""] || "other",
       amount: tx.amount,
       type: tx.type,
+      rawDate: tx.date,
       date: formatDate(tx.date),
     }))
   }, [rawTransactions])
 
 
   const accountTransactions = useMemo(() => {
-    return transactions.filter((tx) => tx.accountId === accountId)
-  }, [accountId, transactions])
+    const now = new Date()
+    return transactions.filter((tx) => {
+      if (tx.accountId !== accountId) return false
+      if (dateFilter === "all") return true
+      const txDate = new Date(tx.rawDate)
+      if (dateFilter === "week") {
+        return now.getTime() - txDate.getTime() <= 7 * 24 * 60 * 60 * 1000
+      }
+      return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+    })
+  }, [accountId, dateFilter, transactions])
 
   const monthlyIncome = accountTransactions
     .filter((tx) => tx.type === "income")
@@ -215,6 +254,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         credit_limit: editForm.type === "credit" ? Number(editForm.credit_limit || 0) : null,
         closing_date: editForm.type === "credit" ? Number(editForm.closing_date || 0) : null,
         due_date: editForm.type === "credit" ? Number(editForm.due_date || 0) : null,
+        icon_url: editForm.icon_url || null,
+        icon_type: editForm.icon_type,
+        icon_value: editForm.icon_value,
+        primary_color: editForm.primary_color,
+        secondary_color: editForm.secondary_color,
+        background_style: editForm.background_style,
       })
       mutate("accounts")
       notify({ title: "Cuenta actualizada", message: "Los cambios fueron guardados exitosamente." })
@@ -246,6 +291,32 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const parsedAmount = parseFloat(paymentAmount.replace(/[^0-9.]/g, "")) || 0
   const sourceAccount = accounts.find((a) => a.id === paymentSource)
 
+  const uploadAccountLogo = async (file?: File) => {
+    if (!file) return
+    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
+    if (!validTypes.includes(file.type) || file.size > 2 * 1024 * 1024) {
+      notify({ title: "Archivo no válido", message: "Usa PNG/JPG/WEBP y máximo 2MB." })
+      return
+    }
+
+    setIsUploadingLogo(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const ext = file.name.split(".").pop() || "png"
+      const path = `${user.id}/accounts/${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from("account-logos").upload(path, file, { upsert: true, contentType: file.type })
+      if (error) throw error
+      const { data } = supabase.storage.from("account-logos").getPublicUrl(path)
+      setEditForm((prev) => ({ ...prev, icon_url: data.publicUrl, icon_type: "image" }))
+    } catch {
+      notify({ title: "Error", message: "No se pudo subir el logo." })
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }
+
   if (!account) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -255,21 +326,26 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }
 
   const isCredit = account.type === "credit"
+  const rawAccount = rawAccounts.find((a) => a.id === accountId)
+  const brandingDefaults = getAccountBrandingDefaults(account.type)
+  const headerPrimary = rawAccount?.primary_color || brandingDefaults.primaryColor
+  const headerSecondary = rawAccount?.secondary_color || brandingDefaults.secondaryColor
+  const headerStyle = rawAccount?.background_style || "gradient"
+  const headerTextColor = getReadableTextColor(headerPrimary)
+  const headerBackground = headerStyle === "solid"
+    ? `linear-gradient(145deg, color-mix(in oklab, ${headerPrimary} 88%, white), color-mix(in oklab, ${headerPrimary} 72%, white))`
+    : headerStyle === "glass"
+    ? `linear-gradient(145deg, color-mix(in oklab, ${headerPrimary} 70%, white), color-mix(in oklab, ${headerSecondary} 65%, white))`
+    : `linear-gradient(145deg, color-mix(in oklab, ${headerPrimary} 82%, white), color-mix(in oklab, ${headerSecondary} 72%, white))`
 
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
-      {/* Header with gradient */}
-      <div
-        className={cn(
-          "bg-gradient-to-br px-6 pb-8 pt-8",
-          accountGradients[account.type]
-        )}
-      >
+      <div className="px-6 pb-8 pt-8" style={{ background: headerBackground, color: headerTextColor }}>
         {/* Header Actions */}
         <div className="mb-6 flex items-center justify-between">
           <Link
             href="/accounts"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -284,85 +360,37 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   credit_limit: String(account.creditLimit || 0),
                   closing_date: String(account.cutoffDate || ""),
                   due_date: String(account.dueDate || ""),
+                  icon_url: String(rawAccounts.find((a) => a.id === accountId)?.icon_url || ""),
+                  icon_type: (rawAccounts.find((a) => a.id === accountId)?.icon_type || "icon") as "emoji" | "icon" | "image",
+                  icon_value: String(rawAccounts.find((a) => a.id === accountId)?.icon_value || "building-2"),
+                  primary_color: String(rawAccounts.find((a) => a.id === accountId)?.primary_color || "#0b4a8a"),
+                  secondary_color: String(rawAccounts.find((a) => a.id === accountId)?.secondary_color || "#38bdf8"),
+                  background_style: String(rawAccounts.find((a) => a.id === accountId)?.background_style || "gradient"),
                 })
                 setShowEditModal(true)
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 transition-colors hover:bg-black/20"
             >
               <Settings className="h-5 w-5" />
             </button>
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white transition-colors hover:bg-white/30"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 transition-colors hover:bg-black/20"
             >
               <Trash2 className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Account info */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-            <Icon className="h-6 w-6 text-white" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-white/80">{account.name}</p>
-              <p className="text-3xl font-bold text-white">
-                {isCredit
-                ? formatCurrency(account.currentDebt || 0)
-                : formatCurrency(account.balance)}
-              </p>
-          </div>
-        </div>
+        <BrandedAccountCard account={rawAccount || rawAccounts[0]} />
 
-        {/* Credit card specific info */}
         {isCredit && account.creditLimit && (
           <div className="mt-6 space-y-4">
-            {/* Usage bar */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm text-white/80">
-                <span>Disponible</span>
-                <span className="font-semibold text-white">
-                  {formatCurrency(getAvailableCredit(account))}
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
-                <div
-                  className="h-full rounded-full bg-white transition-all"
-                  style={{
-                    width: `${((account.currentDebt || 0) / account.creditLimit) * 100}%`,
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between text-xs text-white/60">
-                <span>Límite: {formatCurrency(account.creditLimit)}</span>
-                <span>
-                  {Math.round(((account.currentDebt || 0) / account.creditLimit) * 100)}% usado
-                </span>
-              </div>
-            </div>
-
-            {/* Billing dates */}
-            <div className="flex gap-4 rounded-2xl bg-white/10 p-4">
-              <div className="flex-1">
-                <p className="text-xs text-white/60">Fecha de corte</p>
-                <p className="mt-1 font-semibold text-white">
-                  {account.cutoffDate} de cada mes
-                </p>
-              </div>
-              <div className="w-px bg-white/20" />
-              <div className="flex-1">
-                <p className="text-xs text-white/60">Fecha de pago</p>
-                <p className="mt-1 font-semibold text-white">
-                  {account.dueDate} de cada mes
-                </p>
-              </div>
-            </div>
-
+            
             {/* Pay button */}
             <Button
               onClick={() => setShowPayment(true)}
-              className="h-12 w-full rounded-2xl bg-white text-orange-600 hover:bg-white/90"
+              className="h-12 w-full rounded-2xl bg-white/85 text-foreground hover:bg-white"
             >
               Pagar tarjeta
             </Button>
@@ -518,9 +546,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             </Button>
           }
         >
-            <div className="rounded-2xl bg-orange-50 p-4">
-              <p className="text-xs text-orange-600">Deuda actual</p>
-              <p className="mt-1 text-2xl font-bold text-orange-600">
+            <div className="rounded-2xl bg-muted p-4">
+              <p className="text-xs text-muted-foreground">Deuda actual</p>
+              <p className="mt-1 text-2xl font-bold text-foreground">
                 {formatCurrency(account.currentDebt || 0)}
               </p>
             </div>
@@ -734,6 +762,112 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   </div>
                 </>
               )}
+
+              <div className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4">
+                <p className="text-sm font-semibold text-foreground">Personalización visual</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {(["icon", "emoji", "image"] as const).map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setEditForm({ ...editForm, icon_type: value })}
+                      className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", editForm.icon_type === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                    >
+                      {value === "icon" ? "Ícono" : value === "emoji" ? "Emoji" : "Logo"}
+                    </button>
+                  ))}
+                </div>
+
+                {editForm.icon_type === "image" ? (
+                  <div>
+                    <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => void uploadAccountLogo(e.target.files?.[0])} className="text-xs" />
+                    {isUploadingLogo && <p className="mt-1 text-xs text-muted-foreground">Subiendo logo...</p>}
+                  </div>
+                ) : editForm.icon_type === "emoji" ? (
+                  <div className="grid grid-cols-8 gap-2">
+                    {DETAIL_EMOJI_PRESETS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        onClick={() => setEditForm({ ...editForm, icon_value: emoji })}
+                        className={cn("rounded-lg p-2 text-lg", editForm.icon_value === emoji ? "bg-primary/15 ring-1 ring-primary" : "bg-muted")}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {DETAIL_ICON_PRESETS.map((preset) => (
+                      <button
+                        key={preset.value}
+                        onClick={() => setEditForm({ ...editForm, icon_value: preset.value })}
+                        className={cn("flex flex-col items-center gap-1 rounded-xl p-2 text-[10px]", editForm.icon_value === preset.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                      >
+                        <preset.icon className="h-4 w-4" />
+                        <span>{preset.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {editForm.icon_type !== "image" && (
+                  <input
+                    value={editForm.icon_value}
+                    onChange={(e) => setEditForm({ ...editForm, icon_value: e.target.value })}
+                    className="w-full rounded-xl bg-muted px-3 py-2 text-sm"
+                    placeholder={editForm.icon_type === "emoji" ? "💳" : "credit-card"}
+                  />
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  {DETAIL_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.name}
+                      onClick={() => setEditForm({ ...editForm, primary_color: preset.primary, secondary_color: preset.secondary })}
+                      className="rounded-xl border border-border bg-background p-2 text-left"
+                    >
+                      <div className="h-5 rounded-md" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
+                      <p className="mt-1 text-[10px] text-muted-foreground">{preset.name}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="color" value={editForm.primary_color} onChange={(e) => setEditForm({ ...editForm, primary_color: e.target.value })} className="h-10 w-full rounded-lg" />
+                  <input type="color" value={editForm.secondary_color} onChange={(e) => setEditForm({ ...editForm, secondary_color: e.target.value })} className="h-10 w-full rounded-lg" />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {(["gradient", "solid", "glass"] as const).map((style) => (
+                    <button
+                      key={style}
+                      onClick={() => setEditForm({ ...editForm, background_style: style })}
+                      className={cn("rounded-lg px-2 py-1 text-xs", editForm.background_style === style ? "bg-primary text-primary-foreground" : "bg-muted")}
+                    >
+                      {style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Soft"}
+                    </button>
+                  ))}
+                </div>
+
+                <BrandedAccountCard
+                  compact
+                  account={{
+                    ...(rawAccounts.find((a) => a.id === accountId) || rawAccounts[0]),
+                    name: editForm.name,
+                    type: editForm.type,
+                    currency: editForm.currency,
+                    balance: Number(editForm.balance || 0),
+                    credit_limit: editForm.type === "credit" ? Number(editForm.credit_limit || 0) : null,
+                    closing_date: editForm.type === "credit" ? Number(editForm.closing_date || 0) : null,
+                    due_date: editForm.type === "credit" ? Number(editForm.due_date || 0) : null,
+                    icon_url: editForm.icon_url || null,
+                    icon_type: editForm.icon_type,
+                    icon_value: editForm.icon_value,
+                    primary_color: editForm.primary_color,
+                    secondary_color: editForm.secondary_color,
+                    background_style: editForm.background_style,
+                  }}
+                />
+              </div>
             </div>
           </BaseModalForm>
         )}

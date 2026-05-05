@@ -55,7 +55,15 @@ export interface Account {
   minimum_payment: number | null
   color: string
   icon: string
+  icon_url: string | null
+  icon_type: "emoji" | "icon" | "image" | null
+  icon_value: string | null
+  primary_color: string | null
+  secondary_color: string | null
+  background_style: string | null
   is_active: boolean
+  sort_order: number | null
+  is_favorite: boolean
   created_at: string
   updated_at: string
 }
@@ -74,6 +82,8 @@ export interface Transaction {
   date: string
   notes: string | null
   is_recurring: boolean
+  parent_transaction_id: string | null
+  metadata: Record<string, unknown> | null
   created_at: string
   // Joined fields
   category?: Category

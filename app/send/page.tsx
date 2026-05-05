@@ -37,6 +37,7 @@ export default function SendPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [amount, setAmount] = useState("")
   const [description, setDescription] = useState("")
+  const [applyCommission, setApplyCommission] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
 
@@ -87,7 +88,9 @@ export default function SendPage() {
   const selectedBeneficiary = beneficiaries.find(b => b.id === selectedRecipient)
   const parsedAmount = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0
   const availableBalance = selectedSourceAccount?.balance || 0
-  const exceedsBalance = parsedAmount > availableBalance
+  const commissionAmount = applyCommission ? Math.round(parsedAmount * 0.15) / 100 : 0
+  const totalAmount = parsedAmount + commissionAmount
+  const exceedsBalance = totalAmount > availableBalance
 
   const isValid = parsedAmount > 0 && !exceedsBalance && selectedRecipient
 
@@ -102,6 +105,7 @@ export default function SendPage() {
         amount: parsedAmount,
         currency: selectedSourceAccount?.currency || "DOP",
         description: description || undefined,
+        apply_commission: applyCommission,
       })
       setIsSending(false)
       setShowSuccess(true)
@@ -330,9 +334,23 @@ export default function SendPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Disponible: {formatCurrency(availableBalance)}
               </p>
+              <button
+                onClick={() => setApplyCommission((prev) => !prev)}
+                className={cn(
+                  "mt-2 rounded-full px-3 py-1 text-xs font-medium",
+                  applyCommission ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                )}
+              >
+                Comisión 0.15%
+              </button>
+              {applyCommission && parsedAmount > 0 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Comisión: {formatCurrency(commissionAmount)} · Total: {formatCurrency(totalAmount)}
+                </p>
+              )}
               {exceedsBalance && (
                 <p className="mt-1 text-xs text-red-500">
-                  No puedes mover más dinero del que tienes en esta cuenta.
+                  El monto más comisión excede tu balance disponible.
                 </p>
               )}
             </div>
@@ -389,9 +407,15 @@ export default function SendPage() {
               <div className="my-4 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Monto</span>
                 <span className="text-3xl font-bold text-foreground">
-                  RD${parsedAmount.toLocaleString()}
+                  RD${totalAmount.toLocaleString()}
                 </span>
               </div>
+              {applyCommission && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Comisión</span>
+                  <span className="font-medium">RD${commissionAmount.toLocaleString()}</span>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Desde</span>
                 <span className="font-medium">{selectedSourceAccount?.name}</span>

@@ -19,13 +19,15 @@ import {
   User,
   Smartphone,
   Trash2,
+  Plus,
+  Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Switch } from "@/components/ui/switch"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { createClient } from "@/lib/supabase/client"
-import { useProfile, updateProfile } from "@/hooks/use-data"
+import { useProfile, useCategories, updateProfile, createCategory, updateCategory, deleteCategory } from "@/hooks/use-data"
 import { setPreferredCurrency } from "@/lib/data"
 import type { Theme, Currency } from "@/lib/types/database"
 
@@ -33,6 +35,7 @@ export function SettingsScreen() {
   const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { data: profile } = useProfile()
+  const { data: categories = [] } = useCategories()
 
   const [primaryCurrency, setPrimaryCurrency] = useState<Currency>("DOP")
   const [currentTheme, setCurrentTheme] = useState<Theme>(theme)
@@ -51,6 +54,12 @@ export function SettingsScreen() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
   const [deleteConfirmationText, setDeleteConfirmationText] = useState("")
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null)
+  const [categoryName, setCategoryName] = useState("")
+  const [categoryIcon, setCategoryIcon] = useState("circle")
+  const [categoryColor, setCategoryColor] = useState("#64748b")
+  const [categoryType, setCategoryType] = useState<"expense" | "income" | "both">("expense")
 
   useEffect(() => {
     if (profile) {
@@ -154,6 +163,53 @@ export function SettingsScreen() {
       setDeleteAccountError("No se pudo completar la solicitud. Intenta de nuevo.")
     } finally {
       setIsDeletingAccount(false)
+    }
+  }
+
+  const editableCategories = categories.filter((c) => !c.is_default)
+
+  const openNewCategory = () => {
+    setEditingCategoryId(null)
+    setCategoryName("")
+    setCategoryIcon("circle")
+    setCategoryColor("#64748b")
+    setCategoryType("expense")
+    setShowCategoryModal(true)
+  }
+
+  const openEditCategory = (id: string) => {
+    const target = editableCategories.find((c) => c.id === id)
+    if (!target) return
+    setEditingCategoryId(id)
+    setCategoryName(target.name)
+    setCategoryIcon(target.icon)
+    setCategoryColor(target.color)
+    setCategoryType(target.type)
+    setShowCategoryModal(true)
+  }
+
+  const saveCategory = async () => {
+    if (!categoryName.trim()) return
+    const payload = {
+      name: categoryName.trim(),
+      icon: categoryIcon,
+      color: categoryColor,
+      type: categoryType,
+    }
+
+    if (editingCategoryId) {
+      await updateCategory(editingCategoryId, payload)
+    } else {
+      await createCategory({ ...payload, is_default: false })
+    }
+    setShowCategoryModal(false)
+  }
+
+  const removeCategory = async (id: string) => {
+    try {
+      await deleteCategory(id)
+    } catch {
+      await deleteCategory(id, true)
     }
   }
 
@@ -301,6 +357,43 @@ export function SettingsScreen() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Categorias</h2>
+            <button onClick={openNewCategory} className="flex items-center gap-1 text-xs font-semibold text-primary">
+              <Plus className="h-3.5 w-3.5" /> Nueva
+            </button>
+          </div>
+          <div className="overflow-hidden rounded-2xl bg-card">
+            {editableCategories.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">Aun no tienes categorias personalizadas.</div>
+            ) : (
+              editableCategories.map((cat, index) => (
+                <div key={cat.id}>
+                  {index > 0 && <div className="mx-4 h-px bg-border" />}
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                      <div>
+                        <p className="font-medium text-foreground">{cat.name}</p>
+                        <p className="text-xs text-muted-foreground">{cat.type}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => openEditCategory(cat.id)} className="rounded-lg bg-muted p-2">
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button onClick={() => removeCategory(cat.id)} className="rounded-lg bg-red-50 p-2 text-red-600">
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -468,6 +561,49 @@ export function SettingsScreen() {
                 {deleteAccountError}
               </p>
             )}
+          </div>
+        </BaseModalForm>
+      )}
+
+      {showCategoryModal && (
+        <BaseModalForm
+          title={editingCategoryId ? "Editar categoria" : "Nueva categoria"}
+          onClose={() => setShowCategoryModal(false)}
+          footer={<button onClick={saveCategory} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
+        >
+          <div className="space-y-4 pb-safe-areas">
+            <input
+              value={categoryName}
+              onChange={(e) => setCategoryName(e.target.value)}
+              placeholder="Nombre"
+              className="h-12 w-full rounded-xl border border-border bg-background px-4"
+            />
+            <input
+              value={categoryIcon}
+              onChange={(e) => setCategoryIcon(e.target.value)}
+              placeholder="Icono"
+              className="h-12 w-full rounded-xl border border-border bg-background px-4"
+            />
+            <input
+              value={categoryColor}
+              onChange={(e) => setCategoryColor(e.target.value)}
+              placeholder="#64748b"
+              className="h-12 w-full rounded-xl border border-border bg-background px-4"
+            />
+            <div className="flex gap-2">
+              {(["expense", "income", "both"] as const).map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setCategoryType(type)}
+                  className={cn(
+                    "flex-1 rounded-xl px-3 py-2 text-sm",
+                    categoryType === type ? "bg-primary text-primary-foreground" : "bg-muted"
+                  )}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
           </div>
         </BaseModalForm>
       )}
