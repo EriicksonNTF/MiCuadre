@@ -246,14 +246,19 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     if (!editForm.name) return
     setIsEditing(true)
     try {
+      const parsedBalance = Number(editForm.balance || 0)
+      const parsedCreditLimit = Number(editForm.credit_limit || 0)
+      const parsedClosingDate = editForm.type === "credit" && editForm.closing_date ? Number(editForm.closing_date) : null
+      const parsedDueDate = editForm.type === "credit" && editForm.due_date ? Number(editForm.due_date) : null
+
       await updateAccount(accountId, {
         name: editForm.name,
         type: editForm.type,
         currency: editForm.currency,
-        balance: Number(editForm.balance || 0),
-        credit_limit: editForm.type === "credit" ? Number(editForm.credit_limit || 0) : null,
-        closing_date: editForm.type === "credit" ? Number(editForm.closing_date || 0) : null,
-        due_date: editForm.type === "credit" ? Number(editForm.due_date || 0) : null,
+        balance: parsedBalance,
+        credit_limit: editForm.type === "credit" ? parsedCreditLimit : null,
+        closing_date: parsedClosingDate,
+        due_date: parsedDueDate,
         icon_url: editForm.icon_url || null,
         icon_type: editForm.icon_type,
         icon_value: editForm.icon_value,
@@ -267,6 +272,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       setShowEditModal(false)
     } catch (error) {
       console.error(error)
+      const message = error instanceof Error ? error.message : "No se pudo actualizar la cuenta"
+      notify({ title: "Error al guardar", message })
     } finally {
       setIsEditing(false)
     }

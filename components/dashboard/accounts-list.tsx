@@ -41,7 +41,7 @@ export function AccountsList() {
         </div>
         <div className="space-y-3">
           {(showAllCredit ? creditAccounts : creditAccounts.slice(0, 1)).map((account) => (
-            <BrandedAccountCard key={account.id} account={account} compact />
+            <div key={account.id} className="group"><BrandedAccountCard account={account} compact /></div>
           ))}
           {creditAccounts.length === 0 && <div className="rounded-2xl bg-card p-4 text-xs text-muted-foreground">No hay tarjetas de credito.</div>}
         </div>
@@ -59,7 +59,7 @@ export function AccountsList() {
         </div>
         <div className="space-y-3">
           {(showAllCashDebit ? cashDebitAccounts : cashDebitAccounts.slice(0, 1)).map((account) => (
-            <BrandedAccountCard key={account.id} account={account} compact />
+            <div key={account.id} className="group"><BrandedAccountCard account={account} compact /></div>
           ))}
         </div>
       </div>

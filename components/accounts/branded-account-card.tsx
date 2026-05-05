@@ -42,7 +42,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
 
   return (
     <div
-      className={cn("relative overflow-hidden rounded-[1.7rem] p-5 shadow-lg", className)}
+      className={cn("relative overflow-hidden rounded-[1.7rem] p-5 shadow-lg transition-all duration-300", className)}
       style={{ background, color: textColor }}
     >
       <div className="absolute right-[-20px] top-[-24px] h-28 w-28 rounded-full bg-white/10" />
@@ -54,7 +54,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           <h3 className="truncate text-lg font-semibold">{account.name}</h3>
           <p className="text-xs opacity-80">{accountTypeLabel}</p>
         </div>
-        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/20">
+        <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/20 transition-transform duration-300 group-hover:scale-105">
           {iconType === "image" && account.icon_url ? (
             <img
               src={account.icon_url}

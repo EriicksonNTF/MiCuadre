@@ -207,7 +207,7 @@ export function AccountsScreen() {
       <div className="space-y-4 px-6 pt-4">
         {accounts.map((account) => (
           <div key={account.id} className="space-y-2">
-            <Link href={`/accounts/${account.id}`} className="block transition-transform active:scale-[0.98]">
+            <Link href={`/accounts/${account.id}`} className="group block transition-transform active:scale-[0.98]">
               <BrandedAccountCard account={account} />
             </Link>
             <div className="flex items-center justify-end gap-2">
