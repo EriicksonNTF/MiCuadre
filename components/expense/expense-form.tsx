@@ -42,9 +42,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { MoneyInput } from "@/components/ui/money-input"
 import { useAccounts, useCategories, createTransaction } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
+import { getLocalDateString } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import type { AccountType } from "@/lib/types/database"
@@ -165,7 +167,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         amount: parsedAmount,
         currency: currency,
         description: description,
-        date: date.toISOString(),
+        date: getLocalDateString(date),
         notes: null,
         is_recurring: false,
         amount_base: parsedAmount,
@@ -260,11 +262,9 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
             <span className="text-2xl font-medium text-muted-foreground">
               {currency === "DOP" ? "RD$" : "US$"}
             </span>
-            <input
-              type="text"
-              inputMode="decimal"
+            <MoneyInput
               value={amount}
-              onChange={(e) => handleAmountChange(e.target.value)}
+              onValueChange={handleAmountChange}
               placeholder="0"
               className="w-full max-w-[200px] bg-transparent text-center text-5xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
               autoFocus

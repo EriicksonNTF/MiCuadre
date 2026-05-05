@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { MoneyInput } from "@/components/ui/money-input"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, createAccount, createTransfer } from "@/hooks/use-data"
@@ -340,7 +341,7 @@ export function AccountsScreen() {
                   <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
                   <div className="flex items-center gap-2 rounded-xl bg-muted p-4">
                     <span className="text-lg font-medium text-muted-foreground">RD$</span>
-                    <input type="text" inputMode="decimal" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0"
+                    <MoneyInput value={transferAmount} onValueChange={setTransferAmount} placeholder="0"
                       className="flex-1 bg-transparent text-2xl font-bold outline-none" />
                   </div>
                   {selectedFromAccount && (
@@ -410,7 +411,7 @@ export function AccountsScreen() {
                   <label className="mb-2 block text-sm font-medium">Balance inicial</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg text-muted-foreground">{accountCurrency === "DOP" ? "RD$" : "US$"}</span>
-                    <input type="text" inputMode="decimal" value={initialBalance} onChange={(e) => setInitialBalance(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0"
+                    <MoneyInput value={initialBalance} onValueChange={setInitialBalance} placeholder="0"
                       className="w-full rounded-2xl border border-border bg-background py-4 pl-14 pr-4 text-xl font-bold" />
                   </div>
                 </div>
@@ -421,7 +422,7 @@ export function AccountsScreen() {
                       <label className="mb-2 block text-xs text-muted-foreground">Límite de crédito</label>
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">{accountCurrency === "DOP" ? "RD$" : "US$"}</span>
-                        <input type="text" inputMode="decimal" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="0"
+                        <MoneyInput value={creditLimit} onValueChange={setCreditLimit} placeholder="0"
                           className="w-full rounded-xl border border-border bg-background py-3 pl-10 pr-4" />
                       </div>
                     </div>

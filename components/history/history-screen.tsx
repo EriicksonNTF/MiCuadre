@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useDeferredValue } from "react"
 import {
   Search,
   SlidersHorizontal,
@@ -26,10 +26,12 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { MoneyInput } from "@/components/ui/money-input"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateTransaction, deleteTransaction } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/data"
+import { getLocalDateString } from "@/lib/data"
 import type { AccountType } from "@/lib/types/database"
 
 
@@ -65,11 +67,32 @@ const accountIcons: Record<AccountType, typeof Banknote> = {
   credit: CreditCard,
 }
 
+const nameToSlug: Record<string, string> = {
+  Comida: "food",
+  Transporte: "transport",
+  Entretenimiento: "entertainment",
+  Compras: "shopping",
+  Servicios: "utilities",
+  Salud: "health",
+  Educacion: "education",
+  Hogar: "other",
+  Supermercado: "shopping",
+  Suscripciones: "utilities",
+  "Otros Gastos": "other",
+  Salario: "income",
+  Freelance: "income",
+  Inversiones: "income",
+  Regalos: "other",
+  Reembolsos: "income",
+  "Otros Ingresos": "income",
+}
+
 type TransactionType = "all" | "income" | "expense"
 type DateRange = "today" | "week" | "month" | "all"
 
 export function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("")
+  const deferredSearchQuery = useDeferredValue(searchQuery)
   const [typeFilter, setTypeFilter] = useState<TransactionType>("all")
   const [accountFilter, setAccountFilter] = useState<string>("all")
   const [dateFilter, setDateFilter] = useState<DateRange>("month")
@@ -85,26 +108,6 @@ export function HistoryScreen() {
   const { data: rawAccounts = [] } = useAccounts()
 
   const { data: rawTransactions = [] } = useTransactions(100)
-
-  const nameToSlug: Record<string, string> = {
-    'Comida': 'food',
-    'Transporte': 'transport',
-    'Entretenimiento': 'entertainment',
-    'Compras': 'shopping',
-    'Servicios': 'utilities',
-    'Salud': 'health',
-    'Educacion': 'education',
-    'Hogar': 'other',
-    'Supermercado': 'shopping',
-    'Suscripciones': 'utilities',
-    'Otros Gastos': 'other',
-    'Salario': 'income',
-    'Freelance': 'income',
-    'Inversiones': 'income',
-    'Regalos': 'other',
-    'Reembolsos': 'income',
-    'Otros Ingresos': 'income',
-  }
 
   const accounts = useMemo(() => {
     return rawAccounts.map(acc => ({
@@ -140,9 +143,11 @@ export function HistoryScreen() {
 
 
   const filteredTransactions = useMemo(() => {
+    const normalizedSearch = deferredSearchQuery.trim().toLowerCase()
+
     return transactions.filter((tx) => {
       // Search filter
-      if (searchQuery && !tx.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      if (normalizedSearch && !tx.title.toLowerCase().includes(normalizedSearch)) {
         return false
       }
       // Type filter
@@ -153,9 +158,22 @@ export function HistoryScreen() {
       if (accountFilter !== "all" && tx.accountId !== accountFilter) {
         return false
       }
+      if (dateFilter === "today") {
+        return tx.date === getLocalDateString()
+      }
+      if (dateFilter === "week") {
+        const txDate = new Date(tx.date)
+        const now = new Date()
+        return now.getTime() - txDate.getTime() <= 7 * 24 * 60 * 60 * 1000
+      }
+      if (dateFilter === "month") {
+        const txDate = new Date(tx.date)
+        const now = new Date()
+        return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+      }
       return true
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-  }, [searchQuery, typeFilter, accountFilter, dateFilter])
+  }, [transactions, deferredSearchQuery, typeFilter, accountFilter, dateFilter])
 
   const openEdit = (txId: string) => {
     const tx = transactions.find((item) => item.id === txId)
@@ -165,7 +183,7 @@ export function HistoryScreen() {
     setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
     setEditType(tx.type)
     setEditAccountId(tx.accountId)
-    setEditDate(new Date(tx.date).toISOString().slice(0, 10))
+    setEditDate(getLocalDateString(new Date(tx.date)))
     setEditCategoryId(tx.categoryId)
   }
 
@@ -179,7 +197,7 @@ export function HistoryScreen() {
         type: editType,
         amount,
         description: editDescription || null,
-        date: new Date(`${editDate}T12:00:00`).toISOString(),
+        date: editDate,
         category_id: editCategoryId,
         notes: null,
         currency: "DOP",
@@ -207,13 +225,15 @@ export function HistoryScreen() {
     }
   }
 
-  const totalIncome = filteredTransactions
-    .filter((tx) => tx.type === "income")
-    .reduce((sum, tx) => sum + tx.amount, 0)
-
-  const totalExpenses = filteredTransactions
-    .filter((tx) => tx.type === "expense")
-    .reduce((sum, tx) => sum + tx.amount, 0)
+  const totals = useMemo(() => {
+    let income = 0
+    let expenses = 0
+    for (const tx of filteredTransactions) {
+      if (tx.type === "income") income += tx.amount
+      else expenses += tx.amount
+    }
+    return { income, expenses }
+  }, [filteredTransactions])
 
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
@@ -364,7 +384,7 @@ export function HistoryScreen() {
             <span className="text-xs text-muted-foreground">Ingresos</span>
           </div>
           <p className="mt-2 text-lg font-bold text-emerald-600">
-            +{formatCurrency(totalIncome)}
+            +{formatCurrency(totals.income)}
           </p>
         </div>
         <div className="flex-1 rounded-2xl bg-card p-4">
@@ -375,7 +395,7 @@ export function HistoryScreen() {
             <span className="text-xs text-muted-foreground">Gastos</span>
           </div>
           <p className="mt-2 text-lg font-bold text-red-600">
-            -{formatCurrency(totalExpenses)}
+            -{formatCurrency(totals.expenses)}
           </p>
         </div>
       </div>
@@ -465,7 +485,7 @@ export function HistoryScreen() {
         >
           <div className="space-y-3 pt-2">
             <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripción" />
-            <input className="w-full rounded-xl border bg-background px-3 py-3" inputMode="decimal" value={editAmount} onChange={(e) => setEditAmount(e.target.value.replace(/[^0-9.]/g, ""))} placeholder="Monto" />
+            <MoneyInput className="w-full rounded-xl border bg-background px-3 py-3" value={editAmount} onValueChange={setEditAmount} placeholder="Monto" />
             <input className="w-full rounded-xl border bg-background px-3 py-3" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
             <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}>
               <option value="income">Ingreso</option>

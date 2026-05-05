@@ -13,8 +13,193 @@ import type {
   Transfer,
   GoalContribution,
 } from "@/lib/types/database"
+import { getLocalDateString } from "@/lib/data"
+import { getCycleDates } from "@/lib/credit-cycle"
+
+type CreditAccountState = {
+  id: string
+  user_id: string
+  name: string
+  currency: string
+  current_debt: number | null
+  statement_balance: number | null
+  pending_amount: number | null
+  paid_amount: number | null
+  closing_date: number | null
+  due_date: number | null
+  cycle_start_date: string | null
+  cycle_end_date: string | null
+}
 
 const supabase = createClient()
+let lastCreditSyncDay: string | null = null
+let creditCycleSchemaChecked = false
+let hasCreditCycleSchema = true
+let hasNotificationMetadataSchema = true
+
+async function ensureCreditSchemas() {
+  if (creditCycleSchemaChecked) {
+    return {
+      hasCreditCycleSchema,
+      hasNotificationMetadataSchema,
+    }
+  }
+
+  const { error: accountSchemaError } = await supabase
+    .from("accounts")
+    .select("statement_balance, pending_amount, paid_amount, cycle_start_date, cycle_end_date")
+    .limit(1)
+
+  hasCreditCycleSchema = !accountSchemaError
+
+  const { error: notificationSchemaError } = await supabase
+    .from("notifications")
+    .select("metadata")
+    .limit(1)
+
+  hasNotificationMetadataSchema = !notificationSchemaError
+  creditCycleSchemaChecked = true
+
+  return {
+    hasCreditCycleSchema,
+    hasNotificationMetadataSchema,
+  }
+}
+
+async function upsertCreditNotification(params: {
+  userId: string
+  title: string
+  message: string
+  metadata: Record<string, unknown>
+}) {
+  const schema = await ensureCreditSchemas()
+  if (!schema.hasNotificationMetadataSchema) return
+
+  const { userId, title, message, metadata } = params
+  const today = getLocalDateString()
+  const tomorrowDate = new Date(today)
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrow = getLocalDateString(tomorrowDate)
+  const { data: existing } = await supabase
+    .from("notifications")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("type", "credit")
+    .gte("created_at", `${today}T00:00:00`)
+    .lt("created_at", `${tomorrow}T00:00:00`)
+    .contains("metadata", { kind: metadata.kind, account_id: metadata.account_id })
+    .limit(1)
+
+  if (existing && existing.length > 0) return
+
+  await supabase.from("notifications").insert({
+    user_id: userId,
+    title,
+    message,
+    type: "credit",
+    read: false,
+    action_url: "/pay",
+    metadata,
+  })
+}
+
+async function syncCreditAccountCycle(creditAccountId: string) {
+  const schema = await ensureCreditSchemas()
+  if (!schema.hasCreditCycleSchema) return
+
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, user_id, name, currency, current_debt, statement_balance, pending_amount, paid_amount, closing_date, due_date, cycle_start_date, cycle_end_date")
+    .eq("id", creditAccountId)
+    .eq("type", "credit")
+    .single<CreditAccountState>()
+
+  if (!account || !account.closing_date || !account.due_date) return
+
+  const cycle = getCycleDates(account.closing_date, account.due_date)
+  const currentDebt = Number(account.current_debt || 0)
+  const pendingAmount = Number(account.pending_amount ?? currentDebt)
+
+  const needsNewCycle =
+    !account.cycle_end_date ||
+    account.cycle_end_date !== cycle.cycleEndDate
+
+  let statementBalance = Number(account.statement_balance ?? pendingAmount)
+  let nextPendingAmount = pendingAmount
+  let paidAmount = Number(account.paid_amount || 0)
+
+  if (needsNewCycle) {
+    statementBalance = currentDebt
+    nextPendingAmount = currentDebt
+    paidAmount = 0
+  } else {
+    nextPendingAmount = Math.min(pendingAmount, currentDebt)
+  }
+
+  await supabase
+    .from("accounts")
+    .update({
+      statement_balance: statementBalance,
+      pending_amount: nextPendingAmount,
+      paid_amount: paidAmount,
+      cycle_start_date: cycle.cycleStartDate,
+      cycle_end_date: cycle.cycleEndDate,
+    })
+    .eq("id", account.id)
+
+  if (cycle.remainingDays <= 3 && nextPendingAmount > 0) {
+    await upsertCreditNotification({
+      userId: account.user_id,
+      title: `Pago pendiente: ${account.name}`,
+      message: `Te quedan ${cycle.remainingDays} dia(s) para pagar ${nextPendingAmount.toFixed(2)} ${account.currency}.`,
+      metadata: {
+        kind: "credit_payment_due",
+        account_id: account.id,
+        due_date: cycle.dueDate,
+        cycle_start_date: cycle.cycleStartDate,
+        cycle_end_date: cycle.cycleEndDate,
+        pending_amount: nextPendingAmount,
+      },
+    })
+  }
+
+  const isCutoffDay = getLocalDateString() === cycle.cycleEndDate
+  if (isCutoffDay) {
+    await upsertCreditNotification({
+      userId: account.user_id,
+      title: `Corte de tarjeta: ${account.name}`,
+      message: `Tu ciclo cierra hoy con ${statementBalance.toFixed(2)} ${account.currency}.`,
+      metadata: {
+        kind: "credit_cutoff",
+        account_id: account.id,
+        due_date: cycle.dueDate,
+        cycle_start_date: cycle.cycleStartDate,
+        cycle_end_date: cycle.cycleEndDate,
+        statement_balance: statementBalance,
+        pending_amount: nextPendingAmount,
+      },
+    })
+  }
+}
+
+async function refreshAllCreditCycles() {
+  const { data: creditAccounts } = await supabase
+    .from("accounts")
+    .select("id")
+    .eq("type", "credit")
+    .eq("is_active", true)
+
+  if (!creditAccounts || creditAccounts.length === 0) return
+
+  await Promise.all(creditAccounts.map((account) => syncCreditAccountCycle(account.id)))
+}
+
+async function maybeRefreshCreditCycles() {
+  const today = getLocalDateString()
+  if (lastCreditSyncDay === today) return
+  await refreshAllCreditCycles()
+  lastCreditSyncDay = today
+}
 
 async function applyAccountImpact(params: {
   accountId: string
@@ -35,6 +220,7 @@ async function applyAccountImpact(params: {
     const signed = type === "expense" ? amount * direction : -amount * direction
     const nextDebt = Math.max(0, Number(account.current_debt || 0) + signed)
     await supabase.from("accounts").update({ current_debt: nextDebt }).eq("id", accountId)
+    await syncCreditAccountCycle(accountId)
     return
   }
 
@@ -48,6 +234,8 @@ async function applyAccountImpact(params: {
 
 // Generic fetcher for Supabase
 async function fetchAccounts(): Promise<Account[]> {
+  await maybeRefreshCreditCycles()
+
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
@@ -95,6 +283,8 @@ async function fetchGoals(): Promise<Goal[]> {
 }
 
 async function fetchNotifications(): Promise<Notification[]> {
+  await maybeRefreshCreditCycles()
+
   const { data, error } = await supabase
     .from("notifications")
     .select("*")
@@ -166,7 +356,10 @@ export function useGoals() {
 export function useNotifications() {
   return useSWR<Notification[]>("notifications", fetchNotifications, {
     revalidateOnFocus: true,
-    refreshInterval: 30000, // Check for new notifications every 30s
+    refreshInterval: 60000,
+    refreshWhenHidden: false,
+    refreshWhenOffline: false,
+    dedupingInterval: 15000,
   })
 }
 
@@ -184,7 +377,15 @@ export function useBeneficiaries() {
 }
 
 // Mutations
-export async function createAccount(account: Omit<Account, "id" | "user_id" | "created_at" | "updated_at">) {
+type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date"> & {
+  statement_balance?: number | null
+  pending_amount?: number | null
+  paid_amount?: number | null
+  cycle_start_date?: string | null
+  cycle_end_date?: string | null
+}
+
+export async function createAccount(account: NewAccountInput) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
@@ -344,6 +545,7 @@ export async function markNotificationAsRead(id: string) {
     .eq("id", id)
 
   if (error) throw error
+  mutate("notifications")
 }
 
 export async function markAllNotificationsAsRead() {
@@ -357,6 +559,7 @@ export async function markAllNotificationsAsRead() {
     .eq("read", false)
 
   if (error) throw error
+  mutate("notifications")
 }
 
 // Goal mutations
@@ -534,7 +737,7 @@ export async function createTransfer(transfer: {
     amount_base: transfer.amount,
     exchange_rate: 1,
     description: transfer.description || `Transferencia enviada a ${destinationLabel}`,
-    date: new Date().toISOString(),
+    date: getLocalDateString(),
     notes: transfer.description || null,
     is_recurring: false,
   })
@@ -550,7 +753,7 @@ export async function createTransfer(transfer: {
       amount_base: transfer.amount,
       exchange_rate: 1,
       description: transfer.description || "Transferencia recibida",
-      date: new Date().toISOString(),
+      date: getLocalDateString(),
       notes: null,
       is_recurring: false,
     })
@@ -577,7 +780,7 @@ export async function payCreditCard(payment: {
   // Get credit card current debt
   const { data: creditCard } = await supabase
     .from("accounts")
-    .select("current_debt")
+    .select("current_debt, pending_amount, paid_amount")
     .eq("id", payment.credit_account_id)
     .single()
 
@@ -590,9 +793,11 @@ export async function payCreditCard(payment: {
 
   // Reduce credit card debt
   const newDebt = Math.max(0, Number(creditCard.current_debt) - payment.amount)
+  const pendingAmount = Math.max(0, Number(creditCard.pending_amount ?? creditCard.current_debt) - payment.amount)
+  const paidAmount = Number(creditCard.paid_amount || 0) + payment.amount
   await supabase
     .from("accounts")
-    .update({ current_debt: newDebt })
+    .update({ current_debt: newDebt, pending_amount: pendingAmount, paid_amount: paidAmount })
     .eq("id", payment.credit_account_id)
 
   // Get source account balance
@@ -644,10 +849,12 @@ export async function payCreditCard(payment: {
     amount_base: payment.amount,
     exchange_rate: 1,
     description: "Pago de tarjeta de crédito",
-    date: new Date().toISOString(),
+    date: getLocalDateString(),
     notes: payment.notes || null,
     is_recurring: false,
   })
+
+  await syncCreditAccountCycle(payment.credit_account_id)
 
   // Mutate cache
   mutate("accounts")

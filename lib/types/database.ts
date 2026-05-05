@@ -45,6 +45,11 @@ export interface Account {
   balance: number
   credit_limit: number | null
   current_debt: number | null
+  statement_balance: number | null
+  pending_amount: number | null
+  paid_amount: number | null
+  cycle_start_date: string | null
+  cycle_end_date: string | null
   closing_date: number | null
   due_date: number | null
   minimum_payment: number | null
@@ -137,6 +142,7 @@ export interface Notification {
   type: NotificationType
   read: boolean
   action_url: string | null
+  metadata: Record<string, unknown> | null
   created_at: string
 }
 

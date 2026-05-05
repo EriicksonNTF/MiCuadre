@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { useAccounts, payCreditCard } from "@/hooks/use-data"
 import { formatCurrency, getPaymentUrgency, getDaysUntilDue } from "@/lib/data"
 import { PaymentSlider } from "@/components/payment-slider"
+import { MoneyInput } from "@/components/ui/money-input"
 
 export default function PayPage() {
   const router = useRouter()
@@ -36,22 +37,16 @@ export default function PayPage() {
   const selectedSource = nonCreditAccounts.find(a => a.id === sourceAccount)
 
   const currentDebt = selectedCreditCard?.current_debt ?? 0
+  const pendingAmount = selectedCreditCard?.pending_amount ?? currentDebt
   const dueDate = selectedCreditCard?.due_date || 15
   const daysUntilDue = getDaysUntilDue(dueDate)
   const urgency = getPaymentUrgency(daysUntilDue)
 
   const parsedAmount = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0
   const availableSource = selectedSource?.balance || 0
-  const minPayment = Math.min(Number(selectedCreditCard?.credit_limit || 0) * 0.05, currentDebt)
+  const minPayment = Math.min(Number(selectedCreditCard?.credit_limit || 0) * 0.05, pendingAmount)
 
-  const isValid = parsedAmount > 0 && parsedAmount <= currentDebt && parsedAmount <= availableSource && sourceAccount
-
-  const handleAmountChange = (value: string) => {
-    const cleaned = value.replace(/[^0-9.]/g, "")
-    const parts = cleaned.split(".")
-    if (parts.length > 2) return
-    setAmount(cleaned)
-  }
+  const isValid = parsedAmount > 0 && parsedAmount <= pendingAmount && parsedAmount <= availableSource && sourceAccount
 
   const handlePay = async () => {
     if (!isValid) return
@@ -114,7 +109,7 @@ export default function PayPage() {
                       <div className="text-left">
                         <p className="font-medium">{card.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          Deuda: {formatCurrency(card.current_debt || 0)}
+                           Pendiente: {formatCurrency((card.pending_amount ?? card.current_debt) || 0)}
                         </p>
                       </div>
                     </div>
@@ -156,7 +151,7 @@ export default function PayPage() {
                 <div>
                   <p className="font-medium">{selectedCreditCard?.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    Deuda: {formatCurrency(currentDebt)}
+                     Pendiente: {formatCurrency(pendingAmount)}
                   </p>
                 </div>
               </div>
@@ -187,11 +182,9 @@ export default function PayPage() {
               <p className="text-sm text-muted-foreground">Monto a pagar</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-medium text-muted-foreground">RD$</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
+                <MoneyInput
                   value={amount}
-                  onChange={e => handleAmountChange(e.target.value)}
+                  onValueChange={setAmount}
                   placeholder="0"
                   className="w-full bg-transparent text-center text-5xl font-bold outline-none placeholder:text-muted-foreground/30"
                   autoFocus
@@ -206,15 +199,15 @@ export default function PayPage() {
               <button onClick={() => setAmount(minPayment.toFixed(0))} className="rounded-full bg-muted px-4 py-2 text-sm font-medium">
                 Mínimo
               </button>
-              <button onClick={() => setAmount(currentDebt.toFixed(0))} className="rounded-full bg-muted px-4 py-2 text-sm font-medium">
-                Completo
-              </button>
+                <button onClick={() => setAmount(pendingAmount.toFixed(0))} className="rounded-full bg-muted px-4 py-2 text-sm font-medium">
+                  Completo
+                </button>
             </div>
 
             <div className="pb-6 pt-4">
               <Button
                 onClick={() => setStep("confirm")}
-                disabled={parsedAmount <= 0 || parsedAmount > currentDebt || parsedAmount > availableSource}
+                 disabled={parsedAmount <= 0 || parsedAmount > pendingAmount || parsedAmount > availableSource}
                 className="h-14 w-full rounded-2xl text-base font-semibold"
               >
                 Continuar

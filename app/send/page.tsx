@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { useAccounts, useBeneficiaries, createTransfer, createBeneficiary } from "@/hooks/use-data"
 import { formatCurrency } from "@/lib/data"
 import { PaymentSlider } from "@/components/payment-slider"
+import { MoneyInput } from "@/components/ui/money-input"
 import { mutate } from "swr"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { notify } from "@/lib/notifications"
@@ -87,13 +88,6 @@ export default function SendPage() {
   const parsedAmount = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0
   const availableBalance = selectedSourceAccount?.balance || 0
   const exceedsBalance = parsedAmount > availableBalance
-
-  const handleAmountChange = (value: string) => {
-    const cleaned = value.replace(/[^0-9.]/g, "")
-    const parts = cleaned.split(".")
-    if (parts.length > 2) return
-    setAmount(cleaned)
-  }
 
   const isValid = parsedAmount > 0 && !exceedsBalance && selectedRecipient
 
@@ -325,11 +319,9 @@ export default function SendPage() {
               <p className="text-sm text-muted-foreground">Monto a enviar</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-medium text-muted-foreground">RD$</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
+                <MoneyInput
                   value={amount}
-                  onChange={e => handleAmountChange(e.target.value)}
+                  onValueChange={setAmount}
                   placeholder="0"
                   className="w-full bg-transparent text-center text-5xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
                   autoFocus

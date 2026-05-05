@@ -29,6 +29,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { MoneyInput } from "@/components/ui/money-input"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard } from "@/hooks/use-data"
@@ -567,13 +568,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   <span className="text-lg font-medium text-muted-foreground">
                     RD$
                   </span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
+                  <MoneyInput
                     value={paymentAmount}
-                    onChange={(e) =>
-                      setPaymentAmount(e.target.value.replace(/[^0-9.]/g, ""))
-                    }
+                    onValueChange={setPaymentAmount}
                     placeholder="0"
                     className="flex-1 bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
                   />
@@ -699,11 +696,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Balance inicial</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
+                <MoneyInput
                   value={editForm.balance}
-                  onChange={(e) => setEditForm({ ...editForm, balance: e.target.value.replace(/[^0-9.]/g, "") })}
+                  onValueChange={(value) => setEditForm({ ...editForm, balance: value })}
                   className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
                 />
               </div>
@@ -711,11 +706,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
-                    <input
-                      type="text"
-                      inputMode="decimal"
+                    <MoneyInput
                       value={editForm.credit_limit}
-                      onChange={(e) => setEditForm({ ...editForm, credit_limit: e.target.value.replace(/[^0-9.]/g, "") })}
+                      onValueChange={(value) => setEditForm({ ...editForm, credit_limit: value })}
                       className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
                     />
                   </div>

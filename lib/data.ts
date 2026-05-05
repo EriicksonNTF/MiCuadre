@@ -14,15 +14,28 @@ export function getPreferredCurrency(): Currency {
   return preferredDisplayCurrency
 }
 
+export function getLocalDateString(date = new Date()): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+export function formatAmount(value: number): string {
+  const safeValue = Number(value || 0)
+  const hasDecimals = Math.abs(safeValue % 1) > 0
+  const formatter = new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: hasDecimals ? 2 : 0,
+  })
+  return formatter.format(safeValue)
+}
+
 // Utility functions
 export function formatCurrency(amount: number, currency?: Currency) {
   const displayCurrency = currency ?? preferredDisplayCurrency
-  return new Intl.NumberFormat(displayCurrency === "DOP" ? "es-DO" : "en-US", {
-    style: "currency",
-    currency: displayCurrency,
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
+  const symbol = displayCurrency === "DOP" ? "RD$" : "US$"
+  return `${symbol}${formatAmount(amount)}`
 }
 
 export function calculateNetBalance(accounts: Account[]): number {
@@ -40,7 +53,9 @@ export function getAvailableCredit(account: Partial<Account> & { creditLimit?: n
 }
 
 export function formatDate(dateString: string, locale: "es" | "en" = "es"): string {
-  const date = new Date(dateString)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+    ? new Date(`${dateString}T12:00:00`)
+    : new Date(dateString)
   return date.toLocaleDateString(locale === "es" ? "es-DO" : "en-US", {
     day: "numeric",
     month: "short",

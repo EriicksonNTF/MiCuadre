@@ -101,12 +101,17 @@ export default function RootLayout({
                   }
                 }
               });
-              setInterval(() => {
+              const clearStaleLocks = () => {
                 const hasModal = document.querySelector('[data-app-modal="true"]');
                 if (!hasModal) {
                   document.body.classList.remove('modal-open', 'mobile-form-open');
                 }
-              }, 1500);
+              };
+              if ('requestIdleCallback' in window) {
+                window.requestIdleCallback(clearStaleLocks, { timeout: 1200 });
+              } else {
+                setTimeout(clearStaleLocks, 300);
+              }
 
               if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/service-worker.js')

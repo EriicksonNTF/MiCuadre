@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import {
   ChevronLeft,
@@ -10,79 +10,19 @@ import {
   CreditCard,
   Bell,
   Check,
-  Trash2,
-  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/hooks/use-data"
+import { formatDate } from "@/lib/data"
 
-type NotificationType = "transaction" | "goal" | "credit" | "system"
-
-type Notification = {
-  id: string
-  title: string
-  message: string
-  type: NotificationType
-  read: boolean
-  createdAt: string
-  relatedId?: string
-}
-
-const mockNotifications: Notification[] = [
-  {
-    id: "1",
-    title: "Gasto registrado",
-    message: "Se registró un gasto de RD$2,850 en Comida",
-    type: "transaction",
-    read: false,
-    createdAt: "Hace 5 min",
-  },
-  {
-    id: "2",
-    title: "Meta alcanzada al 80%",
-    message: "Tu meta 'Viaje a Punta Cana' está casi completa",
-    type: "goal",
-    read: false,
-    createdAt: "Hace 1 hora",
-  },
-  {
-    id: "3",
-    title: "Fecha de corte próxima",
-    message: "Tu tarjeta Visa Platinum corta en 3 días",
-    type: "credit",
-    read: false,
-    createdAt: "Hace 2 horas",
-  },
-  {
-    id: "4",
-    title: "Ingreso registrado",
-    message: "Se registró un ingreso de RD$85,000",
-    type: "transaction",
-    read: true,
-    createdAt: "Ayer",
-  },
-  {
-    id: "5",
-    title: "Pago realizado",
-    message: "Pagaste RD$15,000 a tu tarjeta de crédito",
-    type: "credit",
-    read: true,
-    createdAt: "Ayer",
-  },
-  {
-    id: "6",
-    title: "Nueva meta creada",
-    message: "Creaste la meta 'Fondo de emergencia'",
-    type: "goal",
-    read: true,
-    createdAt: "25 Abr",
-  },
-]
+type NotificationType = "transaction" | "goal" | "credit" | "system" | "transfer"
 
 const typeIcons: Record<NotificationType, typeof Bell> = {
   transaction: TrendingDown,
   goal: Target,
   credit: CreditCard,
   system: Bell,
+  transfer: TrendingUp,
 }
 
 const typeColors: Record<NotificationType, string> = {
@@ -90,38 +30,31 @@ const typeColors: Record<NotificationType, string> = {
   goal: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
   credit: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
   system: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+  transfer: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
 }
 
 type FilterType = "all" | NotificationType
 
 export function NotificationsScreen() {
-  const [notifications, setNotifications] = useState(mockNotifications)
+  const { data: notifications = [], mutate } = useNotifications()
   const [filter, setFilter] = useState<FilterType>("all")
-  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const filteredNotifications =
+  const filteredNotifications = useMemo(() =>
     filter === "all"
       ? notifications
       : notifications.filter((n) => n.type === filter)
+  , [filter, notifications])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  const markAsRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    )
+  const markAsRead = async (id: string) => {
+    await markNotificationAsRead(id)
+    await mutate()
   }
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-  }
-
-  const deleteNotification = (id: string) => {
-    setDeletingId(id)
-    setTimeout(() => {
-      setNotifications((prev) => prev.filter((n) => n.id !== id))
-      setDeletingId(null)
-    }, 300)
+  const markAllAsRead = async () => {
+    await markAllNotificationsAsRead()
+    await mutate()
   }
 
   return (
@@ -209,9 +142,7 @@ export function NotificationsScreen() {
                     "relative flex gap-4 rounded-2xl p-4 transition-all",
                     notification.read
                       ? "bg-card"
-                      : "bg-card ring-2 ring-accent/20",
-                    deletingId === notification.id &&
-                      "translate-x-full opacity-0"
+                      : "bg-card ring-2 ring-accent/20"
                   )}
                   onClick={() => !notification.read && markAsRead(notification.id)}
                 >
@@ -243,21 +174,13 @@ export function NotificationsScreen() {
                       >
                         {notification.title}
                       </p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          deleteNotification(notification.id)
-                        }}
-                        className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
+                      <div className="h-6 w-6" />
                     </div>
                     <p className="mt-0.5 text-sm text-muted-foreground">
                       {notification.message}
                     </p>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      {notification.createdAt}
+                      {formatDate(notification.created_at)}
                     </p>
                   </div>
                 </div>

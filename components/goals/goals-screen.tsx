@@ -21,9 +21,11 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { formatCurrency } from "@/lib/data"
+import { getLocalDateString } from "@/lib/data"
 import { useGoals, useAccounts, createGoal, addGoalContribution } from "@/hooks/use-data"
 import { createGoalSchema, addGoalContributionSchema, parseAmount, getFieldError } from "@/lib/validation"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { MoneyInput } from "@/components/ui/money-input"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 
@@ -159,7 +161,7 @@ export function GoalsScreen() {
         goal_id: showAddMoney,
         account_id: contributionAccountId,
         amount: parseAmount(addMoneyAmount),
-        date: new Date().toISOString(),
+        date: getLocalDateString(),
         notes: null,
       })
       notify({ title: "Aporte registrado", message: "Movimiento creado con éxito y meta actualizada." })
@@ -341,12 +343,10 @@ export function GoalsScreen() {
 
             <div className="flex items-center justify-center gap-2">
               <span className="text-2xl font-medium text-muted-foreground">RD$</span>
-              <input
-                type="text"
-                inputMode="decimal"
+              <MoneyInput
                 value={addMoneyAmount}
-                onChange={(e) => {
-                  setAddMoneyAmount(e.target.value.replace(/[^0-9.]/g, ""))
+                onValueChange={(value) => {
+                  setAddMoneyAmount(value)
                   setAddMoneyAmountError(undefined)
                 }}
                 placeholder="0"
@@ -502,13 +502,11 @@ export function GoalsScreen() {
               <p className="mb-2 text-xs font-medium text-muted-foreground">
                 Monto objetivo
               </p>
-              <input
-                type="text"
-                inputMode="decimal"
+              <MoneyInput
                 placeholder="RD$ 0"
                 value={goalAmount}
-                onChange={(e) => {
-                  setGoalAmount(e.target.value.replace(/[^0-9.]/g, ""))
+                onValueChange={(value) => {
+                  setGoalAmount(value)
                   setGoalAmountError(undefined)
                 }}
                 className={cn(

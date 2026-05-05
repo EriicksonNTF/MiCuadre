@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { MoneyInput } from "@/components/ui/money-input"
 import { formatCurrency } from "@/lib/data"
 
 type GoalParams = {
@@ -190,11 +191,9 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
               
               <div className="flex items-center justify-center gap-2">
                 <span className="text-2xl font-medium text-muted-foreground">RD$</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
+                <MoneyInput
                   value={addAmount}
-                  onChange={(e) => setAddAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                  onValueChange={setAddAmount}
                   placeholder="0"
                   className="w-32 bg-transparent text-center text-4xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
                   autoFocus
