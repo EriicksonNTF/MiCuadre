@@ -131,8 +131,11 @@ export function AccountsScreen() {
       const { data } = supabase.storage.from("account-logos").getPublicUrl(path)
       setBrandingIconUrl(data.publicUrl)
       setBrandingIconType("image")
-    } catch {
-      notify({ title: "Error", message: "No se pudo subir el logo." })
+    } catch (error) {
+      const message = error instanceof Error && error.message.toLowerCase().includes("bucket not found")
+        ? "Falta configurar el bucket 'account-logos' en Supabase. Ejecuta scripts/009_storage_buckets_setup.sql."
+        : "No se pudo subir el logo."
+      notify({ title: "Error", message })
     } finally {
       setIsUploadingLogo(false)
     }

@@ -1120,9 +1120,33 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
     .select()
     .single()
 
-  if (error) throw error
-  mutate("accounts")
-  return data
+  if (!error) {
+    mutate("accounts")
+    return data
+  }
+
+  if (error.code === "PGRST204") {
+    const fallback = { ...updates }
+    delete fallback.icon_url
+    delete fallback.icon_type
+    delete fallback.icon_value
+    delete fallback.primary_color
+    delete fallback.secondary_color
+    delete fallback.background_style
+
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from("accounts")
+      .update(fallback)
+      .eq("id", id)
+      .select()
+      .single()
+
+    if (fallbackError) throw fallbackError
+    mutate("accounts")
+    return fallbackData
+  }
+
+  throw error
 }
 
 export async function reorderAccounts(accountIdsInOrder: string[]) {

@@ -272,7 +272,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       setShowEditModal(false)
     } catch (error) {
       console.error(error)
-      const message = error instanceof Error ? error.message : "No se pudo actualizar la cuenta"
+      const rawMessage = error instanceof Error ? error.message : ""
+      const message = rawMessage.includes("background_style")
+        ? "Faltan columnas de personalización en la base de datos. Ejecuta scripts/008_account_branding.sql."
+        : rawMessage || "No se pudo actualizar la cuenta"
       notify({ title: "Error al guardar", message })
     } finally {
       setIsEditing(false)
@@ -317,8 +320,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       if (error) throw error
       const { data } = supabase.storage.from("account-logos").getPublicUrl(path)
       setEditForm((prev) => ({ ...prev, icon_url: data.publicUrl, icon_type: "image" }))
-    } catch {
-      notify({ title: "Error", message: "No se pudo subir el logo." })
+    } catch (error) {
+      const message = error instanceof Error && error.message.toLowerCase().includes("bucket not found")
+        ? "Falta configurar el bucket 'account-logos' en Supabase. Ejecuta scripts/009_storage_buckets_setup.sql."
+        : "No se pudo subir el logo."
+      notify({ title: "Error", message })
     } finally {
       setIsUploadingLogo(false)
     }
