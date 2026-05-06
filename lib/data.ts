@@ -48,8 +48,18 @@ export function calculateNetBalance(accounts: Account[]): number {
 }
 
 export function getAvailableCredit(account: Partial<Account> & { creditLimit?: number | null; currentDebt?: number | null; type?: string }): number {
-  if (account.type !== "credit" || !account.creditLimit) return 0
-  return account.creditLimit - (account.currentDebt || 0)
+  if (account.type !== "credit") return 0
+  const limit = account.creditLimit ?? account.credit_limit_dop ?? account.credit_limit ?? 0
+  const debt = account.currentDebt ?? account.current_debt_dop ?? account.current_debt ?? 0
+  return Number(limit) - Number(debt)
+}
+
+export function getAvailableCreditByCurrency(account: Partial<Account>, currency: Currency): number {
+  if (account.type !== "credit") return 0
+  if (currency === "USD") {
+    return Number(account.credit_limit_usd || 0) - Number(account.current_debt_usd || 0)
+  }
+  return Number(account.credit_limit_dop || 0) - Number(account.current_debt_dop || 0)
 }
 
 export function formatDate(dateString: string, locale: "es" | "en" = "es"): string {

@@ -14,13 +14,30 @@ import type {
   GoalContribution,
 } from "@/lib/types/database"
 import { getLocalDateString } from "@/lib/data"
-import { getCycleDates } from "@/lib/credit-cycle"
+import { getCycleForDate } from "@/lib/credit-cycle"
 
 type CreditAccountState = {
   id: string
   user_id: string
   name: string
-  currency: string
+  currency: "DOP" | "USD"
+  credit_limit_dop: number | null
+  credit_limit_usd: number | null
+  current_debt_dop: number | null
+  current_debt_usd: number | null
+  statement_balance_dop: number | null
+  statement_balance_usd: number | null
+  paid_statement_amount_dop: number | null
+  paid_statement_amount_usd: number | null
+  pending_transit_dop: number | null
+  pending_transit_usd: number | null
+  closing_day: number | null
+  due_days_after_cutoff: number | null
+  minimum_payment_percentage: number | null
+  last_statement_cutoff_date: string | null
+  statement_due_date: string | null
+  late_fee_applied_cycle_dop: string | null
+  late_fee_applied_cycle_usd: string | null
   current_debt: number | null
   statement_balance: number | null
   pending_amount: number | null
@@ -38,6 +55,8 @@ let hasCreditCycleSchema = true
 let hasNotificationMetadataSchema = true
 
 const COMMISSION_RATE = 0.0015
+const DEFAULT_MINIMUM_PAYMENT_PERCENTAGE = 0.0278
+const LATE_FEE_RATE = 0.12
 const COMMISSION_CATEGORY_NAME = "Commission / Fees"
 const COMMISSION_ERROR_MESSAGE = "El monto más comisión excede tu balance disponible."
 
@@ -47,6 +66,30 @@ function roundCurrencyAmount(value: number): number {
 
 function getCommissionAmount(amount: number): number {
   return roundCurrencyAmount(amount * COMMISSION_RATE)
+}
+
+function getCurrencyFields(currency: "DOP" | "USD") {
+  return currency === "USD"
+    ? {
+        debt: "current_debt_usd",
+        limit: "credit_limit_usd",
+        statement: "statement_balance_usd",
+        paidStatement: "paid_statement_amount_usd",
+        pendingTransit: "pending_transit_usd",
+        lateFeeCycle: "late_fee_applied_cycle_usd",
+      }
+    : {
+        debt: "current_debt_dop",
+        limit: "credit_limit_dop",
+        statement: "statement_balance_dop",
+        paidStatement: "paid_statement_amount_dop",
+        pendingTransit: "pending_transit_dop",
+        lateFeeCycle: "late_fee_applied_cycle_dop",
+      }
+}
+
+function getMinimumPayment(statementBalance: number, percentage?: number | null) {
+  return roundCurrencyAmount(statementBalance * Number(percentage ?? DEFAULT_MINIMUM_PAYMENT_PERCENTAGE))
 }
 
 function sortAccountsList(accounts: Account[]): Account[] {
@@ -94,18 +137,19 @@ async function getOrCreateCommissionCategoryId(userId: string): Promise<string |
   return created?.id || null
 }
 
-async function ensureSufficientFundsForExpense(accountId: string, totalAmount: number) {
+async function ensureSufficientFundsForExpense(accountId: string, totalAmount: number, currency: "DOP" | "USD") {
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, type, balance, credit_limit, current_debt")
+    .select("id, type, balance, credit_limit, current_debt, credit_limit_dop, credit_limit_usd, current_debt_dop, current_debt_usd")
     .eq("id", accountId)
     .single()
 
   if (!account) throw new Error("Cuenta no encontrada")
 
   if (account.type === "credit") {
-    const creditLimit = Number(account.credit_limit || 0)
-    const currentDebt = Number(account.current_debt || 0)
+    const fields = getCurrencyFields(currency)
+    const creditLimit = Number((account as Record<string, unknown>)[fields.limit] ?? account.credit_limit ?? 0)
+    const currentDebt = Number((account as Record<string, unknown>)[fields.debt] ?? account.current_debt ?? 0)
     const availableCredit = creditLimit - currentDebt
     if (totalAmount > availableCredit) {
       throw new Error(COMMISSION_ERROR_MESSAGE)
@@ -128,7 +172,7 @@ async function ensureCreditSchemas() {
 
   const { error: accountSchemaError } = await supabase
     .from("accounts")
-    .select("statement_balance, pending_amount, paid_amount, cycle_start_date, cycle_end_date")
+    .select("statement_balance_dop, statement_balance_usd, current_debt_dop, current_debt_usd, closing_day, due_days_after_cutoff")
     .limit(1)
 
   hasCreditCycleSchema = !accountSchemaError
@@ -190,74 +234,136 @@ async function syncCreditAccountCycle(creditAccountId: string) {
 
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, user_id, name, currency, current_debt, statement_balance, pending_amount, paid_amount, closing_date, due_date, cycle_start_date, cycle_end_date")
+    .select("id, user_id, name, currency, credit_limit_dop, credit_limit_usd, current_debt_dop, current_debt_usd, statement_balance_dop, statement_balance_usd, paid_statement_amount_dop, paid_statement_amount_usd, pending_transit_dop, pending_transit_usd, closing_day, due_days_after_cutoff, minimum_payment_percentage, last_statement_cutoff_date, statement_due_date, late_fee_applied_cycle_dop, late_fee_applied_cycle_usd")
     .eq("id", creditAccountId)
     .eq("type", "credit")
     .single<CreditAccountState>()
 
-  if (!account || !account.closing_date || !account.due_date) return
+  if (!account || !account.closing_day || !account.due_days_after_cutoff) return
 
-  const cycle = getCycleDates(account.closing_date, account.due_date)
-  const currentDebt = Number(account.current_debt || 0)
-  const pendingAmount = Number(account.pending_amount ?? currentDebt)
+  const cycle = getCycleForDate(account.closing_day, account.due_days_after_cutoff)
+  const now = new Date()
 
-  const needsNewCycle =
-    !account.cycle_end_date ||
-    account.cycle_end_date !== cycle.cycleEndDate
+  const currentDebtDop = Number(account.current_debt_dop || 0)
+  const currentDebtUsd = Number(account.current_debt_usd || 0)
+  let statementDop = Number(account.statement_balance_dop || 0)
+  let statementUsd = Number(account.statement_balance_usd || 0)
+  let paidDop = Number(account.paid_statement_amount_dop || 0)
+  let paidUsd = Number(account.paid_statement_amount_usd || 0)
+  let lateFeeCycleDop = account.late_fee_applied_cycle_dop
+  let lateFeeCycleUsd = account.late_fee_applied_cycle_usd
 
-  let statementBalance = Number(account.statement_balance ?? pendingAmount)
-  let nextPendingAmount = pendingAmount
-  let paidAmount = Number(account.paid_amount || 0)
+  const needsCutoffRefresh = !account.last_statement_cutoff_date || account.last_statement_cutoff_date !== cycle.cycleEndDate
+  if (needsCutoffRefresh) {
+    statementDop = currentDebtDop
+    statementUsd = currentDebtUsd
+    paidDop = 0
+    paidUsd = 0
+  }
 
-  if (needsNewCycle) {
-    statementBalance = currentDebt
-    nextPendingAmount = currentDebt
-    paidAmount = 0
-  } else {
-    nextPendingAmount = Math.min(pendingAmount, currentDebt)
+  const unpaidStatementDop = Math.max(0, statementDop - paidDop)
+  const unpaidStatementUsd = Math.max(0, statementUsd - paidUsd)
+  const dueDate = new Date(`${cycle.dueDate}T12:00:00`)
+  const isPastDue = now.getTime() > dueDate.getTime()
+
+  let nextDebtDop = currentDebtDop
+  let nextDebtUsd = currentDebtUsd
+
+  if (isPastDue && unpaidStatementDop > 0 && lateFeeCycleDop !== cycle.cycleKey) {
+    const fee = roundCurrencyAmount(unpaidStatementDop * LATE_FEE_RATE)
+    nextDebtDop = roundCurrencyAmount(nextDebtDop + fee)
+    lateFeeCycleDop = cycle.cycleKey
+    await supabase.from("transactions").insert({
+      user_id: account.user_id,
+      account_id: account.id,
+      category_id: null,
+      type: "expense",
+      amount: fee,
+      currency: "DOP",
+      amount_base: fee,
+      exchange_rate: 1,
+      description: "Late fee 12%",
+      date: getLocalDateString(),
+      notes: null,
+      is_recurring: false,
+      metadata: { kind: "late_fee", cycle_end_date: cycle.cycleEndDate },
+    })
+  }
+
+  if (isPastDue && unpaidStatementUsd > 0 && lateFeeCycleUsd !== cycle.cycleKey) {
+    const fee = roundCurrencyAmount(unpaidStatementUsd * LATE_FEE_RATE)
+    nextDebtUsd = roundCurrencyAmount(nextDebtUsd + fee)
+    lateFeeCycleUsd = cycle.cycleKey
+    await supabase.from("transactions").insert({
+      user_id: account.user_id,
+      account_id: account.id,
+      category_id: null,
+      type: "expense",
+      amount: fee,
+      currency: "USD",
+      amount_base: fee,
+      exchange_rate: 1,
+      description: "Late fee 12%",
+      date: getLocalDateString(),
+      notes: null,
+      is_recurring: false,
+      metadata: { kind: "late_fee", cycle_end_date: cycle.cycleEndDate },
+    })
   }
 
   await supabase
     .from("accounts")
     .update({
-      statement_balance: statementBalance,
-      pending_amount: nextPendingAmount,
-      paid_amount: paidAmount,
+      current_debt_dop: nextDebtDop,
+      current_debt_usd: nextDebtUsd,
+      statement_balance_dop: statementDop,
+      statement_balance_usd: statementUsd,
+      paid_statement_amount_dop: paidDop,
+      paid_statement_amount_usd: paidUsd,
+      pending_transit_dop: Math.max(0, nextDebtDop - Math.max(0, statementDop - paidDop)),
+      pending_transit_usd: Math.max(0, nextDebtUsd - Math.max(0, statementUsd - paidUsd)),
+      minimum_payment: getMinimumPayment(unpaidStatementDop, account.minimum_payment_percentage),
+      current_debt: nextDebtDop,
+      statement_balance: statementDop,
+      pending_amount: Math.max(0, statementDop - paidDop),
+      paid_amount: paidDop,
       cycle_start_date: cycle.cycleStartDate,
       cycle_end_date: cycle.cycleEndDate,
+      last_statement_cutoff_date: cycle.cycleEndDate,
+      statement_due_date: cycle.dueDate,
+      late_fee_applied_cycle_dop: lateFeeCycleDop,
+      late_fee_applied_cycle_usd: lateFeeCycleUsd,
     })
     .eq("id", account.id)
 
-  if (cycle.remainingDays <= 3 && nextPendingAmount > 0) {
+  const lines = [
+    { currency: "DOP" as const, pending: Math.max(0, statementDop - paidDop) },
+    { currency: "USD" as const, pending: Math.max(0, statementUsd - paidUsd) },
+  ]
+
+  for (const line of lines) {
+    if (line.pending <= 0) {
+      await supabase
+        .from("notifications")
+        .update({ read: true })
+        .eq("user_id", account.user_id)
+        .eq("type", "credit")
+        .contains("metadata", { kind: "credit_payment_due", account_id: account.id, currency: line.currency })
+      continue
+    }
+    if (cycle.remainingDays > 7) continue
     await upsertCreditNotification({
       userId: account.user_id,
       title: `Pago pendiente: ${account.name}`,
-      message: `Te quedan ${cycle.remainingDays} dia(s) para pagar ${nextPendingAmount.toFixed(2)} ${account.currency}.`,
+      message: `Tienes ${line.currency === "DOP" ? "RD$" : "US$"}${line.pending.toFixed(2)} pendiente en ${account.name}. Paga antes de ${cycle.dueDate}. Faltan ${cycle.remainingDays} dias.`,
       metadata: {
         kind: "credit_payment_due",
         account_id: account.id,
+        currency: line.currency,
         due_date: cycle.dueDate,
         cycle_start_date: cycle.cycleStartDate,
         cycle_end_date: cycle.cycleEndDate,
-        pending_amount: nextPendingAmount,
-      },
-    })
-  }
-
-  const isCutoffDay = getLocalDateString() === cycle.cycleEndDate
-  if (isCutoffDay) {
-    await upsertCreditNotification({
-      userId: account.user_id,
-      title: `Corte de tarjeta: ${account.name}`,
-      message: `Tu ciclo cierra hoy con ${statementBalance.toFixed(2)} ${account.currency}.`,
-      metadata: {
-        kind: "credit_cutoff",
-        account_id: account.id,
-        due_date: cycle.dueDate,
-        cycle_start_date: cycle.cycleStartDate,
-        cycle_end_date: cycle.cycleEndDate,
-        statement_balance: statementBalance,
-        pending_amount: nextPendingAmount,
+        pending_amount: line.pending,
       },
     })
   }
@@ -287,11 +393,12 @@ async function applyAccountImpact(params: {
   type: "income" | "expense"
   amount: number
   direction: 1 | -1
+  currency?: "DOP" | "USD"
 }) {
-  const { accountId, type, amount, direction } = params
+  const { accountId, type, amount, direction, currency = "DOP" } = params
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, type, balance, current_debt")
+    .select("id, type, balance, current_debt, current_debt_dop, current_debt_usd")
     .eq("id", accountId)
     .single()
 
@@ -299,8 +406,14 @@ async function applyAccountImpact(params: {
 
   if (account.type === "credit") {
     const signed = type === "expense" ? amount * direction : -amount * direction
-    const nextDebt = Math.max(0, Number(account.current_debt || 0) + signed)
-    await supabase.from("accounts").update({ current_debt: nextDebt }).eq("id", accountId)
+    const fields = getCurrencyFields(currency)
+    const currentByCurrency = Number((account as Record<string, unknown>)[fields.debt] ?? 0)
+    const nextDebt = Math.max(0, currentByCurrency + signed)
+    const updates: Record<string, unknown> = { [fields.debt]: nextDebt }
+    if (currency === "DOP") {
+      updates.current_debt = nextDebt
+    }
+    await supabase.from("accounts").update(updates).eq("id", accountId)
     await syncCreditAccountCycle(accountId)
     return
   }
@@ -458,7 +571,7 @@ export function useBeneficiaries() {
 }
 
 // Mutations
-type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date" | "sort_order" | "is_favorite" | "icon_url" | "icon_type" | "icon_value" | "primary_color" | "secondary_color" | "background_style"> & {
+type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date" | "sort_order" | "is_favorite" | "icon_url" | "icon_type" | "icon_value" | "primary_color" | "secondary_color" | "background_style" | "credit_limit_dop" | "credit_limit_usd" | "current_debt_dop" | "current_debt_usd" | "statement_balance_dop" | "statement_balance_usd" | "paid_statement_amount_dop" | "paid_statement_amount_usd" | "pending_transit_dop" | "pending_transit_usd" | "closing_day" | "due_days_after_cutoff" | "minimum_payment_percentage" | "last_statement_cutoff_date" | "statement_due_date" | "late_fee_applied_cycle_dop" | "late_fee_applied_cycle_usd"> & {
   statement_balance?: number | null
   pending_amount?: number | null
   paid_amount?: number | null
@@ -470,6 +583,23 @@ type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_
   primary_color?: string | null
   secondary_color?: string | null
   background_style?: string | null
+  credit_limit_dop?: number | null
+  credit_limit_usd?: number | null
+  current_debt_dop?: number | null
+  current_debt_usd?: number | null
+  statement_balance_dop?: number | null
+  statement_balance_usd?: number | null
+  paid_statement_amount_dop?: number | null
+  paid_statement_amount_usd?: number | null
+  pending_transit_dop?: number | null
+  pending_transit_usd?: number | null
+  closing_day?: number | null
+  due_days_after_cutoff?: number | null
+  minimum_payment_percentage?: number | null
+  last_statement_cutoff_date?: string | null
+  statement_due_date?: string | null
+  late_fee_applied_cycle_dop?: string | null
+  late_fee_applied_cycle_usd?: string | null
 }
 
 export async function createAccount(account: NewAccountInput) {
@@ -499,7 +629,7 @@ export async function createTransaction(
   const totalAmount = roundCurrencyAmount(transaction.amount + commissionAmount)
 
   if (transaction.type === "expense") {
-    await ensureSufficientFundsForExpense(transaction.account_id, totalAmount)
+    await ensureSufficientFundsForExpense(transaction.account_id, totalAmount, transaction.currency)
   }
 
   const { data, error } = await supabase
@@ -549,6 +679,7 @@ export async function createTransaction(
       type: transaction.type,
       amount: transaction.amount,
       direction: 1,
+      currency: transaction.currency,
     })
 
     if (commissionTxId && commissionAmount > 0) {
@@ -557,6 +688,7 @@ export async function createTransaction(
         type: "expense",
         amount: commissionAmount,
         direction: 1,
+        currency: transaction.currency,
       })
     }
   } catch (impactError) {
@@ -591,6 +723,7 @@ export async function updateTransaction(
     type: existing.type,
     amount: Number(existing.amount),
     direction: -1,
+    currency: existing.currency,
   })
 
   const { data, error } = await supabase
@@ -604,9 +737,10 @@ export async function updateTransaction(
     await applyAccountImpact({
       accountId: existing.account_id,
       type: existing.type,
-      amount: Number(existing.amount),
-      direction: 1,
-    })
+    amount: Number(existing.amount),
+    direction: 1,
+    currency: existing.currency,
+  })
     throw error
   }
 
@@ -615,6 +749,7 @@ export async function updateTransaction(
     type: updates.type,
     amount: Number(updates.amount),
     direction: 1,
+    currency: updates.currency,
   })
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
@@ -636,6 +771,7 @@ export async function deleteTransaction(id: string) {
     type: existing.type,
     amount: Number(existing.amount),
     direction: -1,
+    currency: existing.currency,
   })
 
   const { error } = await supabase
@@ -922,6 +1058,8 @@ export async function payCreditCard(payment: {
   credit_account_id: string
   source_account_id: string
   amount: number
+  currency: "DOP" | "USD"
+  payment_kind?: "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
   notes?: string
 }) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -930,34 +1068,53 @@ export async function payCreditCard(payment: {
   // Get credit card current debt
   const { data: creditCard } = await supabase
     .from("accounts")
-    .select("current_debt, pending_amount, paid_amount")
+    .select("current_debt, current_debt_dop, current_debt_usd, statement_balance_dop, statement_balance_usd, paid_statement_amount_dop, paid_statement_amount_usd")
     .eq("id", payment.credit_account_id)
     .single()
 
   if (!creditCard) throw new Error("Credit card not found")
 
   // Validate payment amount
-  if (payment.amount > Number(creditCard.current_debt)) {
+  const fields = getCurrencyFields(payment.currency)
+  const currentDebt = Number((creditCard as Record<string, unknown>)[fields.debt] ?? 0)
+  const currentStatement = Number((creditCard as Record<string, unknown>)[fields.statement] ?? 0)
+  const currentPaid = Number((creditCard as Record<string, unknown>)[fields.paidStatement] ?? 0)
+
+  if (payment.amount > currentDebt) {
     throw new Error("No puedes pagar más que la deuda actual")
   }
 
   // Reduce credit card debt
-  const newDebt = Math.max(0, Number(creditCard.current_debt) - payment.amount)
-  const pendingAmount = Math.max(0, Number(creditCard.pending_amount ?? creditCard.current_debt) - payment.amount)
-  const paidAmount = Number(creditCard.paid_amount || 0) + payment.amount
+  const newDebt = Math.max(0, currentDebt - payment.amount)
+  const statementRemaining = Math.max(0, currentStatement - currentPaid)
+  const paidTowardStatement = Math.min(payment.amount, statementRemaining)
+  const newPaidStatement = roundCurrencyAmount(currentPaid + paidTowardStatement)
+  const updates: Record<string, unknown> = {
+    [fields.debt]: newDebt,
+    [fields.paidStatement]: newPaidStatement,
+  }
+  if (payment.currency === "DOP") {
+    updates.current_debt = newDebt
+    updates.pending_amount = Math.max(0, currentStatement - newPaidStatement)
+    updates.paid_amount = newPaidStatement
+  }
   await supabase
     .from("accounts")
-    .update({ current_debt: newDebt, pending_amount: pendingAmount, paid_amount: paidAmount })
+    .update(updates)
     .eq("id", payment.credit_account_id)
 
   // Get source account balance
   const { data: sourceAccount } = await supabase
     .from("accounts")
-    .select("balance")
+    .select("balance,currency")
     .eq("id", payment.source_account_id)
     .single()
 
   if (!sourceAccount) throw new Error("Source account not found")
+
+  if (sourceAccount.currency !== payment.currency) {
+    throw new Error("La cuenta origen debe tener la misma moneda del pago")
+  }
 
   // Validate source has enough balance
   if (Number(sourceAccount.balance) < payment.amount) {
@@ -979,6 +1136,8 @@ export async function payCreditCard(payment: {
       credit_account_id: payment.credit_account_id,
       source_account_id: payment.source_account_id,
       amount: payment.amount,
+      currency: payment.currency,
+      payment_kind: payment.payment_kind || "custom",
       notes: payment.notes || null,
     })
     .select()
@@ -995,10 +1154,10 @@ export async function payCreditCard(payment: {
     category_id: null,
     type: "expense",
     amount: payment.amount,
-    currency: "DOP",
+    currency: payment.currency,
     amount_base: payment.amount,
     exchange_rate: 1,
-    description: "Pago de tarjeta de crédito",
+    description: `Pago de tarjeta de crédito (${payment.currency})`,
     date: getLocalDateString(),
     notes: payment.notes || null,
     is_recurring: false,

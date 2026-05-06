@@ -45,7 +45,8 @@ export function AccountsScreen() {
   const [accountType, setAccountType] = useState<"cash" | "debit" | "credit">("cash")
   const [accountCurrency, setAccountCurrency] = useState<"DOP" | "USD">("DOP")
   const [initialBalance, setInitialBalance] = useState("")
-  const [creditLimit, setCreditLimit] = useState("")
+  const [creditLimitDop, setCreditLimitDop] = useState("")
+  const [creditLimitUsd, setCreditLimitUsd] = useState("")
   const [closingDate, setClosingDate] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [isCreating, setIsCreating] = useState(false)
@@ -77,7 +78,9 @@ export function AccountsScreen() {
     type: accountType,
     currency: accountCurrency,
     balance: parseAmount(initialBalance),
-    credit_limit: accountType === "credit" ? parseAmount(creditLimit) : null,
+    credit_limit: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
+    credit_limit_dop: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
+    credit_limit_usd: accountType === "credit" ? parseAmount(creditLimitUsd || "0") : null,
     current_debt: 0,
     statement_balance: null,
     pending_amount: null,
@@ -100,7 +103,7 @@ export function AccountsScreen() {
     is_favorite: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }), [accountName, accountType, accountCurrency, initialBalance, creditLimit, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle])
+  }), [accountName, accountType, accountCurrency, initialBalance, creditLimitDop, creditLimitUsd, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle])
 
   const moveAccountUp = async (id: string) => {
     const index = accounts.findIndex((a) => a.id === id)
@@ -150,8 +153,21 @@ export function AccountsScreen() {
         type: accountType,
         currency: accountCurrency,
         balance: parseAmount(initialBalance),
-        credit_limit: accountType === "credit" ? parseAmount(creditLimit) : null,
+        credit_limit: accountType === "credit" ? parseAmount(creditLimitDop || initialBalance || "0") : null,
         current_debt: 0,
+        credit_limit_dop: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
+        credit_limit_usd: accountType === "credit" ? parseAmount(creditLimitUsd || "0") : null,
+        current_debt_dop: 0,
+        current_debt_usd: 0,
+        statement_balance_dop: 0,
+        statement_balance_usd: 0,
+        paid_statement_amount_dop: 0,
+        paid_statement_amount_usd: 0,
+        pending_transit_dop: 0,
+        pending_transit_usd: 0,
+        closing_day: accountType === "credit" && closingDate ? parseInt(closingDate) : null,
+        due_days_after_cutoff: accountType === "credit" ? 20 : null,
+        minimum_payment_percentage: accountType === "credit" ? 0.0278 : null,
         minimum_payment: null,
         color: "",
         icon: "",
@@ -257,7 +273,7 @@ export function AccountsScreen() {
       )}
 
       {showCreateAccount && (
-        <BaseModalForm title="Nueva cuenta" onClose={() => setShowCreateAccount(false)} footer={<Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
+        <BaseModalForm title="Nueva cuenta" onClose={() => setShowCreateAccount(false)} footer={<Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
           <div className="space-y-5 pb-safe-areas">
             <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre de la cuenta" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
             <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button key={t} onClick={() => setAccountType(t)} className={cn("rounded-xl px-3 py-2 text-xs", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
@@ -275,7 +291,8 @@ export function AccountsScreen() {
 
             {accountType === "credit" && (
               <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-                <MoneyInput value={creditLimit} onValueChange={setCreditLimit} placeholder="Límite" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                <MoneyInput value={creditLimitDop} onValueChange={setCreditLimitDop} placeholder="Límite DOP" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                <MoneyInput value={creditLimitUsd} onValueChange={setCreditLimitUsd} placeholder="Límite USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
                 <input type="text" inputMode="numeric" value={closingDate} onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de cierre" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
                 <input type="text" inputMode="numeric" value={dueDate} onChange={(e) => setDueDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de pago" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
               </div>

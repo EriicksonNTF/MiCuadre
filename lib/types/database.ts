@@ -45,6 +45,23 @@ export interface Account {
   balance: number
   credit_limit: number | null
   current_debt: number | null
+  credit_limit_dop: number | null
+  credit_limit_usd: number | null
+  current_debt_dop: number | null
+  current_debt_usd: number | null
+  statement_balance_dop: number | null
+  statement_balance_usd: number | null
+  paid_statement_amount_dop: number | null
+  paid_statement_amount_usd: number | null
+  pending_transit_dop: number | null
+  pending_transit_usd: number | null
+  closing_day: number | null
+  due_days_after_cutoff: number | null
+  minimum_payment_percentage: number | null
+  last_statement_cutoff_date: string | null
+  statement_due_date: string | null
+  late_fee_applied_cycle_dop: string | null
+  late_fee_applied_cycle_usd: string | null
   statement_balance: number | null
   pending_amount: number | null
   paid_amount: number | null
@@ -173,6 +190,8 @@ export interface CreditPayment {
   credit_account_id: string
   source_account_id: string
   amount: number
+  currency: Currency
+  payment_kind: "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
   payment_date: string
   notes: string | null
   created_at: string

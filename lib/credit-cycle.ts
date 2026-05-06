@@ -1,40 +1,35 @@
 import { getLocalDateString } from "@/lib/data"
 
-function buildDate(year: number, monthIndex: number, day: number) {
-  return new Date(year, monthIndex, day)
-}
+const DAY_MS = 86400000
 
 function clampDay(year: number, monthIndex: number, day: number) {
   return Math.min(day, new Date(year, monthIndex + 1, 0).getDate())
 }
 
-export function getCycleDates(closingDay: number, dueDay: number, now = new Date()) {
-  const year = now.getFullYear()
-  const month = now.getMonth()
+function safeDate(year: number, monthIndex: number, day: number) {
+  return new Date(year, monthIndex, clampDay(year, monthIndex, day))
+}
 
-  const currentClosing = buildDate(year, month, clampDay(year, month, closingDay))
-  const currentDue = buildDate(year, month, clampDay(year, month, dueDay))
+export function getCycleForDate(closingDay: number, dueDaysAfterCutoff: number, targetDate = new Date()) {
+  const year = targetDate.getFullYear()
+  const month = targetDate.getMonth()
+  const thisMonthCutoff = safeDate(year, month, closingDay)
 
-  const closesThisMonth = now <= currentClosing
-  const closeYear = closesThisMonth ? year : month === 11 ? year + 1 : year
-  const closeMonth = closesThisMonth ? month : (month + 1) % 12
-  const cycleEnd = buildDate(closeYear, closeMonth, clampDay(closeYear, closeMonth, closingDay))
+  const cycleEnd = targetDate > thisMonthCutoff
+    ? safeDate(month === 11 ? year + 1 : year, (month + 1) % 12, closingDay)
+    : thisMonthCutoff
 
-  const prevMonth = closeMonth === 0 ? 11 : closeMonth - 1
-  const prevYear = closeMonth === 0 ? closeYear - 1 : closeYear
-  const cycleStart = new Date(buildDate(prevYear, prevMonth, clampDay(prevYear, prevMonth, closingDay)).getTime() + 86400000)
-
-  const dueBeforeClose = dueDay <= closingDay
-  const dueMonth = dueBeforeClose ? (closeMonth + 1) % 12 : closeMonth
-  const dueYear = dueBeforeClose && closeMonth === 11 ? closeYear + 1 : closeYear
-  const dueDate = buildDate(dueYear, dueMonth, clampDay(dueYear, dueMonth, dueDay))
-
-  const remainingDays = Math.max(0, Math.ceil((dueDate.getTime() - now.getTime()) / 86400000))
+  const prevMonth = cycleEnd.getMonth() === 0 ? 11 : cycleEnd.getMonth() - 1
+  const prevYear = cycleEnd.getMonth() === 0 ? cycleEnd.getFullYear() - 1 : cycleEnd.getFullYear()
+  const prevCutoff = safeDate(prevYear, prevMonth, closingDay)
+  const cycleStart = new Date(prevCutoff.getTime())
+  const dueDate = new Date(cycleEnd.getTime() + dueDaysAfterCutoff * DAY_MS)
 
   return {
     cycleStartDate: getLocalDateString(cycleStart),
     cycleEndDate: getLocalDateString(cycleEnd),
     dueDate: getLocalDateString(dueDate),
-    remainingDays,
+    cycleKey: getLocalDateString(cycleEnd),
+    remainingDays: Math.max(0, Math.ceil((dueDate.getTime() - Date.now()) / DAY_MS)),
   }
 }
