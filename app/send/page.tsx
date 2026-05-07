@@ -7,8 +7,6 @@ import {
   ArrowLeft,
   X,
   Search,
-  ChevronRight,
-  Banknote,
   Building2,
   User,
   Plus,
@@ -20,6 +18,7 @@ import { useAccounts, useBeneficiaries, createTransfer, createBeneficiary } from
 import { formatCurrency } from "@/lib/data"
 import { PaymentSlider } from "@/components/payment-slider"
 import { MoneyInput } from "@/components/ui/money-input"
+import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { mutate } from "swr"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { notify } from "@/lib/notifications"
@@ -179,27 +178,11 @@ export default function SendPage() {
             {/* Source Account */}
             <div>
               <p className="mb-3 text-sm font-medium text-muted-foreground">Desde cuenta</p>
-              <div className="flex gap-2">
-                {nonCreditAccounts.map(account => {
-                  const Icon = account.type === "cash" ? Banknote : Building2
-                  return (
-                    <button
-                      key={account.id}
-                      onClick={() => setSelectedAccount(account.id)}
-                      className={cn(
-                        "flex flex-1 flex-col items-center gap-2 rounded-2xl border p-4 transition-all",
-                        selectedAccount === account.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border bg-card"
-                      )}
-                    >
-                      <Icon className={cn("h-6 w-6", selectedAccount === account.id ? "text-primary" : "text-muted-foreground")} />
-                      <span className="text-xs font-medium">{account.name}</span>
-                      <span className="text-xs text-muted-foreground">{formatCurrency(account.balance)}</span>
-                    </button>
-                  )
-                })}
-              </div>
+              <AccountCarouselSelector
+                items={nonCreditAccounts.map((account) => ({ id: account.id, title: account.name, subtitle: formatCurrency(Number(account.balance || 0), account.currency), detail: account.type }))}
+                selectedId={selectedAccount}
+                onSelect={setSelectedAccount}
+              />
             </div>
 
             {/* Recipient Selection */}
@@ -225,26 +208,14 @@ export default function SendPage() {
                     className="h-12 pl-11"
                   />
                 </div>
-                <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
-                  {filteredBeneficiaries.map(b => (
-                    <button
-                      key={b.id}
-                      onClick={() => setSelectedRecipient(b.id)}
-                      className={cn(
-                        "flex w-full items-center gap-4 rounded-2xl bg-card p-4 transition-all",
-                        selectedRecipient === b.id && "border-2 border-primary"
-                      )}
-                    >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                        <User className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 text-left">
-                        <p className="font-medium">{b.name}</p>
-                        {b.bank_name && <p className="text-sm text-muted-foreground">{b.bank_name}</p>}
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </button>
-                  ))}
+                <div className="mt-3">
+                  <AccountCarouselSelector
+                    compact
+                    items={filteredBeneficiaries.map((b) => ({ id: b.id, title: b.name, subtitle: b.bank_name || "Beneficiario", detail: b.account_reference || "" }))}
+                    selectedId={selectedRecipient}
+                    onSelect={setSelectedRecipient}
+                    emptyMessage="No hay beneficiarios. Agrega uno primero."
+                  />
                   {filteredBeneficiaries.length === 0 && (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                       No hay beneficiarios. Agrega uno primero.
@@ -257,26 +228,11 @@ export default function SendPage() {
             {recipientType === "account" && (
               <div>
                 <p className="mb-3 text-sm font-medium text-muted-foreground">Hacia cuenta</p>
-                <div className="flex gap-2">
-                  {nonCreditAccounts.filter(a => a.id !== selectedAccount).map(account => {
-                    const Icon = account.type === "cash" ? Banknote : Building2
-                    return (
-                      <button
-                        key={account.id}
-                        onClick={() => setSelectedRecipient(account.id)}
-                        className={cn(
-                          "flex flex-1 flex-col items-center gap-2 rounded-2xl border p-4 transition-all",
-                          selectedRecipient === account.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border bg-card"
-                        )}
-                      >
-                        <Icon className="h-6 w-6" />
-                        <span className="text-xs font-medium">{account.name}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+                <AccountCarouselSelector
+                  items={nonCreditAccounts.filter(a => a.id !== selectedAccount).map((account) => ({ id: account.id, title: account.name, subtitle: formatCurrency(Number(account.balance || 0), account.currency), detail: account.type }))}
+                  selectedId={selectedRecipient}
+                  onSelect={setSelectedRecipient}
+                />
               </div>
             )}
 

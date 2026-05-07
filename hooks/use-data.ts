@@ -239,119 +239,129 @@ async function syncCreditAccountCycle(creditAccountId: string) {
     .eq("type", "credit")
     .single<CreditAccountState>()
 
-  if (!account || !account.closing_day || !account.due_days_after_cutoff) return
+  if (!account || !account.closing_day) return
 
-  const cycle = getCycleForDate(account.closing_day, account.due_days_after_cutoff)
-  const now = new Date()
+  const dueDays = Number(account.due_days_after_cutoff || 20)
+  const cycle = getCycleForDate(account.closing_day, dueDays)
 
-  const currentDebtDop = Number(account.current_debt_dop || 0)
-  const currentDebtUsd = Number(account.current_debt_usd || 0)
-  let statementDop = Number(account.statement_balance_dop || 0)
-  let statementUsd = Number(account.statement_balance_usd || 0)
-  let paidDop = Number(account.paid_statement_amount_dop || 0)
-  let paidUsd = Number(account.paid_statement_amount_usd || 0)
-  let lateFeeCycleDop = account.late_fee_applied_cycle_dop
-  let lateFeeCycleUsd = account.late_fee_applied_cycle_usd
+  const { data: txRows } = await supabase
+    .from("transactions")
+    .select("id, amount, type, currency, date, billing_cycle_id")
+    .eq("account_id", account.id)
 
-  const needsCutoffRefresh = !account.last_statement_cutoff_date || account.last_statement_cutoff_date !== cycle.cycleEndDate
-  if (needsCutoffRefresh) {
-    statementDop = currentDebtDop
-    statementUsd = currentDebtUsd
-    paidDop = 0
-    paidUsd = 0
+  let currentBalanceDop = 0
+  let currentBalanceUsd = 0
+  for (const tx of txRows || []) {
+    const signed = tx.type === "expense" ? Number(tx.amount || 0) : -Number(tx.amount || 0)
+    if (tx.currency === "USD") currentBalanceUsd += signed
+    else currentBalanceDop += signed
+  }
+  currentBalanceDop = Math.max(0, roundCurrencyAmount(currentBalanceDop))
+  currentBalanceUsd = Math.max(0, roundCurrencyAmount(currentBalanceUsd))
+
+  const currentCycleEnd = cycle.cycleEndDate
+
+  const { data: existingCycle } = await supabase
+    .from("credit_card_cycles")
+    .select("id, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, due_date, status")
+    .eq("account_id", account.id)
+    .eq("cycle_end_date", currentCycleEnd)
+    .maybeSingle()
+
+  let cycleId = existingCycle?.id || null
+  if (!cycleId) {
+    const { data: inserted } = await supabase
+      .from("credit_card_cycles")
+      .insert({
+        user_id: account.user_id,
+        account_id: account.id,
+        cycle_start_date: cycle.cycleStartDate,
+        cycle_end_date: cycle.cycleEndDate,
+        due_date: cycle.dueDate,
+        statement_balance_dop: currentBalanceDop,
+        statement_balance_usd: currentBalanceUsd,
+        paid_amount_dop: 0,
+        paid_amount_usd: 0,
+        status: "closed",
+      })
+      .select("id")
+      .single()
+    cycleId = inserted?.id || null
   }
 
-  const unpaidStatementDop = Math.max(0, statementDop - paidDop)
-  const unpaidStatementUsd = Math.max(0, statementUsd - paidUsd)
+  if (cycleId) {
+    await supabase
+      .from("transactions")
+      .update({ billing_cycle_id: cycleId })
+      .eq("account_id", account.id)
+      .is("billing_cycle_id", null)
+      .lte("date", currentCycleEnd)
+  }
+
+  const { data: cycleRow } = await supabase
+    .from("credit_card_cycles")
+    .select("id, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, due_date")
+    .eq("account_id", account.id)
+    .eq("cycle_end_date", currentCycleEnd)
+    .single()
+
+  const statementDop = Number(cycleRow?.statement_balance_dop || 0)
+  const statementUsd = Number(cycleRow?.statement_balance_usd || 0)
+  const paidDop = Number(cycleRow?.paid_amount_dop || 0)
+  const paidUsd = Number(cycleRow?.paid_amount_usd || 0)
+  const statementPendingDop = Math.max(0, roundCurrencyAmount(statementDop - paidDop))
+  const statementPendingUsd = Math.max(0, roundCurrencyAmount(statementUsd - paidUsd))
+
   const dueDate = new Date(`${cycle.dueDate}T12:00:00`)
-  const isPastDue = now.getTime() > dueDate.getTime()
-
-  let nextDebtDop = currentDebtDop
-  let nextDebtUsd = currentDebtUsd
-
-  if (isPastDue && unpaidStatementDop > 0 && lateFeeCycleDop !== cycle.cycleKey) {
-    const fee = roundCurrencyAmount(unpaidStatementDop * LATE_FEE_RATE)
-    nextDebtDop = roundCurrencyAmount(nextDebtDop + fee)
-    lateFeeCycleDop = cycle.cycleKey
-    await supabase.from("transactions").insert({
-      user_id: account.user_id,
-      account_id: account.id,
-      category_id: null,
-      type: "expense",
-      amount: fee,
-      currency: "DOP",
-      amount_base: fee,
-      exchange_rate: 1,
-      description: "Late fee 12%",
-      date: getLocalDateString(),
-      notes: null,
-      is_recurring: false,
-      metadata: { kind: "late_fee", cycle_end_date: cycle.cycleEndDate },
-    })
-  }
-
-  if (isPastDue && unpaidStatementUsd > 0 && lateFeeCycleUsd !== cycle.cycleKey) {
-    const fee = roundCurrencyAmount(unpaidStatementUsd * LATE_FEE_RATE)
-    nextDebtUsd = roundCurrencyAmount(nextDebtUsd + fee)
-    lateFeeCycleUsd = cycle.cycleKey
-    await supabase.from("transactions").insert({
-      user_id: account.user_id,
-      account_id: account.id,
-      category_id: null,
-      type: "expense",
-      amount: fee,
-      currency: "USD",
-      amount_base: fee,
-      exchange_rate: 1,
-      description: "Late fee 12%",
-      date: getLocalDateString(),
-      notes: null,
-      is_recurring: false,
-      metadata: { kind: "late_fee", cycle_end_date: cycle.cycleEndDate },
-    })
-  }
+  const now = new Date()
+  const overdue = now.getTime() > dueDate.getTime()
+  const financedDop = overdue ? statementPendingDop : 0
+  const financedUsd = overdue ? statementPendingUsd : 0
 
   await supabase
     .from("accounts")
     .update({
-      current_debt_dop: nextDebtDop,
-      current_debt_usd: nextDebtUsd,
+      current_balance_dop: currentBalanceDop,
+      current_balance_usd: currentBalanceUsd,
+      current_debt_dop: currentBalanceDop,
+      current_debt_usd: currentBalanceUsd,
+      current_debt: currentBalanceDop,
       statement_balance_dop: statementDop,
       statement_balance_usd: statementUsd,
+      statement_balance: statementDop,
       paid_statement_amount_dop: paidDop,
       paid_statement_amount_usd: paidUsd,
-      pending_transit_dop: Math.max(0, nextDebtDop - Math.max(0, statementDop - paidDop)),
-      pending_transit_usd: Math.max(0, nextDebtUsd - Math.max(0, statementUsd - paidUsd)),
-      minimum_payment: getMinimumPayment(unpaidStatementDop, account.minimum_payment_percentage),
-      current_debt: nextDebtDop,
-      statement_balance: statementDop,
-      pending_amount: Math.max(0, statementDop - paidDop),
       paid_amount: paidDop,
+      pending_amount: statementPendingDop,
+      financed_balance_dop: financedDop,
+      financed_balance_usd: financedUsd,
+      available_credit_dop: Math.max(0, Number(account.credit_limit_dop || 0) - currentBalanceDop),
+      available_credit_usd: Math.max(0, Number(account.credit_limit_usd || 0) - currentBalanceUsd),
+      pending_transit_dop: Math.max(0, currentBalanceDop - statementPendingDop),
+      pending_transit_usd: Math.max(0, currentBalanceUsd - statementPendingUsd),
       cycle_start_date: cycle.cycleStartDate,
       cycle_end_date: cycle.cycleEndDate,
-      last_statement_cutoff_date: cycle.cycleEndDate,
       statement_due_date: cycle.dueDate,
-      late_fee_applied_cycle_dop: lateFeeCycleDop,
-      late_fee_applied_cycle_usd: lateFeeCycleUsd,
+      last_statement_cutoff_date: cycle.cycleEndDate,
+      due_days_after_cutoff: dueDays,
+      minimum_payment: getMinimumPayment(statementPendingDop, account.minimum_payment_percentage),
     })
     .eq("id", account.id)
 
+  if (overdue && cycleRow?.id) {
+    await supabase
+      .from("credit_card_cycles")
+      .update({ status: statementPendingDop > 0 || statementPendingUsd > 0 ? "overdue" : "paid" })
+      .eq("id", cycleRow.id)
+  }
+
   const lines = [
-    { currency: "DOP" as const, pending: Math.max(0, statementDop - paidDop) },
-    { currency: "USD" as const, pending: Math.max(0, statementUsd - paidUsd) },
+    { currency: "DOP" as const, pending: statementPendingDop },
+    { currency: "USD" as const, pending: statementPendingUsd },
   ]
 
   for (const line of lines) {
-    if (line.pending <= 0) {
-      await supabase
-        .from("notifications")
-        .update({ read: true })
-        .eq("user_id", account.user_id)
-        .eq("type", "credit")
-        .contains("metadata", { kind: "credit_payment_due", account_id: account.id, currency: line.currency })
-      continue
-    }
-    if (cycle.remainingDays > 7) continue
+    if (line.pending <= 0) continue
     await upsertCreditNotification({
       userId: account.user_id,
       title: `Pago pendiente: ${account.name}`,
@@ -361,7 +371,6 @@ async function syncCreditAccountCycle(creditAccountId: string) {
         account_id: account.id,
         currency: line.currency,
         due_date: cycle.dueDate,
-        cycle_start_date: cycle.cycleStartDate,
         cycle_end_date: cycle.cycleEndDate,
         pending_amount: line.pending,
       },
@@ -571,7 +580,7 @@ export function useBeneficiaries() {
 }
 
 // Mutations
-type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date" | "sort_order" | "is_favorite" | "icon_url" | "icon_type" | "icon_value" | "primary_color" | "secondary_color" | "background_style" | "credit_limit_dop" | "credit_limit_usd" | "current_debt_dop" | "current_debt_usd" | "statement_balance_dop" | "statement_balance_usd" | "paid_statement_amount_dop" | "paid_statement_amount_usd" | "pending_transit_dop" | "pending_transit_usd" | "closing_day" | "due_days_after_cutoff" | "minimum_payment_percentage" | "last_statement_cutoff_date" | "statement_due_date" | "late_fee_applied_cycle_dop" | "late_fee_applied_cycle_usd"> & {
+type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date" | "sort_order" | "is_favorite" | "icon_url" | "icon_type" | "icon_value" | "primary_color" | "secondary_color" | "background_style" | "credit_limit_dop" | "credit_limit_usd" | "current_balance_dop" | "current_balance_usd" | "current_debt_dop" | "current_debt_usd" | "statement_balance_dop" | "statement_balance_usd" | "paid_statement_amount_dop" | "paid_statement_amount_usd" | "pending_transit_dop" | "pending_transit_usd" | "financed_balance_dop" | "financed_balance_usd" | "available_credit_dop" | "available_credit_usd" | "closing_day" | "payment_due_day" | "due_days_after_cutoff" | "minimum_payment_percentage" | "last_statement_cutoff_date" | "statement_due_date" | "late_fee_applied_cycle_dop" | "late_fee_applied_cycle_usd"> & {
   statement_balance?: number | null
   pending_amount?: number | null
   paid_amount?: number | null
@@ -585,6 +594,8 @@ type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_
   background_style?: string | null
   credit_limit_dop?: number | null
   credit_limit_usd?: number | null
+  current_balance_dop?: number | null
+  current_balance_usd?: number | null
   current_debt_dop?: number | null
   current_debt_usd?: number | null
   statement_balance_dop?: number | null
@@ -593,7 +604,12 @@ type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_
   paid_statement_amount_usd?: number | null
   pending_transit_dop?: number | null
   pending_transit_usd?: number | null
+  financed_balance_dop?: number | null
+  financed_balance_usd?: number | null
+  available_credit_dop?: number | null
+  available_credit_usd?: number | null
   closing_day?: number | null
+  payment_due_day?: number | null
   due_days_after_cutoff?: number | null
   minimum_payment_percentage?: number | null
   last_statement_cutoff_date?: string | null
@@ -632,9 +648,52 @@ export async function createTransaction(
     await ensureSufficientFundsForExpense(transaction.account_id, totalAmount, transaction.currency)
   }
 
+  let billingCycleId: string | null = null
+  let isStatementTransaction = false
+
+  const { data: accountForCycle } = await supabase
+    .from("accounts")
+    .select("id, user_id, type, closing_day, due_days_after_cutoff")
+    .eq("id", transaction.account_id)
+    .single()
+
+  if (accountForCycle?.type === "credit" && accountForCycle.closing_day) {
+    const txDate = /^\d{4}-\d{2}-\d{2}$/.test(transaction.date)
+      ? new Date(`${transaction.date}T12:00:00`)
+      : new Date(transaction.date)
+    const txCycle = getCycleForDate(Number(accountForCycle.closing_day), Number(accountForCycle.due_days_after_cutoff || 20), txDate)
+    const { data: existingCycle } = await supabase
+      .from("credit_card_cycles")
+      .select("id")
+      .eq("account_id", accountForCycle.id)
+      .eq("cycle_end_date", txCycle.cycleEndDate)
+      .maybeSingle()
+
+    if (existingCycle?.id) {
+      billingCycleId = existingCycle.id
+    } else {
+      const { data: createdCycle } = await supabase
+        .from("credit_card_cycles")
+        .insert({
+          user_id: accountForCycle.user_id,
+          account_id: accountForCycle.id,
+          cycle_start_date: txCycle.cycleStartDate,
+          cycle_end_date: txCycle.cycleEndDate,
+          due_date: txCycle.dueDate,
+          status: "open",
+        })
+        .select("id")
+        .single()
+      billingCycleId = createdCycle?.id || null
+    }
+
+    const nowCycle = getCycleForDate(Number(accountForCycle.closing_day), Number(accountForCycle.due_days_after_cutoff || 20))
+    isStatementTransaction = txCycle.cycleEndDate <= nowCycle.cycleEndDate
+  }
+
   const { data, error } = await supabase
     .from("transactions")
-    .insert({ ...transaction, user_id: user.id })
+    .insert({ ...transaction, user_id: user.id, billing_cycle_id: billingCycleId, is_statement_transaction: isStatementTransaction })
     .select()
     .single()
 
@@ -1102,6 +1161,28 @@ export async function payCreditCard(payment: {
     .from("accounts")
     .update(updates)
     .eq("id", payment.credit_account_id)
+
+  const { data: activeCycle } = await supabase
+    .from("credit_card_cycles")
+    .select("id, paid_amount_dop, paid_amount_usd, statement_balance_dop, statement_balance_usd")
+    .eq("account_id", payment.credit_account_id)
+    .order("cycle_end_date", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (activeCycle) {
+    const cycleUpdates: Record<string, unknown> = {}
+    if (payment.currency === "USD") {
+      const nextPaidUsd = roundCurrencyAmount(Number(activeCycle.paid_amount_usd || 0) + paidTowardStatement)
+      cycleUpdates.paid_amount_usd = nextPaidUsd
+      cycleUpdates.status = nextPaidUsd >= Number(activeCycle.statement_balance_usd || 0) ? "paid" : "closed"
+    } else {
+      const nextPaidDop = roundCurrencyAmount(Number(activeCycle.paid_amount_dop || 0) + paidTowardStatement)
+      cycleUpdates.paid_amount_dop = nextPaidDop
+      cycleUpdates.status = nextPaidDop >= Number(activeCycle.statement_balance_dop || 0) ? "paid" : "closed"
+    }
+    await supabase.from("credit_card_cycles").update(cycleUpdates).eq("id", activeCycle.id)
+  }
 
   // Get source account balance
   const { data: sourceAccount } = await supabase

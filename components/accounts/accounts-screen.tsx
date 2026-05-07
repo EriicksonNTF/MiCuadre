@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { MoneyInput } from "@/components/ui/money-input"
+import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
@@ -173,7 +174,7 @@ export function AccountsScreen() {
         icon: "",
         is_active: true,
         closing_date: accountType === "credit" && closingDate ? parseInt(closingDate) : null,
-        due_date: accountType === "credit" && dueDate ? parseInt(dueDate) : null,
+        due_date: null,
         icon_url: brandingIconUrl,
         icon_type: brandingIconType,
         icon_value: brandingIconValue,
@@ -255,12 +256,22 @@ export function AccountsScreen() {
           <div className="space-y-4 pb-safe-areas">
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
-              <div className="grid grid-cols-3 gap-2">{accounts.filter((a) => a.type !== "credit").map((a) => <button key={a.id} onClick={() => setFromAccount(a.id)} className={cn("rounded-xl p-3 text-xs", fromAccount === a.id ? "bg-primary text-primary-foreground" : "bg-muted")}>{a.name}</button>)}</div>
+              <AccountCarouselSelector
+                compact
+                items={accounts.filter((a) => a.type !== "credit").map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
+                selectedId={fromAccount}
+                onSelect={setFromAccount}
+              />
             </div>
             <div className="flex justify-center"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"><ChevronDown className="h-4 w-4 text-muted-foreground" /></div></div>
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Hacia</p>
-              <div className="grid grid-cols-3 gap-2">{accounts.map((a) => <button key={a.id} onClick={() => setToAccount(a.id)} className={cn("rounded-xl p-3 text-xs", toAccount === a.id ? "bg-primary text-primary-foreground" : "bg-muted")}>{a.name}</button>)}</div>
+              <AccountCarouselSelector
+                compact
+                items={accounts.map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
+                selectedId={toAccount}
+                onSelect={setToAccount}
+              />
             </div>
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
@@ -294,7 +305,7 @@ export function AccountsScreen() {
                 <MoneyInput value={creditLimitDop} onValueChange={setCreditLimitDop} placeholder="Límite DOP" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
                 <MoneyInput value={creditLimitUsd} onValueChange={setCreditLimitUsd} placeholder="Límite USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
                 <input type="text" inputMode="numeric" value={closingDate} onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de cierre" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
-                <input type="text" inputMode="numeric" value={dueDate} onChange={(e) => setDueDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de pago" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
               </div>
             )}
           </div>

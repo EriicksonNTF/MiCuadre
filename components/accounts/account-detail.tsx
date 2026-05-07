@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { mutate } from "swr"
@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { MoneyInput } from "@/components/ui/money-input"
+import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard } from "@/hooks/use-data"
@@ -169,6 +170,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       paidStatementUsd: acc.paid_statement_amount_usd,
       pendingTransitDop: acc.pending_transit_dop,
       pendingTransitUsd: acc.pending_transit_usd,
+      available_credit_dop: acc.available_credit_dop,
+      available_credit_usd: acc.available_credit_usd,
+      financed_balance_dop: acc.financed_balance_dop,
+      financed_balance_usd: acc.financed_balance_usd,
       statementDueDate: acc.statement_due_date,
       minimumPaymentPercentage: acc.minimum_payment_percentage,
       cutoffDate: acc.closing_date,
@@ -177,6 +182,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }, [rawAccounts])
 
   const account = accounts.find((a) => a.id === accountId)
+  const hasUsdOnCard = Boolean(account && (Number(account.creditLimitUsd || 0) > 0 || Number(account.currentDebtUsd || 0) > 0 || Number(account.statementUsd || 0) > 0))
 
   const nameToSlug: Record<string, string> = {
     'Comida': 'food',
@@ -270,7 +276,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       const parsedCreditLimitDop = Number(editForm.credit_limit_dop || 0)
       const parsedCreditLimitUsd = Number(editForm.credit_limit_usd || 0)
       const parsedClosingDate = editForm.type === "credit" && editForm.closing_date ? Number(editForm.closing_date) : null
-      const parsedDueDate = editForm.type === "credit" && editForm.due_date ? Number(editForm.due_date) : null
 
       await updateAccount(accountId, {
         name: editForm.name,
@@ -281,7 +286,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         credit_limit_dop: editForm.type === "credit" ? parsedCreditLimitDop : null,
         credit_limit_usd: editForm.type === "credit" ? parsedCreditLimitUsd : null,
         closing_date: parsedClosingDate,
-        due_date: parsedDueDate,
+        due_date: null,
+        due_days_after_cutoff: editForm.type === "credit" ? 20 : null,
         icon_url: editForm.icon_url || null,
         icon_type: editForm.icon_type,
         icon_value: editForm.icon_value,
@@ -328,6 +334,14 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const paidStatementByCurrency = paymentCurrency === "DOP" ? Number(account?.paidStatementDop || 0) : Number(account?.paidStatementUsd || 0)
   const pendingStatementByCurrency = Math.max(0, statementByCurrency - paidStatementByCurrency)
   const minPaymentByCurrency = pendingStatementByCurrency * Number(account?.minimumPaymentPercentage || 0.0278)
+
+  useEffect(() => {
+    if (!hasUsdOnCard && paymentCurrency === "USD") {
+      setPaymentCurrency("DOP")
+      setPaymentSource("")
+      setPaymentAmount("")
+    }
+  }, [hasUsdOnCard, paymentCurrency])
 
   const uploadAccountLogo = async (file?: File) => {
     if (!file) return
@@ -435,19 +449,19 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <div className="rounded-xl bg-background/70 p-3">
                   <p className="text-xs text-muted-foreground">Limite DOP</p>
                   <p className="font-semibold">{formatCurrency(Number(account.creditLimitDop || 0), "DOP")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Disponible: {formatCurrency(Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0), "DOP")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Balance al dia: {formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Disponible: {formatCurrency(Number(account.available_credit_dop || Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0)), "DOP")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Balance actual: {formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Balance al corte: {formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Minimo: {formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Pago mínimo: {formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p>
                 </div>
-                <div className="rounded-xl bg-background/70 p-3">
+                {hasUsdOnCard && <div className="rounded-xl bg-background/70 p-3">
                   <p className="text-xs text-muted-foreground">Limite USD</p>
                   <p className="font-semibold">{formatCurrency(Number(account.creditLimitUsd || 0), "USD")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Disponible: {formatCurrency(Number(account.creditLimitUsd || 0) - Number(account.currentDebtUsd || 0), "USD")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Balance al dia: {formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Disponible: {formatCurrency(Number(account.available_credit_usd || Number(account.creditLimitUsd || 0) - Number(account.currentDebtUsd || 0)), "USD")}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Balance actual: {formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Balance al corte: {formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Minimo: {formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p>
-                </div>
+                  <p className="mt-1 text-xs text-muted-foreground">Pago mínimo: {formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p>
+                </div>}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">Pagar antes de: {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
             </div>
@@ -614,15 +628,15 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           }
         >
             <div className="rounded-2xl bg-muted p-4">
-              <p className="text-xs text-muted-foreground">Balance al dia ({paymentCurrency})</p>
+              <p className="text-xs text-muted-foreground">Balance actual ({paymentCurrency})</p>
               <p className="mt-1 text-2xl font-bold text-foreground">
                 {formatCurrency(currentDebtByCurrency, paymentCurrency)}
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">Balance al corte: {formatCurrency(pendingStatementByCurrency, paymentCurrency)} · Minimo: {formatCurrency(minPaymentByCurrency, paymentCurrency)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">Balance al corte: {formatCurrency(pendingStatementByCurrency, paymentCurrency)} · Pago mínimo: {formatCurrency(minPaymentByCurrency, paymentCurrency)}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
-              {(["DOP", "USD"] as const).map((curr) => (
+              {(["DOP", "USD"] as const).filter((curr) => curr === "DOP" || hasUsdOnCard).map((curr) => (
                 <button key={curr} onClick={() => { setPaymentCurrency(curr); setPaymentSource(""); setPaymentAmount("") }} className={cn("rounded-lg py-2 text-xs font-medium", paymentCurrency === curr ? "bg-card" : "text-muted-foreground")}>{curr}</button>
               ))}
             </div>
@@ -633,32 +647,15 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">
                   Pagar desde
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  {accounts
+                <AccountCarouselSelector
+                  compact
+                  items={accounts
                     .filter((a) => a.type !== "credit" && a.currency === paymentCurrency)
-                    .map((acc) => {
-                      const AccIcon = accountIcons[acc.type]
-                      const isSelected = paymentSource === acc.id
-                      return (
-                        <button
-                          key={acc.id}
-                          onClick={() => setPaymentSource(acc.id)}
-                          className={cn(
-                            "flex flex-col items-center gap-1 rounded-xl p-4 transition-all",
-                            isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-foreground"
-                          )}
-                        >
-                          <AccIcon className="h-5 w-5" />
-                          <span className="text-xs font-medium">{acc.name}</span>
-                          <span className="text-[10px] opacity-70">
-                            {formatCurrency(acc.balance, acc.currency)}
-                          </span>
-                        </button>
-                      )
-                    })}
-                </div>
+                    .map((acc) => ({ id: acc.id, title: acc.name, subtitle: formatCurrency(Number(acc.balance || 0), acc.currency), detail: acc.type }))}
+                  selectedId={paymentSource}
+                  onSelect={setPaymentSource}
+                  emptyMessage={`No hay cuentas ${paymentCurrency}`}
+                />
               </div>
 
               {/* Amount */}
@@ -838,16 +835,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Día de pago</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={editForm.due_date}
-                      onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })}
-                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                    />
-                  </div>
+                  <p className="text-xs text-muted-foreground">Fecha de pago automática: corte + 20 días.</p>
                 </>
               )}
 

@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { MoneyInput } from "@/components/ui/money-input"
+import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { useAccounts, payCreditCard } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/data"
 
@@ -21,6 +22,13 @@ export default function PayPage() {
 
   const creditCards = useMemo(() => accounts.filter((a) => a.type === "credit"), [accounts])
   const card = creditCards.find((a) => a.id === selectedCard)
+  const hasUsdOnCard = Boolean(
+    card && (
+      Number(card.credit_limit_usd || 0) > 0 ||
+      Number(card.current_debt_usd || 0) > 0 ||
+      Number(card.statement_balance_usd || 0) > 0
+    )
+  )
   const sources = useMemo(() => accounts.filter((a) => a.type !== "credit" && a.currency === currencyTab), [accounts, currencyTab])
   const source = sources.find((a) => a.id === sourceAccount)
 
@@ -29,7 +37,7 @@ export default function PayPage() {
   const paidStatement = currencyTab === "DOP" ? Number(card?.paid_statement_amount_dop || 0) : Number(card?.paid_statement_amount_usd || 0)
   const pendingStatement = Math.max(0, statementBalance - paidStatement)
   const minimumPayment = Math.round(pendingStatement * Number(card?.minimum_payment_percentage || 0.0278) * 100) / 100
-  const pendingTransit = currencyTab === "DOP" ? Number(card?.pending_transit_dop || 0) : Number(card?.pending_transit_usd || 0)
+  const availableCredit = currencyTab === "DOP" ? Number(card?.available_credit_dop || 0) : Number(card?.available_credit_usd || 0)
 
   const selectedAmount = paymentMode === "balance_to_date"
     ? balanceToDate
@@ -40,6 +48,13 @@ export default function PayPage() {
     : parseFloat(customAmount || "0")
 
   const valid = Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && selectedAmount <= Number(source?.balance || 0))
+
+  useEffect(() => {
+    if (!hasUsdOnCard && currencyTab === "USD") {
+      setCurrencyTab("DOP")
+      setSourceAccount("")
+    }
+  }, [currencyTab, hasUsdOnCard])
 
   const handlePay = async () => {
     if (!card || !source || !valid) return
@@ -66,26 +81,35 @@ export default function PayPage() {
       </div>
 
       <div className="space-y-3">
-        {creditCards.map((c) => (
-          <button key={c.id} onClick={() => setSelectedCard(c.id)} className={`w-full rounded-2xl border p-4 text-left ${selectedCard === c.id ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
-            <div className="flex items-center gap-3"><CreditCard className="h-5 w-5" /><p className="font-medium">{c.name}</p></div>
-          </button>
-        ))}
+        <AccountCarouselSelector
+          items={creditCards.map((c) => ({
+            id: c.id,
+            title: c.name,
+            subtitle:
+              Number(c.credit_limit_usd || 0) > 0 || Number(c.current_debt_usd || 0) > 0 || Number(c.statement_balance_usd || 0) > 0
+                ? `${formatCurrency(Number(c.current_debt_dop || 0), "DOP")} · ${formatCurrency(Number(c.current_debt_usd || 0), "USD")}`
+                : formatCurrency(Number(c.current_debt_dop || 0), "DOP"),
+            detail: "Tarjeta",
+          }))}
+          selectedId={selectedCard}
+          onSelect={setSelectedCard}
+          emptyMessage="Crea tu primera tarjeta"
+        />
       </div>
 
       {card && (
         <>
           <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1">
-            {(["DOP", "USD"] as const).map((tab) => (
+            {(["DOP", "USD"] as const).filter((tab) => tab === "DOP" || hasUsdOnCard).map((tab) => (
               <button key={tab} onClick={() => { setCurrencyTab(tab); setSourceAccount("") }} className={`rounded-xl py-2 text-sm font-medium ${currencyTab === tab ? "bg-card" : "text-muted-foreground"}`}>{tab}</button>
             ))}
           </div>
 
           <div className="mt-4 rounded-2xl bg-card p-4 text-sm space-y-2">
-            <div className="flex justify-between"><span className="text-muted-foreground">Balance al dia</span><span>{formatCurrency(balanceToDate, currencyTab)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Balance actual</span><span>{formatCurrency(balanceToDate, currencyTab)}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Balance al corte</span><span>{formatCurrency(pendingStatement, currencyTab)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Pago minimo</span><span>{formatCurrency(minimumPayment, currencyTab)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Pendiente/transito</span><span>{formatCurrency(pendingTransit, currencyTab)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Disponible</span><span>{formatCurrency(availableCredit, currencyTab)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Pago mínimo</span><span>{formatCurrency(minimumPayment, currencyTab)}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Pagar antes de</span><span>{card.statement_due_date ? formatDate(card.statement_due_date) : "-"}</span></div>
           </div>
 
@@ -104,13 +128,14 @@ export default function PayPage() {
           )}
 
           <p className="mt-4 text-sm font-medium text-muted-foreground">Cuenta origen ({currencyTab})</p>
-          <div className="mt-2 flex gap-2">
-            {sources.map((acc) => (
-              <button key={acc.id} onClick={() => setSourceAccount(acc.id)} className={`flex-1 rounded-xl border p-3 text-left ${sourceAccount === acc.id ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
-                <p className="text-sm font-medium">{acc.name}</p>
-                <p className="text-xs text-muted-foreground">{formatCurrency(acc.balance, currencyTab)}</p>
-              </button>
-            ))}
+          <div className="mt-2">
+            <AccountCarouselSelector
+              compact
+              items={sources.map((acc) => ({ id: acc.id, title: acc.name, subtitle: formatCurrency(Number(acc.balance || 0), currencyTab), detail: acc.type }))}
+              selectedId={sourceAccount}
+              onSelect={setSourceAccount}
+              emptyMessage={`No hay cuentas ${currencyTab}`}
+            />
           </div>
 
           <Button className="mt-5 h-12 w-full" onClick={handlePay} disabled={!valid || isPaying}>

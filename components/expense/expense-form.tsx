@@ -19,9 +19,6 @@ import {
   CalendarIcon,
   Check,
   ChevronLeft,
-  Banknote,
-  Building2,
-  CreditCard,
   AlertCircle,
   TrendingUp,
   TrendingDown,
@@ -43,20 +40,13 @@ import {
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { MoneyInput } from "@/components/ui/money-input"
+import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { useAccounts, useCategories, createTransaction } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import type { AccountType } from "@/lib/types/database"
-
-
-const accountIcons: Record<AccountType, typeof Banknote> = {
-  cash: Banknote,
-  debit: Building2,
-  credit: CreditCard,
-}
 
 const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: string }> = {
   comida: { icon: Utensils, color: "bg-orange-50 text-orange-500" },
@@ -342,31 +332,19 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
           <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">
             Cuenta
           </p>
-          <div className="grid grid-cols-3 gap-2">
-            {accounts.map((account) => {
-              const Icon = accountIcons[account.type]
-              const isSelected = accountId === account.id
-              // Don't allow credit for income
-              const isDisabled = transactionType === "income" && account.type === "credit"
-              return (
-                <button
-                  key={account.id}
-                  onClick={() => !isDisabled && setAccountId(account.id)}
-                  disabled={isDisabled}
-                  className={cn(
-                    "flex flex-col items-center gap-2 rounded-2xl p-4 transition-all",
-                    isDisabled && "opacity-40 cursor-not-allowed",
-                    isSelected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card text-foreground"
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span className="text-xs font-medium">{account.name}</span>
-                </button>
-              )
-            })}
-          </div>
+          <AccountCarouselSelector
+            compact
+            items={accounts
+              .filter((account) => !(transactionType === "income" && account.type === "credit"))
+              .map((account) => ({
+                id: account.id,
+                title: account.name,
+                subtitle: account.type === "credit" ? `Disponible: ${formatCurrency(getAvailableCredit(account), account.currency)}` : `Balance: ${formatCurrency(Number(account.balance || 0), account.currency)}`,
+                detail: account.type,
+              }))}
+            selectedId={accountId}
+            onSelect={setAccountId}
+          />
           
           {/* Credit Card Warning */}
           {isCredit && transactionType === "expense" && (

@@ -9,12 +9,11 @@ import {
   Plus,
   X,
   Calendar,
-  TrendingUp,
-  Wallet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { MoneyInput } from "@/components/ui/money-input"
+import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { formatCurrency } from "@/lib/data"
 
 type GoalParams = {
@@ -218,28 +217,15 @@ export default function GoalDetailPage({ params }: { params: Promise<{ id: strin
                 <p className="mb-3 text-sm font-medium text-foreground">
                   Desde cuenta
                 </p>
-                <div className="flex gap-3">
-                  {[
-                    { id: "cash", name: "Efectivo", icon: Wallet },
-                    { id: "debit", name: "Débito", icon: TrendingUp },
-                  ].map(({ id, name, icon: Icon }) => (
-                    <button
-                      key={id}
-                      onClick={() => setAddAccount(id)}
-                      className={cn(
-                        "flex flex-1 flex-col items-center gap-2 rounded-2xl border border-border p-4 transition-all",
-                        addAccount === id
-                          ? "border-primary bg-primary/10"
-                          : "bg-background hover:border-primary/50"
-                      )}
-                    >
-                      <Icon className={cn("h-6 w-6", addAccount === id ? "text-primary" : "text-muted-foreground")} />
-                      <span className={cn("text-sm font-medium", addAccount === id ? "text-primary" : "text-muted-foreground")}>
-                        {name}
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                <AccountCarouselSelector
+                  compact
+                  items={[
+                    { id: "cash", title: "Efectivo", subtitle: "Cuenta origen", detail: "DOP" },
+                    { id: "debit", title: "Débito", subtitle: "Cuenta origen", detail: "DOP" },
+                  ]}
+                  selectedId={addAccount}
+                  onSelect={setAddAccount}
+                />
               </div>
             </div>
 

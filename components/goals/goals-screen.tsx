@@ -26,6 +26,7 @@ import { useGoals, useAccounts, createGoal, addGoalContribution } from "@/hooks/
 import { createGoalSchema, addGoalContributionSchema, parseAmount, getFieldError } from "@/lib/validation"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { MoneyInput } from "@/components/ui/money-input"
+import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 
@@ -364,23 +365,12 @@ export function GoalsScreen() {
 
             <div>
               <p className="mb-2 text-center text-sm font-medium text-muted-foreground">Cuenta origen</p>
-              <div className="grid grid-cols-2 gap-2">
-                {accounts.filter((account) => account.type !== "credit").map((account) => (
-                  <button
-                    key={account.id}
-                    onClick={() => setContributionAccountId(account.id)}
-                    className={cn(
-                      "rounded-xl border px-3 py-2 text-left transition-colors",
-                      contributionAccountId === account.id
-                        ? "border-primary bg-primary/10"
-                        : "border-border bg-card"
-                    )}
-                  >
-                    <p className="text-sm font-medium text-foreground">{account.name}</p>
-                    <p className="text-xs text-muted-foreground">Disponible: {formatCurrency(account.balance)}</p>
-                  </button>
-                ))}
-              </div>
+              <AccountCarouselSelector
+                compact
+                items={accounts.filter((account) => account.type !== "credit").map((account) => ({ id: account.id, title: account.name, subtitle: `Disponible: ${formatCurrency(Number(account.balance || 0), account.currency)}`, detail: account.currency }))}
+                selectedId={contributionAccountId}
+                onSelect={setContributionAccountId}
+              />
               {contributionAccount && (
                 <p className={cn(
                   "mt-2 text-xs",

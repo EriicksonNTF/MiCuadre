@@ -47,8 +47,14 @@ export interface Account {
   current_debt: number | null
   credit_limit_dop: number | null
   credit_limit_usd: number | null
+  current_balance_dop: number | null
+  current_balance_usd: number | null
   current_debt_dop: number | null
   current_debt_usd: number | null
+  financed_balance_dop: number | null
+  financed_balance_usd: number | null
+  available_credit_dop: number | null
+  available_credit_usd: number | null
   statement_balance_dop: number | null
   statement_balance_usd: number | null
   paid_statement_amount_dop: number | null
@@ -56,6 +62,7 @@ export interface Account {
   pending_transit_dop: number | null
   pending_transit_usd: number | null
   closing_day: number | null
+  payment_due_day: number | null
   due_days_after_cutoff: number | null
   minimum_payment_percentage: number | null
   last_statement_cutoff_date: string | null
@@ -97,6 +104,8 @@ export interface Transaction {
   exchange_rate: number
   description: string | null
   date: string
+  billing_cycle_id?: string | null
+  is_statement_transaction?: boolean
   notes: string | null
   is_recurring: boolean
   parent_transaction_id: string | null
@@ -194,5 +203,20 @@ export interface CreditPayment {
   payment_kind: "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
   payment_date: string
   notes: string | null
+  created_at: string
+}
+
+export interface CreditCardCycle {
+  id: string
+  user_id: string
+  account_id: string
+  cycle_start_date: string
+  cycle_end_date: string
+  due_date: string
+  statement_balance_dop: number
+  statement_balance_usd: number
+  paid_amount_dop: number
+  paid_amount_usd: number
+  status: "open" | "closed" | "paid" | "overdue"
   created_at: string
 }
