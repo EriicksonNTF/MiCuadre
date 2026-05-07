@@ -64,6 +64,7 @@ export interface Account {
   closing_day: number | null
   payment_due_day: number | null
   due_days_after_cutoff: number | null
+  annual_interest_rate: number | null
   minimum_payment_percentage: number | null
   last_statement_cutoff_date: string | null
   statement_due_date: string | null
@@ -217,6 +218,10 @@ export interface CreditCardCycle {
   statement_balance_usd: number
   paid_amount_dop: number
   paid_amount_usd: number
-  status: "open" | "closed" | "paid" | "overdue"
+  financed_amount_dop: number
+  financed_amount_usd: number
+  interest_amount_dop: number
+  interest_amount_usd: number
+  status: "open" | "closed" | "paid" | "partial" | "overdue" | "financed"
   created_at: string
 }

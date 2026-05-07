@@ -38,6 +38,7 @@ export default function PayPage() {
   const pendingStatement = Math.max(0, statementBalance - paidStatement)
   const minimumPayment = Math.round(pendingStatement * Number(card?.minimum_payment_percentage || 0.0278) * 100) / 100
   const availableCredit = currencyTab === "DOP" ? Number(card?.available_credit_dop || 0) : Number(card?.available_credit_usd || 0)
+  const financedBalance = currencyTab === "DOP" ? Number(card?.financed_balance_dop || 0) : Number(card?.financed_balance_usd || 0)
 
   const selectedAmount = paymentMode === "balance_to_date"
     ? balanceToDate
@@ -105,18 +106,20 @@ export default function PayPage() {
             ))}
           </div>
 
-          <div className="mt-4 rounded-2xl bg-card p-4 text-sm space-y-2">
-            <div className="flex justify-between"><span className="text-muted-foreground">Balance actual</span><span>{formatCurrency(balanceToDate, currencyTab)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Balance al corte</span><span>{formatCurrency(pendingStatement, currencyTab)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Disponible</span><span>{formatCurrency(availableCredit, currencyTab)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Pago mínimo</span><span>{formatCurrency(minimumPayment, currencyTab)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Pagar antes de</span><span>{card.statement_due_date ? formatDate(card.statement_due_date) : "-"}</span></div>
-          </div>
+            <div className="mt-4 rounded-2xl bg-card p-4 text-sm space-y-2">
+              <div className="flex justify-between"><span className="text-muted-foreground">Balance actual</span><span>{formatCurrency(balanceToDate, currencyTab)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Balance al corte</span><span>{formatCurrency(statementBalance, currencyTab)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Pendiente del corte</span><span>{formatCurrency(pendingStatement, currencyTab)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Pago mínimo</span><span>{formatCurrency(minimumPayment, currencyTab)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Balance financiado</span><span>{formatCurrency(financedBalance, currencyTab)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Disponible</span><span>{formatCurrency(availableCredit, currencyTab)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Pagar antes de</span><span>{card.statement_due_date ? formatDate(card.statement_due_date) : "-"}</span></div>
+            </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             {["balance_to_date", "statement_balance", "minimum_payment", "custom"].map((mode) => (
               <button key={mode} onClick={() => setPaymentMode(mode as PaymentMode)} className={`rounded-xl border p-2 text-xs ${paymentMode === mode ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
-                {mode === "balance_to_date" ? "Pagar balance" : mode === "statement_balance" ? "Pagar corte" : mode === "minimum_payment" ? "Pago minimo" : "Otro monto"}
+                {mode === "balance_to_date" ? "Pagar balance actual" : mode === "statement_balance" ? "Pagar corte" : mode === "minimum_payment" ? "Pago mínimo" : "Otro monto"}
               </button>
             ))}
           </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   ChevronLeft,
@@ -36,7 +36,7 @@ const typeColors: Record<NotificationType, string> = {
 type FilterType = "all" | NotificationType
 
 export function NotificationsScreen() {
-  const { data: notifications = [], mutate } = useNotifications()
+  const { data: notifications = [] } = useNotifications()
   const [filter, setFilter] = useState<FilterType>("all")
 
   const filteredNotifications = useMemo(() =>
@@ -47,14 +47,25 @@ export function NotificationsScreen() {
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
+  useEffect(() => {
+    if (unreadCount <= 0) return
+    void markAllNotificationsAsRead()
+  }, [unreadCount])
+
   const markAsRead = async (id: string) => {
-    await markNotificationAsRead(id)
-    await mutate()
+    try {
+      await markNotificationAsRead(id)
+    } catch {
+      // noop
+    }
   }
 
   const markAllAsRead = async () => {
-    await markAllNotificationsAsRead()
-    await mutate()
+    try {
+      await markAllNotificationsAsRead()
+    } catch {
+      // noop
+    }
   }
 
   return (
