@@ -25,6 +25,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Switch } from "@/components/ui/switch"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { createClient } from "@/lib/supabase/client"
 import { useProfile, useCategories, updateProfile, createCategory, updateCategory, deleteCategory } from "@/hooks/use-data"
@@ -235,12 +236,15 @@ export function SettingsScreen() {
         <Link href="/profile" className="block">
           <div className="rounded-2xl bg-card p-4">
             <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-accent to-emerald-600">
-                <User className="h-7 w-7 text-white" />
-              </div>
+              <Avatar className="h-14 w-14">
+                <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || "Usuario"} />
+                <AvatarFallback className="bg-gradient-to-br from-accent to-emerald-600 text-white">
+                  <User className="h-7 w-7" />
+                </AvatarFallback>
+              </Avatar>
               <div className="flex-1">
-                <p className="font-semibold text-foreground">Usuario Demo</p>
-                <p className="text-sm text-muted-foreground">demo@finwallet.app</p>
+                <p className="font-semibold text-foreground">{profile?.full_name || profile?.first_name || "Usuario"}</p>
+                <p className="text-sm text-muted-foreground">{profile?.email || "Sin correo"}</p>
               </div>
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>

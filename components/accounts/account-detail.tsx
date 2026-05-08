@@ -211,6 +211,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       title: tx.description || "Sin descripción",
       category: nameToSlug[tx.category?.name || ""] || "other",
       amount: tx.amount,
+      currency: tx.currency,
       type: tx.type,
       rawDate: tx.date,
       date: formatDate(tx.date),
@@ -595,7 +596,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     )}
                   >
                     {tx.type === "income" ? "+" : "-"}
-                    {formatCurrency(tx.amount)}
+                    {formatCurrency(tx.amount, tx.currency)}
                   </p>
                 </div>
               )
