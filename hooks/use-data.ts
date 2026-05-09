@@ -1314,7 +1314,11 @@ export async function payCreditCard(payment: {
   currency: "DOP" | "USD"
   payment_kind?: "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
   notes?: string
+  apply_commission?: boolean
 }) {
+  const applyCommission = Boolean(payment.apply_commission)
+  const commissionAmount = applyCommission ? getCommissionAmount(payment.amount) : 0
+  const totalAmount = roundCurrencyAmount(payment.amount + commissionAmount)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
@@ -1350,7 +1354,9 @@ export async function payCreditCard(payment: {
     throw new Error("No puedes pagar más que la deuda actual")
   }
 
-  if (Number(sourceAccount.balance) < payment.amount) {
+  if (applyCommission && Number(sourceAccount.balance) < totalAmount) {
+    throw new Error(COMMISSION_ERROR_MESSAGE)
+  } else if (!applyCommission && Number(sourceAccount.balance) < payment.amount) {
     throw new Error("Disponible insuficiente en la cuenta origen para este pago")
   }
 
@@ -1360,7 +1366,7 @@ export async function payCreditCard(payment: {
   const newPaidStatement = roundCurrencyAmount(currentPaid + paidTowardStatement)
   const cardLimit = Number((creditCard as Record<string, unknown>)[fields.limit] ?? 0)
   const newAvailableCredit = roundCurrencyAmount(Math.min(cardLimit, Math.max(0, cardLimit - newDebt)))
-  const optimisticSourceBalance = roundCurrencyAmount(Number(sourceAccount.balance || 0) - payment.amount)
+  const optimisticSourceBalance = roundCurrencyAmount(Number(sourceAccount.balance || 0) - totalAmount)
   const optimisticPendingAmount = Math.max(0, roundCurrencyAmount(currentStatement - newPaidStatement))
 
   const updates: Record<string, unknown> = {
@@ -1395,7 +1401,6 @@ export async function payCreditCard(payment: {
         return next
       }
 
-<<<<<<< HEAD
       if (account.id === payment.source_account_id) {
         return { ...account, balance: optimisticSourceBalance }
       }
@@ -1430,6 +1435,35 @@ export async function payCreditCard(payment: {
     },
     false
   )
+
+  if (applyCommission && commissionAmount > 0) {
+    mutate(
+      (key: unknown) => Array.isArray(key) && key[0] === "transactions",
+      (existing?: Transaction[]) => {
+        if (!existing || existing.length === 0) return existing
+        const optimisticCommissionTx: Transaction = {
+          id: `optimistic-commission-${Date.now()}`,
+          user_id: user.id,
+          account_id: payment.source_account_id,
+          category_id: null,
+          type: "expense",
+          amount: commissionAmount,
+          currency: payment.currency,
+          amount_base: commissionAmount,
+          exchange_rate: 1,
+          description: `0.15% commission of payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
+          date: getLocalDateString(),
+          notes: null,
+          is_recurring: false,
+          parent_transaction_id: null,
+          metadata: { kind: "commission", rate: COMMISSION_RATE },
+          created_at: new Date().toISOString(),
+        }
+        return [optimisticCommissionTx, ...existing]
+      },
+      false
+    )
+  }
 
   try {
     await supabase
@@ -1516,13 +1550,36 @@ export async function payCreditCard(payment: {
       metadata: { kind: "credit_payment", credit_account_id: payment.credit_account_id, payment_kind: payment.payment_kind || "custom" },
     })
 
+    if (applyCommission && commissionAmount > 0) {
+      const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
+      await supabase.from("transactions").insert({
+        user_id: user.id,
+        account_id: payment.source_account_id,
+        category_id: commissionCategoryId,
+        type: "expense",
+        amount: commissionAmount,
+        currency: payment.currency,
+        amount_base: commissionAmount,
+        exchange_rate: 1,
+        description: `0.15% commission of payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
+        date: getLocalDateString(),
+        notes: null,
+        is_recurring: false,
+        metadata: { kind: "commission", rate: COMMISSION_RATE },
+      })
+    }
+
     await syncCreditAccountCycle(payment.credit_account_id)
 
+    const totalPaid = applyCommission ? totalAmount : payment.amount
+    const commissionText = applyCommission && commissionAmount > 0
+      ? ` (incluye ${payment.currency} ${commissionAmount.toFixed(2)} de comisión)`
+      : ""
     await createNotification({
       userId: user.id,
       type: "credit",
       title: "Pago de tarjeta registrado",
-      message: `Pagaste ${payment.currency} ${roundCurrencyAmount(payment.amount).toFixed(2)} de tu tarjeta.`,
+      message: `Pagaste ${payment.currency} ${roundCurrencyAmount(totalPaid).toFixed(2)} de tu tarjeta${commissionText}.`,
       actionUrl: "/pay",
     })
     mutate("notifications")

@@ -19,6 +19,7 @@ export default function PayPage() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("statement_balance")
   const [customAmount, setCustomAmount] = useState("")
   const [isPaying, setIsPaying] = useState(false)
+  const [applyCommission, setApplyCommission] = useState(true)
 
   const creditCards = useMemo(() => accounts.filter((a) => a.type === "credit"), [accounts])
   const card = creditCards.find((a) => a.id === selectedCard)
@@ -51,12 +52,18 @@ export default function PayPage() {
     ? pendingStatement
     : paymentMode === "minimum_payment"
     ? minimumPayment
-    : parseFloat(customAmount || "0")
+: parseFloat(customAmount || "0")
+
+  const COMMISSION_RATE = 0.0015
+  const commissionAmount = applyCommission ? Math.round(selectedAmount * COMMISSION_RATE * 100) / 100 : 0
+  const totalWithCommission = selectedAmount + commissionAmount
 
   const projectedDebt = Math.max(0, balanceToDate - selectedAmount)
   const availableAfterPayment = Math.min(creditLimit, Math.max(0, creditLimit - projectedDebt))
 
-  const valid = Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && selectedAmount <= Number(source?.balance || 0))
+  const valid = applyCommission
+    ? Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && totalWithCommission <= Number(source?.balance || 0))
+    : Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && selectedAmount <= Number(source?.balance || 0))
 
   useEffect(() => {
     if (!hasUsdOnCard && currencyTab === "USD") {
@@ -75,6 +82,7 @@ export default function PayPage() {
         amount: selectedAmount,
         currency: currencyTab,
         payment_kind: paymentMode,
+        apply_commission: applyCommission,
       })
       setCustomAmount("")
     } finally {
@@ -150,6 +158,33 @@ export default function PayPage() {
               emptyMessage={`No hay cuentas ${currencyTab}`}
             />
           </div>
+
+          {source && (
+            <div className="mt-4 rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">Aplicar comisión 0.15%</span>
+                  <span className="text-xs text-muted-foreground">
+                    {applyCommission
+                      ? `Se cobrará ${formatCurrency(commissionAmount, currencyTab)} extra`
+                      : "Sin comisión"}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setApplyCommission(!applyCommission)}
+                  className={`relative h-6 w-11 rounded-full transition-colors ${applyCommission ? "bg-primary" : "bg-muted"}`}
+                >
+                  <span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform ${applyCommission ? "left-6" : "left-1"}`} />
+                </button>
+              </div>
+              {applyCommission && (
+                <div className="mt-2 flex justify-between border-t pt-2 text-sm">
+                  <span className="text-muted-foreground">Total a debitar</span>
+                  <span className="font-medium">{formatCurrency(totalWithCommission, currencyTab)}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <Button className="mt-5 h-12 w-full" onClick={handlePay} disabled={!valid || isPaying}>
             {isPaying ? "Procesando..." : `Pagar ${formatCurrency(selectedAmount, currencyTab)}`}
