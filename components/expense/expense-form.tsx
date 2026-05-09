@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -67,7 +67,15 @@ const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: str
 type Currency = "DOP" | "USD"
 type TransactionType = "expense" | "income"
 
-export function ExpenseForm({ onBack }: { onBack?: () => void }) {
+type ExpensePrefill = {
+  amount?: string
+  description?: string
+  currency?: Currency | null
+  date?: string
+  categoryName?: string
+}
+
+export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?: ExpensePrefill }) {
   const { data: rawAccounts = [] } = useAccounts()
   const { data: dbCategories = [] } = useCategories()
 
@@ -96,6 +104,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   const [applyCommission, setApplyCommission] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [prefillApplied, setPrefillApplied] = useState(false)
 
   const categories = useMemo(() => {
     const allowedTypes = transactionType === "expense" ? ["expense", "both"] : ["income", "both"]
@@ -202,6 +211,26 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
 
   const exceedsAvailable = transactionType === "expense" && parsedAmount !== null && totalWithCommission > availableAmount
   const isValid = parsedAmount !== null && parsedAmount > 0 && description.length > 0 && !exceedsAvailable
+
+  useEffect(() => {
+    if (!prefill || prefillApplied) return
+
+    if (prefill.amount) setAmount(prefill.amount)
+    if (prefill.description) setDescription(prefill.description)
+    if (prefill.currency === "DOP" || prefill.currency === "USD") setCurrency(prefill.currency)
+
+    if (prefill.date) {
+      const parsed = new Date(`${prefill.date}T12:00:00`)
+      if (!Number.isNaN(parsed.getTime())) setDate(parsed)
+    }
+
+    if (prefill.categoryName && categories.length > 0) {
+      const matched = categories.find((cat) => cat.label.toLowerCase() === prefill.categoryName?.toLowerCase())
+      if (matched) setCategory(matched.id)
+    }
+
+    setPrefillApplied(true)
+  }, [prefill, prefillApplied, categories])
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
