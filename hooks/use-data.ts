@@ -293,6 +293,22 @@ async function syncCreditAccountCycle(creditAccountId: string) {
     existing.txIds.push(tx.id)
     cycleMap.set(txCycle.cycleEndDate, existing)
   }
+
+  const { data: paymentRows } = await supabase
+    .from("credit_payments")
+    .select("amount,currency")
+    .eq("credit_account_id", account.id)
+
+  let totalPaidDop = 0
+  let totalPaidUsd = 0
+  for (const paymentRow of paymentRows || []) {
+    const amount = Number(paymentRow.amount || 0)
+    if (paymentRow.currency === "USD") totalPaidUsd += amount
+    else totalPaidDop += amount
+  }
+
+  currentBalanceDop = roundCurrencyAmount(currentBalanceDop - totalPaidDop)
+  currentBalanceUsd = roundCurrencyAmount(currentBalanceUsd - totalPaidUsd)
   currentBalanceDop = Math.max(0, roundCurrencyAmount(currentBalanceDop))
   currentBalanceUsd = Math.max(0, roundCurrencyAmount(currentBalanceUsd))
 
@@ -1261,16 +1277,29 @@ export async function payCreditCard(payment: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  // Get credit card current debt
+  if (payment.amount <= 0) {
+    throw new Error("El monto del pago debe ser mayor a cero")
+  }
+
   const { data: creditCard } = await supabase
     .from("accounts")
-    .select("current_debt, current_debt_dop, current_debt_usd, statement_balance_dop, statement_balance_usd, paid_statement_amount_dop, paid_statement_amount_usd")
+    .select("id,name,credit_limit_dop,credit_limit_usd,current_debt,current_debt_dop,current_debt_usd,statement_balance_dop,statement_balance_usd,paid_statement_amount_dop,paid_statement_amount_usd,pending_amount,paid_amount,available_credit_dop,available_credit_usd")
     .eq("id", payment.credit_account_id)
     .single()
 
   if (!creditCard) throw new Error("Credit card not found")
 
-  // Validate payment amount
+  const { data: sourceAccount } = await supabase
+    .from("accounts")
+    .select("id,balance,currency")
+    .eq("id", payment.source_account_id)
+    .single()
+
+  if (!sourceAccount) throw new Error("Source account not found")
+  if (sourceAccount.currency !== payment.currency) {
+    throw new Error("La cuenta origen debe tener la misma moneda del pago")
+  }
+
   const fields = getCurrencyFields(payment.currency)
   const currentDebt = Number((creditCard as Record<string, unknown>)[fields.debt] ?? 0)
   const currentStatement = Number((creditCard as Record<string, unknown>)[fields.statement] ?? 0)
@@ -1280,134 +1309,182 @@ export async function payCreditCard(payment: {
     throw new Error("No puedes pagar más que la deuda actual")
   }
 
-  // Reduce credit card debt
-  const newDebt = Math.max(0, currentDebt - payment.amount)
-  const statementRemaining = Math.max(0, currentStatement - currentPaid)
-  const paidTowardStatement = Math.min(payment.amount, statementRemaining)
-  const newPaidStatement = roundCurrencyAmount(currentPaid + paidTowardStatement)
-  const updates: Record<string, unknown> = {
-    [fields.debt]: newDebt,
-    [fields.paidStatement]: newPaidStatement,
-  }
-  if (payment.currency === "DOP") {
-    updates.current_debt = newDebt
-    updates.pending_amount = Math.max(0, currentStatement - newPaidStatement)
-    updates.paid_amount = newPaidStatement
-  }
-  await supabase
-    .from("accounts")
-    .update(updates)
-    .eq("id", payment.credit_account_id)
-
-  const { data: openCycles } = await supabase
-    .from("credit_card_cycles")
-    .select("id, cycle_end_date, due_date, paid_amount_dop, paid_amount_usd, statement_balance_dop, statement_balance_usd, financed_amount_dop, financed_amount_usd, status")
-    .eq("account_id", payment.credit_account_id)
-    .order("cycle_end_date", { ascending: true })
-
-  if (openCycles && openCycles.length > 0) {
-    let remainingToApply = payment.amount
-    for (const cycleRow of openCycles) {
-      if (remainingToApply <= 0) break
-      const statement = payment.currency === "USD"
-        ? Number(cycleRow.statement_balance_usd || 0)
-        : Number(cycleRow.statement_balance_dop || 0)
-      const paid = payment.currency === "USD"
-        ? Number(cycleRow.paid_amount_usd || 0)
-        : Number(cycleRow.paid_amount_dop || 0)
-      const pending = Math.max(0, statement - paid)
-      if (pending <= 0) continue
-
-      const applied = Math.min(remainingToApply, pending)
-      remainingToApply = roundCurrencyAmount(remainingToApply - applied)
-
-      const nextPaid = roundCurrencyAmount(paid + applied)
-      const cycleUpdates: Record<string, unknown> = {}
-      if (payment.currency === "USD") {
-        cycleUpdates.paid_amount_usd = nextPaid
-      } else {
-        cycleUpdates.paid_amount_dop = nextPaid
-      }
-
-      const pendingAfter = Math.max(0, roundCurrencyAmount(statement - nextPaid))
-      if (pendingAfter <= 0) {
-        cycleUpdates.status = "paid"
-      } else if (nextPaid > 0) {
-        const isOverdue = new Date(`${cycleRow.due_date}T12:00:00`).getTime() < Date.now()
-        cycleUpdates.status = isOverdue ? "financed" : "partial"
-      }
-
-      await supabase.from("credit_card_cycles").update(cycleUpdates).eq("id", cycleRow.id)
-    }
-  }
-
-  // Get source account balance
-  const { data: sourceAccount } = await supabase
-    .from("accounts")
-    .select("balance,currency")
-    .eq("id", payment.source_account_id)
-    .single()
-
-  if (!sourceAccount) throw new Error("Source account not found")
-
-  if (sourceAccount.currency !== payment.currency) {
-    throw new Error("La cuenta origen debe tener la misma moneda del pago")
-  }
-
-  // Validate source has enough balance
   if (Number(sourceAccount.balance) < payment.amount) {
     throw new Error("Disponible insuficiente en la cuenta origen para este pago")
   }
 
-  // Deduct from source
-  const newSourceBalance = Number(sourceAccount.balance) - payment.amount
-  await supabase
-    .from("accounts")
-    .update({ balance: newSourceBalance })
-    .eq("id", payment.source_account_id)
+  const newDebt = roundCurrencyAmount(Math.max(0, currentDebt - payment.amount))
+  const statementRemaining = Math.max(0, currentStatement - currentPaid)
+  const paidTowardStatement = Math.min(payment.amount, statementRemaining)
+  const newPaidStatement = roundCurrencyAmount(currentPaid + paidTowardStatement)
+  const cardLimit = Number((creditCard as Record<string, unknown>)[fields.limit] ?? 0)
+  const newAvailableCredit = roundCurrencyAmount(Math.min(cardLimit, Math.max(0, cardLimit - newDebt)))
+  const optimisticSourceBalance = roundCurrencyAmount(Number(sourceAccount.balance || 0) - payment.amount)
+  const optimisticPendingAmount = Math.max(0, roundCurrencyAmount(currentStatement - newPaidStatement))
 
-  // Create payment record
-  const { data, error } = await supabase
-    .from("credit_payments")
-    .insert({
-      user_id: user.id,
-      credit_account_id: payment.credit_account_id,
-      source_account_id: payment.source_account_id,
-      amount: payment.amount,
-      currency: payment.currency,
-      payment_kind: payment.payment_kind || "custom",
-      notes: payment.notes || null,
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error("Payment error:", error)
-    throw error
+  const updates: Record<string, unknown> = {
+    [fields.debt]: newDebt,
+    [fields.paidStatement]: newPaidStatement,
+    [`available_credit_${payment.currency.toLowerCase()}`]: newAvailableCredit,
   }
 
-  await supabase.from("transactions").insert({
-    user_id: user.id,
-    account_id: payment.source_account_id,
-    category_id: null,
-    type: "expense",
-    amount: payment.amount,
-    currency: payment.currency,
-    amount_base: payment.amount,
-    exchange_rate: 1,
-    description: `Pago de tarjeta de crédito (${payment.currency})`,
-    date: getLocalDateString(),
-    notes: payment.notes || null,
-    is_recurring: false,
-  })
+  if (payment.currency === "DOP") {
+    updates.current_debt = newDebt
+    updates.pending_amount = optimisticPendingAmount
+    updates.paid_amount = newPaidStatement
+  }
 
-  await syncCreditAccountCycle(payment.credit_account_id)
+  await mutate("accounts", (currentAccounts?: Account[]) => {
+    if (!currentAccounts) return currentAccounts
+    return currentAccounts.map((account) => {
+      if (account.id === payment.credit_account_id) {
+        const next = { ...account } as Account
+        if (payment.currency === "USD") {
+          next.current_debt_usd = newDebt
+          next.paid_statement_amount_usd = newPaidStatement
+          next.available_credit_usd = newAvailableCredit
+        } else {
+          next.current_debt_dop = newDebt
+          next.paid_statement_amount_dop = newPaidStatement
+          next.available_credit_dop = newAvailableCredit
+          next.current_debt = newDebt
+          next.pending_amount = optimisticPendingAmount
+          next.paid_amount = newPaidStatement
+        }
+        return next
+      }
 
-  // Mutate cache
-  mutate("accounts")
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  
-  return data
+      if (account.id === payment.source_account_id) {
+        return { ...account, balance: optimisticSourceBalance }
+      }
+
+      return account
+    })
+  }, false)
+
+  mutate(
+    (key: unknown) => Array.isArray(key) && key[0] === "transactions",
+    (existing?: Transaction[]) => {
+      if (!existing || existing.length === 0) return existing
+      const optimisticTx: Transaction = {
+        id: `optimistic-credit-payment-${Date.now()}`,
+        user_id: user.id,
+        account_id: payment.source_account_id,
+        category_id: null,
+        type: "expense",
+        amount: payment.amount,
+        currency: payment.currency,
+        amount_base: payment.amount,
+        exchange_rate: 1,
+        description: `Payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
+        date: getLocalDateString(),
+        notes: payment.notes || null,
+        is_recurring: false,
+        parent_transaction_id: null,
+        metadata: { kind: "credit_payment", credit_account_id: payment.credit_account_id },
+        created_at: new Date().toISOString(),
+      }
+      return [optimisticTx, ...existing]
+    },
+    false
+  )
+
+  try {
+    await supabase
+      .from("accounts")
+      .update(updates)
+      .eq("id", payment.credit_account_id)
+
+    const { data: openCycles } = await supabase
+      .from("credit_card_cycles")
+      .select("id, cycle_end_date, due_date, paid_amount_dop, paid_amount_usd, statement_balance_dop, statement_balance_usd, financed_amount_dop, financed_amount_usd, status")
+      .eq("account_id", payment.credit_account_id)
+      .order("cycle_end_date", { ascending: true })
+
+    if (openCycles && openCycles.length > 0) {
+      let remainingToApply = payment.amount
+      for (const cycleRow of openCycles) {
+        if (remainingToApply <= 0) break
+        const statement = payment.currency === "USD"
+          ? Number(cycleRow.statement_balance_usd || 0)
+          : Number(cycleRow.statement_balance_dop || 0)
+        const paid = payment.currency === "USD"
+          ? Number(cycleRow.paid_amount_usd || 0)
+          : Number(cycleRow.paid_amount_dop || 0)
+        const pending = Math.max(0, statement - paid)
+        if (pending <= 0) continue
+
+        const applied = Math.min(remainingToApply, pending)
+        remainingToApply = roundCurrencyAmount(remainingToApply - applied)
+
+        const nextPaid = roundCurrencyAmount(paid + applied)
+        const cycleUpdates: Record<string, unknown> = {}
+        if (payment.currency === "USD") cycleUpdates.paid_amount_usd = nextPaid
+        else cycleUpdates.paid_amount_dop = nextPaid
+
+        const pendingAfter = Math.max(0, roundCurrencyAmount(statement - nextPaid))
+        if (pendingAfter <= 0) {
+          cycleUpdates.status = "paid"
+        } else if (nextPaid > 0) {
+          const isOverdue = new Date(`${cycleRow.due_date}T12:00:00`).getTime() < Date.now()
+          cycleUpdates.status = isOverdue ? "financed" : "partial"
+        }
+
+        await supabase.from("credit_card_cycles").update(cycleUpdates).eq("id", cycleRow.id)
+      }
+    }
+
+    await supabase
+      .from("accounts")
+      .update({ balance: optimisticSourceBalance })
+      .eq("id", payment.source_account_id)
+
+    const { data, error } = await supabase
+      .from("credit_payments")
+      .insert({
+        user_id: user.id,
+        credit_account_id: payment.credit_account_id,
+        source_account_id: payment.source_account_id,
+        amount: payment.amount,
+        currency: payment.currency,
+        payment_kind: payment.payment_kind || "custom",
+        notes: payment.notes || null,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Payment error:", error)
+      throw error
+    }
+
+    await supabase.from("transactions").insert({
+      user_id: user.id,
+      account_id: payment.source_account_id,
+      category_id: null,
+      type: "expense",
+      amount: payment.amount,
+      currency: payment.currency,
+      amount_base: payment.amount,
+      exchange_rate: 1,
+      description: `Payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
+      date: getLocalDateString(),
+      notes: payment.notes || null,
+      is_recurring: false,
+      metadata: { kind: "credit_payment", credit_account_id: payment.credit_account_id, payment_kind: payment.payment_kind || "custom" },
+    })
+
+    await syncCreditAccountCycle(payment.credit_account_id)
+
+    mutate("accounts")
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+
+    return data
+  } catch (error) {
+    mutate("accounts")
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    throw error
+  }
 }
 
 // Beneficiary mutations

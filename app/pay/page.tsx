@@ -37,7 +37,12 @@ export default function PayPage() {
   const paidStatement = currencyTab === "DOP" ? Number(card?.paid_statement_amount_dop || 0) : Number(card?.paid_statement_amount_usd || 0)
   const pendingStatement = Math.max(0, statementBalance - paidStatement)
   const minimumPayment = Math.round(pendingStatement * Number(card?.minimum_payment_percentage || 0.0278) * 100) / 100
-  const availableCredit = currencyTab === "DOP" ? Number(card?.available_credit_dop || 0) : Number(card?.available_credit_usd || 0)
+  const availableCreditStored = currencyTab === "DOP" ? Number(card?.available_credit_dop || 0) : Number(card?.available_credit_usd || 0)
+  const creditLimit = currencyTab === "DOP" ? Number(card?.credit_limit_dop || 0) : Number(card?.credit_limit_usd || 0)
+  const availableCreditComputed = Math.max(0, creditLimit - balanceToDate)
+  const availableCredit = Number.isFinite(availableCreditStored) && availableCreditStored > 0
+    ? availableCreditStored
+    : availableCreditComputed
   const financedBalance = currencyTab === "DOP" ? Number(card?.financed_balance_dop || 0) : Number(card?.financed_balance_usd || 0)
 
   const selectedAmount = paymentMode === "balance_to_date"
@@ -47,6 +52,9 @@ export default function PayPage() {
     : paymentMode === "minimum_payment"
     ? minimumPayment
     : parseFloat(customAmount || "0")
+
+  const projectedDebt = Math.max(0, balanceToDate - selectedAmount)
+  const availableAfterPayment = Math.min(creditLimit, Math.max(0, creditLimit - projectedDebt))
 
   const valid = Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && selectedAmount <= Number(source?.balance || 0))
 
@@ -113,6 +121,8 @@ export default function PayPage() {
               <div className="flex justify-between"><span className="text-muted-foreground">Pago mínimo</span><span>{formatCurrency(minimumPayment, currencyTab)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Balance financiado</span><span>{formatCurrency(financedBalance, currencyTab)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Disponible</span><span>{formatCurrency(availableCredit, currencyTab)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Pagando ahora</span><span>{formatCurrency(Math.max(0, selectedAmount), currencyTab)}</span></div>
+              <div className="flex justify-between font-medium"><span className="text-muted-foreground">Disponible despues del pago</span><span>{formatCurrency(availableAfterPayment, currencyTab)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Pagar antes de</span><span>{card.statement_due_date ? formatDate(card.statement_due_date) : "-"}</span></div>
             </div>
 
