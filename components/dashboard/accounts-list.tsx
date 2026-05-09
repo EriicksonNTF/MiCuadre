@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { ChevronDown, Plus } from "lucide-react"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useAccounts } from "@/hooks/use-data"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
@@ -41,7 +42,7 @@ export function AccountsList() {
         </div>
         <div className="space-y-3">
           {(showAllCredit ? creditAccounts : creditAccounts.slice(0, 1)).map((account) => (
-            <div key={account.id} className="group"><BrandedAccountCard account={account} compact /></div>
+            <Link key={account.id} href={`/accounts/${account.id}`} className="group block"><BrandedAccountCard account={account} compact /></Link>
           ))}
           {creditAccounts.length === 0 && <div className="rounded-2xl bg-card p-4 text-xs text-muted-foreground">No hay tarjetas de credito.</div>}
         </div>
@@ -59,7 +60,7 @@ export function AccountsList() {
         </div>
         <div className="space-y-3">
           {(showAllCashDebit ? cashDebitAccounts : cashDebitAccounts.slice(0, 1)).map((account) => (
-            <div key={account.id} className="group"><BrandedAccountCard account={account} compact /></div>
+            <Link key={account.id} href={`/accounts/${account.id}`} className="group block"><BrandedAccountCard account={account} compact /></Link>
           ))}
         </div>
       </div>

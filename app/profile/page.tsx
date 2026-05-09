@@ -106,9 +106,15 @@ export default function ProfilePage() {
       toast({ title: "Perfil actualizado", description: "Foto de perfil actualizada." })
     } catch (error) {
       console.error("Error uploading avatar:", error)
-      const message = error instanceof Error && error.message.toLowerCase().includes("bucket not found")
+      const rawMessage =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+          ? String((error as { message?: unknown }).message || "")
+          : ""
+      const message = rawMessage.toLowerCase().includes("bucket not found")
         ? "Falta configurar el bucket 'avatars' en Supabase. Ejecuta scripts/009_storage_buckets_setup.sql."
-        : "No se pudo actualizar la foto de perfil."
+        : rawMessage || "No se pudo actualizar la foto de perfil."
       toast({ title: "Error", description: message })
     } finally {
       setIsUploading(false)

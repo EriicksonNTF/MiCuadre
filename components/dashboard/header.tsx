@@ -22,7 +22,7 @@ export function Header() {
       <div className="flex items-center gap-3">
         <Avatar className="h-10 w-10">
           <AvatarImage
-            src={`https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`}
+            src={profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`}
             alt={displayName}
           />
           <AvatarFallback className="bg-primary text-primary-foreground text-xs">

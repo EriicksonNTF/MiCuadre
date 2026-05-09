@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint ."
+    "dev": "pnpm next dev -p 3000",
+    "build": "pnpm next build",
+    "start": "pnpm next start",
+    "lint": "pnpm eslint ."
   },
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",

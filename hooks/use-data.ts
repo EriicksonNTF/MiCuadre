@@ -239,6 +239,29 @@ async function upsertCreditNotification(params: {
   })
 }
 
+async function createNotification(params: {
+  userId: string
+  title: string
+  message: string
+  type: "transaction" | "goal" | "credit" | "system" | "transfer"
+  actionUrl?: string | null
+  metadata?: Record<string, unknown> | null
+}) {
+  const schema = await ensureCreditSchemas()
+  const payload: Record<string, unknown> = {
+    user_id: params.userId,
+    title: params.title,
+    message: params.message,
+    type: params.type,
+    read: false,
+    action_url: params.actionUrl || null,
+  }
+  if (schema.hasNotificationMetadataSchema) {
+    payload.metadata = params.metadata || null
+  }
+  await supabase.from("notifications").insert(payload)
+}
+
 async function syncCreditAccountCycle(creditAccountId: string) {
   const schema = await ensureCreditSchemas()
   if (!schema.hasCreditCycleSchema) return
@@ -897,6 +920,15 @@ export async function createTransaction(
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
 
+  await createNotification({
+    userId: user.id,
+    type: "transaction",
+    title: transaction.type === "income" ? "Ingreso registrado" : "Gasto registrado",
+    message: `${transaction.description || "Movimiento"}: ${transaction.currency} ${roundCurrencyAmount(transaction.amount).toFixed(2)}`,
+    actionUrl: "/history",
+  })
+  mutate("notifications")
+
   return data
 }
 
@@ -1261,6 +1293,15 @@ export async function createTransfer(transfer: {
   mutate("accounts")
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate(["transfers", 100])
+
+  await createNotification({
+    userId: user.id,
+    type: "transfer",
+    title: "Transferencia realizada",
+    message: `Enviaste ${transfer.currency} ${roundCurrencyAmount(transfer.amount).toFixed(2)}.`,
+    actionUrl: "/history",
+  })
+  mutate("notifications")
   
   return data
 }
@@ -1354,6 +1395,7 @@ export async function payCreditCard(payment: {
         return next
       }
 
+<<<<<<< HEAD
       if (account.id === payment.source_account_id) {
         return { ...account, balance: optimisticSourceBalance }
       }
@@ -1475,6 +1517,15 @@ export async function payCreditCard(payment: {
     })
 
     await syncCreditAccountCycle(payment.credit_account_id)
+
+    await createNotification({
+      userId: user.id,
+      type: "credit",
+      title: "Pago de tarjeta registrado",
+      message: `Pagaste ${payment.currency} ${roundCurrencyAmount(payment.amount).toFixed(2)} de tu tarjeta.`,
+      actionUrl: "/pay",
+    })
+    mutate("notifications")
 
     mutate("accounts")
     mutate((key: any) => Array.isArray(key) && key[0] === "transactions")

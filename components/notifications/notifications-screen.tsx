@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import {
   ChevronLeft,
@@ -46,11 +46,6 @@ export function NotificationsScreen() {
   , [filter, notifications])
 
   const unreadCount = notifications.filter((n) => !n.read).length
-
-  useEffect(() => {
-    if (unreadCount <= 0) return
-    void markAllNotificationsAsRead()
-  }, [unreadCount])
 
   const markAsRead = async (id: string) => {
     try {
