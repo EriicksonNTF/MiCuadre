@@ -2,6 +2,7 @@
   "name": "my-project",
   "version": "0.1.0",
   "private": true,
+  "corepack": { "enable": true },
   "scripts": {
     "dev": "pnpm next dev -p 3000",
     "build": "pnpm next build",
