@@ -106,6 +106,29 @@ function toDateOnly(dateValue: string) {
     : new Date(dateValue)
 }
 
+function normalizeTransactionDateInput(dateValue?: string | null): string {
+  const trimmedDate = typeof dateValue === "string" ? dateValue.trim() : ""
+
+  if (trimmedDate && /^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+    return trimmedDate
+  }
+
+  if (trimmedDate) {
+    const parsed = new Date(trimmedDate)
+    if (!Number.isNaN(parsed.getTime())) {
+      return getLocalDateString(parsed)
+    }
+  }
+
+  return getLocalDateString()
+}
+
+function getDateDiffInDays(from: Date, to: Date) {
+  const fromDay = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+  const toDay = new Date(to.getFullYear(), to.getMonth(), to.getDate())
+  return Math.ceil((toDay.getTime() - fromDay.getTime()) / (1000 * 60 * 60 * 24))
+}
+
 function sortAccountsList(accounts: Account[]): Account[] {
   return [...accounts].sort((a, b) => {
     if (a.is_favorite !== b.is_favorite) return a.is_favorite ? -1 : 1
@@ -536,46 +559,50 @@ async function syncCreditAccountCycle(creditAccountId: string) {
     })
     .eq("id", account.id)
 
+  const cutoffDate = toDateOnly(currentCycle.cycleEndDate)
+  const cutoffDaysLeft = getDateDiffInDays(now, cutoffDate)
+  if (cutoffDaysLeft === 3) {
+    await upsertCreditNotification({
+      userId: account.user_id,
+      title: `Corte próximo: ${account.name}`,
+      message: `Tu tarjeta ${account.name} corta en 3 días. Revisa tus consumos antes del corte.`,
+      metadata: {
+        kind: "credit_cutoff_warning",
+        account_id: account.id,
+        cutoff_date: currentCycle.cycleEndDate,
+        days_left: 3,
+      },
+    })
+  }
+
+  const statementDueDate = latestClosedCycle?.due_date || currentCycle.dueDate
+  const dueDateForReminder = toDateOnly(statementDueDate)
+  const paymentDaysLeft = getDateDiffInDays(now, dueDateForReminder)
+
   const lines = [
     { currency: "DOP" as const, pending: statementPendingDop },
     { currency: "USD" as const, pending: statementPendingUsd },
   ]
 
-  const statementDueDate = latestClosedCycle?.due_date || currentCycle.dueDate
-  const dueDateForReminder = toDateOnly(statementDueDate)
-  const isOverdue = now.getTime() > dueDateForReminder.getTime()
+  if (paymentDaysLeft === 5) {
+    for (const line of lines) {
+      if (line.pending <= 0) continue
 
-  for (const line of lines) {
-    if (line.pending <= 0) continue
-    if (isOverdue) {
       await upsertCreditNotification({
         userId: account.user_id,
-        title: `Estado vencido: ${account.name}`,
-        message: `El corte de tu tarjeta está vencido. ${line.currency === "DOP" ? "RD$" : "US$"}${line.pending.toFixed(2)} ahora está financiado.`,
+        title: `Pago próximo: ${account.name}`,
+        message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${line.currency === "DOP" ? "RD$" : "US$"}${line.pending.toFixed(2)}.`,
         metadata: {
-          kind: "credit_statement_overdue",
+          kind: "credit_payment_warning",
           account_id: account.id,
           currency: line.currency,
           due_date: statementDueDate,
+          cycle_end_date: latestClosedCycle?.cycle_end_date || currentCycle.cycleEndDate,
           pending_amount: line.pending,
+          days_left: 5,
         },
       })
-      continue
     }
-
-    await upsertCreditNotification({
-      userId: account.user_id,
-      title: `Pago pendiente: ${account.name}`,
-      message: `Tienes ${line.currency === "DOP" ? "RD$" : "US$"}${line.pending.toFixed(2)} pendiente en el corte de tu tarjeta. Paga antes de ${statementDueDate}.`,
-      metadata: {
-        kind: "credit_payment_due",
-        account_id: account.id,
-        currency: line.currency,
-        due_date: statementDueDate,
-        cycle_end_date: latestClosedCycle?.cycle_end_date || currentCycle.cycleEndDate,
-        pending_amount: line.pending,
-      },
-    })
   }
 }
 
@@ -663,7 +690,10 @@ async function fetchTransactions(limit = 10): Promise<Transaction[]> {
     .limit(limit)
 
   if (error) throw error
-  return data || []
+  return (data || []).map((tx) => ({
+    ...tx,
+    date: normalizeTransactionDateInput(tx.date),
+  }))
 }
 
 async function fetchCategories(): Promise<Category[]> {
@@ -849,12 +879,18 @@ export async function createTransaction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
+  const normalizedDate = normalizeTransactionDateInput(transaction.date)
+  const transactionToInsert = {
+    ...transaction,
+    date: normalizedDate,
+  }
+
   const applyCommission = Boolean(options?.applyCommission && transaction.type === "expense")
   const commissionAmount = applyCommission ? getCommissionAmount(transaction.amount) : 0
   const totalAmount = roundCurrencyAmount(transaction.amount + commissionAmount)
 
   if (transaction.type === "expense") {
-    await ensureSufficientFundsForExpense(transaction.account_id, totalAmount, transaction.currency)
+    await ensureSufficientFundsForExpense(transactionToInsert.account_id, totalAmount, transactionToInsert.currency)
   }
 
   let billingCycleId: string | null = null
@@ -863,13 +899,13 @@ export async function createTransaction(
   const { data: accountForCycle } = await supabase
     .from("accounts")
     .select("id, user_id, type, closing_day, due_days_after_cutoff")
-    .eq("id", transaction.account_id)
+    .eq("id", transactionToInsert.account_id)
     .single()
 
   if (accountForCycle?.type === "credit" && accountForCycle.closing_day) {
-    const txDate = /^\d{4}-\d{2}-\d{2}$/.test(transaction.date)
-      ? new Date(`${transaction.date}T12:00:00`)
-      : new Date(transaction.date)
+    const txDate = /^\d{4}-\d{2}-\d{2}$/.test(transactionToInsert.date)
+      ? new Date(`${transactionToInsert.date}T12:00:00`)
+      : new Date(transactionToInsert.date)
     const txCycle = getCycleForDate(Number(accountForCycle.closing_day), Number(accountForCycle.due_days_after_cutoff || 20), txDate)
     const { data: existingCycle } = await supabase
       .from("credit_card_cycles")
@@ -902,7 +938,7 @@ export async function createTransaction(
 
   const { data, error } = await supabase
     .from("transactions")
-    .insert({ ...transaction, user_id: user.id, billing_cycle_id: billingCycleId, is_statement_transaction: isStatementTransaction })
+    .insert({ ...transactionToInsert, user_id: user.id, billing_cycle_id: billingCycleId, is_statement_transaction: isStatementTransaction })
     .select()
     .single()
 
@@ -916,15 +952,15 @@ export async function createTransaction(
       .from("transactions")
       .insert({
         user_id: user.id,
-        account_id: transaction.account_id,
+        account_id: transactionToInsert.account_id,
         category_id: commissionCategoryId,
         type: "expense",
         amount: commissionAmount,
-        currency: transaction.currency,
+        currency: transactionToInsert.currency,
         amount_base: commissionAmount,
-        exchange_rate: transaction.exchange_rate,
-        description: `0.15% commission of ${transaction.description || "transaction"}`,
-        date: transaction.date,
+        exchange_rate: transactionToInsert.exchange_rate,
+        description: `0.15% commission of ${transactionToInsert.description || "transaction"}`,
+        date: transactionToInsert.date,
         notes: null,
         is_recurring: false,
         parent_transaction_id: data.id,
@@ -943,20 +979,20 @@ export async function createTransaction(
 
   try {
     await applyAccountImpact({
-      accountId: transaction.account_id,
-      type: transaction.type,
-      amount: transaction.amount,
+      accountId: transactionToInsert.account_id,
+      type: transactionToInsert.type,
+      amount: transactionToInsert.amount,
       direction: 1,
-      currency: transaction.currency,
+      currency: transactionToInsert.currency,
     })
 
     if (commissionTxId && commissionAmount > 0) {
       await applyAccountImpact({
-        accountId: transaction.account_id,
+        accountId: transactionToInsert.account_id,
         type: "expense",
         amount: commissionAmount,
         direction: 1,
-        currency: transaction.currency,
+        currency: transactionToInsert.currency,
       })
     }
   } catch (impactError) {
@@ -974,8 +1010,8 @@ export async function createTransaction(
   await createNotification({
     userId: user.id,
     type: "transaction",
-    title: transaction.type === "income" ? "Ingreso registrado" : "Gasto registrado",
-    message: `${transaction.description || "Movimiento"}: ${transaction.currency} ${roundCurrencyAmount(transaction.amount).toFixed(2)}`,
+    title: transactionToInsert.type === "income" ? "Ingreso registrado" : "Gasto registrado",
+    message: `${transactionToInsert.description || "Movimiento"}: ${transactionToInsert.currency} ${roundCurrencyAmount(transactionToInsert.amount).toFixed(2)}`,
     actionUrl: "/history",
   })
   mutate("notifications")
@@ -987,6 +1023,11 @@ export async function updateTransaction(
   id: string,
   updates: Pick<Transaction, "account_id" | "type" | "amount" | "description" | "date" | "category_id" | "notes" | "currency" | "amount_base" | "exchange_rate" | "is_recurring">
 ) {
+  const normalizedUpdates = {
+    ...updates,
+    date: normalizeTransactionDateInput(updates.date),
+  }
+
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
     .select("*")
@@ -1005,7 +1046,7 @@ export async function updateTransaction(
 
   const { data, error } = await supabase
     .from("transactions")
-    .update(updates)
+    .update(normalizedUpdates)
     .eq("id", id)
     .select()
     .single()

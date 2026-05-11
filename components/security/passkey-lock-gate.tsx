@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { isPasskeyEnabled, verifyPasskeyUnlock } from "@/lib/passkey"
 
+const PASSKEY_UNLOCK_SESSION_KEY = "micuadre_passkey_unlocked_session"
+
 export function PasskeyLockGate() {
   const pathname = usePathname()
   const { user, loading } = useAuth()
@@ -19,7 +21,9 @@ export function PasskeyLockGate() {
       return
     }
 
-    if (isPasskeyEnabled()) {
+    const unlockedSession = typeof window !== "undefined" && window.sessionStorage.getItem(PASSKEY_UNLOCK_SESSION_KEY) === user.id
+
+    if (isPasskeyEnabled() && !unlockedSession) {
       setLocked(true)
     }
   }, [loading, pathname, user])
@@ -29,6 +33,9 @@ export function PasskeyLockGate() {
     setMessage(null)
     try {
       await verifyPasskeyUnlock()
+      if (typeof window !== "undefined" && user) {
+        window.sessionStorage.setItem(PASSKEY_UNLOCK_SESSION_KEY, user.id)
+      }
       setLocked(false)
     } catch (error) {
       const msg = error instanceof Error ? error.message : "No se pudo desbloquear"

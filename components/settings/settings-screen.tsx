@@ -30,6 +30,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
+import { isPasskeyEnabled, verifyPasskeyUnlock } from "@/lib/passkey"
 import { setPreferredCurrency } from "@/lib/data"
 import type { Theme, Currency } from "@/lib/types/database"
 
@@ -127,6 +128,10 @@ export function SettingsScreen() {
     setDeleteAccountError(null)
 
     try {
+      if (isPasskeyEnabled()) {
+        await verifyPasskeyUnlock()
+      }
+
       const response = await fetch("/api/account/delete", {
         method: "DELETE",
         headers: {

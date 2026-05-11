@@ -11,17 +11,17 @@ import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { processDueSubscriptions, useProfile } from "@/hooks/use-data"
 import { useAccounts, useSubscriptions, useTransactions } from "@/hooks/use-data"
-import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { Button } from "@/components/ui/button"
-import { formatCurrency, getDaysUntilDue, getLocalDateString } from "@/lib/data"
+import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { generateFinancialInsights } from "@/lib/insights"
 import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-splash"
 
 export default function DashboardPage() {
   const router = useRouter()
   const [isReady, setIsReady] = useState(false)
-  const [showSplash, setShowSplash] = useState(false)
+  const [showSplash, setShowSplash] = useState(true)
   const [showCreditReminder, setShowCreditReminder] = useState(false)
+  const [activeWarningIndex, setActiveWarningIndex] = useState(0)
   const { loading, user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: accounts = [] } = useAccounts()
@@ -46,37 +46,82 @@ export default function DashboardPage() {
   }, [loading, profile?.onboarding_completed, profileLoading, router])
 
   useEffect(() => {
-    if (loading || profileLoading || !profile?.onboarding_completed) return
     if (typeof window === "undefined") return
 
     const alreadyShown = window.sessionStorage.getItem("micuadre_splash_seen") === "true"
-    if (alreadyShown) return
+    if (alreadyShown) {
+      setShowSplash(false)
+      return
+    }
 
-    setShowSplash(true)
     const timer = window.setTimeout(() => {
       setShowSplash(false)
       window.sessionStorage.setItem("micuadre_splash_seen", "true")
-    }, 1600)
+    }, 1400)
 
     return () => window.clearTimeout(timer)
-  }, [loading, profile?.onboarding_completed, profileLoading])
+  }, [])
+
+  const creditWarnings = useMemo(() => {
+    const now = new Date()
+    const today = getLocalDateString(now)
+
+    return accounts.flatMap((account) => {
+      if (account.type !== "credit") return [] as Array<{ key: string; kind: "credit_cutoff_warning" | "credit_payment_warning"; title: string; message: string }>
+
+      const warnings: Array<{ key: string; kind: "credit_cutoff_warning" | "credit_payment_warning"; title: string; message: string }> = []
+      const closingDay = Number(account.closing_day || 0)
+      if (closingDay >= 1 && closingDay <= 31) {
+        const cutoff = new Date(now.getFullYear(), now.getMonth(), Math.min(closingDay, 28))
+        if (cutoff.getTime() < now.getTime()) cutoff.setMonth(cutoff.getMonth() + 1)
+        const cutoffDays = Math.ceil((new Date(cutoff.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / (1000 * 60 * 60 * 24))
+        if (cutoffDays === 3) {
+          warnings.push({
+            key: `${account.id}-credit_cutoff_warning-${today}`,
+            kind: "credit_cutoff_warning",
+            title: `Corte próximo: ${account.name}`,
+            message: `Tu tarjeta ${account.name} corta en 3 días. Revisa tus consumos antes del corte.`,
+          })
+        }
+      }
+
+      const pending = Number(account.pending_amount ?? 0)
+      if (account.statement_due_date && pending > 0) {
+        const due = new Date(`${account.statement_due_date}T12:00:00`)
+        const dueDays = Math.ceil((new Date(due.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / (1000 * 60 * 60 * 24))
+        if (dueDays === 5) {
+          warnings.push({
+            key: `${account.id}-credit_payment_warning-${today}`,
+            kind: "credit_payment_warning",
+            title: `Pago próximo: ${account.name}`,
+            message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${formatCurrency(pending, account.currency)}.`,
+          })
+        }
+      }
+
+      return warnings
+    })
+  }, [accounts])
 
   useEffect(() => {
-    if (!user || loading || profileLoading || !isReady) return
-
-    const today = getLocalDateString()
-    const key = `credit_reminder_seen_${user.id}_${today}`
-    const alreadySeen = typeof window !== "undefined" && window.localStorage.getItem(key) === "true"
-    if (alreadySeen) return
-
-    const hasPendingPayment = accounts.some(
-      (account) => account.type === "credit" && Number((account.pending_amount ?? account.current_debt) || 0) > 0 && account.due_date
-    )
-
-    if (hasPendingPayment) {
-      setShowCreditReminder(true)
+    if (!user || loading || profileLoading || !isReady || typeof window === "undefined") return
+    if (creditWarnings.length === 0) {
+      setShowCreditReminder(false)
+      return
     }
-  }, [accounts, isReady, loading, profileLoading, user])
+
+    const unseen = creditWarnings.findIndex((warning) => {
+      const key = `credit_warning_seen_${user.id}_${warning.key}`
+      return window.localStorage.getItem(key) !== "true"
+    })
+
+    if (unseen >= 0) {
+      setActiveWarningIndex(unseen)
+      setShowCreditReminder(true)
+    } else {
+      setShowCreditReminder(false)
+    }
+  }, [creditWarnings, isReady, loading, profileLoading, user])
 
   useEffect(() => {
     if (!user || !isReady) return
@@ -84,10 +129,6 @@ export default function DashboardPage() {
       // noop
     })
   }, [isReady, user])
-
-  const creditAccounts = accounts.filter(
-    (account) => account.type === "credit" && Number((account.pending_amount ?? account.current_debt) || 0) > 0
-  )
 
   const dashboardInsights = useMemo(() => generateFinancialInsights({
     transactions: recentTransactions,
@@ -111,9 +152,11 @@ export default function DashboardPage() {
 
   const closeCreditReminder = () => {
     if (user && typeof window !== "undefined") {
-      const today = getLocalDateString()
-      const key = `credit_reminder_seen_${user.id}_${today}`
-      window.localStorage.setItem(key, "true")
+      const warning = creditWarnings[activeWarningIndex]
+      if (warning) {
+        const key = `credit_warning_seen_${user.id}_${warning.key}`
+        window.localStorage.setItem(key, "true")
+      }
     }
     setShowCreditReminder(false)
   }
@@ -167,28 +210,14 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {showCreditReminder && creditAccounts.length > 0 && (
-        <BaseModalForm
-          title="Pagos pendientes de tarjeta"
-          onClose={closeCreditReminder}
-          footer={<Button className="h-12 w-full" onClick={closeCreditReminder}>OK</Button>}
-        >
-          <div className="space-y-3">
-            {creditAccounts.map((account) => (
-              <div key={account.id} className="rounded-xl border border-border bg-card p-3">
-                <p className="text-sm font-semibold text-foreground">{account.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Monto pendiente: <span className="font-medium text-foreground">{formatCurrency(Number((account.pending_amount ?? account.current_debt) || 0), account.currency)}</span>
-                </p>
-                {account.due_date && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {getDaysUntilDue(account.due_date)} días restantes para pagar.
-                  </p>
-                )}
-              </div>
-            ))}
+      {showCreditReminder && creditWarnings[activeWarningIndex] && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/60 px-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-2xl">
+            <p className="text-sm font-semibold text-foreground">{creditWarnings[activeWarningIndex].title}</p>
+            <p className="mt-2 text-sm text-muted-foreground">{creditWarnings[activeWarningIndex].message}</p>
+            <Button className="mt-4 h-11 w-full" onClick={closeCreditReminder}>Entendido</Button>
           </div>
-        </BaseModalForm>
+        </div>
       )}
     </main>
   )

@@ -15,6 +15,8 @@ const navItems = [
   { href: "/goals", icon: Target, label: "Metas" },
 ]
 
+const MAIN_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/goals"])
+
 export function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
@@ -41,8 +43,9 @@ export function BottomNav() {
 
   const isAuthPage = pathname.startsWith('/auth')
   const isOnboardingPage = pathname.startsWith('/onboarding')
+  const showBottomNav = MAIN_ROUTES.has(pathname)
 
-  if (isAuthPage || isOnboardingPage || !user || isMobileFormOpen) return null
+  if (isAuthPage || isOnboardingPage || !user || isMobileFormOpen || !showBottomNav) return null
 
   return (
     <>

@@ -92,6 +92,12 @@ type TransactionType = "all" | "income" | "expense"
 type DateRange = "today" | "week" | "month" | "all"
 
 export function HistoryScreen() {
+  const parseTxDate = (value: string) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T12:00:00`)
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
+  }
+
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const [typeFilter, setTypeFilter] = usePersistentState<TransactionType>("history:typeFilter", "all")
@@ -164,17 +170,18 @@ export function HistoryScreen() {
         return tx.date === getLocalDateString()
       }
       if (dateFilter === "week") {
-        const txDate = new Date(tx.date)
+        const txDate = parseTxDate(tx.date)
         const now = new Date()
-        return now.getTime() - txDate.getTime() <= 7 * 24 * 60 * 60 * 1000
+        const diff = now.getTime() - txDate.getTime()
+        return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000
       }
       if (dateFilter === "month") {
-        const txDate = new Date(tx.date)
+        const txDate = parseTxDate(tx.date)
         const now = new Date()
         return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
       }
       return true
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    }).sort((a, b) => parseTxDate(b.date).getTime() - parseTxDate(a.date).getTime())
   }, [transactions, deferredSearchQuery, typeFilter, accountFilter, dateFilter])
 
   const openEdit = (txId: string) => {
@@ -185,7 +192,7 @@ export function HistoryScreen() {
     setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
     setEditType(tx.type)
     setEditAccountId(tx.accountId)
-    setEditDate(getLocalDateString(new Date(tx.date)))
+    setEditDate(getLocalDateString(parseTxDate(tx.date)))
     setEditCategoryId(tx.categoryId)
   }
 
