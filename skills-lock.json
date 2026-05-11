@@ -83,6 +83,12 @@
       "sourceType": "autoskills-registry",
       "computedHash": "7361ab02fb6b09913e3bdd9cf61c629ed6c17de9485e6a781054e5d437ccfc29"
     },
+    "ocr-document-processor": {
+      "source": "dkyazzentwatwa/chatgpt-skills",
+      "sourceType": "github",
+      "skillPath": "ocr-document-processor/SKILL.md",
+      "computedHash": "34bae06e21db7af3a83920f81db623700362586b3361f313581d29f792eefd4f"
+    },
     "react-best-practices": {
       "source": "vercel-labs/agent-skills",
       "sourceType": "autoskills-registry",
