@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Home, Plus, Wallet, Target, Clock, Repeat, ReceiptText } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -23,6 +23,17 @@ export function BottomNav() {
   const { user, loading } = useAuth()
   const [isMobileFormOpen, setIsMobileFormOpen] = useState(false)
   const [showQuickMenu, setShowQuickMenu] = useState(false)
+  const [longPressTriggered, setLongPressTriggered] = useState(false)
+  const [pressingAction, setPressingAction] = useState(false)
+  const [pressStart, setPressStart] = useState<{ x: number; y: number } | null>(null)
+  const longPressTimerRef = useRef<number | null>(null)
+
+  const clearLongPress = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
 
   useEffect(() => {
     const update = () => {
@@ -95,7 +106,39 @@ export function BottomNav() {
             return (
               <button
                 key={item.href}
-                onClick={() => setShowQuickMenu((prev) => !prev)}
+                onPointerDown={(event) => {
+                  setPressingAction(true)
+                  setLongPressTriggered(false)
+                  setPressStart({ x: event.clientX, y: event.clientY })
+                  clearLongPress()
+                  longPressTimerRef.current = window.setTimeout(() => {
+                    setLongPressTriggered(true)
+                    setShowQuickMenu(true)
+                  }, 520)
+                }}
+                onPointerMove={(event) => {
+                  if (!pressStart || !pressingAction || longPressTriggered) return
+                  const movedX = Math.abs(event.clientX - pressStart.x)
+                  const movedY = Math.abs(event.clientY - pressStart.y)
+                  if (movedX > 10 || movedY > 10) {
+                    clearLongPress()
+                  }
+                }}
+                onPointerUp={() => {
+                  clearLongPress()
+                  const wasLongPress = longPressTriggered
+                  setPressingAction(false)
+                  setPressStart(null)
+                  if (!wasLongPress) {
+                    setShowQuickMenu(false)
+                    router.push("/expense")
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (!longPressTriggered) {
+                    clearLongPress()
+                  }
+                }}
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
               >
                 <Icon className="h-5 w-5" />

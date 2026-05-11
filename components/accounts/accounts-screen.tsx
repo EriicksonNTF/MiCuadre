@@ -1,8 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowRightLeft, ArrowUp, Banknote, Building2, ChevronDown, CreditCard, Landmark, PiggyBank, Plus, Star, Wallet } from "lucide-react"
+import { ArrowRightLeft, Banknote, Building2, ChevronDown, CreditCard, Landmark, Pencil, PiggyBank, Plus, Trash2, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
@@ -13,9 +13,10 @@ import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { createClient } from "@/lib/supabase/client"
-import { createAccount, createTransfer, reorderAccounts, setFavoriteAccount, useAccounts } from "@/hooks/use-data"
+import { createAccount, createTransfer, deleteAccount, reorderAccounts, useAccounts } from "@/hooks/use-data"
 import { formatCurrency } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
+import { useRouter } from "next/navigation"
 
 const ICON_PRESETS = [
   { value: "banknote", label: "Efectivo", icon: Banknote },
@@ -38,9 +39,22 @@ const COLOR_PRESETS = [
 const EMOJI_PRESETS = ["💳", "🏦", "💵", "🪙", "🧾", "💼", "📈", "🛍️"]
 
 export function AccountsScreen() {
+  const router = useRouter()
   const { data: accounts = [] } = useAccounts()
   const [showTransfer, setShowTransfer] = useState(false)
   const [showCreateAccount, setShowCreateAccount] = useState(false)
+  const [orderedAccounts, setOrderedAccounts] = useState(accounts)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
+  const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const pointerRef = useRef<{ id: string; startX: number; startY: number; moved: boolean; swiping: boolean } | null>(null)
+  const suppressClickRef = useRef(false)
+  const dragIdRef = useRef<string | null>(null)
+  const longPressTimerRef = useRef<number | null>(null)
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const [accountName, setAccountName] = useState("")
   const [accountType, setAccountType] = useState<"cash" | "debit" | "credit">("cash")
@@ -71,6 +85,22 @@ export function AccountsScreen() {
   const totalTransferAmount = parsedTransferAmount + transferCommissionAmount
   const selectedFromAccount = accounts.find((a) => a.id === fromAccount)
   const exceedsFromBalance = Boolean(selectedFromAccount && totalTransferAmount > Number(selectedFromAccount.balance || 0))
+
+  useEffect(() => {
+    setOrderedAccounts(accounts)
+  }, [accounts])
+
+  useEffect(() => {
+    const onOutside = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest("[data-account-row='true']")) return
+      setOpenSwipeId(null)
+      setSwipeOffset(null)
+    }
+
+    document.addEventListener("pointerdown", onOutside)
+    return () => document.removeEventListener("pointerdown", onOutside)
+  }, [])
 
   const previewAccount = useMemo(() => ({
     id: "preview",
@@ -106,13 +136,74 @@ export function AccountsScreen() {
     updated_at: new Date().toISOString(),
   }), [accountName, accountType, accountCurrency, initialBalance, creditLimitDop, creditLimitUsd, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle])
 
-  const moveAccountUp = async (id: string) => {
-    const index = accounts.findIndex((a) => a.id === id)
-    if (index <= 0) return
-    const next = [...accounts]
-    const [item] = next.splice(index, 1)
-    next.splice(index - 1, 0, item)
-    await reorderAccounts(next.map((a) => a.id))
+  const triggerHaptic = () => {
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      navigator.vibrate(12)
+    }
+  }
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  const startLongPress = (id: string) => {
+    clearLongPressTimer()
+    longPressTimerRef.current = window.setTimeout(() => {
+      dragIdRef.current = id
+      setDraggingId(id)
+      setOpenSwipeId(null)
+      setSwipeOffset(null)
+      triggerHaptic()
+    }, 500)
+  }
+
+  const reorderOnDrag = (draggedId: string, clientY: number) => {
+    const next = [...orderedAccounts]
+    const fromIndex = next.findIndex((a) => a.id === draggedId)
+    if (fromIndex < 0) return
+
+    const hovered = next.find((account) => {
+      const row = rowRefs.current[account.id]
+      if (!row) return false
+      const rect = row.getBoundingClientRect()
+      return clientY >= rect.top && clientY <= rect.bottom
+    })
+
+    if (!hovered || hovered.id === draggedId) return
+    const toIndex = next.findIndex((a) => a.id === hovered.id)
+    const [moved] = next.splice(fromIndex, 1)
+    next.splice(toIndex, 0, moved)
+    setOrderedAccounts(next)
+  }
+
+  const finishDrag = async () => {
+    const draggedId = dragIdRef.current
+    dragIdRef.current = null
+    setDraggingId(null)
+    clearLongPressTimer()
+    if (!draggedId) return
+    await reorderAccounts(orderedAccounts.map((account) => account.id))
+  }
+
+  const handleDeleteFromList = async () => {
+    if (!confirmDeleteId) return
+    setIsDeleting(true)
+    try {
+      await deleteAccount(confirmDeleteId)
+      notify({ title: "Cuenta eliminada", message: "La cuenta fue eliminada correctamente." })
+      setConfirmDeleteId(null)
+      setOpenSwipeId(null)
+    } catch (error) {
+      notify({
+        title: "No se pudo eliminar",
+        message: error instanceof Error ? error.message : "Intenta de nuevo.",
+      })
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleLogoUpload = async (file?: File) => {
@@ -224,22 +315,138 @@ export function AccountsScreen() {
         <p className="mt-1 text-sm text-muted-foreground">Administra tu dinero</p>
       </header>
 
-      <div className="space-y-4 px-6 pt-4">
-        {accounts.map((account) => (
-          <div key={account.id} className="space-y-2">
-            <Link href={`/accounts/${account.id}`} className="group block transition-transform active:scale-[0.98]">
-              <BrandedAccountCard account={account} />
-            </Link>
-            <div className="flex items-center justify-end gap-2">
-              <button onClick={() => void setFavoriteAccount(account.id)} className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                <Star className={cn("h-3.5 w-3.5", account.is_favorite ? "fill-amber-500 text-amber-500" : "")} /> Favorita
-              </button>
-              <button onClick={() => void moveAccountUp(account.id)} className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
-                <ArrowUp className="h-3.5 w-3.5" /> Subir
-              </button>
+      <div className="px-6 pt-3">
+        <p className="mb-3 text-xs text-muted-foreground">Mantén presionado para ordenar</p>
+      </div>
+
+      <div className="space-y-4 px-6 pt-1">
+        {orderedAccounts.map((account) => {
+          const isOpen = openSwipeId === account.id
+          const isDragging = draggingId === account.id
+          const currentOffset = swipeOffset?.id === account.id ? swipeOffset.offset : isOpen ? -112 : 0
+
+          return (
+            <div
+              key={account.id}
+              data-account-row="true"
+              ref={(node) => {
+                rowRefs.current[account.id] = node
+              }}
+              className="relative overflow-hidden rounded-3xl"
+            >
+              <div className="absolute inset-y-0 right-0 z-0 flex w-28 items-center justify-end gap-1 rounded-3xl pr-2">
+                <button
+                  onClick={() => router.push(`/accounts/${account.id}?edit=1`)}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted text-foreground"
+                  aria-label="Editar cuenta"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteId(account.id)}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500 text-white"
+                  aria-label="Eliminar cuenta"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div
+                className={cn(
+                  "relative z-10 transition-transform duration-200",
+                  isDragging && "scale-[1.02] shadow-xl"
+                )}
+                style={{ transform: `translateX(${currentOffset}px)` }}
+                onPointerDown={(event) => {
+                  const target = event.target as HTMLElement
+                  if (target.closest("button")) return
+                  suppressClickRef.current = false
+                  pointerRef.current = {
+                    id: account.id,
+                    startX: event.clientX,
+                    startY: event.clientY,
+                    moved: false,
+                    swiping: false,
+                  }
+                  startLongPress(account.id)
+                }}
+                onPointerMove={(event) => {
+                  const pointer = pointerRef.current
+                  if (!pointer || pointer.id !== account.id) return
+
+                  const dx = event.clientX - pointer.startX
+                  const dy = event.clientY - pointer.startY
+
+                  if (dragIdRef.current === account.id) {
+                    suppressClickRef.current = true
+                    event.preventDefault()
+                    reorderOnDrag(account.id, event.clientY)
+                    return
+                  }
+
+                  if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+                    pointer.moved = true
+                    clearLongPressTimer()
+                  }
+
+                  if (Math.abs(dx) > Math.abs(dy) && (dx < 0 || isOpen)) {
+                    pointer.swiping = true
+                    suppressClickRef.current = true
+                    setOpenSwipeId(account.id)
+                    const base = isOpen ? -112 : 0
+                    setSwipeOffset({ id: account.id, offset: Math.min(0, Math.max(-112, base + dx)) })
+                  }
+                }}
+                onPointerUp={async () => {
+                  clearLongPressTimer()
+
+                  if (dragIdRef.current === account.id) {
+                    await finishDrag()
+                    pointerRef.current = null
+                    return
+                  }
+
+                  const pointer = pointerRef.current
+                  if (!pointer || pointer.id !== account.id) return
+
+                  if (pointer.swiping) {
+                    const finalOffset = swipeOffset?.id === account.id ? swipeOffset.offset : 0
+                    if (finalOffset < -56) {
+                      setOpenSwipeId(account.id)
+                      setSwipeOffset({ id: account.id, offset: -112 })
+                    } else {
+                      setOpenSwipeId(null)
+                      setSwipeOffset(null)
+                    }
+                  }
+
+                  pointerRef.current = null
+                }}
+                onPointerCancel={() => {
+                  clearLongPressTimer()
+                  pointerRef.current = null
+                  if (dragIdRef.current === account.id) {
+                    dragIdRef.current = null
+                    setDraggingId(null)
+                  }
+                }}
+              >
+                <Link
+                  href={`/accounts/${account.id}`}
+                  onClick={(event) => {
+                    if (suppressClickRef.current || dragIdRef.current === account.id) {
+                      event.preventDefault()
+                      suppressClickRef.current = false
+                    }
+                  }}
+                  className="group block transition-transform active:scale-[0.98]"
+                >
+                  <BrandedAccountCard account={account} />
+                </Link>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="flex gap-3 px-6 pt-6">
@@ -309,6 +516,25 @@ export function AccountsScreen() {
               </div>
             )}
           </div>
+        </BaseModalForm>
+      )}
+
+      {confirmDeleteId && (
+        <BaseModalForm
+          title="Eliminar cuenta"
+          onClose={() => setConfirmDeleteId(null)}
+          footer={
+            <div className="space-y-2">
+              <Button variant="destructive" className="h-11 w-full" onClick={handleDeleteFromList} disabled={isDeleting}>
+                {isDeleting ? "Eliminando..." : "Confirmar eliminación"}
+              </Button>
+              <Button variant="outline" className="h-11 w-full" onClick={() => setConfirmDeleteId(null)}>
+                Cancelar
+              </Button>
+            </div>
+          }
+        >
+          <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer. Solo se eliminarán cuentas sin transacciones.</p>
         </BaseModalForm>
       )}
     </div>

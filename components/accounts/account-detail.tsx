@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { mutate } from "swr"
 import {
   ChevronLeft,
@@ -101,6 +101,7 @@ interface AccountDetailProps {
 
 export function AccountDetail({ accountId }: AccountDetailProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [dateFilter, setDateFilter] = usePersistentState<DateRange>(`account:${accountId}:dateFilter`, "all")
   const [showPayment, setShowPayment] = useState(false)
   const [paymentCurrency, setPaymentCurrency] = useState<"DOP" | "USD">("DOP")
@@ -327,6 +328,29 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       setIsDeleting(false)
     }
   }
+
+  useEffect(() => {
+    if (searchParams.get("edit") !== "1" || !account) return
+
+    setEditForm({
+      name: account.name,
+      type: account.type,
+      currency: account.currency || "DOP",
+      balance: String(account.balance || 0),
+      credit_limit: String(account.creditLimit || 0),
+      credit_limit_dop: String(account.creditLimitDop || 0),
+      credit_limit_usd: String(account.creditLimitUsd || 0),
+      closing_date: String(account.cutoffDate || ""),
+      due_date: String(account.dueDate || ""),
+      icon_url: String(rawAccounts.find((a) => a.id === accountId)?.icon_url || ""),
+      icon_type: (rawAccounts.find((a) => a.id === accountId)?.icon_type || "icon") as "emoji" | "icon" | "image",
+      icon_value: String(rawAccounts.find((a) => a.id === accountId)?.icon_value || "building-2"),
+      primary_color: String(rawAccounts.find((a) => a.id === accountId)?.primary_color || "#0b4a8a"),
+      secondary_color: String(rawAccounts.find((a) => a.id === accountId)?.secondary_color || "#38bdf8"),
+      background_style: String(rawAccounts.find((a) => a.id === accountId)?.background_style || "gradient"),
+    })
+    setShowEditModal(true)
+  }, [account, accountId, rawAccounts, searchParams])
 
   const parsedAmount = parseFloat(paymentAmount.replace(/[^0-9.]/g, "")) || 0
   const sourceAccount = accounts.find((a) => a.id === paymentSource)
