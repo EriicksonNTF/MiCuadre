@@ -1,55 +1,48 @@
 "use client"
-import { useState } from "react"
+
+import { useMemo, useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, Eye, EyeOff, Shield, Smartphone, Clock, LogOut } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { createClient } from "@/lib/supabase/client"
+import { ChevronLeft, ChevronRight, Fingerprint, Shield, Smartphone } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/use-auth"
+import { disablePasskey, isPasskeyEnabled, isPasskeySupported, registerPasskey } from "@/lib/passkey"
 
 export default function SecurityPage() {
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showCurrent, setShowCurrent] = useState(false)
-  const [showNew, setShowNew] = useState(false)
-  const [isChanging, setIsChanging] = useState(false)
-  const [showLogoutDevices, setShowLogoutDevices] = useState(false)
+  const { user } = useAuth()
   const { toast } = useToast()
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(isPasskeyEnabled())
+  const supported = useMemo(() => isPasskeySupported(), [])
+  const [isEnabling, setIsEnabling] = useState(false)
 
-  const handleChangePassword = async () => {
-    if (newPassword.length < 8) {
-      toast({ title: "Error", description: "La contraseña debe tener al menos 8 caracteres." })
+  const toggleBiometrics = async () => {
+    if (!supported) {
+      toast({ title: "No disponible", description: "Tu dispositivo no soporta Passkeys." })
       return
     }
 
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Error", description: "Las contraseñas no coinciden." })
+    if (!isBiometricEnabled) {
+      if (!user) return
+      setIsEnabling(true)
+      try {
+        await registerPasskey(user.id, user.email || "MiCuadre")
+        setIsBiometricEnabled(true)
+        toast({ title: "Biometría activada", description: "Face ID / huella habilitado para desbloquear la app." })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "No se pudo activar"
+        toast({ title: "Error", description: message })
+      } finally {
+        setIsEnabling(false)
+      }
       return
     }
 
-    setIsChanging(true)
-    try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
-      if (error) throw error
-
-      setCurrentPassword("")
-      setNewPassword("")
-      setConfirmPassword("")
-      toast({ title: "Contraseña actualizada", description: "Tu contraseña fue cambiada exitosamente." })
-    } catch (error) {
-      console.error("Password update error:", error)
-      toast({ title: "Error", description: "No se pudo actualizar la contraseña." })
-    } finally {
-      setIsChanging(false)
-    }
+    disablePasskey()
+    setIsBiometricEnabled(false)
+    toast({ title: "Biometría desactivada", description: "El desbloqueo biométrico fue desactivado." })
   }
 
-  const isValid = currentPassword.length >= 8 && newPassword.length >= 8 && newPassword === confirmPassword
-
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <div className="min-h-screen bg-background pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center gap-4">
@@ -60,83 +53,43 @@ export default function SecurityPage() {
           </div>
         </div>
       </div>
-      <div className="mx-auto max-w-md px-6 pt-6 space-y-6">
-        <div className="rounded-2xl bg-card p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-              <Shield className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold">Cambiar contraseña</p>
-              <p className="text-sm text-muted-foreground">Usa 8 caracteres mínimo</p>
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Contraseña actual</label>
-              <div className="relative">
-                <input type={showCurrent ? "text" : "password"} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10" />
-                <button onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {showCurrent ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium">Nueva contraseña</label>
-              <div className="relative">
-                <input type={showNew ? "text" : "password"} value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10" />
-                <button onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {showNew ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}
-                </button>
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium">Confirmar contraseña</label>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3" />
-              {confirmPassword && newPassword !== confirmPassword && (
-                <p className="mt-1 text-xs text-destructive">Las contraseñas no coinciden</p>
-              )}
-            </div>
-            <Button onClick={handleChangePassword} disabled={!isValid || isChanging}
-              className="h-12 w-full rounded-xl font-semibold">
-              {isChanging ? "Cambiando..." : "Actualizar contraseña"}
-            </Button>
-          </div>
-        </div>
 
-        <div className="rounded-2xl bg-card overflow-hidden">
-          <div className="flex items-center justify-between p-5 border-b border-border">
+      <div className="mx-auto max-w-md space-y-6 px-6 pt-6">
+        <div className="overflow-hidden rounded-2xl bg-card">
+          <Link href="/settings/security/change-password" className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                <Smartphone className="h-5 w-5" />
-              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><Shield className="h-5 w-5" /></div>
               <div>
-                <p className="font-semibold">Sesiones activas</p>
-                <p className="text-sm text-muted-foreground">1 dispositivo conectado</p>
+                <p className="font-medium text-foreground">Cambiar contraseña</p>
+                <p className="text-xs text-muted-foreground">Abre ventana dedicada para actualizarla</p>
               </div>
             </div>
-            <button onClick={() => setShowLogoutDevices(true)} className="text-sm font-medium text-accent">
-              Ver
-            </button>
-          </div>
-          <div className="flex items-center gap-3 p-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-              <Clock className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </Link>
+          <div className="mx-4 h-px bg-border" />
+          <button onClick={toggleBiometrics} disabled={isEnabling} className="flex w-full items-center justify-between p-4 disabled:opacity-70">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><Fingerprint className="h-5 w-5" /></div>
+              <div className="text-left">
+                <p className="font-medium text-foreground">Desbloqueo con Face ID / Huella</p>
+                <p className="text-xs text-muted-foreground">{supported ? (isBiometricEnabled ? "Activado" : "Desactivado") : "No compatible"}</p>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="font-medium">iPhone 15 Pro</p>
-              <p className="text-sm text-muted-foreground">Santo Domingo · Activo ahora</p>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isBiometricEnabled ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+              {isEnabling ? "Configurando..." : isBiometricEnabled ? "Activo" : "Activar"}
+            </span>
+          </button>
+        </div>
+
+        <div className="rounded-2xl bg-card p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><Smartphone className="h-5 w-5" /></div>
+            <div>
+              <p className="font-medium text-foreground">Sesión actual</p>
+              <p className="text-xs text-muted-foreground">Dispositivo activo protegido por autenticación</p>
             </div>
           </div>
         </div>
-
-        <button onClick={() => {}} className="w-full flex items-center justify-center gap-2 rounded-2xl bg-red-50 p-4 text-red-600 dark:bg-red-900/20 dark:text-red-400">
-          <LogOut className="h-5 w-5" />
-          <span className="font-medium">Cerrar todas las sesiones</span>
-        </button>
       </div>
     </div>
   )

@@ -16,24 +16,27 @@ import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead } 
 import { formatDate } from "@/lib/data"
 
 type NotificationType = "transaction" | "goal" | "credit" | "system" | "transfer"
+type ExtendedNotificationType = NotificationType | "subscription"
 
-const typeIcons: Record<NotificationType, typeof Bell> = {
+const typeIcons: Record<ExtendedNotificationType, typeof Bell> = {
   transaction: TrendingDown,
   goal: Target,
   credit: CreditCard,
   system: Bell,
   transfer: TrendingUp,
+  subscription: CreditCard,
 }
 
-const typeColors: Record<NotificationType, string> = {
+const typeColors: Record<ExtendedNotificationType, string> = {
   transaction: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
   goal: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
   credit: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
   system: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
   transfer: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
+  subscription: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
 }
 
-type FilterType = "all" | NotificationType
+type FilterType = "all" | ExtendedNotificationType
 
 export function NotificationsScreen() {
   const { data: notifications = [] } = useNotifications()
@@ -140,7 +143,7 @@ export function NotificationsScreen() {
         ) : (
           <div className="space-y-2">
             {filteredNotifications.map((notification) => {
-              const Icon = typeIcons[notification.type]
+              const Icon = typeIcons[(notification.type as ExtendedNotificationType) || "system"]
               return (
                 <div
                   key={notification.id}
@@ -161,7 +164,7 @@ export function NotificationsScreen() {
                   <div
                     className={cn(
                       "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-                      typeColors[notification.type]
+                      typeColors[(notification.type as ExtendedNotificationType) || "system"]
                     )}
                   >
                     <Icon className="h-5 w-5" />

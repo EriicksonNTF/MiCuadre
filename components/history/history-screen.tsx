@@ -381,11 +381,11 @@ export function HistoryScreen() {
         <div className="flex-1 rounded-2xl bg-card p-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-xs text-muted-foreground">Ingresos</span>
           </div>
-          <p className="mt-2 text-lg font-bold text-emerald-600">
+          <p className="mt-2 text-lg font-bold text-emerald-600 dark:text-emerald-400">
             +{formatCurrency(totals.income)}
           </p>
         </div>
@@ -446,7 +446,7 @@ export function HistoryScreen() {
                         <p
                           className={cn(
                             "shrink-0 text-sm font-semibold tabular-nums",
-                            tx.type === "income" ? "text-emerald-600" : "text-foreground"
+                            tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
                           )}
                         >
                           {tx.type === "income" ? "+" : "-"}

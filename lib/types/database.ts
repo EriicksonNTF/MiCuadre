@@ -4,7 +4,8 @@ export type Currency = "DOP" | "USD"
 export type AccountType = "cash" | "debit" | "credit"
 export type TransactionType = "income" | "expense"
 export type CategoryType = "expense" | "income" | "both"
-export type NotificationType = "transaction" | "goal" | "credit" | "system" | "transfer"
+export type NotificationType = "transaction" | "goal" | "credit" | "system" | "transfer" | "subscription"
+export type SubscriptionStatus = "active" | "paused" | "cancelled"
 export type ReceiptStatus = "pending" | "processed" | "confirmed" | "rejected"
 export type Theme = "light" | "dark" | "system"
 export type Language = "es" | "en"
@@ -32,6 +33,7 @@ export interface Category {
   icon: string
   color: string
   type: CategoryType
+  is_subscription: boolean
   is_default: boolean
   created_at: string
 }
@@ -105,6 +107,7 @@ export interface Transaction {
   exchange_rate: number
   description: string | null
   date: string
+  subscription_id?: string | null
   billing_cycle_id?: string | null
   is_statement_transaction?: boolean
   notes: string | null
@@ -115,6 +118,25 @@ export interface Transaction {
   // Joined fields
   category?: Category
   account?: Account
+}
+
+export interface Subscription {
+  id: string
+  user_id: string
+  name: string
+  logo_url: string | null
+  provider_key: string | null
+  amount: number
+  currency: Currency
+  account_id: string
+  category_id: string | null
+  billing_day: number
+  next_payment_date: string
+  last_charged_date: string | null
+  status: SubscriptionStatus
+  created_at: string
+  account?: Account
+  category?: Category
 }
 
 export interface Beneficiary {

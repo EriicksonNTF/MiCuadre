@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { ThemeProvider, useTheme } from "@/components/providers/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { PasskeyLockGate } from "@/components/security/passkey-lock-gate"
 import { useProfile } from "@/hooks/use-data"
 import { setPreferredCurrency } from "@/lib/data"
 
@@ -27,6 +28,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <ProfilePreferencesSync />
+      <PasskeyLockGate />
       {children}
       <Toaster />
     </ThemeProvider>

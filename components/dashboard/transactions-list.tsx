@@ -130,7 +130,7 @@ export function TransactionsList() {
                 className={cn(
                   "text-sm font-semibold",
                   transaction.type === "income"
-                    ? "text-accent"
+                    ? "text-emerald-600 dark:text-emerald-400"
                     : accountType === "credit"
                     ? "text-orange-600"
                     : "text-foreground"

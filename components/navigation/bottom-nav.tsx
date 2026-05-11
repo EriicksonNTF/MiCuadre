@@ -2,8 +2,8 @@
 
 import Link from "next/link"
 import { useEffect, useState } from "react"
-import { usePathname } from "next/navigation"
-import { Home, Plus, Wallet, Target, Clock } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { Home, Plus, Wallet, Target, Clock, Repeat, ReceiptText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -17,8 +17,10 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname()
+  const router = useRouter()
   const { user, loading } = useAuth()
   const [isMobileFormOpen, setIsMobileFormOpen] = useState(false)
+  const [showQuickMenu, setShowQuickMenu] = useState(false)
 
   useEffect(() => {
     const update = () => {
@@ -31,6 +33,10 @@ export function BottomNav() {
     return () => observer.disconnect()
   }, [])
 
+  useEffect(() => {
+    setShowQuickMenu(false)
+  }, [pathname])
+
   if (loading) return null
 
   const isAuthPage = pathname.startsWith('/auth')
@@ -39,7 +45,43 @@ export function BottomNav() {
   if (isAuthPage || isOnboardingPage || !user || isMobileFormOpen) return null
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-lg">
+    <>
+      {showQuickMenu && (
+        <button
+          aria-label="Cerrar menú rápido"
+          onClick={() => setShowQuickMenu(false)}
+          className="fixed inset-0 z-40 bg-background/35 backdrop-blur-[2px]"
+        />
+      )}
+
+      {showQuickMenu && (
+        <div className="pointer-events-none fixed bottom-24 left-0 right-0 z-50">
+          <div className="pointer-events-auto mx-auto w-[min(92vw,20rem)] rounded-2xl border border-border/60 bg-card/95 p-2 shadow-2xl backdrop-blur-xl">
+            <button
+              onClick={() => {
+                setShowQuickMenu(false)
+                router.push("/expense")
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><ReceiptText className="h-4 w-4" /></span>
+              <span className="text-sm font-medium text-foreground">Añadir transacción</span>
+            </button>
+            <button
+              onClick={() => {
+                setShowQuickMenu(false)
+                router.push("/settings/subscriptions?create=1")
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"><Repeat className="h-4 w-4" /></span>
+              <span className="text-sm font-medium text-foreground">Añadir suscripción</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-lg">
       <div className="mx-auto flex h-20 max-w-md items-center justify-around px-2 pb-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
@@ -48,14 +90,14 @@ export function BottomNav() {
 
           if (item.isAction) {
             return (
-              <Link
+              <button
                 key={item.href}
-                href={item.href}
+                onClick={() => setShowQuickMenu((prev) => !prev)}
                 className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
               >
                 <Icon className="h-5 w-5" />
                 <span className="sr-only">{item.label}</span>
-              </Link>
+              </button>
             )
           }
 
@@ -75,5 +117,6 @@ export function BottomNav() {
         })}
       </div>
     </nav>
+    </>
   )
 }

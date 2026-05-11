@@ -81,6 +81,16 @@ export async function updateSession(request: NextRequest) {
   const isProtectedRoute = matchesRoute(pathname, protectedRoutes)
   const isEmailVerified = Boolean(user?.email_confirmed_at)
 
+  let onboardingCompleted = false
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", user.id)
+      .maybeSingle()
+    onboardingCompleted = Boolean(profile?.onboarding_completed)
+  }
+
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -90,6 +100,18 @@ export async function updateSession(request: NextRequest) {
   if (user && !isEmailVerified && pathname !== '/verify-email') {
     const url = request.nextUrl.clone()
     url.pathname = '/verify-email'
+    return NextResponse.redirect(url)
+  }
+
+  if (user && isEmailVerified && !onboardingCompleted && pathname !== '/onboarding') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/onboarding'
+    return NextResponse.redirect(url)
+  }
+
+  if (user && isEmailVerified && onboardingCompleted && pathname === '/onboarding') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
