@@ -23,6 +23,7 @@ import {
   TrendingUp,
   TrendingDown,
   Briefcase,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -41,12 +42,13 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
-import { useAccounts, useCategories, createTransaction } from "@/hooks/use-data"
+import { useAccounts, useCategories, createSubscription, createTransaction } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
+import { SUBSCRIPTION_PROVIDERS, getNextBillingDateFrom } from "@/lib/subscriptions"
 
 const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: string }> = {
   comida: { icon: Utensils, color: "bg-orange-50 text-orange-500" },
@@ -96,6 +98,10 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   const [applyCommission, setApplyCommission] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showSubscriptionDetails, setShowSubscriptionDetails] = useState(false)
+  const [subscriptionProvider, setSubscriptionProvider] = useState("netflix")
+  const [subscriptionMode, setSubscriptionMode] = useState<"once" | "recurring">("once")
+  const [billingDay, setBillingDay] = useState(String(new Date().getDate()))
 
   const categories = useMemo(() => {
     const allowedTypes = transactionType === "expense" ? ["expense", "both"] : ["income", "both"]
@@ -108,6 +114,8 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
   }, [dbCategories, transactionType])
 
   const selectedCategory = categories.find(c => c.id === category) || categories[0]
+  const selectedDbCategory = dbCategories.find((item) => item.id === selectedCategory?.id)
+  const isSubscriptionCategory = Boolean(selectedDbCategory?.is_subscription || selectedDbCategory?.name.toLowerCase().includes("suscrip"))
   const CategoryIcon = selectedCategory?.icon || MoreHorizontal
   const selectedAccount = accounts.find(a => a.id === accountId)
   const isCredit = selectedAccount?.type === "credit"
@@ -157,6 +165,8 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         ? rawAccounts.find(a => a.type === "cash")?.id || accountId 
         : accountId
 
+      const txDate = getLocalDateString(date)
+
       await createTransaction({
         account_id: targetAccountId,
         category_id: categoryUuid,
@@ -164,7 +174,7 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         amount: parsedAmount,
         currency: currency,
         description: description,
-        date: getLocalDateString(date),
+        date: txDate,
         notes: null,
         is_recurring: false,
         amount_base: parsedAmount,
@@ -172,6 +182,21 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
         parent_transaction_id: null,
         metadata: null,
       }, { applyCommission })
+
+      if (transactionType === "expense" && isSubscriptionCategory && subscriptionMode === "recurring") {
+        const provider = SUBSCRIPTION_PROVIDERS.find((item) => item.key === subscriptionProvider)
+        const nextDate = getNextBillingDateFrom(date, Number(billingDay || date.getDate()))
+        await createSubscription({
+          name: provider?.name || description,
+          provider_key: provider?.key || "other",
+          amount: parsedAmount,
+          currency,
+          account_id: targetAccountId,
+          category_id: categoryUuid,
+          billing_day: Number(billingDay || date.getDate()),
+          next_payment_date: getLocalDateString(nextDate),
+        })
+      }
 
       notify({ 
         title: transactionType === "income" ? "Ingreso registrado" : "Gasto registrado", 
@@ -252,6 +277,34 @@ export function ExpenseForm({ onBack }: { onBack?: () => void }) {
             Gasto
           </button>
         </div>
+
+        {transactionType === "expense" && isSubscriptionCategory && (
+          <div className="mt-6 rounded-2xl bg-card p-4">
+            <button onClick={() => setShowSubscriptionDetails((prev) => !prev)} className="flex w-full items-center justify-between">
+              <div className="text-left">
+                <p className="text-sm font-semibold text-foreground">Configuracion de suscripcion</p>
+                <p className="text-xs text-muted-foreground">Opcional para gastos recurrentes</p>
+              </div>
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", showSubscriptionDetails && "rotate-180")} />
+            </button>
+            {showSubscriptionDetails && (
+              <div className="mt-4 space-y-3">
+                <select value={subscriptionProvider} onChange={(event) => setSubscriptionProvider(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm">
+                  {SUBSCRIPTION_PROVIDERS.map((provider) => (
+                    <option key={provider.key} value={provider.key}>{provider.name}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={() => setSubscriptionMode("once")} className={cn("flex-1 rounded-xl py-2 text-sm", subscriptionMode === "once" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Record only once</button>
+                  <button onClick={() => setSubscriptionMode("recurring")} className={cn("flex-1 rounded-xl py-2 text-sm", subscriptionMode === "recurring" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Make recurring monthly</button>
+                </div>
+                {subscriptionMode === "recurring" && (
+                  <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} min={1} max={31} type="number" className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm" placeholder="Billing day" />
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Amount Input - BIG AND CENTERED */}
         <div className="mt-10 flex flex-col items-center">

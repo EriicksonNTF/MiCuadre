@@ -12,9 +12,11 @@ import type {
   Beneficiary,
   Transfer,
   GoalContribution,
+  Subscription,
 } from "@/lib/types/database"
 import { getLocalDateString } from "@/lib/data"
 import { getCycleForDate } from "@/lib/credit-cycle"
+import { getNextBillingDateFrom } from "@/lib/subscriptions"
 
 type CreditAccountState = {
   id: string
@@ -59,6 +61,7 @@ const COMMISSION_RATE = 0.0015
 const DEFAULT_MINIMUM_PAYMENT_PERCENTAGE = 0.0278
 const LATE_FEE_RATE = 0.12
 const COMMISSION_CATEGORY_NAME = "Commission / Fees"
+const SUBSCRIPTION_CATEGORY_NAME = "Suscripciones"
 const COMMISSION_ERROR_MESSAGE = "El monto más comisión excede tu balance disponible."
 
 function roundCurrencyAmount(value: number): number {
@@ -140,6 +143,37 @@ async function getOrCreateCommissionCategoryId(userId: string): Promise<string |
       color: "#64748b",
       type: "expense",
       is_default: false,
+    })
+    .select("id")
+    .single()
+
+  if (error) throw error
+  return created?.id || null
+}
+
+async function getOrCreateSubscriptionCategoryId(userId: string): Promise<string | null> {
+  const { data: existing } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("is_subscription", true)
+    .or(`is_default.eq.true,user_id.eq.${userId}`)
+    .order("is_default", { ascending: false })
+    .limit(1)
+
+  if (existing && existing.length > 0) {
+    return existing[0].id
+  }
+
+  const { data: created, error } = await supabase
+    .from("categories")
+    .insert({
+      user_id: userId,
+      name: SUBSCRIPTION_CATEGORY_NAME,
+      icon: "repeat",
+      color: "#f59e0b",
+      type: "expense",
+      is_default: false,
+      is_subscription: true,
     })
     .select("id")
     .single()
@@ -243,7 +277,7 @@ async function createNotification(params: {
   userId: string
   title: string
   message: string
-  type: "transaction" | "goal" | "credit" | "system" | "transfer"
+  type: "transaction" | "goal" | "credit" | "system" | "transfer" | "subscription"
   actionUrl?: string | null
   metadata?: Record<string, unknown> | null
 }) {
@@ -260,6 +294,16 @@ async function createNotification(params: {
     payload.metadata = params.metadata || null
   }
   await supabase.from("notifications").insert(payload)
+}
+
+async function fetchSubscriptions(): Promise<Subscription[]> {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .select("*, account:accounts(*), category:categories(*)")
+    .order("next_payment_date", { ascending: true })
+
+  if (error) throw error
+  return data || []
 }
 
 async function syncCreditAccountCycle(creditAccountId: string) {
@@ -699,17 +743,24 @@ export function useGoals() {
 
 export function useNotifications() {
   return useSWR<Notification[]>("notifications", fetchNotifications, {
-    revalidateOnFocus: true,
-    refreshInterval: 60000,
+    revalidateOnFocus: false,
+    refreshInterval: 120000,
     refreshWhenHidden: false,
     refreshWhenOffline: false,
-    dedupingInterval: 15000,
+    dedupingInterval: 30000,
   })
 }
 
 export function useProfile() {
   return useSWR<Profile | null>("profile", fetchProfile, {
     revalidateOnFocus: false,
+  })
+}
+
+export function useSubscriptions() {
+  return useSWR<Subscription[]>("subscriptions", fetchSubscriptions, {
+    revalidateOnFocus: true,
+    dedupingInterval: 10000,
   })
 }
 
@@ -1497,6 +1548,180 @@ export async function deleteBeneficiary(id: string) {
   if (error) throw error
 }
 
+export async function createSubscription(input: {
+  name: string
+  logo_url?: string | null
+  provider_key?: string | null
+  amount: number
+  currency: "DOP" | "USD"
+  account_id: string
+  category_id?: string | null
+  billing_day: number
+  next_payment_date: string
+  status?: "active" | "paused" | "cancelled"
+}) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+  const categoryId = input.category_id || await getOrCreateSubscriptionCategoryId(user.id)
+
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .insert({
+      ...input,
+      category_id: categoryId,
+      user_id: user.id,
+      status: input.status || "active",
+    })
+    .select("*")
+    .single()
+
+  if (error) throw error
+
+  await createNotification({
+    userId: user.id,
+    type: "subscription",
+    title: "Suscripcion creada",
+    message: `${input.name} por ${input.currency} ${roundCurrencyAmount(input.amount).toFixed(2)} al mes.`,
+    actionUrl: "/settings/subscriptions",
+  })
+
+  mutate("subscriptions")
+  mutate("notifications")
+  return data
+}
+
+export async function updateSubscription(id: string, updates: Partial<Subscription>) {
+  const { data, error } = await supabase
+    .from("subscriptions")
+    .update(updates)
+    .eq("id", id)
+    .select("*")
+    .single()
+
+  if (error) throw error
+  mutate("subscriptions")
+  return data
+}
+
+export async function deleteSubscription(id: string) {
+  const { error } = await supabase
+    .from("subscriptions")
+    .delete()
+    .eq("id", id)
+
+  if (error) throw error
+  mutate("subscriptions")
+}
+
+export async function processDueSubscriptions() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const schema = await ensureCreditSchemas()
+
+  const today = getLocalDateString()
+  const now = new Date(`${today}T12:00:00`)
+  const monthKey = today.slice(0, 7)
+
+  const { data: subscriptions, error } = await supabase
+    .from("subscriptions")
+    .select("*")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .lte("next_payment_date", today)
+
+  if (error || !subscriptions?.length) return
+
+  const { data: upcomingSubscriptions } = await supabase
+    .from("subscriptions")
+    .select("id, name, next_payment_date")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+
+  if (upcomingSubscriptions?.length) {
+    for (const item of upcomingSubscriptions) {
+      const daysUntil = Math.ceil((new Date(`${item.next_payment_date}T12:00:00`).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      if (daysUntil >= 0 && daysUntil <= 3) {
+        if (schema.hasNotificationMetadataSchema) {
+          const { data: existingUpcoming } = await supabase
+            .from("notifications")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("type", "subscription")
+            .contains("metadata", { kind: "subscription_upcoming", subscription_id: item.id, date: today })
+            .limit(1)
+
+          if (existingUpcoming && existingUpcoming.length > 0) {
+            continue
+          }
+        }
+
+        await createNotification({
+          userId: user.id,
+          type: "subscription",
+          title: "Pago de suscripcion proximo",
+          message: `${item.name} se cobrara en ${daysUntil} dia(s).`,
+          actionUrl: "/settings/subscriptions",
+          metadata: { kind: "subscription_upcoming", subscription_id: item.id, date: today },
+        })
+      }
+    }
+  }
+
+  for (const subscription of subscriptions) {
+    const lastCharged = (subscription.last_charged_date as string | null) || ""
+    if (lastCharged.startsWith(monthKey)) continue
+
+    try {
+      await createTransaction({
+        account_id: subscription.account_id,
+        category_id: subscription.category_id,
+        type: "expense",
+        amount: Number(subscription.amount),
+        currency: subscription.currency,
+        description: subscription.name,
+        date: today,
+        notes: "Cargo automatico de suscripcion",
+        is_recurring: true,
+        amount_base: Number(subscription.amount),
+        exchange_rate: 1,
+        parent_transaction_id: null,
+        metadata: { kind: "subscription_auto_charge", subscription_id: subscription.id },
+        subscription_id: subscription.id,
+      })
+
+      const nextDate = getNextBillingDateFrom(new Date(now.getFullYear(), now.getMonth() + 1, 1), Number(subscription.billing_day))
+      await supabase
+        .from("subscriptions")
+        .update({
+          last_charged_date: today,
+          next_payment_date: getLocalDateString(nextDate),
+        })
+        .eq("id", subscription.id)
+
+      await createNotification({
+        userId: user.id,
+        type: "subscription",
+        title: "Pago de suscripcion cargado",
+        message: `${subscription.name} fue cobrada exitosamente.`,
+        actionUrl: "/history",
+      })
+    } catch {
+      await createNotification({
+        userId: user.id,
+        type: "subscription",
+        title: "No se pudo cobrar suscripcion",
+        message: `${subscription.name} no pudo cobrarse por balance insuficiente.`,
+        actionUrl: "/settings/subscriptions",
+      })
+    }
+  }
+
+  mutate("subscriptions")
+  mutate("notifications")
+  mutate("accounts")
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+}
+
 // Account updates
 export async function updateAccountBalance(id: string, newBalance: number) {
   const { error } = await supabase
@@ -1523,7 +1748,7 @@ export async function createCategory(category: Omit<Category, "id" | "user_id" |
   return data
 }
 
-export async function updateCategory(id: string, updates: Pick<Category, "name" | "icon" | "color" | "type">) {
+export async function updateCategory(id: string, updates: Pick<Category, "name" | "icon" | "color" | "type" | "is_subscription">) {
   const { data, error } = await supabase
     .from("categories")
     .update(updates)

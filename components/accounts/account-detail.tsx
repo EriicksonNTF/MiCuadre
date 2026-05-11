@@ -484,10 +484,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         <div className="mt-4 grid grid-cols-3 gap-3">
           <div className="rounded-2xl bg-card p-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
+              <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             </div>
             <p className="mt-3 text-xs text-muted-foreground">Ingresos</p>
-            <p className="mt-1 font-semibold text-emerald-600">
+            <p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
               +{formatCurrency(monthlyIncome)}
             </p>
           </div>
@@ -510,7 +510,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <Minus
                 className={cn(
                   "h-4 w-4",
-                  netFlow >= 0 ? "text-emerald-600" : "text-red-600"
+                  netFlow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600"
                 )}
               />
             </div>
@@ -518,7 +518,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             <p
               className={cn(
                 "mt-1 font-semibold",
-                netFlow >= 0 ? "text-emerald-600" : "text-red-600"
+                netFlow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600"
               )}
             >
               {netFlow >= 0 ? "+" : ""}
@@ -591,7 +591,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     className={cn(
                       "font-semibold tabular-nums",
                       tx.type === "income"
-                        ? "text-emerald-600"
+                        ? "text-emerald-600 dark:text-emerald-400"
                         : "text-foreground"
                     )}
                   >
