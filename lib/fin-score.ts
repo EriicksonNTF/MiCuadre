@@ -168,7 +168,7 @@ function calculateGoalsScore(goals: Goal[], accounts: Account[]): number {
     return accounts.length > 0 ? 40 : 0
   }
 
-  const activeGoals = goals.filter((g) => !g.completed_at)
+  const activeGoals = goals.filter((g) => !g.is_completed)
   if (activeGoals.length === 0) return 100
 
   let totalProgress = 0

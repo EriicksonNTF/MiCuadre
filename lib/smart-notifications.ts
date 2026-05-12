@@ -205,7 +205,7 @@ export function generateSmartNotifications(
     }
   }
 
-  const activeGoals = goals.filter((g) => !g.completed_at)
+  const activeGoals = goals.filter((g) => !g.is_completed)
   if (activeGoals.length > 0) {
     activeGoals.forEach((goal) => {
       const progress = Number(goal.current_amount) / Number(goal.target_amount)
