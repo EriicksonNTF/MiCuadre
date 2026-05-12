@@ -15,6 +15,9 @@ import { Button } from "@/components/ui/button"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { generateFinancialInsights } from "@/lib/insights"
 import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-splash"
+import { ActivationPanel } from "@/components/dashboard/activation-panel"
+import { showToast } from "@/components/toast/smart-toast"
+import { EventBus } from "@/lib/event-bus"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -130,6 +133,46 @@ export default function DashboardPage() {
     })
   }, [isReady, user])
 
+  useEffect(() => {
+    if (!isReady) return
+
+    const unsubTx = EventBus.on("transaction_created", (event) => {
+      const { type, amount } = event.payload ?? {}
+      if (type === "income") {
+        showToast({ title: "💰 Ingreso registrado", body: `+${formatCurrency(amount)}`, type: "success", duration: 2000 })
+      } else {
+        showToast({ title: "✅ Gasto guardado", body: `-${formatCurrency(amount)}`, type: "success", duration: 2000 })
+      }
+    })
+
+    const unsubGoal = EventBus.on("goal_completed", (event) => {
+      const { name, amount } = event.payload ?? {}
+      showToast({
+        title: "🎉 ¡Meta alcanzada!",
+        body: `Felicidades, completaste "${name}" con ${formatCurrency(amount)}`,
+        type: "success",
+        duration: 4000,
+      })
+    })
+
+    const unsubAcc = EventBus.on("account_created", (event) => {
+      const { name } = event.payload ?? {}
+      showToast({ title: "🏦 Cuenta creada", body: `${name} lista para rastrear`, type: "success", duration: 2000 })
+    })
+
+    const unsubSub = EventBus.on("subscription_created", (event) => {
+      const { name, amount } = event.payload ?? {}
+      showToast({ title: "🔁 Suscripcion agregada", body: `${name} · ${formatCurrency(amount)}/mes`, type: "success", duration: 2500 })
+    })
+
+    return () => {
+      unsubTx()
+      unsubGoal()
+      unsubAcc()
+      unsubSub()
+    }
+  }, [isReady])
+
   const dashboardInsights = useMemo(() => generateFinancialInsights({
     transactions: recentTransactions,
     accounts,
@@ -181,6 +224,10 @@ export default function DashboardPage() {
         <div className="mt-8">
           <QuickActions />
         </div>
+
+        {accounts.length === 0 && recentTransactions.length === 0 && (
+          <ActivationPanel />
+        )}
 
         <div className="mt-10">
           <AccountsList />

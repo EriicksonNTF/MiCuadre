@@ -11,7 +11,6 @@ import {
   Goal,
   Landmark,
   PiggyBank,
-  ReceiptText,
   ShieldCheck,
   ShoppingCart,
   Sparkles,
@@ -36,39 +35,25 @@ const steps: {
   variant: StepVariant
 }[] = [
   {
-    title: "Controla tu",
-    highlight: "dinero",
-    text: "Registra ingresos, gastos y transferencias fácilmente.",
+    title: "Recupera el",
+    highlight: "control",
+    text: "Descubre en segundos en que se te va el dinero y toma mejores decisiones hoy.",
     icon: Wallet,
     variant: "money",
   },
   {
-    title: "Organiza tus",
-    highlight: "cuentas",
-    text: "Gestiona efectivo, bancos y tarjetas de crédito en un solo lugar.",
-    icon: Landmark,
-    variant: "accounts",
-  },
-  {
-    title: "Metas de",
-    highlight: "ahorro",
-    text: "Crea objetivos de ahorro y monitorea tu progreso día a día.",
-    icon: Target,
-    variant: "goals",
-  },
-  {
-    title: "Historial",
-    highlight: "claro",
-    text: "Consulta todos tus movimientos con filtros y reportes detallados.",
-    icon: ReceiptText,
-    variant: "history",
-  },
-  {
     title: "MiCuadre te",
-    highlight: "ayuda",
-    text: "Visualiza tu balance, deudas y próximos pagos en un vistazo.",
+    highlight: "entiende",
+    text: "Analiza tus movimientos y te recomienda acciones claras para ahorrar mas este mes.",
     icon: Sparkles,
     variant: "helper",
+  },
+  {
+    title: "Empieza con tu",
+    highlight: "primera cuenta",
+    text: "Crea tu base en un paso y recibe tu primera lectura financiera desde hoy.",
+    icon: Target,
+    variant: "goals",
   },
 ]
 
@@ -161,7 +146,7 @@ export default function OnboardingPage() {
 
             <div>
               <p className="text-[10px] font-medium text-muted-foreground">
-                Bienvenido a
+                Tu copiloto financiero dominicano
               </p>
               <h1 className="text-base font-bold tracking-tight text-foreground">
                 MiCuadre
@@ -245,8 +230,8 @@ export default function OnboardingPage() {
             {loading
               ? "Guardando..."
               : index === steps.length - 1
-                ? "¡Comenzar!"
-                : "Siguiente"}
+                ? "Ver mi primer plan"
+                : "Continuar"}
           </span>
           {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
         </Button>

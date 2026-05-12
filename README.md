@@ -81,7 +81,23 @@ Los scripts están numerados en orden de ejecución:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL=http://localhost:3000/auth/callback
 ```
+
+### Configuracion OAuth (Google y Apple) en Supabase
+Para que los botones sociales funcionen, necesitas configurar proveedores en Supabase:
+
+1. Ve a `Supabase Dashboard -> Authentication -> Providers`.
+2. Habilita `Google` y/o `Apple`.
+3. Configura `Client ID` y `Client Secret` de cada proveedor.
+4. En cada proveedor, agrega como Redirect URL:
+   - `http://localhost:3000/auth/callback` (desarrollo)
+   - `https://tu-dominio.com/auth/callback` (produccion)
+5. En `Authentication -> URL Configuration`, agrega tus dominios en:
+   - `Site URL`
+   - `Redirect URLs` permitidas
+
+Si la configuracion no es correcta, la app redirige a `/auth/error` con detalle tecnico.
 
 ### Scripts Disponibles
 ```bash

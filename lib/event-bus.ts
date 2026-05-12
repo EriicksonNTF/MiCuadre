@@ -3,20 +3,22 @@ type EventPayload = {
   payload?: any
 }
 
-const listeners: Function[] = []
+type Listener = (event: EventPayload) => void
+
+const listeners: Map<string, Set<Listener>> = new Map()
 
 export const EventBus = {
-  emit(event: EventPayload) {
-    listeners.forEach((fn) => fn(event))
-  },
-  subscribe(fn: Function) {
-    listeners.push(fn)
-    return () => {
-      // Unsubscribe function
-      const index = listeners.indexOf(fn)
-      if (index > -1) {
-        listeners.splice(index, 1)
-      }
+  on(event: string, fn: Listener): () => void {
+    if (!listeners.has(event)) {
+      listeners.set(event, new Set())
     }
+    listeners.get(event)!.add(fn)
+    return () => {
+      listeners.get(event)?.delete(fn)
+    }
+  },
+
+  emit(event: EventPayload) {
+    listeners.get(event.type)?.forEach((fn) => fn(event))
   },
 }

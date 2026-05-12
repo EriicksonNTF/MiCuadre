@@ -29,6 +29,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
+import { showToast } from "@/components/toast/smart-toast"
 
 const goalIcons = [
   { icon: Target, label: "General", value: "Target" },

@@ -3,7 +3,20 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { AlertCircle, Wallet } from 'lucide-react'
 
-export default function AuthErrorPage() {
+type AuthErrorPageProps = {
+  searchParams?: Promise<{ reason?: string }>
+}
+
+const errorMessages: Record<string, string> = {
+  missing_code: 'No se recibio el codigo de autenticacion. Revisa la configuracion del proveedor OAuth en Supabase.',
+  oauth_exchange_failed: 'No se pudo completar el intercambio de sesion OAuth. Verifica Client ID, Client Secret y Redirect URL.',
+}
+
+export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps) {
+  const params = searchParams ? await searchParams : undefined
+  const reason = params?.reason
+  const detail = reason ? errorMessages[reason] : undefined
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center bg-background p-6">
       <div className="w-full max-w-sm">
@@ -29,6 +42,11 @@ export default function AuthErrorPage() {
               <p className="text-sm text-muted-foreground text-center">
                 El enlace puede haber expirado o ya fue utilizado. Por favor, intenta iniciar sesion nuevamente.
               </p>
+              {detail ? (
+                <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                  Detalle tecnico: {detail}
+                </p>
+              ) : null}
               <div className="flex flex-col gap-2">
                 <Button asChild className="w-full">
                   <Link href="/auth/login">Iniciar sesion</Link>

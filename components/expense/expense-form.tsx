@@ -49,6 +49,7 @@ import { getLocalDateString } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { SUBSCRIPTION_PROVIDERS, getNextBillingDateFrom } from "@/lib/subscriptions"
+import { showToast } from "@/components/toast/smart-toast"
 
 const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: string }> = {
   comida: { icon: Utensils, color: "bg-orange-50 text-orange-500" },
@@ -155,13 +156,13 @@ const [prefillApplied, setPrefillApplied] = useState(false)
     if (!parsedAmount || !description) return
 
     if (transactionType === "expense" && totalWithCommission > availableAmount) {
-      notify({
-        title: isCredit ? "Crédito insuficiente" : "Saldo insuficiente",
-        message: isCredit
-          ? `Este gasto excede tu crédito disponible. Disponible en tarjeta: ${formatCurrency(availableAmount)}.`
-          : applyCommission
-          ? "El monto más comisión excede tu balance disponible."
-          : `Ese monto supera tu balance disponible. Disponible: ${formatCurrency(availableAmount)}.`,
+      showToast({
+        title: isCredit ? "⚠️ Crédito insuficiente" : "⚠️ Saldo insuficiente",
+        body: isCredit
+          ? `Disponible: ${formatCurrency(availableAmount)}`
+          : `Disponible: ${formatCurrency(availableAmount)}`,
+        type: "warning",
+        duration: 3000,
       })
       return
     }
@@ -207,11 +208,11 @@ const [prefillApplied, setPrefillApplied] = useState(false)
         })
       }
 
-      notify({ 
-        title: transactionType === "income" ? "Ingreso registrado" : "Gasto registrado", 
-        message: transactionType === "income" 
-          ? `Movimiento creado con éxito por ${formatCurrency(parsedAmount)}` 
-          : `Movimiento creado con éxito por ${formatCurrency(parsedAmount)}`
+      showToast({
+        title: transactionType === "income" ? "💰 Ingreso registrado" : "✅ Gasto guardado",
+        body: `${formatCurrency(parsedAmount)} · ${description}`,
+        type: "success",
+        duration: 2500,
       })
       EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount } })
       
@@ -226,7 +227,7 @@ const [prefillApplied, setPrefillApplied] = useState(false)
         setDate(new Date())
         setApplyCommission(false)
         onBack?.()
-      }, 1500)
+      }, 400)
     } catch (error) {
       console.error(error)
       setIsSaving(false)
@@ -297,8 +298,8 @@ const [prefillApplied, setPrefillApplied] = useState(false)
             }}
             className={cn(
               "flex flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all",
-              transactionType === "expense"
-                ? "bg-red-500 text-white"
+transactionType === "expense"
+                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground"
             )}
           >

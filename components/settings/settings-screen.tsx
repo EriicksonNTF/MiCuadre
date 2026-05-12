@@ -18,6 +18,7 @@ import {
   LogOut,
   User,
   Smartphone,
+  TestTube2,
   Trash2,
   BarChart3,
   Repeat,
@@ -35,9 +36,20 @@ import { setPreferredCurrency } from "@/lib/data"
 import type { Theme, Currency } from "@/lib/types/database"
 
 export function SettingsScreen() {
+  const QA_EMAIL = "example@example.com"
   const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
-  const { data: profile } = useProfile()
+  const { data: profile, isLoading: profileLoading } = useProfile()
+
+  const [showDebugQa, setShowDebugQa] = useState(false)
+  const [authEmail, setAuthEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => {
+      setAuthEmail(data.user?.email?.toLowerCase() ?? null)
+    })
+  }, [])
 
   const [primaryCurrency, setPrimaryCurrency] = useState<Currency>("DOP")
   const [currentTheme, setCurrentTheme] = useState<Theme>(theme)
@@ -165,6 +177,22 @@ export function SettingsScreen() {
       setIsDeletingAccount(false)
     }
   }
+
+const isDevMode = process.env.NODE_ENV === "development"
+  const isQaUser = authEmail === QA_EMAIL
+  const isQaAccessEnabled = (isDevMode && isQaUser) || showDebugQa
+
+  const otherItems = [
+    { icon: Shield, label: "Seguridad", href: "/settings/security" },
+    { icon: HelpCircle, label: "Ayuda y soporte", href: "/settings/help" },
+    { icon: Smartphone, label: "Acerca de", href: "/settings/about" },
+    ...(isQaAccessEnabled
+      ? [{ icon: TestTube2, label: "QA", href: "/qa" }]
+      : []),
+  ]
+
+  const displayEmail = authEmail ?? "sin correo"
+  const isDebuggable = isDevMode && !isQaUser
 
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
@@ -346,11 +374,7 @@ export function SettingsScreen() {
             Otros
           </h2>
           <div className="overflow-hidden rounded-2xl bg-card">
-            {[
-              { icon: Shield, label: "Seguridad", href: "/settings/security" },
-              { icon: HelpCircle, label: "Ayuda y soporte", href: "/settings/help" },
-              { icon: Smartphone, label: "Acerca de", href: "/settings/about" },
-            ].map((item, index) => (
+            {otherItems.map((item, index) => (
               <div key={item.label}>
                 {index > 0 && <div className="mx-4 h-px bg-border" />}
                 <Link
@@ -396,6 +420,25 @@ export function SettingsScreen() {
             </button>
           </div>
         </div>
+
+        {/* Debug QA Panel */}
+        {isDebuggable && !profileLoading && (
+          <div className="mt-6 rounded-2xl border border-dashed border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/10">
+            <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Modo Debug QA (solo desarrollo)</p>
+            <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+              Email actual: <span className="font-mono">{displayEmail}</span>
+            </p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">
+              QA esperado: <span className="font-mono">{QA_EMAIL}</span>
+            </p>
+            <button
+              onClick={() => setShowDebugQa(true)}
+              className="mt-3 rounded-lg bg-amber-200 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-300 dark:bg-amber-900/40 dark:text-amber-300"
+            >
+              Forzar mostrar QA (temporal)
+            </button>
+          </div>
+        )}
 
         {/* Version */}
         <p className="mt-6 text-center text-xs text-muted-foreground">

@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Wallet } from 'lucide-react'
+import { Apple, Chrome, Wallet } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -16,6 +16,15 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+
+  const getAuthRedirectTo = () => {
+    const baseRedirect =
+      process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
+      `${window.location.origin}/auth/callback`
+
+    const separator = baseRedirect.includes('?') ? '&' : '?'
+    return `${baseRedirect}${separator}next=${encodeURIComponent('/')}`
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,6 +74,26 @@ export default function LoginPage() {
     }
   }
 
+  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
+    const supabase = createClient()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: getAuthRedirectTo(),
+        },
+      })
+
+      if (error) throw error
+    } catch (oauthError: unknown) {
+      setError(oauthError instanceof Error ? oauthError.message : 'No se pudo iniciar con proveedor social')
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center bg-background p-6">
       <div className="w-full max-w-sm">
@@ -74,17 +103,40 @@ export default function LoginPage() {
               <Wallet className="h-6 w-6 text-primary-foreground" />
             </div>
             <h1 className="text-xl font-semibold text-foreground">MiCuadre</h1>
-            <p className="text-sm text-muted-foreground">Tu app de finanzas personales</p>
+            <p className="text-sm text-muted-foreground">Tu copiloto financiero dominicano</p>
           </div>
 
           <Card className="border-border/50">
             <CardHeader className="text-center">
               <CardTitle className="text-xl">Iniciar Sesion</CardTitle>
               <CardDescription>
-                Ingresa tus credenciales para acceder
+                Entra y recupera control de tu dinero en menos de un minuto
               </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 grid grid-cols-1 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11"
+                  disabled={isLoading}
+                  onClick={() => handleOAuthLogin('google')}
+                >
+                  <Chrome className="mr-2 h-4 w-4" />
+                  Continuar con Google
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-11"
+                  disabled={isLoading}
+                  onClick={() => handleOAuthLogin('apple')}
+                >
+                  <Apple className="mr-2 h-4 w-4" />
+                  Continuar con Apple
+                </Button>
+              </div>
+              <p className="mb-4 text-center text-xs text-muted-foreground">o entra con tu correo</p>
               <form onSubmit={handleLogin}>
                 <div className="flex flex-col gap-4">
                   <div className="grid gap-2">
@@ -109,7 +161,7 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       className="h-11"
                     />
-                     <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                     <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
                       Olvidaste tu contrasena?
                     </Link>
                   </div>
@@ -124,7 +176,7 @@ export default function LoginPage() {
                 </div>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
                   No tienes cuenta?{' '}
-                    <Link href="/register" className="text-primary hover:underline underline-offset-4">
+                    <Link href="/auth/sign-up" className="text-primary hover:underline underline-offset-4">
                       Registrate
                     </Link>
                 </div>

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { BottomNav } from '@/components/navigation/bottom-nav'
 import { AppProviders } from '@/components/providers/app-providers'
+import { ToastContainer } from '@/components/toast/smart-toast'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -85,6 +86,7 @@ export default function RootLayout({
         <AppProviders>
           {children}
           <BottomNav />
+          <ToastContainer />
         </AppProviders>
         <script
           dangerouslySetInnerHTML={{
