@@ -41,31 +41,6 @@ export function generateFinancialInsights(input: InsightInput): FinancialInsight
     expenseByCategory.set(category, (expenseByCategory.get(category) || 0) + Number(tx.amount))
   }
   const topCategory = Array.from(expenseByCategory.entries()).sort((a, b) => b[1] - a[1])[0]
-  if (topCategory) {
-    insights.push({
-      title: "Mayor gasto",
-      message: `Tu mayor gasto fue en ${topCategory[0]} con ${formatCurrency(topCategory[1])} este período.`,
-      type: "info",
-      icon: "chart",
-    })
-  }
-
-  if (net >= 0) {
-    insights.push({
-      title: "Salud financiera",
-      message: "Tu salud financiera se ve estable: gastaste menos de lo que ingresaste.",
-      type: "success",
-      icon: "spark",
-    })
-  } else {
-    insights.push({
-      title: "Alerta de balance",
-      message: "Cuidado: tus gastos superaron tus ingresos este período.",
-      type: "danger",
-      icon: "alert",
-    })
-  }
-
   const activeSubscriptions = input.subscriptions.filter((item) => item.status === "active")
   const monthlySubscriptions = activeSubscriptions.reduce((sum, item) => sum + Number(item.amount || 0), 0)
   if (monthlySubscriptions > 0) {

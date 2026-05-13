@@ -159,14 +159,31 @@ export function GoalsScreen() {
     }
 
     try {
+      const contributionAmount = parseAmount(addMoneyAmount)
       await addGoalContribution({
         goal_id: showAddMoney,
         account_id: contributionAccountId,
-        amount: parseAmount(addMoneyAmount),
+        amount: contributionAmount,
         date: getLocalDateString(),
         notes: null,
       })
       notify({ title: "Aporte registrado", message: "Movimiento creado con éxito y meta actualizada." })
+
+      const contributedGoal = goals.find((g) => g.id === showAddMoney)
+      if (contributedGoal) {
+        const wasCompleted = contributedGoal.is_completed
+        const willBeCompleted =
+          Number(contributedGoal.current_amount || 0) + contributionAmount >= Number(contributedGoal.target_amount || 0)
+        if (!wasCompleted && willBeCompleted) {
+          showToast({
+            title: "Meta alcanzada!",
+            body: `Felicidades, completaste "${contributedGoal.name}" con ${formatCurrency(contributionAmount)}`,
+            type: "success",
+            duration: 4000,
+          })
+        }
+      }
+
       EventBus.emit({ type: "money_added", payload: { amount: addMoneyAmount } })
       setShowAddMoney(null)
       setAddMoneyAmount("")

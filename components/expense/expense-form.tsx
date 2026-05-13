@@ -157,7 +157,7 @@ const [prefillApplied, setPrefillApplied] = useState(false)
 
     if (transactionType === "expense" && totalWithCommission > availableAmount) {
       showToast({
-        title: isCredit ? "⚠️ Crédito insuficiente" : "⚠️ Saldo insuficiente",
+        title: isCredit ? "Credito insuficiente" : "Saldo insuficiente",
         body: isCredit
           ? `Disponible: ${formatCurrency(availableAmount)}`
           : `Disponible: ${formatCurrency(availableAmount)}`,
@@ -209,7 +209,7 @@ const [prefillApplied, setPrefillApplied] = useState(false)
       }
 
       showToast({
-        title: transactionType === "income" ? "💰 Ingreso registrado" : "✅ Gasto guardado",
+        title: transactionType === "income" ? "Ingreso registrado" : "Gasto guardado",
         body: `${formatCurrency(parsedAmount)} · ${description}`,
         type: "success",
         duration: 2500,

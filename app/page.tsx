@@ -106,7 +106,7 @@ export default function DashboardPage() {
     })
   }, [accounts])
 
-  useEffect(() => {
+useEffect(() => {
     if (!user || loading || profileLoading || !isReady || typeof window === "undefined") return
     if (creditWarnings.length === 0) {
       setShowCreditReminder(false)
@@ -115,12 +115,21 @@ export default function DashboardPage() {
 
     const unseen = creditWarnings.findIndex((warning) => {
       const key = `credit_warning_seen_${user.id}_${warning.key}`
-      return window.localStorage.getItem(key) !== "true"
+      const toastKey = `credit_toast_shown_${user.id}_${warning.key}`
+      return window.localStorage.getItem(key) !== "true" && window.localStorage.getItem(toastKey) !== "true"
     })
 
     if (unseen >= 0) {
       setActiveWarningIndex(unseen)
       setShowCreditReminder(true)
+      const warning = creditWarnings[unseen]
+      const toastKey = `credit_toast_shown_${user.id}_${warning.key}`
+      window.localStorage.setItem(toastKey, "true")
+      if (warning.kind === "credit_cutoff_warning") {
+        showToast({ title: "Corte de tarjeta en 3 dias", body: `Revisa tus consumos en ${warning.title.replace("Corte próximo: ", "")} antes del corte.`, type: "warning", duration: 5000 })
+      } else if (warning.kind === "credit_payment_warning") {
+        showToast({ title: "Pago de tarjeta pendiente", body: warning.message, type: "warning", duration: 5000 })
+      }
     } else {
       setShowCreditReminder(false)
     }
@@ -139,35 +148,24 @@ export default function DashboardPage() {
     const unsubTx = EventBus.on("transaction_created", (event) => {
       const { type, amount } = event.payload ?? {}
       if (type === "income") {
-        showToast({ title: "💰 Ingreso registrado", body: `+${formatCurrency(amount)}`, type: "success", duration: 2000 })
+        showToast({ title: "Ingreso registrado", body: `+${formatCurrency(amount)}`, type: "success", duration: 2500 })
       } else {
-        showToast({ title: "✅ Gasto guardado", body: `-${formatCurrency(amount)}`, type: "success", duration: 2000 })
+        showToast({ title: "Gasto guardado", body: `-${formatCurrency(amount)}`, type: "success", duration: 2500 })
       }
-    })
-
-    const unsubGoal = EventBus.on("goal_completed", (event) => {
-      const { name, amount } = event.payload ?? {}
-      showToast({
-        title: "🎉 ¡Meta alcanzada!",
-        body: `Felicidades, completaste "${name}" con ${formatCurrency(amount)}`,
-        type: "success",
-        duration: 4000,
-      })
     })
 
     const unsubAcc = EventBus.on("account_created", (event) => {
       const { name } = event.payload ?? {}
-      showToast({ title: "🏦 Cuenta creada", body: `${name} lista para rastrear`, type: "success", duration: 2000 })
+      showToast({ title: "Cuenta creada", body: `${name} está lista para rastrear`, type: "success", duration: 2500 })
     })
 
     const unsubSub = EventBus.on("subscription_created", (event) => {
       const { name, amount } = event.payload ?? {}
-      showToast({ title: "🔁 Suscripcion agregada", body: `${name} · ${formatCurrency(amount)}/mes`, type: "success", duration: 2500 })
+      showToast({ title: "Suscripcion agregada", body: `${name} · ${formatCurrency(amount)} al mes`, type: "success", duration: 2500 })
     })
 
     return () => {
       unsubTx()
-      unsubGoal()
       unsubAcc()
       unsubSub()
     }

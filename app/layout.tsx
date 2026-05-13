@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { BottomNav } from '@/components/navigation/bottom-nav'
 import { AppProviders } from '@/components/providers/app-providers'
 import { ToastContainer } from '@/components/toast/smart-toast'
+import { BodyCleanup } from '@/components/providers/body-cleanup'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -84,48 +85,11 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <AppProviders>
+          <BodyCleanup />
           {children}
           <BottomNav />
           <ToastContainer />
         </AppProviders>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              document.body.classList.remove('modal-open', 'mobile-form-open');
-              window.addEventListener('pageshow', () => {
-                document.body.classList.remove('modal-open', 'mobile-form-open');
-              });
-              document.addEventListener('visibilitychange', () => {
-                if (!document.hidden) {
-                  const hasModal = document.querySelector('[data-app-modal="true"]');
-                  if (!hasModal) {
-                    document.body.classList.remove('modal-open', 'mobile-form-open');
-                  }
-                }
-              });
-              const clearStaleLocks = () => {
-                const hasModal = document.querySelector('[data-app-modal="true"]');
-                if (!hasModal) {
-                  document.body.classList.remove('modal-open', 'mobile-form-open');
-                }
-              };
-              if ('requestIdleCallback' in window) {
-                window.requestIdleCallback(clearStaleLocks, { timeout: 1200 });
-              } else {
-                setTimeout(clearStaleLocks, 300);
-              }
-
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/service-worker.js')
-                  .then(reg => {
-                    reg.update();
-                    console.log('SW registered:', reg.scope);
-                  })
-                  .catch(err => console.log('SW registration failed:', err));
-              }
-            `,
-          }}
-        />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

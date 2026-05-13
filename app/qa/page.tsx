@@ -283,27 +283,27 @@ export default function QaPage() {
               Generar preview de notificaciones
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
-              showToast({ title: "🔥 Días activos: 5", body: "Llevas 5 días trackeando. ¡No pares!", type: "success", duration: 2500 })
+              showToast({ title: "Racha activa", body: "Llevas 5 días trackeando. ¡No pares!", type: "success", duration: 2500 })
             }}>
               Probar: Daily Reminder
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
-              showToast({ title: "📊 Comida lidera", body: "Esta semana has gastado RD$8,500 en comida, el 42% de tus gastos.", type: "info", duration: 3000 })
+              showToast({ title: "Comida lidera tus gastos", body: "Esta semana has gastado RD$8,500 en comida, el 42% de tus gastos.", type: "info", duration: 3000 })
             }}>
               Probar: Spending Insight
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
-              showToast({ title: "🎯 Casi llegar a Vacaciones RD", body: "Llevas el 75% de tu meta. ¡Ya casi llegas!", type: "success", duration: 2500 })
+              showToast({ title: "Casi llegas a tu meta", body: "Vacaciones RD: 75% completado. ¡Ya casi!", type: "success", duration: 2500 })
             }}>
               Probar: Goal Progress
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
-              showToast({ title: "⚠️ Corte de Banreservas en 3 días", body: "Tu tarjeta corta pronto. Revisa los consumos.", type: "warning", duration: 3000 })
+              showToast({ title: "Corte de tarjeta en 3 dias", body: "Tu Banreservas corta pronto. Revisa los consumos.", type: "warning", duration: 3000 })
             }}>
               Probar: Credit Cutoff
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
-              showToast({ title: "💳 Pago de Banreservas en 5 días", body: "Pendiente: RD$5,200. No olvides pagar.", type: "warning", duration: 3000 })
+              showToast({ title: "Pago de tarjeta pendiente", body: "Banreservas: RD$5,200 pendiente. No olvides pagar.", type: "warning", duration: 3000 })
             }}>
               Probar: Credit Payment
             </Button>
