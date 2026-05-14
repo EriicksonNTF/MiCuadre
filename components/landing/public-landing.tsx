@@ -141,7 +141,7 @@ export function PublicLanding() {
             <div className="relative mx-auto w-full max-w-[620px] animate-[fadeUp_930ms_ease-out]">
               <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-[#14B8A6]/30 to-[#38BDF8]/25 blur-3xl" />
               <div className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-white/10 p-3 shadow-[0_35px_80px_-22px_rgba(20,184,166,0.55)] backdrop-blur">
-                <Image src="/landing/mockup-dashboard-3d.png" alt="Mockup 3D Dashboard MiCuadre" width={1000} height={1000} className="h-auto w-full rounded-[1.4rem]" priority />
+                <Image src="/landing/mockup-dashboard-3d.png" alt="Mockup 3D Dashboard MiCuadre" width={600} height={600} sizes="(max-width: 768px) 100vw, 600px" className="h-auto w-full rounded-[1.4rem]" priority />
               </div>
               <div className="absolute -left-3 top-8 rounded-xl border border-white/20 bg-[#10273D]/95 px-3 py-2 text-xs text-[#D1FAE5] shadow-xl animate-[floatY_7s_ease-in-out_infinite]">Balance actual <p className="text-sm font-semibold text-white">RD$ 152,840</p></div>
               <div className="absolute -right-2 top-20 rounded-xl border border-white/20 bg-[#132A2A]/95 px-3 py-2 text-xs text-[#D1FAE5] shadow-xl animate-[floatY_7.6s_ease-in-out_infinite] [animation-delay:200ms]">Balance al corte <p className="text-sm font-semibold text-white">RD$ 18,650</p></div>
@@ -170,7 +170,7 @@ export function PublicLanding() {
           <div className="relative">
             <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-[#10B981]/20 to-[#38BDF8]/20 blur-2xl" />
             <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.28)]">
-              <Image src="/landing/mockup-transaccion-3d.png" alt="Mockup 3D Transaccion MiCuadre" width={1000} height={1000} className="h-auto w-full rounded-[1.4rem]" />
+              <Image src="/landing/mockup-transaccion-3d.png" alt="Mockup 3D Transaccion MiCuadre" width={600} height={600} sizes="(max-width: 768px) 100vw, 600px" className="h-auto w-full rounded-[1.4rem]" loading="lazy" />
             </div>
           </div>
         </div>
@@ -223,7 +223,7 @@ export function PublicLanding() {
             <div className="relative">
               <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-[#14B8A6]/20 to-[#10B981]/20 blur-2xl" />
               <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.24)]">
-                <Image src="/landing/mockup-metas-3d.png" alt="Mockup 3D Metas MiCuadre" width={1000} height={1000} className="h-auto w-full rounded-[1.4rem]" />
+                <Image src="/landing/mockup-metas-3d.png" alt="Mockup 3D Metas MiCuadre" width={600} height={600} sizes="(max-width: 768px) 100vw, 600px" className="h-auto w-full rounded-[1.4rem]" loading="lazy" />
               </div>
             </div>
           </div>

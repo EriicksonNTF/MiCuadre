@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import dynamic from "next/dynamic"
 import { Header } from "@/components/dashboard/header"
 import { BalanceCard } from "@/components/dashboard/balance-card"
 import { AccountsList } from "@/components/dashboard/accounts-list"
@@ -18,8 +19,12 @@ import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-spla
 import { ActivationPanel } from "@/components/dashboard/activation-panel"
 import { showToast } from "@/components/toast/smart-toast"
 import { EventBus } from "@/lib/event-bus"
-import { CoachIAWidget } from "@/components/dashboard/coach-ia-widget"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
+
+const CoachIAWidget = dynamic(() => import("@/components/dashboard/coach-ia-widget").then((mod) => mod.CoachIAWidget), {
+  ssr: false,
+  loading: () => null,
+})
 
 export default function DashboardPage() {
   const router = useRouter()

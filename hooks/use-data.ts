@@ -320,13 +320,17 @@ async function createNotification(params: {
 }
 
 async function fetchSubscriptions(): Promise<Subscription[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   const { data, error } = await supabase
     .from("subscriptions")
     .select("*, account:accounts(*), category:categories(*)")
+    .eq("user_id", user.id)
     .order("next_payment_date", { ascending: true })
 
   if (error) throw error
-  return data || []
+  return (data as Subscription[]) || []
 }
 
 async function syncCreditAccountCycle(creditAccountId: string) {
@@ -665,11 +669,15 @@ async function applyAccountImpact(params: {
 
 // Generic fetcher for Supabase
 async function fetchAccounts(): Promise<Account[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   await maybeRefreshCreditCycles()
 
   const { data, error } = await supabase
     .from("accounts")
-    .select("*")
+    .select("*, category:categories(*)")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .order("created_at", { ascending: true })
 
@@ -678,55 +686,68 @@ async function fetchAccounts(): Promise<Account[]> {
 }
 
 async function fetchTransactions(limit = 10): Promise<Transaction[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   const { data, error } = await supabase
     .from("transactions")
-    .select(`
-      *,
-      category:categories(*),
-      account:accounts(*)
-    `)
+    .select("*, category:categories(*), account:accounts(*)")
+    .eq("user_id", user.id)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit)
 
   if (error) throw error
-  return (data || []).map((tx) => ({
+  return (data as Transaction[]).map((tx) => ({
     ...tx,
     date: normalizeTransactionDateInput(tx.date),
   }))
 }
 
 async function fetchCategories(): Promise<Category[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   const { data, error } = await supabase
     .from("categories")
     .select("*")
+    .or(`user_id.eq.${user.id},is_default.eq.true`)
+    .order("is_default", { ascending: false })
     .order("name", { ascending: true })
 
   if (error) throw error
-  return data || []
+  return (data as Category[]) || []
 }
 
 async function fetchGoals(): Promise<Goal[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   const { data, error } = await supabase
     .from("goals")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
   if (error) throw error
-  return data || []
+  return (data as Goal[]) || []
 }
 
 async function fetchNotifications(): Promise<Notification[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   await maybeRefreshCreditCycles()
 
   const { data, error } = await supabase
     .from("notifications")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20)
 
   if (error) throw error
-  return data || []
+  return (data as Notification[]) || []
 }
 
 async function fetchProfile(): Promise<Profile | null> {
@@ -744,14 +765,18 @@ async function fetchProfile(): Promise<Profile | null> {
 }
 
 async function fetchBeneficiaries(): Promise<Beneficiary[]> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
   const { data, error } = await supabase
     .from("beneficiaries")
     .select("*")
+    .eq("user_id", user.id)
     .order("is_favorite", { ascending: false })
     .order("name", { ascending: true })
 
   if (error) throw error
-  return data || []
+  return (data as Beneficiary[]) || []
 }
 
 // SWR Hooks
