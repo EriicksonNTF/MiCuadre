@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
-import { useGoals, useAccounts, addGoalContribution } from "@/hooks/use-data"
+import { useGoals, useAccounts, addGoalContribution, updateGoal } from "@/hooks/use-data"
 import { addGoalContributionSchema, parseAmount } from "@/lib/validation"
 import { notify } from "@/lib/notifications"
 
@@ -49,9 +49,18 @@ export default function GoalDetailPage() {
   const accounts = dbAccounts ?? []
 
   const [showAddMoney, setShowAddMoney] = useState(false)
+  const [showEditGoal, setShowEditGoal] = useState(false)
   const [addAmount, setAddAmount] = useState("")
   const [addAccountId, setAddAccountId] = useState("")
   const [addAmountError, setAddAmountError] = useState<string>()
+
+  const [editName, setEditName] = useState("")
+  const [editIcon, setEditIcon] = useState("Target")
+  const [editColor, setEditColor] = useState("from-rose-500 to-pink-500")
+  const [editTargetAmount, setEditTargetAmount] = useState("")
+  const [editDeadline, setEditDeadline] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [isSavingGoal, setIsSavingGoal] = useState(false)
 
   const goal = useMemo(() => (goals ?? []).find((g) => g.id === goalId), [goals, goalId])
 
@@ -135,6 +144,52 @@ export default function GoalDetailPage() {
     }
   }
 
+  useEffect(() => {
+    if (!goal) return
+    setEditName(goal.name || "")
+    setEditIcon(goal.icon || "Target")
+    setEditColor(goal.color || "from-rose-500 to-pink-500")
+    setEditTargetAmount(String(Number(goal.target_amount || 0)))
+    setEditDeadline(goal.target_date || "")
+    setEditDescription(((goal as unknown as { description?: string }).description || ""))
+  }, [goal])
+
+  const handleSaveGoal = async () => {
+    if (!goal) return
+    const parsedTarget = parseAmount(editTargetAmount)
+    if (!editName.trim() || parsedTarget <= 0) {
+      notify({ title: "Datos incompletos", message: "Revisa nombre y monto objetivo." })
+      return
+    }
+
+    setIsSavingGoal(true)
+    try {
+      try {
+        await updateGoal(goal.id, {
+          name: editName.trim(),
+          icon: editIcon,
+          color: editColor,
+          target_amount: parsedTarget,
+          target_date: editDeadline || null,
+          ...(editDescription.trim() ? ({ description: editDescription.trim() } as unknown as Record<string, unknown>) : {}),
+        } as any)
+      } catch {
+        await updateGoal(goal.id, {
+          name: editName.trim(),
+          icon: editIcon,
+          color: editColor,
+          target_amount: parsedTarget,
+          target_date: editDeadline || null,
+        })
+      }
+
+      notify({ title: "Meta actualizada", message: "Los cambios se guardaron correctamente." })
+      setShowEditGoal(false)
+    } finally {
+      setIsSavingGoal(false)
+    }
+  }
+
   if (goalsLoading || accountsLoading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -164,6 +219,7 @@ export default function GoalDetailPage() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold text-foreground">Detalles de la meta</h1>
+        <Button variant="outline" className="ml-auto" onClick={() => setShowEditGoal(true)}>Editar</Button>
       </header>
 
       <div className="px-6 pt-4">
@@ -328,6 +384,39 @@ export default function GoalDetailPage() {
               >
                 Confirmar
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEditGoal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-t-3xl bg-card p-6">
+            <h2 className="text-xl font-bold text-foreground">Editar meta</h2>
+            <div className="mt-4 space-y-3">
+              <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nombre" className="w-full rounded-xl border border-input bg-background px-4 py-3" />
+              <MoneyInput value={editTargetAmount} onValueChange={setEditTargetAmount} placeholder="Monto objetivo" className="w-full rounded-xl border border-input bg-background px-4 py-3" />
+              <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3" />
+              <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripcion" className="h-24 w-full rounded-xl border border-input bg-background px-4 py-3" />
+              <div className="grid grid-cols-4 gap-2">
+                {Object.keys(iconMap).map((iconName) => {
+                  const Icon = iconMap[iconName]
+                  return (
+                    <button key={iconName} onClick={() => setEditIcon(iconName)} className={cn("flex items-center justify-center rounded-xl p-2", editIcon === iconName ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                      <Icon className="h-4 w-4" />
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {["from-rose-500 to-pink-500", "from-blue-500 to-cyan-500", "from-violet-500 to-purple-500", "from-emerald-500 to-green-500"].map((color) => (
+                  <button key={color} onClick={() => setEditColor(color)} className={cn("h-8 rounded-lg bg-gradient-to-r", color, editColor === color && "ring-2 ring-offset-2 ring-primary")} />
+                ))}
+              </div>
+            </div>
+            <div className="mt-5 flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setShowEditGoal(false)} disabled={isSavingGoal}>Cancelar</Button>
+              <Button className="flex-1" onClick={handleSaveGoal} disabled={isSavingGoal}>{isSavingGoal ? "Guardando..." : "Guardar cambios"}</Button>
             </div>
           </div>
         </div>

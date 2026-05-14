@@ -89,6 +89,22 @@ export function GoalsScreen() {
   const [contributionAccountId, setContributionAccountId] = useState("")
 
   const goals = dbGoals || []
+
+  const resetCreateGoalForm = () => {
+    setGoalName("")
+    setGoalAmount("")
+    setGoalNameError(undefined)
+    setGoalAmountError(undefined)
+    setSelectedIcon("Target")
+    setSelectedColor("from-rose-500 to-pink-500")
+  }
+
+  const resetAddMoneyForm = () => {
+    setShowAddMoney(null)
+    setAddMoneyAmount("")
+    setAddMoneyAmountError(undefined)
+    setContributionAccountId("")
+  }
   const contributionAccount = accounts.find((account) => account.id === contributionAccountId)
   const parsedContributionAmount = parseAmount(addMoneyAmount)
   const exceedsContributionBalance = Boolean(
@@ -129,11 +145,8 @@ export function GoalsScreen() {
       })
       notify({ title: "Meta creada", message: "Tu meta de ahorro fue creada exitosamente." })
       EventBus.emit({ type: "goal_created", payload: { name: goalName } })
+      resetCreateGoalForm()
       setShowAddGoal(false)
-      setGoalName("")
-      setGoalAmount("")
-      setSelectedIcon("Target")
-      setSelectedColor("from-rose-500 to-pink-500")
     } catch (error) {
       console.error("Error creating goal:", error)
     } finally {
@@ -185,9 +198,7 @@ export function GoalsScreen() {
       }
 
       EventBus.emit({ type: "money_added", payload: { amount: addMoneyAmount } })
-      setShowAddMoney(null)
-      setAddMoneyAmount("")
-      setContributionAccountId("")
+      resetAddMoneyForm()
     } catch (error) {
       console.error("Error adding money:", error)
     }
@@ -340,10 +351,7 @@ export function GoalsScreen() {
         <BaseModalForm
           title="Agregar a la meta"
           onClose={() => {
-            setShowAddMoney(null)
-            setAddMoneyAmount("")
-            setAddMoneyAmountError(undefined)
-            setContributionAccountId("")
+            resetAddMoneyForm()
           }}
           footer={
               <Button
@@ -426,10 +434,7 @@ export function GoalsScreen() {
           title="Nueva meta"
           onClose={() => {
             setShowAddGoal(false)
-            setGoalName("")
-            setGoalAmount("")
-            setGoalNameError(undefined)
-            setGoalAmountError(undefined)
+            resetCreateGoalForm()
           }}
           footer={
             <Button

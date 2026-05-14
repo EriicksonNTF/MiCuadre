@@ -14,7 +14,7 @@ import type {
   GoalContribution,
   Subscription,
 } from "@/lib/types/database"
-import { getLocalDateString } from "@/lib/data"
+import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { getCycleForDate } from "@/lib/credit-cycle"
 import { getNextBillingDateFrom } from "@/lib/subscriptions"
 
@@ -869,6 +869,15 @@ export async function createAccount(account: NewAccountInput) {
 
   if (error) throw error
   mutate("accounts")
+
+  await createNotification({
+    userId: user.id,
+    type: "system",
+    title: "Cuenta creada correctamente",
+    message: `Se creo la cuenta ${account.name}.`,
+    actionUrl: "/accounts",
+  })
+  mutate("notifications")
   return data
 }
 
@@ -1107,14 +1116,40 @@ export async function updateProfile(updates: Partial<Profile>) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
+  const payload = {
+    id: user.id,
+    ...updates,
+    updated_at: new Date().toISOString(),
+  }
+
   const { data, error } = await supabase
     .from("profiles")
-    .update(updates)
-    .eq("id", user.id)
+    .upsert(payload, { onConflict: "id" })
     .select()
     .single()
 
   if (error) throw error
+
+  const metadataPatch: Record<string, unknown> = {}
+  if (typeof updates.full_name !== "undefined") metadataPatch.full_name = updates.full_name
+  if (typeof updates.first_name !== "undefined") metadataPatch.first_name = updates.first_name
+  if (typeof updates.last_name !== "undefined") metadataPatch.last_name = updates.last_name
+  if (typeof updates.avatar_url !== "undefined") metadataPatch.avatar_url = updates.avatar_url
+  if (typeof updates.theme !== "undefined") metadataPatch.theme = updates.theme
+  if (typeof updates.language !== "undefined") metadataPatch.language = updates.language
+
+  if (Object.keys(metadataPatch).length > 0) {
+    await supabase.auth.updateUser({ data: metadataPatch })
+  }
+
+  await createNotification({
+    userId: user.id,
+    type: "system",
+    title: "Perfil actualizado",
+    message: "Tus preferencias y datos de perfil fueron guardados.",
+    actionUrl: "/profile",
+  })
+  mutate("notifications")
   mutate("profile")
   return data
 }
@@ -1174,10 +1209,22 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
 
   if (error) throw error
   mutate("goals")
+
+  await createNotification({
+    userId: user.id,
+    type: "goal",
+    title: "Meta creada",
+    message: `Tu meta ${goal.name} fue creada correctamente.`,
+    actionUrl: "/goals",
+  })
+  mutate("notifications")
   return data
 }
 
 export async function updateGoal(id: string, updates: Partial<Goal>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+
   const { data, error } = await supabase
     .from("goals")
     .update(updates)
@@ -1186,6 +1233,16 @@ export async function updateGoal(id: string, updates: Partial<Goal>) {
     .single()
 
   if (error) throw error
+  mutate("goals")
+
+  await createNotification({
+    userId: user.id,
+    type: "goal",
+    title: "Meta actualizada",
+    message: `Se guardaron los cambios de la meta ${data.name}.`,
+    actionUrl: `/goals/${id}`,
+  })
+  mutate("notifications")
   return data
 }
 
@@ -1246,6 +1303,16 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
   mutate("goals")
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
+
+  await createNotification({
+    userId: user.id,
+    type: "goal",
+    title: "Aporte agregado a la meta",
+    message: `Registraste un aporte de ${formatCurrency(Number(contribution.amount || 0))}.`,
+    actionUrl: `/goals/${contribution.goal_id}`,
+  })
+  mutate("notifications")
+
   return newContribution
 }
 
@@ -1700,6 +1767,15 @@ export async function createBeneficiary(beneficiary: Omit<Beneficiary, "id" | "u
 
   if (error) throw error
   mutate("beneficiaries")
+
+  await createNotification({
+    userId: user.id,
+    type: "transfer",
+    title: "Beneficiario creado",
+    message: `${beneficiary.name} esta listo para transferencias.`,
+    actionUrl: "/send",
+  })
+  mutate("notifications")
   return data
 }
 
@@ -1921,6 +1997,16 @@ export async function createCategory(category: Omit<Category, "id" | "user_id" |
 
   if (error) throw error
   mutate("categories")
+
+  await createNotification({
+    userId: user.id,
+    type: "system",
+    title: "Categoria creada",
+    message: `La categoria ${category.name} fue creada correctamente.`,
+    actionUrl: "/settings/categories",
+  })
+  mutate("notifications")
+
   return data
 }
 

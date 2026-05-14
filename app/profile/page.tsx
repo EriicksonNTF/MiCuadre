@@ -28,6 +28,9 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [name, setName] = useState("")
+  const [preferredCurrency, setPreferredCurrency] = useState<"DOP" | "USD">("DOP")
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system")
+  const [language, setLanguage] = useState<"es" | "en">("es")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const displayName = useMemo(() => {
@@ -42,16 +45,25 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!profile) return
     setName(profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "")
+    setPreferredCurrency(profile.preferred_currency || "DOP")
+    setTheme(profile.theme || "system")
+    setLanguage(profile.language || "es")
   }, [profile])
 
   const handleStartEdit = () => {
     setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
+    setPreferredCurrency(profile?.preferred_currency || "DOP")
+    setTheme(profile?.theme || "system")
+    setLanguage(profile?.language || "es")
     setIsEditing(true)
   }
 
   const handleCancel = () => {
     setIsEditing(false)
     setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
+    setPreferredCurrency(profile?.preferred_currency || "DOP")
+    setTheme(profile?.theme || "system")
+    setLanguage(profile?.language || "es")
   }
 
   const handleSave = async () => {
@@ -67,6 +79,9 @@ export default function ProfilePage() {
         first_name: firstName,
         last_name: lastName,
         email: user?.email ?? null,
+        preferred_currency: preferredCurrency,
+        theme,
+        language,
       })
 
       await mutate()
@@ -195,6 +210,43 @@ export default function ProfilePage() {
             ) : (
               <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{displayName}</p>
             )}
+          </div>
+
+          <div className="mb-4 grid grid-cols-3 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Moneda</label>
+              {isEditing ? (
+                <select value={preferredCurrency} onChange={(e) => setPreferredCurrency(e.target.value as "DOP" | "USD")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                  <option value="DOP">DOP</option>
+                  <option value="USD">USD</option>
+                </select>
+              ) : (
+                <p className="rounded-xl bg-muted px-3 py-3 text-foreground">{profile?.preferred_currency || "DOP"}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Tema</label>
+              {isEditing ? (
+                <select value={theme} onChange={(e) => setTheme(e.target.value as "light" | "dark" | "system")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                  <option value="system">Sistema</option>
+                  <option value="light">Claro</option>
+                  <option value="dark">Oscuro</option>
+                </select>
+              ) : (
+                <p className="rounded-xl bg-muted px-3 py-3 text-foreground">{profile?.theme || "system"}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Idioma</label>
+              {isEditing ? (
+                <select value={language} onChange={(e) => setLanguage(e.target.value as "es" | "en")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                  <option value="es">Español</option>
+                  <option value="en">English</option>
+                </select>
+              ) : (
+                <p className="rounded-xl bg-muted px-3 py-3 text-foreground">{profile?.language || "es"}</p>
+              )}
+            </div>
           </div>
 
           <div className="mb-4">

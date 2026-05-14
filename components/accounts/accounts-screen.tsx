@@ -80,6 +80,30 @@ export function AccountsScreen() {
   const [applyCommission, setApplyCommission] = useState(false)
   const [isTransferring, setIsTransferring] = useState(false)
 
+  const resetCreateAccountForm = () => {
+    setAccountName("")
+    setAccountType("cash")
+    setAccountCurrency("DOP")
+    setInitialBalance("")
+    setCreditLimitDop("")
+    setCreditLimitUsd("")
+    setClosingDate("")
+    setDueDate("")
+    setBrandingIconType("icon")
+    setBrandingIconValue("building-2")
+    setBrandingIconUrl(null)
+    setBrandingPrimaryColor("#0b4a8a")
+    setBrandingSecondaryColor("#38bdf8")
+    setBrandingBackgroundStyle("gradient")
+  }
+
+  const resetTransferForm = () => {
+    setFromAccount("")
+    setToAccount("")
+    setTransferAmount("")
+    setApplyCommission(false)
+  }
+
   const parsedTransferAmount = parseFloat(transferAmount.replace(/[^0-9.]/g, "")) || 0
   const transferCommissionAmount = applyCommission ? Math.round(parsedTransferAmount * 0.15) / 100 : 0
   const totalTransferAmount = parsedTransferAmount + transferCommissionAmount
@@ -275,6 +299,7 @@ export function AccountsScreen() {
       })
       notify({ title: "Cuenta creada", message: "Tu cuenta fue creada correctamente." })
       EventBus.emit({ type: "account_created", payload: { name: accountName } })
+      resetCreateAccountForm()
       setShowCreateAccount(false)
     } finally {
       setIsCreating(false)
@@ -298,11 +323,8 @@ export function AccountsScreen() {
       await createTransfer({ from_account_id: fromAccount, to_account_id: toAccount, amount, currency: source.currency, apply_commission: applyCommission })
       notify({ title: "Transferencia exitosa", message: "Se han transferido los fondos." })
       EventBus.emit({ type: "transfer_completed" })
+      resetTransferForm()
       setShowTransfer(false)
-      setFromAccount("")
-      setToAccount("")
-      setTransferAmount("")
-      setApplyCommission(false)
     } finally {
       setIsTransferring(false)
     }
@@ -311,8 +333,30 @@ export function AccountsScreen() {
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       <header className="px-6 pb-4 pt-8">
-        <h1 className="text-2xl font-bold text-foreground">Cuentas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Administra tu dinero</p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Cuentas</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Administra tu dinero</p>
+          </div>
+          <div className="flex items-center gap-3 pt-0.5">
+            <button
+              type="button"
+              onClick={() => setShowTransfer(true)}
+              aria-label="Transferir"
+              className="group flex h-12 w-12 items-center justify-center rounded-full border border-border/70 bg-card/80 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+            >
+              <ArrowRightLeft className="h-4 w-4 text-foreground transition group-hover:text-accent" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateAccount(true)}
+              aria-label="Agregar cuenta"
+              className="group flex h-12 w-12 items-center justify-center rounded-full border border-border/70 bg-card/80 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+            >
+              <Plus className="h-4 w-4 text-foreground transition group-hover:text-accent" />
+            </button>
+          </div>
+        </div>
       </header>
 
       <div className="px-6 pt-3">
@@ -449,15 +493,13 @@ export function AccountsScreen() {
         })}
       </div>
 
-      <div className="flex gap-3 px-6 pt-6">
-        <Button variant="outline" onClick={() => setShowTransfer(true)} className="h-12 flex-1 gap-2 rounded-2xl"><ArrowRightLeft className="h-4 w-4" />Transferir</Button>
-        <Button variant="outline" onClick={() => setShowCreateAccount(true)} className="h-12 flex-1 gap-2 rounded-2xl"><Plus className="h-4 w-4" />Nueva cuenta</Button>
-      </div>
-
       {showTransfer && (
         <BaseModalForm
           title="Transferir dinero"
-          onClose={() => setShowTransfer(false)}
+          onClose={() => {
+            setShowTransfer(false)
+            resetTransferForm()
+          }}
           footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} />}
         >
           <div className="space-y-4 pb-safe-areas">
@@ -491,7 +533,10 @@ export function AccountsScreen() {
       )}
 
       {showCreateAccount && (
-        <BaseModalForm title="Nueva cuenta" onClose={() => setShowCreateAccount(false)} footer={<Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
+        <BaseModalForm title="Nueva cuenta" onClose={() => {
+          setShowCreateAccount(false)
+          resetCreateAccountForm()
+        }} footer={<Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
           <div className="space-y-5 pb-safe-areas">
             <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre de la cuenta" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
             <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button key={t} onClick={() => setAccountType(t)} className={cn("rounded-xl px-3 py-2 text-xs", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
