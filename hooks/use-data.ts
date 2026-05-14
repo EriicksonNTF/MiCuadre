@@ -669,15 +669,11 @@ async function applyAccountImpact(params: {
 
 // Generic fetcher for Supabase
 async function fetchAccounts(): Promise<Account[]> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
-
   await maybeRefreshCreditCycles()
 
   const { data, error } = await supabase
     .from("accounts")
-    .select("*, category:categories(*)")
-    .eq("user_id", user.id)
+    .select("*")
     .eq("is_active", true)
     .order("created_at", { ascending: true })
 
