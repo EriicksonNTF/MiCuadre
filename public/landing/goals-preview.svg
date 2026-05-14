@@ -1,0 +1,20 @@
+<svg width="820" height="480" viewBox="0 0 820 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="480" rx="30" fill="#F8FAFC"/>
+  <rect x="32" y="32" width="756" height="416" rx="22" fill="white" stroke="#E2E8F0"/>
+  <text x="64" y="86" fill="#0F172A" font-size="30" font-family="Arial" font-weight="700">Metas</text>
+  <rect x="64" y="122" width="692" height="82" rx="16" fill="#F1F5F9"/>
+  <rect x="64" y="220" width="692" height="82" rx="16" fill="#F1F5F9"/>
+  <rect x="64" y="318" width="692" height="82" rx="16" fill="#F1F5F9"/>
+  <text x="90" y="158" fill="#334155" font-size="20" font-family="Arial">Fondo de emergencia</text>
+  <text x="674" y="158" fill="#0F766E" font-size="20" font-family="Arial">82%</text>
+  <rect x="90" y="172" width="560" height="8" rx="4" fill="#D1FAE5"/>
+  <rect x="90" y="172" width="459" height="8" rx="4" fill="#10B981"/>
+  <text x="90" y="256" fill="#334155" font-size="20" font-family="Arial">Viaje</text>
+  <text x="674" y="256" fill="#0284C7" font-size="20" font-family="Arial">48%</text>
+  <rect x="90" y="270" width="560" height="8" rx="4" fill="#E0F2FE"/>
+  <rect x="90" y="270" width="269" height="8" rx="4" fill="#38BDF8"/>
+  <text x="90" y="354" fill="#334155" font-size="20" font-family="Arial">Nuevo iPhone</text>
+  <text x="674" y="354" fill="#16A34A" font-size="20" font-family="Arial">35%</text>
+  <rect x="90" y="368" width="560" height="8" rx="4" fill="#DCFCE7"/>
+  <rect x="90" y="368" width="196" height="8" rx="4" fill="#22C55E"/>
+</svg>

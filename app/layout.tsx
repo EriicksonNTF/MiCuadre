@@ -20,6 +20,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://micuadre.app'),
   applicationName: 'MiCuadre',
   title: 'MiCuadre - Tus finanzas simplificadas',
   description: 'App de finanzas personales en pesos dominicanos',
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
     title: 'MiCuadre',
     startupImage: [
       {
-        url: '/apple-icon.png',
+        url: '/apple-touch-icon.png',
         media: '(device-width: 768px)',
       },
     ],
@@ -42,28 +43,36 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/favicon.ico',
+        sizes: '16x16 32x32 48x48',
+        type: 'image/x-icon',
       },
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
+        url: '/favicon-32x32.png',
+        sizes: '32x32',
+        type: 'image/png',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/apple-touch-icon.png',
     other: [
       {
-        url: '/apple-icon.png',
+        url: '/icon-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        url: '/icon-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+      {
+        url: '/apple-touch-icon.png',
         sizes: '180x180',
         type: 'image/png',
       },
       {
-        url: '/icon-light-32x32.png',
-        sizes: '32x32',
+        url: '/favicon-16x16.png',
+        sizes: '16x16',
         type: 'image/png',
       },
     ],

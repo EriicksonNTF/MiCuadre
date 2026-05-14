@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { Apple, Chrome, Wallet } from 'lucide-react'
+import { Apple, Chrome } from 'lucide-react'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -96,8 +97,8 @@ export default function SignUpPage() {
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
-              <Wallet className="h-6 w-6 text-primary-foreground" />
+            <div className="overflow-hidden rounded-xl border border-border shadow-sm">
+              <Image src="/icono-favicon.png" alt="MiCuadre" width={48} height={48} className="h-12 w-12 object-cover" />
             </div>
             <h1 className="text-xl font-semibold text-foreground">MiCuadre</h1>
             <p className="text-sm text-muted-foreground">Tu copiloto financiero dominicano</p>

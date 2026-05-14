@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState, type TouchEvent } from "react"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import {
   ArrowRight,
@@ -140,8 +141,8 @@ export default function OnboardingPage() {
       <div className="mx-auto flex min-h-screen max-w-md flex-col px-6 pb-safe-areas pt-safe-areas">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
-              <StepIcon className="h-5 w-5" />
+            <div className="overflow-hidden rounded-full border border-border/60 shadow-sm">
+              <Image src="/icono-favicon.png" alt="MiCuadre" width={44} height={44} className="h-11 w-11 object-cover" />
             </div>
 
             <div>

@@ -183,6 +183,7 @@ const isDevMode = process.env.NODE_ENV === "development"
   const isQaAccessEnabled = (isDevMode && isQaUser) || showDebugQa
 
   const otherItems = [
+    { icon: Shield, label: "Seguridad y privacidad", href: "/settings/security-privacy" },
     { icon: Shield, label: "Seguridad", href: "/settings/security" },
     { icon: HelpCircle, label: "Ayuda y soporte", href: "/settings/help" },
     { icon: Smartphone, label: "Acerca de", href: "/settings/about" },

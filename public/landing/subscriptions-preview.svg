@@ -1,0 +1,16 @@
+<svg width="820" height="480" viewBox="0 0 820 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="820" height="480" rx="30" fill="#07111F"/>
+  <rect x="32" y="32" width="756" height="416" rx="22" fill="#0B1A2C" stroke="#1E293B"/>
+  <text x="64" y="86" fill="white" font-size="30" font-family="Arial" font-weight="700">Suscripciones</text>
+  <rect x="64" y="120" width="692" height="70" rx="14" fill="#13273C"/>
+  <rect x="64" y="204" width="692" height="70" rx="14" fill="#13273C"/>
+  <rect x="64" y="288" width="692" height="70" rx="14" fill="#13273C"/>
+  <rect x="64" y="372" width="692" height="44" rx="12" fill="#0D3A35"/>
+  <text x="92" y="163" fill="#E2E8F0" font-size="20" font-family="Arial">Netflix</text>
+  <text x="640" y="163" fill="#A7F3D0" font-size="20" font-family="Arial">RD$ 699</text>
+  <text x="92" y="247" fill="#E2E8F0" font-size="20" font-family="Arial">Spotify</text>
+  <text x="640" y="247" fill="#A7F3D0" font-size="20" font-family="Arial">RD$ 349</text>
+  <text x="92" y="331" fill="#E2E8F0" font-size="20" font-family="Arial">Amazon Prime</text>
+  <text x="620" y="331" fill="#A7F3D0" font-size="20" font-family="Arial">RD$ 320</text>
+  <text x="92" y="400" fill="#99F6E4" font-size="18" font-family="Arial">Proximo pago: Spotify en 3 dias</text>
+</svg>

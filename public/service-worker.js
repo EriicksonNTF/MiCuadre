@@ -1,11 +1,12 @@
-const CACHE_NAME = 'micuadre-v2';
+const CACHE_NAME = 'micuadre-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
-  '/icon.svg',
-  '/icon-light-32x32.png',
-  '/icon-dark-32x32.png',
-  '/apple-icon.png',
+  '/favicon.ico',
+  '/favicon-32x32.png',
+  '/apple-touch-icon.png',
+  '/icon-192x192.png',
+  '/icon-512x512.png',
   '/placeholder.svg',
 ];
 
@@ -77,8 +78,8 @@ self.addEventListener('push', (event) => {
   const title = data.title ?? 'MiCuadre';
   const options = {
     body: data.body ?? '',
-    icon: '/apple-icon.png',
-    badge: '/icon-light-32x32.png',
+    icon: '/apple-touch-icon.png',
+    badge: '/favicon-32x32.png',
     data: data.url ?? '/',
   };
   
