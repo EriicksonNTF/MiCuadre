@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -16,24 +17,16 @@ import {
   Dumbbell,
   Gift,
   MoreHorizontal,
-  CalendarIcon,
-  Check,
   ChevronLeft,
   AlertCircle,
   TrendingUp,
   TrendingDown,
   Briefcase,
-  ChevronDown,
+  Repeat,
+  Plus,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Popover,
   PopoverContent,
@@ -46,7 +39,6 @@ import { useAccounts, useCategories, createSubscription, createTransaction } fro
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
-import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { SUBSCRIPTION_PROVIDERS, getNextBillingDateFrom } from "@/lib/subscriptions"
 import { showToast } from "@/components/toast/smart-toast"
@@ -79,6 +71,7 @@ type ExpensePrefill = {
 }
 
 export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?: ExpensePrefill }) {
+  const router = useRouter()
   const { data: rawAccounts = [] } = useAccounts()
   const { data: dbCategories = [] } = useCategories()
 
@@ -106,9 +99,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [date, setDate] = useState<Date>(new Date())
   const [applyCommission, setApplyCommission] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
-const [prefillApplied, setPrefillApplied] = useState(false)
-  const [showSubscriptionDetails, setShowSubscriptionDetails] = useState(false)
+  const [prefillApplied, setPrefillApplied] = useState(false)
   const [subscriptionProvider, setSubscriptionProvider] = useState("netflix")
   const [subscriptionMode, setSubscriptionMode] = useState<"once" | "recurring">("once")
   const [billingDay, setBillingDay] = useState(String(new Date().getDate()))
@@ -126,7 +117,6 @@ const [prefillApplied, setPrefillApplied] = useState(false)
   const selectedCategory = categories.find(c => c.id === category) || categories[0]
   const selectedDbCategory = dbCategories.find((item) => item.id === selectedCategory?.id)
   const isSubscriptionCategory = Boolean(selectedDbCategory?.is_subscription || selectedDbCategory?.name.toLowerCase().includes("suscrip"))
-  const CategoryIcon = selectedCategory?.icon || MoreHorizontal
   const selectedAccount = accounts.find(a => a.id === accountId)
   const isCredit = selectedAccount?.type === "credit"
   const availableAmount = selectedAccount
@@ -153,7 +143,7 @@ const [prefillApplied, setPrefillApplied] = useState(false)
   }
 
   const handleSave = async () => {
-    if (!parsedAmount || !description) return
+    if (!parsedAmount) return
 
     if (transactionType === "expense" && totalWithCommission > availableAmount) {
       showToast({
@@ -193,7 +183,7 @@ const [prefillApplied, setPrefillApplied] = useState(false)
         metadata: null,
       }, { applyCommission })
 
-      if (transactionType === "expense" && isSubscriptionCategory && subscriptionMode === "recurring") {
+      if (transactionType === "expense" && subscriptionMode === "recurring") {
         const provider = SUBSCRIPTION_PROVIDERS.find((item) => item.key === subscriptionProvider)
         const nextDate = getNextBillingDateFrom(date, Number(billingDay || date.getDate()))
         await createSubscription({
@@ -217,17 +207,13 @@ const [prefillApplied, setPrefillApplied] = useState(false)
       EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount } })
       
       setIsSaving(false)
-      setShowSuccess(true)
-      
-      setTimeout(() => {
-        setShowSuccess(false)
-        setAmount("")
-        setDescription("")
-        setCategory("")
-        setDate(new Date())
-        setApplyCommission(false)
-        onBack?.()
-      }, 400)
+      setAmount("")
+      setDescription("")
+      setCategory("")
+      setDate(new Date())
+      setApplyCommission(false)
+      setSubscriptionMode("once")
+      onBack?.()
     } catch (error) {
       console.error(error)
       setIsSaving(false)
@@ -236,7 +222,9 @@ const [prefillApplied, setPrefillApplied] = useState(false)
 
 
   const exceedsAvailable = transactionType === "expense" && parsedAmount !== null && totalWithCommission > availableAmount
-  const isValid = parsedAmount !== null && parsedAmount > 0 && description.length > 0 && !exceedsAvailable
+  const isValid = parsedAmount !== null && parsedAmount > 0 && !exceedsAvailable
+
+  const isRecurringEnabled = transactionType === "expense"
 
   useEffect(() => {
     if (!prefill || prefillApplied) return
@@ -261,7 +249,7 @@ const [prefillApplied, setPrefillApplied] = useState(false)
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Header */}
-      <header className="flex items-center gap-3 px-6 pb-2 pt-8">
+      <header className="flex items-center gap-3 px-5 pb-2 pt-6 sm:px-6 sm:pt-8">
         {onBack && (
           <button
             onClick={onBack}
@@ -273,75 +261,45 @@ const [prefillApplied, setPrefillApplied] = useState(false)
         <h1 className="text-lg font-semibold text-foreground">Nueva transacción</h1>
       </header>
 
-      <div className="flex-1 px-6 pt-6">
-        {/* Transaction Type Toggle - VERY VISIBLE */}
-        <div className="flex h-14 overflow-hidden rounded-2xl bg-card p-1">
-          <button
-            onClick={() => {
-              setTransactionType("income")
-              setCategory("")
-            }}
-            className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all",
-              transactionType === "income"
-                ? "bg-emerald-500 text-white"
-                : "text-muted-foreground"
-            )}
-          >
-            <TrendingUp className="h-4 w-4" />
-            Ingreso
-          </button>
+      <div className="flex-1 space-y-5 px-5 pb-28 pt-3 sm:space-y-6 sm:px-6 sm:pt-4">
+        <div className="flex h-12 overflow-hidden rounded-2xl bg-card/80 p-1 ring-1 ring-border/70">
           <button
             onClick={() => {
               setTransactionType("expense")
               setCategory("")
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all",
-transactionType === "expense"
-                 ? "bg-primary text-primary-foreground"
+              "flex flex-1 items-center justify-center gap-2 rounded-xl text-[13px] transition-all",
+              transactionType === "expense"
+                ? "bg-primary text-primary-foreground font-bold"
                 : "text-muted-foreground"
             )}
           >
             <TrendingDown className="h-4 w-4" />
             Gasto
           </button>
+          <button
+            onClick={() => {
+              setTransactionType("income")
+              setCategory("")
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-2 rounded-xl text-[13px] transition-all",
+              transactionType === "income"
+                 ? "bg-emerald-600 text-white font-bold"
+                : "text-muted-foreground"
+            )}
+          >
+            <TrendingUp className="h-4 w-4" />
+            Ingreso
+          </button>
         </div>
 
-        {transactionType === "expense" && isSubscriptionCategory && (
-          <div className="mt-6 rounded-2xl bg-card p-4">
-            <button onClick={() => setShowSubscriptionDetails((prev) => !prev)} className="flex w-full items-center justify-between">
-              <div className="text-left">
-                <p className="text-sm font-semibold text-foreground">Configuracion de suscripcion</p>
-                <p className="text-xs text-muted-foreground">Opcional para gastos recurrentes</p>
-              </div>
-              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", showSubscriptionDetails && "rotate-180")} />
-            </button>
-            {showSubscriptionDetails && (
-              <div className="mt-4 space-y-3">
-                <select value={subscriptionProvider} onChange={(event) => setSubscriptionProvider(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm">
-                  {SUBSCRIPTION_PROVIDERS.map((provider) => (
-                    <option key={provider.key} value={provider.key}>{provider.name}</option>
-                  ))}
-                </select>
-                <div className="flex gap-2">
-                  <button onClick={() => setSubscriptionMode("once")} className={cn("flex-1 rounded-xl py-2 text-sm", subscriptionMode === "once" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Record only once</button>
-                  <button onClick={() => setSubscriptionMode("recurring")} className={cn("flex-1 rounded-xl py-2 text-sm", subscriptionMode === "recurring" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Make recurring monthly</button>
-                </div>
-                {subscriptionMode === "recurring" && (
-                  <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} min={1} max={31} type="number" className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm" placeholder="Billing day" />
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Amount Input - BIG AND CENTERED */}
-        <div className="mt-10 flex flex-col items-center">
-          <p className="text-xs font-medium text-muted-foreground mb-4">
+        <div className="rounded-3xl bg-card/70 px-4 py-7 text-center ring-1 ring-border/60 sm:py-8">
+          <p className="mb-4 text-xs font-medium text-muted-foreground">
             {transactionType === "income" ? "Monto recibido" : "Monto gastado"}
           </p>
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline justify-center gap-1">
             <span className="text-2xl font-medium text-muted-foreground">
               {currency === "DOP" ? "RD$" : "US$"}
             </span>
@@ -349,19 +307,18 @@ transactionType === "expense"
               value={amount}
               onValueChange={handleAmountChange}
               placeholder="0"
-              className="w-full max-w-[200px] bg-transparent text-center text-5xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
+              className="w-full max-w-[220px] bg-transparent text-center text-[42px] font-bold leading-none text-foreground outline-none placeholder:text-muted-foreground/30 sm:text-5xl"
               autoFocus
             />
           </div>
-          
-          {/* Currency Toggle */}
-          <div className="mt-4 flex h-9 overflow-hidden rounded-full bg-muted/50">
+
+          <div className="mt-5 inline-flex h-10 overflow-hidden rounded-full bg-muted/70 p-1">
             <button
               onClick={() => setCurrency("DOP")}
               className={cn(
-                "flex items-center justify-center px-4 text-xs font-medium transition-colors",
+                "flex items-center justify-center rounded-full px-4 text-xs font-medium transition-colors",
                 currency === "DOP"
-                  ? "bg-primary text-primary-foreground rounded-full"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground"
               )}
             >
@@ -370,9 +327,9 @@ transactionType === "expense"
             <button
               onClick={() => setCurrency("USD")}
               className={cn(
-                "flex items-center justify-center px-4 text-xs font-medium transition-colors",
+                "flex items-center justify-center rounded-full px-4 text-xs font-medium transition-colors",
                 currency === "USD"
-                  ? "bg-primary text-primary-foreground rounded-full"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground"
               )}
             >
@@ -399,24 +356,62 @@ transactionType === "expense"
           )}
         </div>
 
-        {/* Description - Small and discrete */}
-        <div className="mt-8">
-          <input
-            type="text"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="¿En qué fue?"
-            className="h-14 w-full rounded-2xl border-0 bg-card px-5 text-center text-base font-medium text-foreground outline-none ring-1 ring-transparent transition-all placeholder:text-muted-foreground/50 focus:ring-accent"
-          />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="flex h-16 w-full flex-col items-start justify-center rounded-2xl bg-card px-4 ring-1 ring-border/60">
+                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Fecha</span>
+                <span className="mt-1 text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+            </PopoverContent>
+          </Popover>
+
+          <button
+            type="button"
+            disabled={!isRecurringEnabled}
+            onClick={() => {
+              if (!isRecurringEnabled) return
+              setSubscriptionMode((prev) => (prev === "recurring" ? "once" : "recurring"))
+            }}
+            className={cn(
+              "flex h-16 w-full flex-col items-start justify-center rounded-2xl px-4 ring-1",
+              isRecurringEnabled
+                ? subscriptionMode === "recurring"
+                  ? "bg-primary text-primary-foreground ring-primary/60"
+                  : "bg-card text-foreground ring-border/60"
+                : "bg-muted/50 text-muted-foreground ring-border/50"
+            )}
+          >
+            <span className="flex items-center gap-1 text-[11px] uppercase tracking-wide">
+              <Repeat className="h-3.5 w-3.5" /> Recurrente
+            </span>
+            <span className="mt-1 text-sm font-semibold">
+              {!isRecurringEnabled ? "No disponible" : subscriptionMode === "recurring" ? "Activado" : "Desactivado"}
+            </span>
+          </button>
         </div>
 
-        {/* Account Selector */}
-        <div className="mt-6">
-          <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">
-            Cuenta
-          </p>
+        {isRecurringEnabled && subscriptionMode === "recurring" && (
+          <div className="rounded-2xl bg-card p-4 ring-1 ring-border/60">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Suscripcion recurrente</p>
+            <div className="grid grid-cols-2 gap-2">
+              <select value={subscriptionProvider} onChange={(event) => setSubscriptionProvider(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
+                {SUBSCRIPTION_PROVIDERS.map((provider) => (
+                  <option key={provider.key} value={provider.key}>{provider.name}</option>
+                ))}
+              </select>
+              <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} min={1} max={31} type="number" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Dia" />
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">Cuenta</p>
           <AccountCarouselSelector
-            compact
             items={accounts
               .filter((account) => !(transactionType === "income" && account.type === "credit"))
               .map((account) => ({
@@ -429,7 +424,6 @@ transactionType === "expense"
             onSelect={setAccountId}
           />
           
-          {/* Credit Card Warning */}
           {isCredit && transactionType === "expense" && (
             <div className="mt-3 flex items-start gap-2 rounded-xl bg-orange-50 px-4 py-3">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
@@ -439,7 +433,6 @@ transactionType === "expense"
             </div>
           )}
           
-          {/* Show available balance/credit */}
           {selectedAccount && (
             <p className={cn(
               "mt-2 px-1 text-xs",
@@ -465,96 +458,61 @@ transactionType === "expense"
           )}
         </div>
 
-        {/* Category Selector */}
-        <div className="mt-6">
-          <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">
-            Categoría
-          </p>
-          <Select value={category || categories[0]?.id || ""} onValueChange={setCategory}>
-            <SelectTrigger className="h-14 w-full rounded-2xl border-0 bg-card px-5 text-sm font-medium ring-1 ring-transparent focus:ring-accent">
-              <SelectValue placeholder="Seleccionar categoría">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full",
-                      selectedCategory?.color
-                    )}
-                  >
-                    <CategoryIcon className="h-4 w-4" />
+        <div>
+          <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">Categoria</p>
+          <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {categories.map((cat) => {
+              const Icon = cat.icon
+              const selected = (category || categories[0]?.id) === cat.id
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategory(cat.id)}
+                  className="w-[76px] shrink-0"
+                >
+                  <div className={cn("mx-auto flex h-14 w-14 items-center justify-center rounded-full ring-1 transition-all", cat.color, selected ? "ring-primary scale-[1.03]" : "ring-border") }>
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <span>{selectedCategory?.label}</span>
-                </div>
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {categories.map((cat) => {
-                const Icon = cat.icon
-                return (
-                  <SelectItem key={cat.id} value={cat.id} className="py-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-full",
-                          cat.color
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <span>{cat.label}</span>
-                    </div>
-                  </SelectItem>
-                )
-              })}
-            </SelectContent>
-          </Select>
+                  <p className={cn("mt-2 truncate text-xs", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{cat.label}</p>
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={() => router.push("/settings/categories")}
+              className="w-[76px] shrink-0"
+            >
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-muted/30 transition-colors hover:bg-muted">
+                <Plus className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="mt-2 truncate text-xs text-muted-foreground">Nueva</p>
+            </button>
+          </div>
         </div>
 
-        {/* Date Picker */}
-        <div className="mt-6">
-          <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">
-            Fecha
-          </p>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="flex h-14 w-full items-center justify-between rounded-2xl bg-card px-5 text-sm font-medium transition-colors">
-                <span className="text-foreground">
-                  {format(date, "EEEE, d 'de' MMMM", { locale: es })}
-                </span>
-                <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => d && setDate(d)}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+        <div>
+          <label className="mb-2 block px-1 text-xs font-medium text-muted-foreground">Nota (opcional)</label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Añade una descripción..."
+            className="min-h-24 w-full rounded-2xl border-0 bg-card p-4 text-sm text-foreground outline-none ring-1 ring-border/60 placeholder:text-muted-foreground/50 focus:ring-accent"
+          />
         </div>
       </div>
 
-      {/* Fixed Save Button */}
-      <div className="px-6 pb-nav-safe pt-6">
+      <div className="sticky bottom-0 border-t border-border/60 bg-background/95 px-5 pb-nav-safe pt-3 backdrop-blur sm:px-6">
         <Button
           onClick={handleSave}
           disabled={!isValid || isSaving}
           className={cn(
             "h-14 w-full rounded-2xl text-base font-semibold transition-all",
-            showSuccess
-              ? "bg-accent text-accent-foreground"
-              : transactionType === "income"
+            transactionType === "income"
               ? "bg-emerald-500 hover:bg-emerald-600 text-white"
               : "bg-primary text-primary-foreground"
           )}
         >
-          {showSuccess ? (
-            <span className="flex items-center gap-2">
-              <Check className="h-5 w-5" />
-              Guardado
-            </span>
-          ) : isSaving ? (
+          {isSaving ? (
             "Guardando..."
           ) : transactionType === "income" ? (
             "Guardar ingreso"

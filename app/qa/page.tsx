@@ -25,6 +25,7 @@ export default function QaPage() {
   const [status, setStatus] = useState<string>("")
   const [loading, setLoading] = useState(false)
   const [loadingData, setLoadingData] = useState(false)
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
   const [previewNotifications, setPreviewNotifications] = useState<SmartNotification[]>([])
 
   useEffect(() => {
@@ -191,6 +192,60 @@ export default function QaPage() {
     }
   }
 
+  const seedInAppNotifications = async () => {
+    setLoadingNotifications(true)
+    setStatus("")
+    const { data: userData } = await supabase.auth.getUser()
+    const userId = userData.user?.id
+    if (!userId) {
+      setStatus("No se encontro usuario.")
+      setLoadingNotifications(false)
+      return
+    }
+
+    try {
+      const now = new Date().toISOString()
+      const rows = [
+        {
+          user_id: userId,
+          title: "💰 Ahorraste mas esta semana",
+          message: "Reduciste gastos en delivery y ahorraste RD$2,300 frente a la semana pasada.",
+          type: "system",
+          read: false,
+          action_url: "/history",
+          created_at: now,
+        },
+        {
+          user_id: userId,
+          title: "⚠️ Tu tarjeta vence en 5 dias",
+          message: "Banreservas tiene RD$5,200 pendientes. Programa tu pago hoy.",
+          type: "credit",
+          read: false,
+          action_url: "/pay",
+          created_at: now,
+        },
+        {
+          user_id: userId,
+          title: "🎯 Meta iPhone 17 en 68%",
+          message: "Ya acumulas RD$34,000. Si mantienes el ritmo, la completas este mes.",
+          type: "goal",
+          read: false,
+          action_url: "/goals",
+          created_at: now,
+        },
+      ]
+
+      const { error } = await supabase.from("notifications").insert(rows)
+      if (error) throw error
+
+      setStatus("Notificaciones de prueba creadas. Abre la pantalla de notificaciones para validar el nuevo diseño.")
+    } catch (err) {
+      setStatus("Error creando notificaciones QA: " + String(err))
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }
+
   if (!isDev) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md items-center px-6">
@@ -281,6 +336,12 @@ export default function QaPage() {
               setPreviewNotifications(generated)
             }}>
               Generar preview de notificaciones
+            </Button>
+            <Button size="sm" variant="outline" disabled={loadingNotifications} onClick={seedInAppNotifications}>
+              {loadingNotifications ? "Creando..." : "Crear notificaciones QA en app"}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => router.push("/notifications")}>
+              Ir a notificaciones
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
               showToast({ title: "Racha activa", body: "Llevas 5 días trackeando. ¡No pares!", type: "success", duration: 2500 })

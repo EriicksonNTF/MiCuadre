@@ -4,49 +4,33 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import {
   ChevronLeft,
-  TrendingUp,
-  TrendingDown,
-  Target,
-  CreditCard,
   Bell,
   Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/hooks/use-data"
-import { formatDate } from "@/lib/data"
+import { NotificationStack } from "@/components/notifications/notification-stack"
+import { NotificationInsightCard } from "@/components/notifications/notification-insight-card"
 
-type NotificationType = "transaction" | "goal" | "credit" | "system" | "transfer"
-type ExtendedNotificationType = NotificationType | "subscription"
+type NotificationType = "transaction" | "goal" | "credit" | "system" | "transfer" | "subscription"
 
-const typeIcons: Record<ExtendedNotificationType, typeof Bell> = {
-  transaction: TrendingDown,
-  goal: Target,
-  credit: CreditCard,
-  system: Bell,
-  transfer: TrendingUp,
-  subscription: CreditCard,
-}
-
-const typeColors: Record<ExtendedNotificationType, string> = {
-  transaction: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400",
-  goal: "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400",
-  credit: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400",
-  system: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
-  transfer: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400",
-  subscription: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300",
-}
-
-type FilterType = "all" | ExtendedNotificationType
+type FilterType = "all" | NotificationType
 
 export function NotificationsScreen() {
   const { data: notifications = [] } = useNotifications()
   const [filter, setFilter] = useState<FilterType>("all")
+  const [dismissedIds, setDismissedIds] = useState<string[]>([])
+
+  const liveNotifications = useMemo(
+    () => notifications.filter((item) => !dismissedIds.includes(item.id)),
+    [dismissedIds, notifications]
+  )
 
   const filteredNotifications = useMemo(() =>
     filter === "all"
-      ? notifications
-      : notifications.filter((n) => n.type === filter)
-  , [filter, notifications])
+      ? liveNotifications
+      : liveNotifications.filter((n) => n.type === filter)
+  , [filter, liveNotifications])
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
@@ -66,10 +50,24 @@ export function NotificationsScreen() {
     }
   }
 
+  const dismissNotification = (id: string) => {
+    setDismissedIds((prev) => [...prev, id])
+  }
+
+  const smartInsight = useMemo(() => {
+    if (filteredNotifications.length === 0) return null
+    const unread = filteredNotifications.filter((n) => !n.read)
+    const latest = unread[0] || filteredNotifications[0]
+    return {
+      title: latest.title,
+      description: latest.message,
+    }
+  }, [filteredNotifications])
+
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(15,118,110,0.12),_transparent_45%),linear-gradient(180deg,#f8f6f0_0%,#f7f5ef_42%,#f3f2ee_100%)] pb-nav-safe dark:bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.2),_transparent_30%),linear-gradient(180deg,#070b12_0%,#0a1018_100%)]">
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -79,8 +77,8 @@ export function NotificationsScreen() {
               >
                 <ChevronLeft className="h-5 w-5 text-foreground" />
               </Link>
-              <div>
-                <h1 className="text-lg font-semibold text-foreground">
+                <div>
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">
                   Notificaciones
                 </h1>
                 {unreadCount > 0 && (
@@ -93,7 +91,7 @@ export function NotificationsScreen() {
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-foreground"
+                className="flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-xs font-medium text-foreground"
               >
                 <Check className="h-3.5 w-3.5" />
                 Marcar todo
@@ -108,6 +106,7 @@ export function NotificationsScreen() {
               { value: "transaction", label: "Transacciones" },
               { value: "goal", label: "Metas" },
               { value: "credit", label: "Tarjetas" },
+              { value: "subscription", label: "Suscripciones" },
             ].map((tab) => (
               <button
                 key={tab.value}
@@ -115,8 +114,8 @@ export function NotificationsScreen() {
                 className={cn(
                   "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                   filter === tab.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground"
+                    ? "bg-foreground text-background"
+                    : "bg-background/70 text-muted-foreground ring-1 ring-border/70"
                 )}
               >
                 {tab.label}
@@ -128,76 +127,39 @@ export function NotificationsScreen() {
 
       {/* Notifications List */}
       <div className="mx-auto max-w-md px-6 pt-4">
+        {smartInsight && (
+          <div className="mb-4">
+            <NotificationInsightCard title={smartInsight.title} description={smartInsight.description} />
+          </div>
+        )}
+
         {filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card/80 shadow-sm ring-1 ring-border/60">
               <Bell className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="mt-4 text-sm font-medium text-foreground">
               No hay notificaciones
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Te avisaremos cuando ocurra algo
+              Te avisaremos cuando ocurra algo importante
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredNotifications.map((notification) => {
-              const Icon = typeIcons[(notification.type as ExtendedNotificationType) || "system"]
-              return (
-                <div
-                  key={notification.id}
-                  className={cn(
-                    "relative flex gap-4 rounded-2xl p-4 transition-all",
-                    notification.read
-                      ? "bg-card"
-                      : "bg-card ring-2 ring-accent/20"
-                  )}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
-                >
-                  {/* Unread indicator */}
-                  {!notification.read && (
-                    <div className="absolute left-2 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-accent" />
-                  )}
-
-                  {/* Icon */}
-                  <div
-                    className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-                      typeColors[(notification.type as ExtendedNotificationType) || "system"]
-                    )}
-                  >
-                    <Icon className="h-5 w-5" />
-                  </div>
-
-                  {/* Content */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p
-                        className={cn(
-                          "font-medium",
-                          notification.read
-                            ? "text-foreground"
-                            : "text-foreground"
-                        )}
-                      >
-                        {notification.title}
-                      </p>
-                      <div className="h-6 w-6" />
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {notification.message}
-                    </p>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      {formatDate(notification.created_at)}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+          <NotificationStack
+            notifications={filteredNotifications}
+            onRead={markAsRead}
+            onDismiss={dismissNotification}
+          />
         )}
       </div>
+
+      <style jsx global>{`
+        @keyframes notification-in {
+          0% { opacity: 0; transform: translateY(8px) scale(0.985); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   )
 }

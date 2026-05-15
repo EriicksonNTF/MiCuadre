@@ -1175,13 +1175,39 @@ export async function updateProfile(updates: Partial<Profile> & { username?: str
     updated_at: new Date().toISOString(),
   }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .upsert(payload, { onConflict: "id" })
-    .select()
-    .single()
+  const extractMissingProfileColumn = (message: string) => {
+    const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"profiles"\s+does\s+not\s+exist/i)
+    return match?.[1] || null
+  }
 
-  if (error) throw error
+  let upsertPayload: Record<string, unknown> = { ...payload }
+  let data: Profile | null = null
+  let upsertError: Error | null = null
+
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const response = await supabase
+      .from("profiles")
+      .upsert(upsertPayload, { onConflict: "id" })
+      .select()
+      .single()
+
+    if (!response.error) {
+      data = response.data as Profile
+      upsertError = null
+      break
+    }
+
+    const missingColumn = extractMissingProfileColumn(response.error.message || "")
+    if (!missingColumn || !(missingColumn in upsertPayload)) {
+      upsertError = response.error
+      break
+    }
+
+    delete upsertPayload[missingColumn]
+    upsertError = response.error
+  }
+
+  if (upsertError || !data) throw upsertError || new Error("No se pudo guardar el perfil")
 
   const metadataPatch: Record<string, unknown> = {}
   if (typeof updates.full_name !== "undefined") metadataPatch.full_name = updates.full_name
@@ -1206,6 +1232,34 @@ export async function updateProfile(updates: Partial<Profile> & { username?: str
   mutate("notifications")
   mutate("profile")
   return data
+}
+
+async function updateSubscriptionProcessingMeta(subscriptionId: string, payload: {
+  last_processed_at?: string | null
+  retry_count?: number | null
+  last_charged_date?: string | null
+  next_payment_date?: string
+}) {
+  const { error } = await supabase
+    .from("subscriptions")
+    .update(payload)
+    .eq("id", subscriptionId)
+
+  if (!error) return
+
+  const message = (error.message || "").toLowerCase()
+  const missingColumn = message.includes("column") && message.includes("does not exist")
+  if (missingColumn) {
+    const fallbackPayload: Record<string, unknown> = {}
+    if (typeof payload.last_charged_date !== "undefined") fallbackPayload.last_charged_date = payload.last_charged_date
+    if (typeof payload.next_payment_date !== "undefined") fallbackPayload.next_payment_date = payload.next_payment_date
+    if (Object.keys(fallbackPayload).length > 0) {
+      await supabase.from("subscriptions").update(fallbackPayload).eq("id", subscriptionId)
+    }
+    return
+  }
+
+  throw error
 }
 
 export async function markNotificationAsRead(id: string) {
@@ -1926,7 +1980,7 @@ export async function processDueSubscriptions() {
 
   const today = getLocalDateString()
   const now = new Date(`${today}T12:00:00`)
-  const monthKey = today.slice(0, 7)
+  const oneDayMs = 24 * 60 * 60 * 1000
 
   const { data: subscriptions, error } = await supabase
     .from("subscriptions")
@@ -1974,8 +2028,31 @@ export async function processDueSubscriptions() {
   }
 
   for (const subscription of subscriptions) {
-    const lastCharged = (subscription.last_charged_date as string | null) || ""
-    if (lastCharged.startsWith(monthKey)) continue
+    const lastProcessedAt = (subscription as any).last_processed_at as string | null
+    const retryCount = Number((subscription as any).retry_count || 0)
+    if (lastProcessedAt && lastProcessedAt >= today) {
+      continue
+    }
+
+    const cycleKey = `${subscription.id}:${subscription.next_payment_date}`
+    const { data: existingCycleTx } = await supabase
+      .from("transactions")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("subscription_id", subscription.id)
+      .contains("metadata", { kind: "subscription_auto_charge", cycle_key: cycleKey })
+      .limit(1)
+
+    if (existingCycleTx && existingCycleTx.length > 0) {
+      const nextDate = getNextBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
+      await updateSubscriptionProcessingMeta(subscription.id, {
+        last_charged_date: today,
+        next_payment_date: getLocalDateString(nextDate),
+        last_processed_at: today,
+        retry_count: 0,
+      })
+      continue
+    }
 
     try {
       await createTransaction({
@@ -1991,18 +2068,17 @@ export async function processDueSubscriptions() {
         amount_base: Number(subscription.amount),
         exchange_rate: 1,
         parent_transaction_id: null,
-        metadata: { kind: "subscription_auto_charge", subscription_id: subscription.id },
+        metadata: { kind: "subscription_auto_charge", subscription_id: subscription.id, cycle_key: cycleKey },
         subscription_id: subscription.id,
       })
 
-      const nextDate = getNextBillingDateFrom(new Date(now.getFullYear(), now.getMonth() + 1, 1), Number(subscription.billing_day))
-      await supabase
-        .from("subscriptions")
-        .update({
-          last_charged_date: today,
-          next_payment_date: getLocalDateString(nextDate),
-        })
-        .eq("id", subscription.id)
+      const nextDate = getNextBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
+      await updateSubscriptionProcessingMeta(subscription.id, {
+        last_charged_date: today,
+        next_payment_date: getLocalDateString(nextDate),
+        last_processed_at: today,
+        retry_count: 0,
+      })
 
       await createNotification({
         userId: user.id,
@@ -2012,11 +2088,18 @@ export async function processDueSubscriptions() {
         actionUrl: "/history",
       })
     } catch {
+      const tomorrow = getLocalDateString(new Date(now.getTime() + oneDayMs))
+      await updateSubscriptionProcessingMeta(subscription.id, {
+        next_payment_date: tomorrow,
+        last_processed_at: today,
+        retry_count: retryCount + 1,
+      })
+
       await createNotification({
         userId: user.id,
         type: "subscription",
         title: "No se pudo cobrar suscripcion",
-        message: `${subscription.name} no pudo cobrarse por balance insuficiente.`,
+        message: `${subscription.name} no pudo cobrarse por balance insuficiente. Reintentaremos mañana.`,
         actionUrl: "/settings/subscriptions",
       })
     }

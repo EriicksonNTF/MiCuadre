@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { X } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Info, Sparkles, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export type ToastData = {
@@ -19,20 +19,53 @@ type ToastItem = ToastData & {
 
 const TOAST_DURATION_DEFAULT = 3500
 
-const typeAccents: Record<NonNullable<ToastData["type"]>, { border: string; dot: string }> = {
-  success: { border: "border-l-[3px] border-l-emerald-500", dot: "bg-emerald-500" },
-  warning: { border: "border-l-[3px] border-l-amber-500", dot: "bg-amber-500" },
-  error: { border: "border-l-[3px] border-l-red-500", dot: "bg-red-500" },
-  info: { border: "border-l-[3px] border-l-sky-500", dot: "bg-sky-500" },
-  default: { border: "border-l-[3px] border-l-primary", dot: "bg-primary" },
+const typeAccents: Record<
+  NonNullable<ToastData["type"]>,
+  { ring: string; iconWrap: string; glow: string; progress: string; badge: string }
+> = {
+  success: {
+    ring: "ring-emerald-500/35",
+    iconWrap: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    glow: "shadow-[0_18px_36px_-24px_rgba(16,185,129,0.7)]",
+    progress: "from-emerald-500 to-emerald-400",
+    badge: "OK",
+  },
+  warning: {
+    ring: "ring-amber-500/35",
+    iconWrap: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    glow: "shadow-[0_18px_36px_-24px_rgba(245,158,11,0.7)]",
+    progress: "from-amber-500 to-orange-400",
+    badge: "ALERTA",
+  },
+  error: {
+    ring: "ring-red-500/35",
+    iconWrap: "bg-red-500/15 text-red-700 dark:text-red-300",
+    glow: "shadow-[0_18px_36px_-24px_rgba(239,68,68,0.75)]",
+    progress: "from-red-500 to-rose-400",
+    badge: "ERROR",
+  },
+  info: {
+    ring: "ring-cyan-500/35",
+    iconWrap: "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300",
+    glow: "shadow-[0_18px_36px_-24px_rgba(6,182,212,0.72)]",
+    progress: "from-cyan-500 to-sky-400",
+    badge: "MIA",
+  },
+  default: {
+    ring: "ring-slate-500/30",
+    iconWrap: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+    glow: "shadow-[0_18px_36px_-24px_rgba(51,65,85,0.65)]",
+    progress: "from-slate-500 to-slate-400",
+    badge: "TIP",
+  },
 }
 
-const typeIcons: Record<NonNullable<ToastData["type"]>, string> = {
-  success: "✨",
-  warning: "⚠️",
-  error: "❌",
-  info: "📊",
-  default: "💡",
+const typeIcons: Record<NonNullable<ToastData["type"]>, typeof Sparkles> = {
+  success: CheckCircle2,
+  warning: AlertTriangle,
+  error: AlertTriangle,
+  info: TrendingUp,
+  default: Info,
 }
 
 interface ToastState {
@@ -116,31 +149,29 @@ export function ToastContainer() {
           >
             <div
               className={cn(
-                "relative overflow-hidden rounded-2xl border border-border bg-card",
-                "shadow-[0_8px_24px_-4px_rgba(0,0,0,0.15),0_2px_8px_-2px_rgba(0,0,0,0.1),0_0_0_1px_rgba(0,0,0,0.05)]",
-                "dark:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.4),0_2px_8px_-2px_rgba(0,0,0,0.3),0_0_0_1px_rgba(255,255,255,0.05)]",
-                accent.border
+                "relative overflow-hidden rounded-2xl border border-border/70 bg-card/95 ring-1 backdrop-blur",
+                "dark:border-border/60 dark:bg-card/90",
+                accent.ring,
+                accent.glow
               )}
             >
-              <div
-                className="absolute inset-0 opacity-[0.03]"
-                style={{
-                  background:
-                    "linear-gradient(135deg, rgba(255,255,255,0.8) 0%, transparent 60%)",
-                }}
-              />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.35),transparent_45%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.08),transparent_45%)]" />
               <div className="relative flex items-start gap-3.5 p-4 pl-4">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted/60 shadow-inner">
-                  <span className="text-sm" role="img">
-                    {typeIcons[item.type ?? "default"]}
-                  </span>
+                <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl", accent.iconWrap)}>
+                  {(() => {
+                    const Icon = typeIcons[item.type ?? "default"]
+                    return <Icon className="h-4.5 w-4.5" />
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0 pr-2">
-                  <p className="text-sm font-bold leading-tight text-foreground tracking-tight">
+                  <div className="mb-1 inline-flex rounded-full bg-background/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground ring-1 ring-border/60">
+                    {accent.badge}
+                  </div>
+                  <p className="text-[14px] font-semibold leading-tight text-foreground tracking-tight">
                     {item.title}
                   </p>
                   {item.body && (
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
                       {item.body}
                     </p>
                   )}
@@ -153,11 +184,26 @@ export function ToastContainer() {
                   <X className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
               </div>
-              <div className="absolute bottom-0 left-4 right-4 h-px bg-gradient-to-r from-transparent via-foreground/5 to-transparent" />
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 dark:bg-white/5">
+                <div
+                  className={cn("h-full bg-gradient-to-r", accent.progress, "animate-[toast-progress_linear_forwards]")}
+                  style={{ animationDuration: `${item.duration ?? TOAST_DURATION_DEFAULT}ms` }}
+                />
+              </div>
             </div>
           </div>
         )
       })}
+      <style jsx global>{`
+        @keyframes toast-progress {
+          from {
+            width: 100%;
+          }
+          to {
+            width: 0%;
+          }
+        }
+      `}</style>
     </div>
   )
 }
