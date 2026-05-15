@@ -669,15 +669,22 @@ async function applyAccountImpact(params: {
 
 // Generic fetcher for Supabase
 async function fetchAccounts(): Promise<Account[]> {
-  await maybeRefreshCreditCycles()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
 
+  // Fetch accounts first without blocking on credit cycle sync
   const { data, error } = await supabase
     .from("accounts")
     .select("*")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .order("created_at", { ascending: true })
 
   if (error) throw error
+
+  // Sync credit cycles in background (non-blocking)
+  void maybeRefreshCreditCycles()
+
   return sortAccountsList(data || [])
 }
 
@@ -733,7 +740,8 @@ async function fetchNotifications(): Promise<Notification[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
-  await maybeRefreshCreditCycles()
+  // Sync credit cycles in background (non-blocking)
+  void maybeRefreshCreditCycles()
 
   const { data, error } = await supabase
     .from("notifications")
@@ -779,7 +787,8 @@ async function fetchBeneficiaries(): Promise<Beneficiary[]> {
 export function useAccounts() {
   return useSWR<Account[]>("accounts", fetchAccounts, {
     revalidateOnFocus: false,
-    dedupingInterval: 5000,
+    revalidateOnMount: true,
+    dedupingInterval: 2000,
   })
 }
 
@@ -889,7 +898,7 @@ export async function createAccount(account: NewAccountInput) {
     .single()
 
   if (error) throw error
-  mutate("accounts")
+  await mutate("accounts", undefined, { revalidate: true })
 
   await createNotification({
     userId: user.id,
@@ -1133,13 +1142,36 @@ export async function deleteTransaction(id: string) {
   mutate("accounts")
 }
 
-export async function updateProfile(updates: Partial<Profile>) {
+export async function updateProfile(updates: Partial<Profile> & { username?: string | null; phone?: string | null }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  const payload = {
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  const basePayload: Record<string, unknown> = {
     id: user.id,
+    email: user.email || null,
+    full_name: null,
+    first_name: null,
+    last_name: null,
+    avatar_url: null,
+    preferred_currency: "DOP",
+    language: "es",
+    theme: "system",
+    notifications_enabled: true,
+    onboarding_completed: false,
+    updated_at: new Date().toISOString(),
+  }
+
+  const payload = {
+    ...basePayload,
+    ...(existing || {}),
     ...updates,
+    id: user.id,
     updated_at: new Date().toISOString(),
   }
 
@@ -1170,6 +1202,7 @@ export async function updateProfile(updates: Partial<Profile>) {
     message: "Tus preferencias y datos de perfil fueron guardados.",
     actionUrl: "/profile",
   })
+  await mutate("profile", data, false)
   mutate("notifications")
   mutate("profile")
   return data

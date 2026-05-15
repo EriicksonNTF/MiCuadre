@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { mutate } from "swr"
@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   Settings,
   Trash2,
+  Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -33,9 +34,9 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard } from "@/hooks/use-data"
+import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard, updateTransaction, deleteTransaction } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
-import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getReadableTextColor } from "@/lib/data"
+import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getLocalDateString, getReadableTextColor } from "@/lib/data"
 import { createClient } from "@/lib/supabase/client"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import type { AccountType, Currency } from "@/lib/types/database"
@@ -108,6 +109,16 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const [paymentSource, setPaymentSource] = useState<string>("")
   const [paymentAmount, setPaymentAmount] = useState("")
   const [isPaying, setIsPaying] = useState(false)
+  const [editingTxId, setEditingTxId] = useState<string | null>(null)
+  const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState("")
+  const [editDescription, setEditDescription] = useState("")
+  const [editType, setEditType] = useState<"income" | "expense">("expense")
+  const [editDate, setEditDate] = useState("")
+  const [editCategoryId, setEditCategoryId] = useState<string | null>(null)
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
+  const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
+  const pointerRef = useRef<{ id: string; startX: number; startY: number; swiping: boolean } | null>(null)
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
@@ -209,6 +220,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     return rawTransactions.map(tx => ({
       id: tx.id,
       accountId: tx.account_id,
+      categoryId: tx.category_id,
       title: tx.description || "Sin descripción",
       category: nameToSlug[tx.category?.name || ""] || "other",
       amount: tx.amount,
@@ -216,6 +228,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       type: tx.type,
       rawDate: tx.date,
       date: formatDate(tx.date),
+      createdAt: tx.created_at,
     }))
   }, [rawTransactions])
 
@@ -230,8 +243,86 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         return now.getTime() - txDate.getTime() <= 7 * 24 * 60 * 60 * 1000
       }
       return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
-    })
+    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [accountId, dateFilter, transactions])
+
+  useEffect(() => {
+    const closeOnOutside = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest("[data-account-tx-row='true']")) return
+      setOpenSwipeId(null)
+      setSwipeOffset(null)
+    }
+
+    document.addEventListener("pointerdown", closeOnOutside)
+    return () => document.removeEventListener("pointerdown", closeOnOutside)
+  }, [])
+
+  const parseTxDate = (value: string) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T12:00:00`)
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
+  }
+
+  const openEditTx = (txId: string) => {
+    const tx = accountTransactions.find((item) => item.id === txId)
+    if (!tx) return
+    setEditingTxId(txId)
+    setEditAmount(String(tx.amount))
+    setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
+    setEditType(tx.type)
+    setEditDate(getLocalDateString(parseTxDate(tx.rawDate)))
+    setEditCategoryId(tx.categoryId)
+    setOpenSwipeId(null)
+    setSwipeOffset(null)
+  }
+
+  const saveEditTx = async () => {
+    if (!editingTxId || !editAmount || !editDate) return
+    const amount = parseFloat(editAmount)
+    if (!amount || amount <= 0) return
+
+    try {
+      const current = accountTransactions.find((item) => item.id === editingTxId)
+      if (!current) return
+      await updateTransaction(editingTxId, {
+        account_id: current.accountId,
+        type: editType,
+        amount,
+        description: editDescription || null,
+        date: editDate,
+        category_id: editCategoryId,
+        notes: null,
+        currency: current.currency,
+        amount_base: amount,
+        exchange_rate: 1,
+        is_recurring: false,
+      })
+      notify({ title: "Transacción actualizada", message: "La transacción fue editada correctamente." })
+      EventBus.emit({ type: "transaction_updated" })
+      setEditingTxId(null)
+      mutate("accounts")
+      mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    } catch {
+      notify({ title: "Error", message: "No se pudo editar la transacción." })
+    }
+  }
+
+  const confirmDeleteTx = async () => {
+    if (!deletingTxId) return
+    try {
+      await deleteTransaction(deletingTxId)
+      notify({ title: "Transacción eliminada", message: "La transacción fue eliminada correctamente." })
+      EventBus.emit({ type: "transaction_deleted" })
+      setDeletingTxId(null)
+      setOpenSwipeId(null)
+      setSwipeOffset(null)
+      mutate("accounts")
+      mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    } catch {
+      notify({ title: "Error", message: "No se pudo eliminar la transacción." })
+    }
+  }
 
   const monthlyIncome = accountTransactions
     .filter((tx) => tx.type === "income")
@@ -577,6 +668,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             ))}
           </div>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">Desliza a la izquierda para editar o eliminar.</p>
 
         {/* Transaction List */}
         <div className="mt-4 space-y-2">
@@ -589,45 +681,127 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           ) : (
             accountTransactions.map((tx) => {
               const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
+              const isOpen = openSwipeId === tx.id
+              const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
 
               return (
-                <div
-                  key={tx.id}
-                  className="flex items-center gap-4 rounded-2xl bg-card p-4"
-                >
+                <div key={tx.id} data-account-tx-row="true" className="relative overflow-hidden rounded-2xl">
+                  <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
+                    <button
+                      aria-label="Editar transacción"
+                      onClick={() => openEditTx(tx.id)}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button
+                      aria-label="Eliminar transacción"
+                      onClick={() => setDeletingTxId(tx.id)}
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
                   <div
-                    className={cn(
-                      "flex h-11 w-11 items-center justify-center rounded-full",
-                      categoryColors[tx.category] || categoryColors.other
-                    )}
+                    className="relative z-10 flex items-center gap-4 rounded-2xl bg-card p-4 transition-transform duration-200"
+                    style={{ transform: `translateX(${currentOffset}px)` }}
+                    onPointerDown={(event) => {
+                      const target = event.target as HTMLElement
+                      if (target.closest("button") || target.closest("a")) return
+                      pointerRef.current = { id: tx.id, startX: event.clientX, startY: event.clientY, swiping: false }
+                    }}
+                    onPointerMove={(event) => {
+                      const pointer = pointerRef.current
+                      if (!pointer || pointer.id !== tx.id) return
+                      const dx = event.clientX - pointer.startX
+                      const dy = event.clientY - pointer.startY
+                      if (Math.abs(dx) <= Math.abs(dy) || (dx >= 0 && !isOpen)) return
+                      pointer.swiping = true
+                      setOpenSwipeId(tx.id)
+                      const base = isOpen ? -108 : 0
+                      setSwipeOffset({ id: tx.id, offset: Math.min(0, Math.max(-108, base + dx)) })
+                    }}
+                    onPointerUp={() => {
+                      const pointer = pointerRef.current
+                      if (!pointer || pointer.id !== tx.id) return
+                      if (pointer.swiping) {
+                        const finalOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : 0
+                        if (finalOffset < -54) {
+                          setOpenSwipeId(tx.id)
+                          setSwipeOffset({ id: tx.id, offset: -108 })
+                        } else {
+                          setOpenSwipeId(null)
+                          setSwipeOffset(null)
+                        }
+                      }
+                      pointerRef.current = null
+                    }}
+                    onPointerCancel={() => {
+                      pointerRef.current = null
+                    }}
                   >
-                    <CategoryIcon className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-medium text-foreground">
-                      {tx.title}
+                    <div className={cn("flex h-11 w-11 items-center justify-center rounded-full", categoryColors[tx.category] || categoryColors.other)}>
+                      <CategoryIcon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium text-foreground">{tx.title}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">{tx.date}</p>
+                    </div>
+                    <p
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        tx.type === "income"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-foreground"
+                      )}
+                    >
+                      {tx.type === "income" ? "+" : "-"}
+                      {formatCurrency(tx.amount, tx.currency)}
                     </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {tx.date}
-                    </p>
                   </div>
-                  <p
-                    className={cn(
-                      "font-semibold tabular-nums",
-                      tx.type === "income"
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-foreground"
-                    )}
-                  >
-                    {tx.type === "income" ? "+" : "-"}
-                    {formatCurrency(tx.amount, tx.currency)}
-                  </p>
                 </div>
               )
             })
           )}
         </div>
       </div>
+
+      {editingTxId && (
+        <BaseModalForm
+          title="Editar transacción"
+          onClose={() => setEditingTxId(null)}
+          footer={<Button onClick={saveEditTx} className="h-12 w-full">Guardar cambios</Button>}
+        >
+          <div className="space-y-3 pt-2">
+            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripción" />
+            <MoneyInput className="w-full rounded-xl border bg-background px-3 py-3" value={editAmount} onValueChange={setEditAmount} placeholder="Monto" />
+            <input className="w-full rounded-xl border bg-background px-3 py-3" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
+            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}> 
+              <option value="income">Ingreso</option>
+              <option value="expense">Gasto</option>
+            </select>
+            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editCategoryId || ""} onChange={(e) => setEditCategoryId(e.target.value || null)}>
+              <option value="">Sin categoría</option>
+            </select>
+          </div>
+        </BaseModalForm>
+      )}
+
+      {deletingTxId && (
+        <BaseModalForm
+          title="Eliminar transacción"
+          onClose={() => setDeletingTxId(null)}
+          footer={
+            <div className="space-y-2">
+              <Button variant="destructive" onClick={confirmDeleteTx} className="h-12 w-full">Confirmar eliminación</Button>
+              <Button variant="outline" onClick={() => setDeletingTxId(null)} className="h-12 w-full">Cancelar</Button>
+            </div>
+          }
+        >
+          <p className="pt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
+        </BaseModalForm>
+      )}
 
       {/* Payment Modal */}
       {showPayment && (

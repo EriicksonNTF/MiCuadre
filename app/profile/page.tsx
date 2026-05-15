@@ -28,6 +28,8 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [name, setName] = useState("")
+  const [username, setUsername] = useState("")
+  const [phone, setPhone] = useState("")
   const [preferredCurrency, setPreferredCurrency] = useState<"DOP" | "USD">("DOP")
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system")
   const [language, setLanguage] = useState<"es" | "en">("es")
@@ -45,6 +47,8 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!profile) return
     setName(profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "")
+    setUsername(String((profile as unknown as Record<string, unknown>).username || ""))
+    setPhone(String((profile as unknown as Record<string, unknown>).phone || ""))
     setPreferredCurrency(profile.preferred_currency || "DOP")
     setTheme(profile.theme || "system")
     setLanguage(profile.language || "es")
@@ -52,6 +56,8 @@ export default function ProfilePage() {
 
   const handleStartEdit = () => {
     setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
+    setUsername(String(((profile as unknown as Record<string, unknown>)?.username as string) || ""))
+    setPhone(String(((profile as unknown as Record<string, unknown>)?.phone as string) || ""))
     setPreferredCurrency(profile?.preferred_currency || "DOP")
     setTheme(profile?.theme || "system")
     setLanguage(profile?.language || "es")
@@ -61,6 +67,8 @@ export default function ProfilePage() {
   const handleCancel = () => {
     setIsEditing(false)
     setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
+    setUsername(String(((profile as unknown as Record<string, unknown>)?.username as string) || ""))
+    setPhone(String(((profile as unknown as Record<string, unknown>)?.phone as string) || ""))
     setPreferredCurrency(profile?.preferred_currency || "DOP")
     setTheme(profile?.theme || "system")
     setLanguage(profile?.language || "es")
@@ -78,6 +86,8 @@ export default function ProfilePage() {
         full_name: fullName || null,
         first_name: firstName,
         last_name: lastName,
+        username: username.trim() || null,
+        phone: phone.trim() || null,
         email: user?.email ?? null,
         preferred_currency: preferredCurrency,
         theme,
@@ -210,6 +220,25 @@ export default function ProfilePage() {
             ) : (
               <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{displayName}</p>
             )}
+          </div>
+
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Usuario</label>
+              {isEditing ? (
+                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="username" />
+              ) : (
+                <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{username || "-"}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Telefono</label>
+              {isEditing ? (
+                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="809..." />
+              ) : (
+                <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{phone || "-"}</p>
+              )}
+            </div>
           </div>
 
           <div className="mb-4 grid grid-cols-3 gap-3">

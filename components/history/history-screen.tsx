@@ -1,27 +1,29 @@
 "use client"
 
-import { useState, useMemo, useDeferredValue } from "react"
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import {
-  Search,
-  SlidersHorizontal,
-  X,
-  ChevronDown,
-  Utensils,
-  Car,
-  Zap,
-  Film,
-  ShoppingBag,
-  Heart,
-  GraduationCap,
-  Plane,
-  MoreHorizontal,
   Banknote,
   Building2,
-  CreditCard,
-  TrendingUp,
-  TrendingDown,
-  ArrowUpDown,
   Calendar,
+  Camera,
+  Car,
+  ChevronDown,
+  CreditCard,
+  Film,
+  GraduationCap,
+  Heart,
+  MoreHorizontal,
+  Pencil,
+  Plane,
+  Search,
+  ShoppingBag,
+  SlidersHorizontal,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Utensils,
+  X,
+  Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -31,10 +33,8 @@ import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateTransaction, deleteTransaction } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
-import { formatCurrency, formatDate } from "@/lib/data"
-import { getLocalDateString } from "@/lib/data"
+import { formatCurrency, getLocalDateString } from "@/lib/data"
 import type { AccountType } from "@/lib/types/database"
-
 
 const categoryIcons: Record<string, typeof Utensils> = {
   food: Utensils,
@@ -88,22 +88,56 @@ const nameToSlug: Record<string, string> = {
   "Otros Ingresos": "income",
 }
 
-type TransactionType = "all" | "income" | "expense"
-type DateRange = "today" | "week" | "month" | "all"
+type DatePreset = "today" | "week" | "month" | "custom"
+
+type HistoryTx = {
+  id: string
+  accountId: string
+  categoryId: string | null
+  title: string
+  category: string
+  categoryName: string
+  amount: number
+  type: "income" | "expense"
+  date: string
+  currency: "DOP" | "USD"
+  isCommission: boolean
+  notes: string | null
+  createdAt: string
+}
+
+function parseTxDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T12:00:00`)
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
+}
+
+function formatDateLabel(date: Date) {
+  const today = new Date()
+  const yesterday = new Date()
+  yesterday.setDate(today.getDate() - 1)
+  const key = getLocalDateString(date)
+  if (key === getLocalDateString(today)) return "Today"
+  if (key === getLocalDateString(yesterday)) return "Yesterday"
+  return date.toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+function formatTime(value: string) {
+  const date = parseTxDate(value)
+  return date.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
+}
 
 export function HistoryScreen() {
-  const parseTxDate = (value: string) => {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T12:00:00`)
-    const parsed = new Date(value)
-    return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
-  }
-
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
-  const [typeFilter, setTypeFilter] = usePersistentState<TransactionType>("history:typeFilter", "all")
-  const [accountFilter, setAccountFilter] = usePersistentState<string>("history:accountFilter", "all")
-  const [dateFilter, setDateFilter] = usePersistentState<DateRange>("history:dateFilter", "all")
-  const [showFilters, setShowFilters] = usePersistentState("history:showFilters", false)
+  const [accountFilter, setAccountFilter] = usePersistentState<string>("history:accountFilter:v2", "all")
+  const [datePreset, setDatePreset] = usePersistentState<DatePreset>("history:datePreset", "month")
+  const [startDate, setStartDate] = usePersistentState<string>("history:startDate", "")
+  const [endDate, setEndDate] = usePersistentState<string>("history:endDate", "")
+  const [showFilters, setShowFilters] = usePersistentState("history:showFilters:v2", false)
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [accountSearch, setAccountSearch] = useState("")
+
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editAmount, setEditAmount] = useState("")
@@ -112,94 +146,150 @@ export function HistoryScreen() {
   const [editAccountId, setEditAccountId] = useState("")
   const [editDate, setEditDate] = useState("")
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null)
+
+  const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
+  const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
+  const pointerRef = useRef<{ id: string; startX: number; startY: number; swiping: boolean } | null>(null)
+
   const { data: rawAccounts = [] } = useAccounts()
+  const { data: rawTransactions = [] } = useTransactions(300)
 
-  const { data: rawTransactions = [] } = useTransactions(100)
+  const accounts = useMemo(
+    () =>
+      rawAccounts.map((acc) => ({
+        id: acc.id,
+        name: acc.name,
+        type: acc.type,
+      })),
+    [rawAccounts]
+  )
 
-  const accounts = useMemo(() => {
-    return rawAccounts.map(acc => ({
-      id: acc.id,
-      name: acc.name,
-      type: acc.type,
-      balance: acc.balance,
-      currency: acc.currency,
-      creditLimit: acc.credit_limit,
-      currentDebt: acc.current_debt,
-      cutoffDate: acc.closing_date,
-      dueDate: acc.due_date,
-    }))
-  }, [rawAccounts])
+  const transactions = useMemo<HistoryTx[]>(
+    () =>
+      rawTransactions.map((tx) => ({
+        id: tx.id,
+        accountId: tx.account_id,
+        categoryId: tx.category_id,
+        title: tx.description || "Sin descripcion",
+        category: nameToSlug[tx.category?.name || ""] || "other",
+        categoryName: tx.category?.name || "Sin categoria",
+        amount: tx.amount,
+        type: tx.type,
+        date: tx.date,
+        currency: tx.currency,
+        isCommission: tx.metadata?.kind === "commission",
+        notes: tx.notes,
+        createdAt: tx.created_at,
+      })),
+    [rawTransactions]
+  )
 
-  const transactions = useMemo(() => {
-    return rawTransactions.map(tx => ({
-      id: tx.id,
-      accountId: tx.account_id,
-      categoryId: tx.category_id,
-      title: tx.description || "Sin descripción",
-      category: nameToSlug[tx.category?.name || ""] || "other",
-      amount: tx.amount,
-      type: tx.type,
-      date: tx.date,
-      currency: tx.currency,
-      isCommission: tx.metadata?.kind === "commission",
-      notes: tx.notes,
-      amount_base: tx.amount_base,
-      exchange_rate: tx.exchange_rate,
-      is_recurring: tx.is_recurring,
-    }))
-  }, [rawTransactions])
+  useEffect(() => {
+    const closeOnOutside = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest("[data-history-row='true']") || target?.closest("[data-account-menu='true']")) return
+      setOpenSwipeId(null)
+      setSwipeOffset(null)
+      setAccountMenuOpen(false)
+    }
 
+    document.addEventListener("pointerdown", closeOnOutside)
+    return () => document.removeEventListener("pointerdown", closeOnOutside)
+  }, [])
+
+  const applyPreset = (preset: DatePreset) => {
+    const today = new Date()
+    const end = getLocalDateString(today)
+    if (preset === "today") {
+      setStartDate(end)
+      setEndDate(end)
+      return
+    }
+    if (preset === "week") {
+      const start = new Date(today)
+      start.setDate(today.getDate() - 6)
+      setStartDate(getLocalDateString(start))
+      setEndDate(end)
+      return
+    }
+    if (preset === "month") {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1)
+      setStartDate(getLocalDateString(start))
+      setEndDate(end)
+    }
+  }
+
+  useEffect(() => {
+    if (datePreset !== "custom") applyPreset(datePreset)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datePreset])
 
   const filteredTransactions = useMemo(() => {
-    const normalizedSearch = deferredSearchQuery.trim().toLowerCase()
+    const search = deferredSearchQuery.trim().toLowerCase()
 
-    return transactions.filter((tx) => {
-      // Search filter
-      if (normalizedSearch && !tx.title.toLowerCase().includes(normalizedSearch)) {
-        return false
+    return transactions
+      .filter((tx) => {
+        if (search && !tx.title.toLowerCase().includes(search)) return false
+        if (accountFilter !== "all" && tx.accountId !== accountFilter) return false
+
+        const txDate = getLocalDateString(parseTxDate(tx.date))
+        if (startDate && txDate < startDate) return false
+        if (endDate && txDate > endDate) return false
+        return true
+      })
+      .sort((a, b) => {
+        const byDate = parseTxDate(b.date).getTime() - parseTxDate(a.date).getTime()
+        if (byDate !== 0) return byDate
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      })
+  }, [transactions, deferredSearchQuery, accountFilter, startDate, endDate])
+
+  const groupedTransactions = useMemo(() => {
+    const groups = new Map<string, { label: string; date: Date; items: HistoryTx[] }>()
+
+    for (const tx of filteredTransactions) {
+      const date = parseTxDate(tx.date)
+      const key = getLocalDateString(date)
+      if (!groups.has(key)) {
+        groups.set(key, { label: formatDateLabel(date), date, items: [] })
       }
-      // Type filter
-      if (typeFilter !== "all" && tx.type !== typeFilter) {
-        return false
-      }
-      // Account filter
-      if (accountFilter !== "all" && tx.accountId !== accountFilter) {
-        return false
-      }
-      if (dateFilter === "today") {
-        return tx.date === getLocalDateString()
-      }
-      if (dateFilter === "week") {
-        const txDate = parseTxDate(tx.date)
-        const now = new Date()
-        const diff = now.getTime() - txDate.getTime()
-        return diff >= 0 && diff <= 7 * 24 * 60 * 60 * 1000
-      }
-      if (dateFilter === "month") {
-        const txDate = parseTxDate(tx.date)
-        const now = new Date()
-        return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
-      }
-      return true
-    }).sort((a, b) => parseTxDate(b.date).getTime() - parseTxDate(a.date).getTime())
-  }, [transactions, deferredSearchQuery, typeFilter, accountFilter, dateFilter])
+      groups.get(key)!.items.push(tx)
+    }
+
+    return Array.from(groups.entries())
+      .sort((a, b) => b[1].date.getTime() - a[1].date.getTime())
+      .map(([key, value]) => ({ key, ...value }))
+  }, [filteredTransactions])
+
+  const totals = useMemo(() => {
+    let income = 0
+    let expenses = 0
+    for (const tx of filteredTransactions) {
+      if (tx.type === "income") income += tx.amount
+      else expenses += tx.amount
+    }
+    return { income, expenses }
+  }, [filteredTransactions])
 
   const openEdit = (txId: string) => {
     const tx = transactions.find((item) => item.id === txId)
     if (!tx) return
     setEditingId(txId)
     setEditAmount(String(tx.amount))
-    setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
+    setEditDescription(tx.title === "Sin descripcion" ? "" : tx.title)
     setEditType(tx.type)
     setEditAccountId(tx.accountId)
     setEditDate(getLocalDateString(parseTxDate(tx.date)))
     setEditCategoryId(tx.categoryId)
+    setOpenSwipeId(null)
+    setSwipeOffset(null)
   }
 
   const saveEdit = async () => {
     if (!editingId || !editAccountId || !editAmount || !editDate) return
     const amount = parseFloat(editAmount)
     if (!amount || amount <= 0) return
+
     try {
       await updateTransaction(editingId, {
         account_id: editAccountId,
@@ -214,11 +304,11 @@ export function HistoryScreen() {
         exchange_rate: 1,
         is_recurring: false,
       })
-      notify({ title: "Transacción actualizada", message: "La transacción fue editada correctamente." })
+      notify({ title: "Transaccion actualizada", message: "La transaccion fue editada correctamente." })
       EventBus.emit({ type: "transaction_updated" })
       setEditingId(null)
-    } catch (error) {
-      notify({ title: "Error", message: "No se pudo editar la transacción." })
+    } catch {
+      notify({ title: "Error", message: "No se pudo editar la transaccion." })
     }
   }
 
@@ -226,35 +316,27 @@ export function HistoryScreen() {
     if (!deletingId) return
     try {
       await deleteTransaction(deletingId)
-      notify({ title: "Transacción eliminada", message: "La transacción fue eliminada correctamente." })
+      notify({ title: "Transaccion eliminada", message: "La transaccion fue eliminada correctamente." })
       EventBus.emit({ type: "transaction_deleted" })
       setDeletingId(null)
+      setOpenSwipeId(null)
+      setSwipeOffset(null)
     } catch {
-      notify({ title: "Error", message: "No se pudo eliminar la transacción." })
+      notify({ title: "Error", message: "No se pudo eliminar la transaccion." })
     }
   }
 
-  const totals = useMemo(() => {
-    let income = 0
-    let expenses = 0
-    for (const tx of filteredTransactions) {
-      if (tx.type === "income") income += tx.amount
-      else expenses += tx.amount
-    }
-    return { income, expenses }
-  }, [filteredTransactions])
+  const selectedAccountLabel = accountFilter === "all" ? "Todas" : accounts.find((a) => a.id === accountFilter)?.name || "Todas"
+
+  const filteredAccounts = accounts.filter((account) => account.name.toLowerCase().includes(accountSearch.toLowerCase().trim()))
 
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
-      {/* Header */}
       <header className="px-6 pb-4 pt-8">
         <h1 className="text-2xl font-bold text-foreground">Historial</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Todas tus transacciones
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Todas tus transacciones</p>
       </header>
 
-      {/* Search Bar */}
       <div className="px-6 pt-2">
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
@@ -267,123 +349,96 @@ export function HistoryScreen() {
               className="h-12 w-full rounded-2xl bg-card pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
             />
             {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2"
-              >
+              <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2">
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
           </div>
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={cn(
-              "flex h-12 w-12 items-center justify-center rounded-2xl transition-colors",
-              showFilters ? "bg-primary text-primary-foreground" : "bg-card text-foreground"
-            )}
+            className={cn("flex h-12 w-12 items-center justify-center rounded-2xl transition-colors", showFilters ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Filters */}
       {showFilters && (
         <div className="mt-4 space-y-4 px-6">
-          {/* Type Filter */}
           <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Tipo</p>
-            <div className="flex gap-2">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Fecha</p>
+            <div className="grid grid-cols-4 gap-2">
               {[
-                { value: "all", label: "Todos", icon: ArrowUpDown },
-                { value: "income", label: "Ingresos", icon: TrendingUp },
-                { value: "expense", label: "Gastos", icon: TrendingDown },
-              ].map((option) => {
-                const Icon = option.icon
-                return (
-                  <button
-                    key={option.value}
-                    onClick={() => setTypeFilter(option.value as TransactionType)}
-                    className={cn(
-                      "flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors",
-                      typeFilter === option.value
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card text-foreground"
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {option.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Account Filter */}
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Cuenta</p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setAccountFilter("all")}
-                className={cn(
-                  "rounded-xl px-4 py-2.5 text-xs font-medium transition-colors",
-                  accountFilter === "all"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-card text-foreground"
-                )}
-              >
-                Todas
-              </button>
-              {accounts.map((account) => {
-                const Icon = accountIcons[account.type]
-                return (
-                  <button
-                    key={account.id}
-                    onClick={() => setAccountFilter(account.id)}
-                    className={cn(
-                      "flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-medium transition-colors",
-                      accountFilter === account.id
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-card text-foreground"
-                    )}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {account.name}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Date Filter */}
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Período</p>
-            <div className="flex gap-2">
-              {[
-                { value: "today", label: "Hoy" },
-                { value: "week", label: "7 días" },
-                { value: "month", label: "Este mes" },
-                { value: "all", label: "Todo" },
+                { value: "today", label: "Today" },
+                { value: "week", label: "This week" },
+                { value: "month", label: "This month" },
+                { value: "custom", label: "Custom" },
               ].map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => setDateFilter(option.value as DateRange)}
-                  className={cn(
-                    "flex-1 rounded-xl px-3 py-2.5 text-xs font-medium transition-colors",
-                    dateFilter === option.value
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-card text-foreground"
-                  )}
+                  onClick={() => setDatePreset(option.value as DatePreset)}
+                  className={cn("rounded-xl px-2 py-2 text-[11px] font-medium transition-colors", datePreset === option.value ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}
                 >
                   {option.label}
                 </button>
               ))}
             </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <input type="date" value={startDate} onChange={(e) => { setDatePreset("custom"); setStartDate(e.target.value) }} className="h-11 rounded-xl border border-input bg-card px-3 text-sm" />
+              <input type="date" value={endDate} onChange={(e) => { setDatePreset("custom"); setEndDate(e.target.value) }} className="h-11 rounded-xl border border-input bg-card px-3 text-sm" />
+            </div>
+          </div>
+
+          <div className="relative" data-account-menu="true">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Cuenta</p>
+            <button
+              onClick={() => setAccountMenuOpen((prev) => !prev)}
+              className="flex h-11 w-full items-center justify-between rounded-xl border border-input bg-card px-3 text-sm"
+            >
+              <span className="truncate">{selectedAccountLabel}</span>
+              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", accountMenuOpen && "rotate-180")} />
+            </button>
+
+            {accountMenuOpen && (
+              <div className="absolute z-20 mt-2 w-full rounded-xl border border-border bg-popover p-2 shadow-lg">
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    value={accountSearch}
+                    onChange={(e) => setAccountSearch(e.target.value)}
+                    placeholder="Buscar cuenta..."
+                    className="h-9 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs"
+                  />
+                </div>
+                <div className="max-h-44 space-y-1 overflow-y-auto">
+                  <button
+                    onClick={() => {
+                      setAccountFilter("all")
+                      setAccountMenuOpen(false)
+                    }}
+                    className={cn("w-full rounded-lg px-2 py-2 text-left text-xs", accountFilter === "all" ? "bg-primary/10 text-primary" : "hover:bg-muted")}
+                  >
+                    Todas
+                  </button>
+                  {filteredAccounts.map((account) => (
+                    <button
+                      key={account.id}
+                      onClick={() => {
+                        setAccountFilter(account.id)
+                        setAccountMenuOpen(false)
+                      }}
+                      className={cn("w-full rounded-lg px-2 py-2 text-left text-xs", accountFilter === account.id ? "bg-primary/10 text-primary" : "hover:bg-muted")}
+                    >
+                      {account.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Summary Cards */}
       <div className="mt-6 flex gap-3 px-6">
         <div className="flex-1 rounded-2xl bg-card p-4">
           <div className="flex items-center gap-2">
@@ -392,9 +447,7 @@ export function HistoryScreen() {
             </div>
             <span className="text-xs text-muted-foreground">Ingresos</span>
           </div>
-          <p className="mt-2 text-lg font-bold text-emerald-600 dark:text-emerald-400">
-            +{formatCurrency(totals.income)}
-          </p>
+          <p className="mt-2 text-lg font-bold text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
         </div>
         <div className="flex-1 rounded-2xl bg-card p-4">
           <div className="flex items-center gap-2">
@@ -403,110 +456,152 @@ export function HistoryScreen() {
             </div>
             <span className="text-xs text-muted-foreground">Gastos</span>
           </div>
-          <p className="mt-2 text-lg font-bold text-red-600">
-            -{formatCurrency(totals.expenses)}
-          </p>
+          <p className="mt-2 text-lg font-bold text-red-600">-{formatCurrency(totals.expenses)}</p>
         </div>
       </div>
 
-      {/* Transaction List */}
       <div className="mt-6 px-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-foreground">
-            Transacciones
-          </h2>
-          <span className="text-xs text-muted-foreground">
-            {filteredTransactions.length} resultados
-          </span>
+          <h2 className="text-sm font-semibold text-foreground">Transacciones</h2>
+          <span className="text-xs text-muted-foreground">{filteredTransactions.length} resultados</span>
         </div>
 
-        <div className="mt-4 space-y-2">
-          {filteredTransactions.length === 0 ? (
+        <div className="mt-4 space-y-4">
+          {groupedTransactions.length === 0 ? (
             <div className="py-12 text-center">
-              <p className="text-sm text-muted-foreground">
-                No se encontraron transacciones
-              </p>
+              <p className="text-sm text-muted-foreground">No se encontraron transacciones</p>
             </div>
           ) : (
-            filteredTransactions.map((tx) => {
-              const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
-              const account = accounts.find((a) => a.id === tx.accountId)
-              const AccountIcon = account ? accountIcons[account.type] : Banknote
+            groupedTransactions.map((group) => (
+              <div key={group.key} className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
 
-              return (
-                <div key={tx.id} className="overflow-hidden rounded-2xl bg-card p-4">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={cn(
-                        "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full",
-                        categoryColors[tx.category] || categoryColors.other
-                      )}
-                    >
-                      <CategoryIcon className="h-4 w-4" />
-                    </div>
+                {group.items.map((tx) => {
+                  const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
+                  const account = accounts.find((a) => a.id === tx.accountId)
+                  const AccountIcon = account ? accountIcons[account.type] : Banknote
+                  const isOpen = openSwipeId === tx.id
+                  const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                          {tx.title}
-                        </p>
-                        <p
-                          className={cn(
-                            "shrink-0 text-sm font-semibold tabular-nums",
-                            tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"
-                          )}
+                  return (
+                    <div key={tx.id} data-history-row="true" className="relative overflow-hidden rounded-2xl">
+                      <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
+                        <button
+                          aria-label="Editar transaccion"
+                          onClick={() => openEdit(tx.id)}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
                         >
-                          {tx.type === "income" ? "+" : "-"}
-                          {formatCurrency(tx.amount, tx.currency)}
-                        </p>
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          aria-label="Eliminar transaccion"
+                          onClick={() => setDeletingId(tx.id)}
+                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
 
-                      <div className="mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <AccountIcon className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{account?.name || "Cuenta"}</span>
+                      <div
+                        className="relative z-10 rounded-2xl bg-card p-4 transition-transform duration-200"
+                        style={{ transform: `translateX(${currentOffset}px)` }}
+                        onPointerDown={(event) => {
+                          const target = event.target as HTMLElement
+                          if (target.closest("button") || target.closest("a")) return
+                          pointerRef.current = {
+                            id: tx.id,
+                            startX: event.clientX,
+                            startY: event.clientY,
+                            swiping: false,
+                          }
+                        }}
+                        onPointerMove={(event) => {
+                          const pointer = pointerRef.current
+                          if (!pointer || pointer.id !== tx.id) return
+
+                          const dx = event.clientX - pointer.startX
+                          const dy = event.clientY - pointer.startY
+                          if (Math.abs(dx) <= Math.abs(dy) || (dx >= 0 && !isOpen)) return
+
+                          pointer.swiping = true
+                          setOpenSwipeId(tx.id)
+                          const base = isOpen ? -108 : 0
+                          setSwipeOffset({ id: tx.id, offset: Math.min(0, Math.max(-108, base + dx)) })
+                        }}
+                        onPointerUp={() => {
+                          const pointer = pointerRef.current
+                          if (!pointer || pointer.id !== tx.id) return
+                          if (pointer.swiping) {
+                            const finalOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : 0
+                            if (finalOffset < -54) {
+                              setOpenSwipeId(tx.id)
+                              setSwipeOffset({ id: tx.id, offset: -108 })
+                            } else {
+                              setOpenSwipeId(null)
+                              setSwipeOffset(null)
+                            }
+                          }
+                          pointerRef.current = null
+                        }}
+                        onPointerCancel={() => {
+                          pointerRef.current = null
+                        }}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={cn("mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full", categoryColors[tx.category] || categoryColors.other)}>
+                            <CategoryIcon className="h-4 w-4" />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-foreground">{tx.title}</p>
+                                <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                                  <AccountIcon className="h-3 w-3 shrink-0" />
+                                  <span className="truncate">{account?.name || "Cuenta"}</span>
+                                  <span>·</span>
+                                  <span className="truncate">{tx.categoryName}</span>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 text-right">
+                                <p className={cn("text-sm font-semibold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700" : "text-foreground")}>
+                                  {tx.type === "income" ? "+" : "-"}
+                                  {formatCurrency(tx.amount, tx.currency)}
+                                </p>
+                                <p className="mt-1 text-[11px] text-muted-foreground">{formatTime(tx.date)}</p>
+                              </div>
+                            </div>
+
+                            {tx.isCommission && (
+                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Comision 0.15%</span>
+                            )}
+                          </div>
                         </div>
-                        <span className="shrink-0 text-right">{formatDate(tx.date)}</span>
-                        {tx.isCommission && (
-                          <span className="inline-flex w-fit rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
-                            Comisión 0.15%
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="mt-2 flex flex-wrap justify-end gap-3 border-t border-border/60 pt-2">
-                        <button onClick={() => openEdit(tx.id)} className="text-xs text-muted-foreground">
-                          Editar
-                        </button>
-                        <button onClick={() => setDeletingId(tx.id)} className="text-xs text-destructive">
-                          Eliminar
-                        </button>
                       </div>
                     </div>
-                  </div>
-                </div>
-              )
-            })
+                  )
+                })}
+              </div>
+            ))
           )}
         </div>
       </div>
 
       {editingId && (
-        <BaseModalForm
-          title="Editar transacción"
-          onClose={() => setEditingId(null)}
-          footer={<Button onClick={saveEdit} className="h-12 w-full">Guardar cambios</Button>}
-        >
+        <BaseModalForm title="Editar transaccion" onClose={() => setEditingId(null)} footer={<Button onClick={saveEdit} className="h-12 w-full">Guardar cambios</Button>}>
           <div className="space-y-3 pt-2">
-            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripción" />
+            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripcion" />
             <MoneyInput className="w-full rounded-xl border bg-background px-3 py-3" value={editAmount} onValueChange={setEditAmount} placeholder="Monto" />
             <input className="w-full rounded-xl border bg-background px-3 py-3" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
-            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}>
+            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}> 
               <option value="income">Ingreso</option>
               <option value="expense">Gasto</option>
             </select>
             <select className="w-full rounded-xl border bg-background px-3 py-3" value={editAccountId} onChange={(e) => setEditAccountId(e.target.value)}>
-              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>{account.name}</option>
+              ))}
             </select>
           </div>
         </BaseModalForm>
@@ -514,11 +609,16 @@ export function HistoryScreen() {
 
       {deletingId && (
         <BaseModalForm
-          title="Eliminar transacción"
+          title="Eliminar transaccion"
           onClose={() => setDeletingId(null)}
-          footer={<Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminación</Button>}
+          footer={
+            <div className="space-y-2">
+              <Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminacion</Button>
+              <Button variant="outline" onClick={() => setDeletingId(null)} className="h-12 w-full">Cancelar</Button>
+            </div>
+          }
         >
-          <p className="pt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
+          <p className="pt-2 text-sm text-muted-foreground">Esta accion revertira el impacto en el balance de la cuenta asociada.</p>
         </BaseModalForm>
       )}
     </div>

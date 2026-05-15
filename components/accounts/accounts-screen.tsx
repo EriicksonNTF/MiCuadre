@@ -17,6 +17,7 @@ import { createAccount, createTransfer, deleteAccount, reorderAccounts, useAccou
 import { formatCurrency } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
+import type { Account } from "@/lib/types/database"
 
 const ICON_PRESETS = [
   { value: "banknote", label: "Efectivo", icon: Banknote },
@@ -40,10 +41,10 @@ const EMOJI_PRESETS = ["💳", "🏦", "💵", "🪙", "🧾", "💼", "📈", "
 
 export function AccountsScreen() {
   const router = useRouter()
-  const { data: accounts = [] } = useAccounts()
+  const { data: accounts = [], isLoading } = useAccounts()
   const [showTransfer, setShowTransfer] = useState(false)
   const [showCreateAccount, setShowCreateAccount] = useState(false)
-  const [orderedAccounts, setOrderedAccounts] = useState(accounts)
+  const [orderedAccounts, setOrderedAccounts] = useState<Account[] | null>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
@@ -110,9 +111,35 @@ export function AccountsScreen() {
   const selectedFromAccount = accounts.find((a) => a.id === fromAccount)
   const exceedsFromBalance = Boolean(selectedFromAccount && totalTransferAmount > Number(selectedFromAccount.balance || 0))
 
+// Initialize orderedAccounts when accounts load, sync when accounts change
   useEffect(() => {
-    setOrderedAccounts(accounts)
+    if (accounts.length === 0) return
+
+    if (orderedAccounts === null) {
+      setOrderedAccounts(accounts)
+      return
+    }
+
+    // Check if accounts have changed (new or deleted)
+    const orderedIds = new Set(orderedAccounts.map(a => a.id))
+    const currentIds = new Set(accounts.map(a => a.id))
+    const hasNewAccount = accounts.some(a => !orderedIds.has(a.id))
+    const hasDeletedAccount = orderedAccounts.some(a => !currentIds.has(a.id))
+
+    if (hasNewAccount || hasDeletedAccount) {
+      setOrderedAccounts(prev => {
+        if (prev === null) return accounts
+        const prevIds = new Set(prev.map(a => a.id))
+        // Preserve user order for existing accounts, append new ones
+        const merged = accounts.filter(a => prevIds.has(a.id))
+        const newAccounts = accounts.filter(a => !prevIds.has(a.id))
+        return [...merged, ...newAccounts]
+      })
+    }
   }, [accounts])
+
+  // Use orderedAccounts if available, otherwise fall back to accounts
+  const displayAccounts = orderedAccounts ?? accounts
 
   useEffect(() => {
     const onOutside = (event: PointerEvent) => {
@@ -184,8 +211,9 @@ export function AccountsScreen() {
     }, 500)
   }
 
-  const reorderOnDrag = (draggedId: string, clientY: number) => {
-    const next = [...orderedAccounts]
+const reorderOnDrag = (draggedId: string, clientY: number) => {
+    const current = orderedAccounts ?? accounts
+    const next = [...current]
     const fromIndex = next.findIndex((a) => a.id === draggedId)
     if (fromIndex < 0) return
 
@@ -208,8 +236,8 @@ export function AccountsScreen() {
     dragIdRef.current = null
     setDraggingId(null)
     clearLongPressTimer()
-    if (!draggedId) return
-    await reorderAccounts(orderedAccounts.map((account) => account.id))
+if (!draggedId) return
+    await reorderAccounts(displayAccounts.map((account) => account.id))
   }
 
   const handleDeleteFromList = async () => {
@@ -359,12 +387,25 @@ export function AccountsScreen() {
         </div>
       </header>
 
-      <div className="px-6 pt-3">
-        <p className="mb-3 text-xs text-muted-foreground">Mantén presionado para ordenar</p>
-      </div>
+{isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-32 animate-pulse rounded-3xl bg-card" />
+          ))}
+        </div>
+      ) : displayAccounts.length === 0 ? (
+        <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50/40 p-6 text-center dark:border-green-900/30 dark:bg-green-900/10">
+          <p className="text-sm font-semibold text-foreground">No tienes cuentas todavía</p>
+          <p className="mt-1 text-xs text-muted-foreground">Agrega tu primera cuenta y empieza a rastrear tu dinero.</p>
+        </div>
+      ) : (
+        <>
+          <div className="px-6 pt-3">
+            <p className="mb-3 text-xs text-muted-foreground">Mantén presionado para ordenar</p>
+          </div>
 
-      <div className="space-y-4 px-6 pt-1">
-        {orderedAccounts.map((account) => {
+          <div className="space-y-4 px-6 pt-1">
+        {displayAccounts.map((account) => {
           const isOpen = openSwipeId === account.id
           const isDragging = draggingId === account.id
           const currentOffset = swipeOffset?.id === account.id ? swipeOffset.offset : isOpen ? -112 : 0
@@ -490,8 +531,10 @@ export function AccountsScreen() {
               </div>
             </div>
           )
-        })}
+})}
       </div>
+        </>
+      )}
 
       {showTransfer && (
         <BaseModalForm

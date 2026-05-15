@@ -12,17 +12,20 @@ export function Header() {
   const { data: notifications } = useNotifications()
 
   const unreadCount = notifications?.filter((n) => !n.read).length || 0
-  const displayName = profile?.first_name || user?.email?.split("@")[0] || "Usuario"
-  const initials = profile?.first_name
-    ? `${profile.first_name.charAt(0)}${profile.last_name?.charAt(0) || ""}`
-    : displayName.substring(0, 2).toUpperCase()
+  const displayName = profile?.full_name || profile?.first_name || user?.email?.split("@")[0] || "Usuario"
+  const initials = displayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "US"
 
   return (
     <header className="flex items-center justify-between px-4">
       <div className="flex items-center gap-3">
         <Avatar className="h-10 w-10">
           <AvatarImage
-            src={profile?.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${displayName}`}
+            src={profile?.avatar_url || undefined}
             alt={displayName}
           />
           <AvatarFallback className="bg-primary text-primary-foreground text-xs">

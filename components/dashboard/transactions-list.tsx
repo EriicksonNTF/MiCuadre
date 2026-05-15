@@ -24,8 +24,8 @@ import {
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { useTransactions } from "@/hooks/use-data"
-import { formatCurrency, formatDate } from "@/lib/data"
-import type { AccountType } from "@/lib/types/database"
+import { formatCurrency, getLocalDateString } from "@/lib/data"
+import type { AccountType, Transaction } from "@/lib/types/database"
 
 const categoryIcons: Record<string, typeof Circle> = {
   utensils: Utensils,
@@ -52,6 +52,36 @@ const accountIconsSmall: Record<AccountType, typeof Banknote> = {
 
 export function TransactionsList() {
   const { data: transactions, isLoading } = useTransactions(10)
+
+  const parseTxDate = (value: string) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T12:00:00`)
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed
+  }
+
+  const formatGroupLabel = (date: Date) => {
+    const today = new Date()
+    const yesterday = new Date()
+    yesterday.setDate(today.getDate() - 1)
+    const key = getLocalDateString(date)
+    if (key === getLocalDateString(today)) return "Today"
+    if (key === getLocalDateString(yesterday)) return "Yesterday"
+    return date.toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })
+  }
+
+  const grouped = (transactions || []).reduce((acc, tx) => {
+    const d = parseTxDate(tx.date)
+    const key = getLocalDateString(d)
+    if (!acc[key]) {
+      acc[key] = { label: formatGroupLabel(d), date: d, items: [] as Transaction[] }
+    }
+    acc[key].items.push(tx)
+    return acc
+  }, {} as Record<string, { label: string; date: Date; items: Transaction[] }>)
+
+  const groups = Object.entries(grouped)
+    .sort((a, b) => b[1].date.getTime() - a[1].date.getTime())
+    .map(([key, value]) => ({ key, ...value }))
 
   if (isLoading) {
     return (
@@ -97,13 +127,18 @@ export function TransactionsList() {
         <Link href="/history" className="text-xs font-medium text-accent">Ver todos</Link>
       </div>
 
-      <div className="space-y-2">
-        {transactions.map((transaction) => {
+      <div className="space-y-3">
+        {groups.map((group) => (
+          <div key={group.key} className="space-y-2">
+            <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
+            {group.items.map((transaction) => {
           const categoryIcon = transaction.category?.icon || "circle"
           const Icon = categoryIcons[categoryIcon] || Circle
           const categoryColor = transaction.category?.color || "#64748b"
           const accountType = transaction.account?.type || "cash"
           const AccountIcon = accountIconsSmall[accountType]
+          const txDate = parseTxDate(transaction.date)
+          const txTime = txDate.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
 
           return (
             <div
@@ -128,7 +163,7 @@ export function TransactionsList() {
                   <AccountIcon className="h-3 w-3" />
                   <span>{transaction.account?.name || "Cuenta"}</span>
                   <span>·</span>
-                  <span>{formatDate(transaction.date)}</span>
+                  <span>{txTime}</span>
                 </div>
               </div>
 
@@ -148,6 +183,8 @@ export function TransactionsList() {
             </div>
           )
         })}
+          </div>
+        ))}
       </div>
     </div>
   )
