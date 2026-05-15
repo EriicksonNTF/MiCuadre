@@ -3,7 +3,11 @@
 import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
-import { Apple, ArrowRight, BarChart3, CheckCircle2, CircleDollarSign, CreditCard, Goal, Instagram, Landmark, Menu, Repeat, ShieldCheck, Wallet, X } from "lucide-react"
+import { 
+  AlertCircle, Apple, ArrowRight, CheckCircle2, CircleDollarSign, 
+  CreditCard, Goal, Instagram, Landmark, Menu, Repeat, 
+  ShieldCheck, Wallet, X, ChevronDown, Sparkles, PieChart, TrendingUp
+} from "lucide-react"
 import { showToast } from "@/components/toast/smart-toast"
 
 const navItems = [
@@ -20,8 +24,8 @@ function LogoMark({ dark = true }: { dark?: boolean }) {
     <div className="inline-flex items-center gap-3">
       <Image src="/icono-favicon.png" alt="Icono MiCuadre" width={40} height={40} className="rounded-xl shadow-lg shadow-black/20" />
       <div>
-        <p className={`text-lg font-semibold tracking-tight ${dark ? "text-white" : "text-[#07111F]"}`}>MiCuadre</p>
-        <p className={`text-xs ${dark ? "text-[#CCFBF1]" : "text-slate-500"}`}>Controla tu dinero con claridad</p>
+        <p className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}>MiCuadre</p>
+        <p className={`text-[11px] font-medium tracking-wide uppercase ${dark ? "text-emerald-400/80" : "text-emerald-600/80"}`}>Copiloto Financiero</p>
       </div>
     </div>
   )
@@ -30,7 +34,16 @@ function LogoMark({ dark = true }: { dark?: boolean }) {
 export function PublicLanding() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [active, setActive] = useState("inicio")
+  const [scrolled, setScrolled] = useState(false)
   const sectionIds = useMemo(() => navItems.map((n) => n.id), [])
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   useEffect(() => {
     const observers: IntersectionObserver[] = []
@@ -67,203 +80,434 @@ export function PublicLanding() {
   }
 
   return (
-    <main className="min-h-screen scroll-smooth bg-[#F8FAFC] text-[#07111F]">
-      <section id="inicio" className="relative overflow-hidden bg-[#020617] pb-24">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(20,184,166,0.3),transparent_35%),radial-gradient(circle_at_90%_0%,rgba(56,189,248,0.25),transparent_35%)]" />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <header className="sticky top-0 z-40 mt-4 rounded-2xl border border-white/15 bg-[#07111F]/75 px-4 py-3 backdrop-blur-xl">
-            <div className="flex items-center justify-between gap-4">
-              <LogoMark />
-              <nav className="hidden items-center gap-2 lg:flex">
-                {navItems.map((item) => (
-                  <a key={item.id} href={`#${item.id}`} className={`rounded-lg px-3 py-2 text-sm transition ${active === item.id ? "bg-white/15 text-white" : "text-slate-200 hover:text-white"}`}>{item.label}</a>
-                ))}
-              </nav>
-              <div className="hidden items-center gap-2 lg:flex">
-                <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#14B8A6] to-[#10B981] px-4 py-2 text-sm font-semibold text-[#05211d] shadow-lg shadow-[#14B8A6]/35">Crear cuenta <ArrowRight className="h-4 w-4" /></Link>
-                <Link href="/login" className="rounded-xl border border-white/25 px-4 py-2 text-sm font-medium text-white hover:bg-white/10">Iniciar sesion</Link>
-              </div>
-              <button aria-label="Abrir menu" onClick={() => setMobileOpen((v) => !v)} className="grid h-10 w-10 place-items-center rounded-lg border border-white/20 bg-white/10 text-white lg:hidden">{mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
-            </div>
-            {mobileOpen && (
-              <div className="mt-3 rounded-xl border border-white/15 bg-[#07111F]/95 p-2 lg:hidden">
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {navItems.map((item) => <a key={item.id} href={`#${item.id}`} onClick={() => setMobileOpen(false)} className="shrink-0 rounded-lg bg-white/10 px-3 py-2 text-sm text-white">{item.label}</a>)}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Link href="/register" onClick={() => setMobileOpen(false)} className="rounded-lg bg-[#14B8A6] px-3 py-2 text-center text-sm font-semibold text-[#05211d]">Crear cuenta</Link>
-                  <Link href="/login" onClick={() => setMobileOpen(false)} className="rounded-lg border border-white/25 px-3 py-2 text-center text-sm text-white">Iniciar sesion</Link>
-                </div>
-              </div>
-            )}
-          </header>
+    <main className="min-h-screen scroll-smooth bg-slate-50 text-slate-900 font-sans selection:bg-teal-500/30">
+      {/* HEADER */}
+      <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#020617]/85 backdrop-blur-xl border-b border-white/10 py-3' : 'bg-transparent py-5'}`}>
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <LogoMark dark={true} />
+          
+          <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md lg:flex">
+            {navItems.map((item) => (
+              <a 
+                key={item.id} 
+                href={`#${item.id}`} 
+                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-300 ${active === item.id ? "bg-white/15 text-white shadow-sm" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
+              >
+                {item.label}
+              </a>
+            ))}
+          </nav>
 
-          <div className="grid items-center gap-12 pt-14 lg:grid-cols-[1fr_1.05fr]">
-            <div className="animate-[fadeUp_700ms_ease-out]">
-              <p className="inline-flex items-center gap-2 rounded-full border border-[#14B8A6]/35 bg-[#14B8A6]/10 px-3 py-1 text-xs text-[#CCFBF1]"><ShieldCheck className="h-3.5 w-3.5" /> Copiloto financiero dominicano</p>
-              <h1 className="mt-5 text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">Tu dinero en orden, con una experiencia fintech premium.</h1>
-              <p className="mt-5 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">MiCuadre te muestra lo que tienes, lo que debes y hacia donde se va tu dinero con una claridad que impulsa mejores decisiones.</p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={showComingSoon}
-                  aria-label="Disponible próximamente en App Store"
-                  className="group inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-left text-white backdrop-blur-md transition duration-300 hover:border-[#14B8A6]/55 hover:bg-white/15 hover:shadow-[0_0_30px_rgba(20,184,166,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#14B8A6]"
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-[#CCFBF1] transition group-hover:bg-white/15">
-                    <Apple className="h-5 w-5" />
-                  </span>
-                  <span>
-                    <span className="block text-[11px] text-slate-300">App Store</span>
-                    <span className="block text-sm font-semibold">Disponible próximamente</span>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={showComingSoon}
-                  aria-label="Disponible próximamente en Google Play"
-                  className="group inline-flex items-center gap-3 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-left text-white backdrop-blur-md transition duration-300 hover:border-[#38BDF8]/55 hover:bg-white/15 hover:shadow-[0_0_30px_rgba(56,189,248,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8]"
-                >
-                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-white/10 text-[#BAE6FD] transition group-hover:bg-white/15">
-                    <ArrowRight className="h-4 w-4" />
-                  </span>
-                  <span>
-                    <span className="block text-[11px] text-slate-300">Google Play</span>
-                    <span className="block text-sm font-semibold">Disponible próximamente</span>
-                  </span>
-                </button>
-
-                <span className="text-xs font-medium text-[#99f6e4]">iOS y Android</span>
-              </div>
-            </div>
-
-            <div className="relative mx-auto w-full max-w-[620px] animate-[fadeUp_930ms_ease-out]">
-              <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-[#14B8A6]/30 to-[#38BDF8]/25 blur-3xl" />
-              <div className="relative overflow-hidden rounded-[2rem] border border-white/20 bg-white/10 p-3 shadow-[0_35px_80px_-22px_rgba(20,184,166,0.55)] backdrop-blur">
-                <Image src="/landing/mockup-dashboard-3d.png" alt="Mockup 3D Dashboard MiCuadre" width={600} height={600} sizes="(max-width: 768px) 100vw, 600px" className="h-auto w-full rounded-[1.4rem]" priority />
-              </div>
-              <div className="absolute -left-3 top-8 rounded-xl border border-white/20 bg-[#10273D]/95 px-3 py-2 text-xs text-[#D1FAE5] shadow-xl animate-[floatY_7s_ease-in-out_infinite]">Balance actual <p className="text-sm font-semibold text-white">RD$ 152,840</p></div>
-              <div className="absolute -right-2 top-20 rounded-xl border border-white/20 bg-[#132A2A]/95 px-3 py-2 text-xs text-[#D1FAE5] shadow-xl animate-[floatY_7.6s_ease-in-out_infinite] [animation-delay:200ms]">Balance al corte <p className="text-sm font-semibold text-white">RD$ 18,650</p></div>
-              <div className="absolute -left-2 bottom-24 rounded-xl border border-white/20 bg-[#143247]/95 px-3 py-2 text-xs text-[#BAE6FD] shadow-xl animate-[floatY_6.8s_ease-in-out_infinite] [animation-delay:300ms]">Disponible <p className="text-sm font-semibold text-white">RD$ 75,100</p></div>
-              <div className="absolute right-0 bottom-12 rounded-xl border border-white/20 bg-[#1A3A2A]/95 px-3 py-2 text-xs text-[#86EFAC] shadow-xl animate-[floatY_8s_ease-in-out_infinite] [animation-delay:420ms]">Meta de ahorro <p className="text-sm font-semibold text-white">72%</p></div>
-              <div className="absolute left-10 -bottom-2 rounded-xl border border-white/20 bg-[#263244]/95 px-3 py-2 text-xs text-[#E2E8F0] shadow-xl animate-[floatY_7.2s_ease-in-out_infinite] [animation-delay:120ms]">Gasto del mes <p className="text-sm font-semibold text-white">RD$ 31,120</p></div>
-            </div>
+          <div className="hidden items-center gap-4 lg:flex">
+            <Link href="/login" className="text-sm font-semibold text-slate-300 transition-colors hover:text-white">
+              Iniciar sesión
+            </Link>
+            <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-bold text-slate-950 transition-all hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95">
+              Crear cuenta <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-        </div>
-      </section>
 
-      <section id="funciones" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.05fr]">
-          <div>
-            <h2 className="text-3xl font-semibold">Registrar transacciones se siente rapido y preciso</h2>
-            <p className="mt-4 text-slate-600">Desde una sola pantalla controlas monto, cuenta, categoria y detalle del movimiento para mantener tus finanzas actualizadas en tiempo real.</p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {[{ icon: Wallet, title: "Cuenta sugerida" }, { icon: CircleDollarSign, title: "Comision visible" }, { icon: Landmark, title: "Impacto inmediato" }, { icon: Goal, title: "Control mensual" }].map(({ icon: Icon, title }) => (
-                <article key={title} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                  <Icon className="h-5 w-5 text-[#10B981]" />
-                  <p className="mt-2 text-sm font-medium text-slate-700">{title}</p>
-                </article>
+          <button aria-label="Abrir menú" onClick={() => setMobileOpen((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/5 text-white backdrop-blur-md lg:hidden">
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+
+        {/* MOBILE MENU */}
+        {mobileOpen && (
+          <div className="absolute inset-x-4 top-[calc(100%+1rem)] flex flex-col gap-4 rounded-3xl border border-white/10 bg-[#07111F]/95 p-5 shadow-2xl backdrop-blur-2xl lg:hidden animate-in slide-in-from-top-4 duration-300">
+            <div className="flex flex-col gap-1">
+              {navItems.map((item) => (
+                <a 
+                  key={item.id} 
+                  href={`#${item.id}`} 
+                  onClick={() => setMobileOpen(false)} 
+                  className="rounded-xl px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {item.label}
+                </a>
               ))}
             </div>
           </div>
-          <div className="relative">
-            <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-[#10B981]/20 to-[#38BDF8]/20 blur-2xl" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.28)]">
-              <Image src="/landing/mockup-transaccion-3d.png" alt="Mockup 3D Transaccion MiCuadre" width={600} height={600} sizes="(max-width: 768px) 100vw, 600px" className="h-auto w-full rounded-[1.4rem]" loading="lazy" />
+        )}
+      </header>
+
+      {/* HERO SECTION */}
+      <section id="inicio" className="relative overflow-hidden bg-[#020617] pt-32 pb-24 lg:pt-40 lg:pb-32">
+        {/* Glow Effects */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[500px] opacity-40 pointer-events-none">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/30 to-sky-500/30 blur-[100px] rounded-full mix-blend-screen" />
+        </div>
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid items-center gap-16 lg:grid-cols-[1fr_1.1fr]">
+            
+            {/* Hero Content */}
+            <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300 backdrop-blur-sm mb-6">
+                <Sparkles className="h-4 w-4" /> La revolución financiera dominicana
+              </div>
+              
+              <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl leading-[1.1]">
+                Tu dinero, <br className="hidden sm:block"/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">totalmente claro.</span>
+              </h1>
+              
+              <p className="mt-6 text-lg leading-relaxed text-slate-300 sm:text-xl">
+                Entiende cuánto tienes, cuánto debes y hacia dónde se va tu dinero. Controla cuentas, tarjetas, metas y suscripciones en una sola app premium.
+              </p>
+              
+              <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
+                <Link href="/register" className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-emerald-500 px-8 py-4 text-base font-bold text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.25)] transition-all hover:bg-emerald-400 hover:shadow-[0_0_40px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95">
+                  Crear cuenta gratis <ArrowRight className="h-5 w-5" />
+                </Link>
+                <Link href="/login" className="flex w-full sm:w-auto items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-md transition-all hover:bg-white/10 hover:border-white/30">
+                  Iniciar sesión
+                </Link>
+              </div>
+
+              <div className="mt-12 flex flex-col sm:flex-row items-start sm:items-center gap-4 border-t border-white/10 pt-8">
+                <span className="text-sm font-medium text-slate-400 uppercase tracking-wider">Próximamente en</span>
+                <div className="flex gap-3">
+                  <button onClick={showComingSoon} className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 transition-colors hover:bg-white/10">
+                    <Apple className="h-4 w-4 text-slate-300 group-hover:text-white" />
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">App Store</span>
+                  </button>
+                  <button onClick={showComingSoon} className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 transition-colors hover:bg-white/10">
+                    <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-white" />
+                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">Google Play</span>
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Hero 3D Mockup with Floating Cards */}
+            <div className="relative mx-auto w-full max-w-[600px] animate-in fade-in slide-in-from-right-8 duration-1000 delay-200 fill-mode-both">
+              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-tr from-emerald-500/20 to-sky-500/20 blur-3xl transform rotate-6 scale-105" />
+              
+              <div className="relative rounded-[2.5rem] border border-white/10 bg-slate-900/50 p-2 shadow-2xl backdrop-blur-xl">
+                <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950">
+                  <Image src="/landing/mockup-dashboard-3d.png" alt="Dashboard MiCuadre" width={800} height={800} className="w-full h-auto opacity-90 transition-opacity hover:opacity-100" priority />
+                </div>
+              </div>
+
+              {/* Floating Cards */}
+              <div className="absolute -left-6 top-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Balance actual</p>
+                <p className="text-lg font-bold text-white">RD$ 152,840</p>
+              </div>
+              
+              <div className="absolute -right-4 top-1/3 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Disponible</p>
+                <p className="text-lg font-bold text-white">RD$ 75,100</p>
+              </div>
+
+              <div className="absolute left-8 -bottom-6 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Gasto del mes</p>
+                <p className="text-lg font-bold text-white">RD$ 31,120</p>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
 
-      <section id="reportes" className="bg-white py-20">
+      {/* FUNCIONES SECTION */}
+      <section id="funciones" className="relative overflow-hidden bg-white py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-semibold">Reportes que convierten datos en decisiones</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            <article className="rounded-3xl border border-slate-200 bg-slate-50 p-6"><p className="text-sm text-slate-500">Tu mayor gasto</p><p className="mt-1 font-semibold">Comida</p><p className="mt-3 text-sm text-slate-600">RD$ 3,250 este mes</p></article>
-            <article className="rounded-3xl border border-slate-200 bg-slate-50 p-6"><p className="text-sm text-slate-500">Flujo neto</p><p className="mt-1 font-semibold">Positivo</p><p className="mt-3 text-sm text-slate-600">Ingresos por encima de gastos</p></article>
-            <article className="rounded-3xl border border-slate-200 bg-slate-50 p-6"><p className="text-sm text-slate-500">Suscripciones</p><p className="mt-1 font-semibold">RD$ 1,250/mes</p><p className="mt-3 text-sm text-slate-600">Pagos automaticos</p></article>
+          <div className="grid items-center gap-16 lg:grid-cols-[1fr_1.1fr]">
+            
+            <div className="order-2 lg:order-1 relative">
+              <div className="absolute inset-0 rounded-[3rem] bg-emerald-500/10 blur-3xl transform -rotate-6 scale-105" />
+              <div className="relative rounded-[2.5rem] border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="overflow-hidden rounded-[2rem] bg-slate-50">
+                  <Image src="/landing/mockup-transaccion-3d.png" alt="Transacción MiCuadre" width={800} height={800} className="w-full h-auto" />
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 lg:order-2">
+              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Registros rápidos, precisos y sin fricción.</h2>
+              <p className="mt-6 text-lg text-slate-600 leading-relaxed">
+                Controla montos, cuentas, categorías y detalles del movimiento desde una sola pantalla para mantener tus finanzas actualizadas en tiempo real.
+              </p>
+              
+              <div className="mt-10 grid gap-4 sm:grid-cols-2">
+                {[
+                  { icon: Wallet, title: "Cuentas sincronizadas", desc: "Múltiples cuentas en un solo lugar" },
+                  { icon: CircleDollarSign, title: "Control de comisiones", desc: "Calcula impuestos automáticamente" },
+                  { icon: Landmark, title: "Impacto inmediato", desc: "Reflejo instantáneo en balances" },
+                  { icon: Goal, title: "Categorización ágil", desc: "Organiza sin pensar demasiado" }
+                ].map(({ icon: Icon, title, desc }) => (
+                  <article key={title} className="group rounded-3xl border border-slate-100 bg-slate-50 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1">
+                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 transition-transform group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white">
+                      <Icon className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+                    <p className="mt-1 text-sm text-slate-500">{desc}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+            
           </div>
         </div>
       </section>
 
-      <section id="tarjetas" className="bg-[#020617] py-20 text-white">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+      {/* REPORTES SECTION */}
+      <section id="reportes" className="bg-slate-50 py-32">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Reportes que hablan por sí solos</h2>
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
+            Convierte tus datos en decisiones. Visualiza hacia dónde se va tu dinero con gráficos interactivos y resúmenes inteligentes de tu salud financiera.
+          </p>
+          
+          <div className="mt-16 grid gap-6 sm:grid-cols-3">
+            <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
+              <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><PieChart className="w-24 h-24 text-emerald-500" /></div>
+              <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Tu mayor gasto</p>
+              <p className="mt-4 text-3xl font-extrabold text-slate-900">Comida</p>
+              <p className="mt-2 text-base font-medium text-rose-500">RD$ 8,250 este mes</p>
+            </article>
+            
+            <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
+              <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><TrendingUp className="w-24 h-24 text-sky-500" /></div>
+              <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Flujo neto</p>
+              <p className="mt-4 text-3xl font-extrabold text-slate-900">Positivo</p>
+              <p className="mt-2 text-base font-medium text-emerald-500">+ RD$ 12,400 ahorrados</p>
+            </article>
+            
+            <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
+              <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><Repeat className="w-24 h-24 text-indigo-500" /></div>
+              <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Suscripciones</p>
+              <p className="mt-4 text-3xl font-extrabold text-slate-900">RD$ 1,850/mes</p>
+              <p className="mt-2 text-base font-medium text-slate-500">6 pagos automáticos</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* TARJETAS SECTION */}
+      <section id="tarjetas" className="relative overflow-hidden bg-[#020617] py-32 text-white">
+        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-full max-w-[800px] h-[600px] bg-sky-500/10 blur-[150px] rounded-full pointer-events-none" />
+        
+        <div className="relative mx-auto grid max-w-7xl gap-16 px-4 sm:px-6 lg:grid-cols-2 lg:px-8 items-center">
           <div>
-            <h2 className="text-3xl font-semibold">Tarjetas de credito sin confusion</h2>
-            <p className="mt-4 text-slate-300">Separa balance actual, balance al corte y disponible para pagar a tiempo y evitar intereses.</p>
-            <ul className="mt-6 space-y-2 text-sm text-slate-200">
-              {["Balance actual", "Balance al corte", "Disponible", "Fecha de corte", "Fecha de pago"].map((item) => <li key={item} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-[#22C55E]" />{item}</li>)}
-            </ul>
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm mb-6">
+              <CreditCard className="h-4 w-4" /> Tarjetas de crédito
+            </div>
+            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Domina los ciclos de tus tarjetas de crédito.</h2>
+            <p className="mt-6 text-lg leading-relaxed text-slate-300">
+              No pagues ni un peso en intereses. MiCuadre está diseñado para que tengas el control absoluto de tus fechas de corte, fechas de pago y separes mentalmente tu balance actual del balance que debes pagar.
+            </p>
+            <div className="mt-10 grid gap-6">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-500/20 text-sky-400">
+                  <span className="font-bold text-xl">1</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-white">Domina las Fechas</h4>
+                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Alertas tempranas de cuándo cierra tu ciclo (Corte) y cuál es el último día para pagar sin penalidad.</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400">
+                  <span className="font-bold text-xl">2</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-white">Claridad en tus Balances</h4>
+                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">No te confundas. Separa el <strong>balance al corte</strong> (lo que debes pagar ahora) del <strong>balance actual</strong> (lo que has consumido en total).</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400">
+                  <span className="font-bold text-xl">3</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-white">Límite Inteligente</h4>
+                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Conoce exactamente cuánto dinero te queda disponible para gastar sin sobregirarte ni afectar tu buró de crédito.</p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
-            <div className="flex items-center justify-between rounded-xl bg-white/5 p-3 text-sm"><span>Balance actual</span><span>RD$ 24,900</span></div>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-xl bg-white/5 p-3"><p className="text-slate-400">Balance al corte</p><p className="mt-1">RD$ 18,650</p></div>
-              <div className="rounded-xl bg-white/5 p-3"><p className="text-slate-400">Disponible</p><p className="mt-1 text-[#38BDF8]">RD$ 75,100</p></div>
-              <div className="rounded-xl bg-white/5 p-3"><p className="text-slate-400">Fecha de corte</p><p className="mt-1 text-[#F59E0B]">24 mayo</p></div>
-              <div className="rounded-xl bg-white/5 p-3"><p className="text-slate-400">Fecha de pago</p><p className="mt-1 text-[#22C55E]">28 mayo</p></div>
+          
+          <div className="relative rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-8 backdrop-blur-3xl shadow-[0_0_80px_rgba(14,165,233,0.15)]">
+            <div className="absolute top-0 right-10 w-32 h-32 bg-sky-500/30 blur-[80px] rounded-full" />
+            <div className="absolute bottom-0 left-10 w-40 h-40 bg-emerald-500/20 blur-[80px] rounded-full" />
+            
+            <div className="relative z-10 overflow-hidden rounded-[1.5rem] bg-[#0B132B]/90 p-6 border border-white/10 shadow-2xl">
+              <div className="flex justify-between items-start mb-8">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-5 bg-gradient-to-tr from-slate-300 to-white rounded-sm flex items-center justify-end px-1 shadow-sm">
+                      <div className="w-3 h-3 bg-red-500 rounded-full opacity-80 mix-blend-multiply" />
+                      <div className="w-3 h-3 bg-amber-500 rounded-full opacity-80 mix-blend-multiply -ml-1.5" />
+                    </div>
+                    <p className="text-sm font-semibold text-slate-300">Platinum Rewards</p>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">**** **** **** 8421</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Límite Total</p>
+                  <p className="text-sm font-semibold text-slate-300">RD$ 100,000</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><AlertCircle className="w-3 h-3 text-rose-400" /> Al Corte</p>
+                  <p className="mt-1 text-2xl font-bold text-white tracking-tight">RD$ 18,650</p>
+                  <p className="text-xs text-rose-400 font-medium mt-1">Pagar antes del 08 Jun</p>
+                </div>
+                
+                <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Balance Actual</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-300 tracking-tight">RD$ 24,900</p>
+                  <p className="text-xs text-slate-500 mt-1">Incluye ciclo nuevo</p>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-xs font-medium mb-1.5">
+                    <span className="text-slate-400">Disponible para compras</span>
+                    <span className="text-emerald-400">RD$ 75,100</span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800 flex">
+                    <div className="h-full bg-gradient-to-r from-rose-500 to-rose-400 w-[24.9%] rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">Próximo Corte</span>
+                    <div className="flex items-center gap-2 text-slate-300 font-medium bg-white/5 rounded-lg p-2 border border-white/5">
+                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> 24 de Mayo
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase font-bold text-emerald-500 tracking-wider">Fecha de Pago</span>
+                    <div className="flex items-center gap-2 text-slate-300 font-medium bg-white/5 rounded-lg p-2 border border-white/5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" /> 08 de Junio
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section id="suscripciones" className="py-20">
+      {/* SUSCRIPCIONES Y METAS SECTION */}
+      <section id="suscripciones" className="overflow-hidden bg-white py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-8 lg:grid-cols-[1fr_1.05fr]">
-            <div>
-              <h2 className="text-3xl font-semibold">Metas visibles y suscripciones bajo control</h2>
-              <p className="mt-4 text-slate-600">Visualiza tu avance de ahorro y controla pagos recurrentes como Netflix, Spotify, Apple y Amazon con alertas de proximos cobros.</p>
-              <div className="mt-6 space-y-3 text-sm text-slate-700">
-                <p className="rounded-xl border border-slate-200 bg-white px-4 py-3">Progreso de metas con barras claras y porcentaje real.</p>
-                <p className="rounded-xl border border-slate-200 bg-white px-4 py-3">Suscripciones agrupadas por monto y fecha de pago.</p>
-                <p className="rounded-xl border border-slate-200 bg-white px-4 py-3">Alertas de pago para no perder fechas importantes.</p>
-              </div>
-            </div>
+          <div className="grid items-center gap-16 lg:grid-cols-[1.1fr_1fr]">
+            
             <div className="relative">
-              <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-r from-[#14B8A6]/20 to-[#10B981]/20 blur-2xl" />
-              <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-3 shadow-[0_24px_60px_-20px_rgba(15,23,42,0.24)]">
-                <Image src="/landing/mockup-metas-3d.png" alt="Mockup 3D Metas MiCuadre" width={600} height={600} sizes="(max-width: 768px) 100vw, 600px" className="h-auto w-full rounded-[1.4rem]" loading="lazy" />
+              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-r from-emerald-500/10 to-teal-500/10 blur-3xl" />
+              <div className="relative rounded-[2.5rem] border border-slate-200 bg-white p-2 shadow-xl">
+                <div className="overflow-hidden rounded-[2rem] bg-slate-50">
+                  <Image src="/landing/mockup-metas-3d.png" alt="Metas MiCuadre" width={800} height={800} className="w-full h-auto" />
+                </div>
               </div>
             </div>
+
+            <div>
+              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Metas visibles y pagos bajo control.</h2>
+              <p className="mt-6 text-lg text-slate-600 leading-relaxed">
+                Visualiza tu avance de ahorro de forma motivadora y controla pagos recurrentes como Netflix, gimnasio o seguros con alertas tempranas.
+              </p>
+              <div className="mt-8 space-y-4">
+                {[
+                  { title: "Progreso de metas", desc: "Gráficas claras y porcentaje real." },
+                  { title: "Gestión de suscripciones", desc: "Agrupadas por monto y fecha de cobro." },
+                  { title: "Alertas tempranas", desc: "Notificaciones antes de que te cobren." }
+                ].map((item, i) => (
+                  <div key={i} className="flex gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-5 transition-colors hover:bg-emerald-50/50 hover:border-emerald-100 hover:shadow-sm">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                      <span className="font-bold text-sm">{i + 1}</span>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-900">{item.title}</h4>
+                      <p className="text-sm text-slate-600 mt-1">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
           </div>
         </div>
       </section>
 
-      <section id="preguntas" className="mx-auto max-w-4xl px-4 py-20 sm:px-6">
-        <h2 className="text-3xl font-semibold">Preguntas frecuentes</h2>
-        <div className="mt-8 space-y-3">
-          {[
-            ["¿MiCuadre conecta con bancos?", "Por ahora funciona de forma manual para darte control total sin depender de integraciones bancarias."],
-            ["¿Soporta pesos y dolares?", "Si. MiCuadre soporta DOP y USD."],
-            ["¿Puedo registrar tarjetas de credito?", "Si. Puedes controlar balance actual, balance al corte, disponible y fechas de pago."],
-            ["¿Funciona en iPhone y Android?", "Si. Tambien puedes instalarla como PWA."],
-          ].map(([q, a]) => (
-            <details key={String(q)} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <summary className="cursor-pointer list-none text-sm font-semibold text-slate-800">{q}</summary>
-              <p className="mt-2 text-sm text-slate-600">{a}</p>
-            </details>
-          ))}
+      {/* PREGUNTAS SECTION */}
+      <section id="preguntas" className="bg-slate-50 py-32">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Preguntas frecuentes</h2>
+            <p className="mt-4 text-slate-600">Todo lo que necesitas saber sobre MiCuadre.</p>
+          </div>
+          
+          <div className="space-y-4">
+            {[
+              ["¿MiCuadre se conecta automáticamente con mis bancos?", "Por ahora funciona de forma manual para garantizar tu privacidad y darte control total sin depender de integraciones bancarias complejas."],
+              ["¿Soporta pesos dominicanos (DOP) y dólares (USD)?", "Sí. MiCuadre soporta múltiples monedas, permitiendo registrar cuentas tanto en DOP como en USD sin confusiones."],
+              ["¿Puedo registrar mis tarjetas de crédito?", "Absolutamente. Puedes controlar tu balance actual, balance al corte, monto disponible y mantener a la vista tus fechas de corte y de pago."],
+              ["¿Hay una aplicación móvil disponible?", "Actualmente puedes usarla desde tu navegador web móvil o instalarla como PWA (Añadir a la pantalla de inicio). Muy pronto lanzaremos versiones nativas para iOS y Android."],
+            ].map(([q, a]) => (
+              <details key={String(q)} className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all open:ring-2 open:ring-emerald-500/20">
+                <summary className="flex cursor-pointer items-center justify-between text-lg font-semibold text-slate-900 list-none [&::-webkit-details-marker]:hidden">
+                  {q}
+                  <ChevronDown className="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180 shrink-0 ml-4" />
+                </summary>
+                <p className="mt-4 text-base text-slate-600 leading-relaxed animate-in fade-in slide-in-from-top-2">{a}</p>
+              </details>
+            ))}
+          </div>
         </div>
       </section>
 
-      <footer className="border-t border-slate-200 bg-white py-8">
-        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-4 px-4 sm:flex-row sm:items-center sm:px-6 lg:px-8">
-          <LogoMark dark={false} />
-          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
-            <Link href="/legal/privacidad" className="hover:text-slate-800">Privacidad</Link>
-            <Link href="/legal/terminos" className="hover:text-slate-800">Términos</Link>
-            <Link href="/legal/aviso-legal" className="hover:text-slate-800">Aviso Legal</Link>
-            <button
-              type="button"
-              onClick={showInstagramSoon}
-              aria-label="Instagram de MiCuadre (próximamente)"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-600 transition hover:border-[#14B8A6]/60 hover:text-[#0f766e]"
-            >
-              <Instagram className="h-4 w-4" />
-            </button>
+      {/* FOOTER */}
+      <footer className="border-t border-slate-200 bg-white pt-16 pb-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4 lg:gap-8 mb-12">
+            <div className="lg:col-span-2">
+              <LogoMark dark={false} />
+              <p className="mt-6 max-w-xs text-sm text-slate-500 leading-relaxed">
+                El copiloto financiero diseñado para revolucionar cómo los dominicanos controlan su dinero.
+              </p>
+              <div className="mt-6 flex gap-4">
+                <button onClick={showInstagramSoon} aria-label="Instagram" className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-emerald-500 hover:text-white">
+                  <Instagram className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Producto</h3>
+              <ul className="mt-4 space-y-3 text-sm text-slate-500">
+                <li><a href="#funciones" className="hover:text-emerald-600 transition-colors">Funciones</a></li>
+                <li><a href="#reportes" className="hover:text-emerald-600 transition-colors">Reportes</a></li>
+                <li><a href="#tarjetas" className="hover:text-emerald-600 transition-colors">Tarjetas</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Legal</h3>
+              <ul className="mt-4 space-y-3 text-sm text-slate-500">
+                <li><Link href="/legal/privacidad" className="hover:text-emerald-600 transition-colors">Privacidad</Link></li>
+                <li><Link href="/legal/terminos" className="hover:text-emerald-600 transition-colors">Términos</Link></li>
+                <li><Link href="/legal/aviso-legal" className="hover:text-emerald-600 transition-colors">Aviso Legal</Link></li>
+              </ul>
+            </div>
           </div>
-          <p className="text-sm text-slate-500">© 2026 MiCuadre.</p>
+          
+          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-slate-400">© {new Date().getFullYear()} MiCuadre. Todos los derechos reservados.</p>
+            <div className="text-sm font-medium text-slate-400">Hecho con ❤️ en República Dominicana</div>
+          </div>
         </div>
       </footer>
     </main>

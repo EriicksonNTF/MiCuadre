@@ -10,6 +10,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Apple, Chrome } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -19,6 +20,7 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
 
   const getAuthRedirectTo = () => {
     const baseRedirect =
@@ -87,6 +89,11 @@ export default function SignUpPage() {
 
       if (error) throw error
     } catch (oauthError: unknown) {
+      toast({
+        title: "Error",
+        description: "No se pudo iniciar sesión con Google",
+        variant: "destructive"
+      })
       setError(oauthError instanceof Error ? oauthError.message : 'No se pudo registrar con proveedor social')
       setIsLoading(false)
     }
@@ -121,12 +128,12 @@ export default function SignUpPage() {
                   onClick={() => handleOAuthSignUp('google')}
                 >
                   <Chrome className="mr-2 h-4 w-4" />
-                  Registrarte con Google
+                  Continuar con Google
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11"
+                  className="hidden h-11"
                   disabled={isLoading}
                   onClick={() => handleOAuthSignUp('apple')}
                 >

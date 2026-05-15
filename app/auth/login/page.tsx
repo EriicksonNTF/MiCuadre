@@ -10,6 +10,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Apple, Chrome } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -17,6 +18,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
 
   const getAuthRedirectTo = () => {
     const baseRedirect =
@@ -90,6 +92,11 @@ export default function LoginPage() {
 
       if (error) throw error
     } catch (oauthError: unknown) {
+      toast({
+        title: "Error",
+        description: "No se pudo iniciar sesión con Google",
+        variant: "destructive"
+      })
       setError(oauthError instanceof Error ? oauthError.message : 'No se pudo iniciar con proveedor social')
       setIsLoading(false)
     }
@@ -129,7 +136,7 @@ export default function LoginPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11"
+                  className="hidden h-11"
                   disabled={isLoading}
                   onClick={() => handleOAuthLogin('apple')}
                 >
