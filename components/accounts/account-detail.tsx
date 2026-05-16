@@ -26,6 +26,7 @@ import {
   Settings,
   Trash2,
   Pencil,
+  Search,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -105,10 +106,13 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [dateFilter, setDateFilter] = usePersistentState<DateRange>(`account:${accountId}:dateFilter`, "all")
+  const [txQuery, setTxQuery] = useState("")
   const [showPayment, setShowPayment] = useState(false)
   const [paymentCurrency, setPaymentCurrency] = useState<"DOP" | "USD">("DOP")
   const [paymentSource, setPaymentSource] = useState<string>("")
   const [paymentAmount, setPaymentAmount] = useState("")
+  const [paymentComment, setPaymentComment] = useState("")
+  const [paymentKind, setPaymentKind] = useState<"balance_to_date" | "statement_balance" | "minimum_payment" | "custom">("custom")
   const [isPaying, setIsPaying] = useState(false)
   const [editingTxId, setEditingTxId] = useState<string | null>(null)
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
@@ -254,6 +258,15 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }, [accountId, dateFilter, transactions])
 
+  const visibleTransactions = useMemo(() => {
+    const query = txQuery.trim().toLowerCase()
+    if (!query) return accountTransactions
+    return accountTransactions.filter((tx) => {
+      const amountText = String(tx.amount)
+      return tx.title.toLowerCase().includes(query) || tx.category.toLowerCase().includes(query) || amountText.includes(query)
+    })
+  }, [accountTransactions, txQuery])
+
   useEffect(() => {
     const closeOnOutside = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null
@@ -351,13 +364,16 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         source_account_id: paymentSource,
         amount: parsedAmount,
         currency: paymentCurrency,
-        payment_kind: "custom",
+        payment_kind: paymentKind,
+        notes: paymentComment.trim() || undefined,
       })
       notify({ title: "Pago completado", message: "El pago de tarjeta fue registrado." })
       EventBus.emit({ type: "card_payment_completed" })
       setShowPayment(false)
       setPaymentSource("")
       setPaymentAmount("")
+      setPaymentComment("")
+      setPaymentKind("custom")
     } catch {
       notify({
         title: "No se pudo completar el pago",
@@ -564,9 +580,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
         {isCredit && account.creditLimit && (
           <div className="mt-6 space-y-4">
-            <div className="rounded-2xl bg-white/85 p-4 text-sm text-foreground">
-              <p className="font-semibold">Resumen de tarjeta</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-white/85 p-4 text-sm text-foreground">
+                <p className="font-semibold">Resumen de tarjeta</p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div className="rounded-xl bg-background/70 p-3">
                   <p className="text-xs text-muted-foreground">Limite DOP</p>
                   <p className="font-semibold">{formatCurrency(Number(account.creditLimitDop || 0), "DOP")}</p>
@@ -601,7 +617,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       {/* Summary Section */}
       <div className="px-6 pt-6">
         <h2 className="text-sm font-semibold text-foreground">Resumen del mes</h2>
-        <div className="mt-4 grid grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl bg-card p-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
               <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -674,17 +690,26 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </div>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">Desliza a la izquierda para editar o eliminar.</p>
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <input
+            value={txQuery}
+            onChange={(e) => setTxQuery(e.target.value)}
+            placeholder="Buscar por nombre, categoría o monto"
+            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          />
+        </div>
 
         {/* Transaction List */}
         <div className="mt-4 space-y-2">
-          {accountTransactions.length === 0 ? (
+          {visibleTransactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                No hay movimientos en esta cuenta
+                {txQuery.trim() ? "No hay resultados para tu búsqueda" : "No hay movimientos en esta cuenta"}
               </p>
             </div>
           ) : (
-            accountTransactions.map((tx) => {
+            visibleTransactions.map((tx) => {
               const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
               const isOpen = openSwipeId === tx.id
               const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
@@ -841,7 +866,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
               {(["DOP", "USD"] as const).filter((curr) => curr === "DOP" || hasUsdOnCard).map((curr) => (
-                <button key={curr} onClick={() => { setPaymentCurrency(curr); setPaymentSource(""); setPaymentAmount("") }} className={cn("rounded-lg py-2 text-xs font-medium", paymentCurrency === curr ? "bg-card" : "text-muted-foreground")}>{curr}</button>
+                <button key={curr} onClick={() => { setPaymentCurrency(curr); setPaymentSource(""); setPaymentAmount(""); setPaymentComment(""); setPaymentKind("custom") }} className={cn("rounded-lg py-2 text-xs font-medium", paymentCurrency === curr ? "bg-card" : "text-muted-foreground")}>{curr}</button>
               ))}
             </div>
 
@@ -871,31 +896,48 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     <span className="text-lg font-medium text-muted-foreground">{paymentCurrency === "DOP" ? "RD$" : "US$"}</span>
                   <MoneyInput
                     value={paymentAmount}
-                    onValueChange={setPaymentAmount}
+                    onValueChange={(value) => {
+                      setPaymentAmount(value)
+                      setPaymentKind("custom")
+                    }}
                     placeholder="0"
                     className="flex-1 bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
                   />
                 </div>
-                {/* Quick amounts */}
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => setPaymentAmount(String(currentDebtByCurrency))}
-                    className="flex-1 rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
+                    onClick={() => { setPaymentAmount(String(currentDebtByCurrency)); setPaymentKind("balance_to_date") }}
+                    className="rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
                   >
-                    Pago total
+                    Deuda actual
                   </button>
                   <button
-                    onClick={() => setPaymentAmount(String(Math.round(currentDebtByCurrency / 2)))}
-                    className="flex-1 rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
+                    onClick={() => { setPaymentAmount(String(pendingStatementByCurrency)); setPaymentKind("statement_balance") }}
+                    className="rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
                   >
-                    50%
+                    Balance al corte
                   </button>
                   <button
-                    onClick={() => setPaymentAmount(String(Math.round(minPaymentByCurrency)))}
-                    className="flex-1 rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
+                    onClick={() => { setPaymentAmount(String(Math.round(minPaymentByCurrency))); setPaymentKind("minimum_payment") }}
+                    className="rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
                   >
                     Mínimo
                   </button>
+                  <button
+                    onClick={() => setPaymentKind("custom")}
+                    className={cn("rounded-xl px-3 py-2 text-xs font-medium", paymentKind === "custom" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}
+                  >
+                    Personalizado
+                  </button>
+                </div>
+                <div className="mt-3">
+                  <p className="mb-2 text-xs font-medium text-muted-foreground">Comentario (opcional)</p>
+                  <input
+                    value={paymentComment}
+                    onChange={(e) => setPaymentComment(e.target.value)}
+                    placeholder="Ej. pago quincenal"
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                  />
                 </div>
               </div>
 
@@ -1005,29 +1047,23 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               </div>
               {editForm.type === "credit" && (
                 <>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
-                    <MoneyInput
-                      value={editForm.credit_limit}
-                      onValueChange={(value) => setEditForm({ ...editForm, credit_limit: value })}
-                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Límite DOP</label>
-                    <MoneyInput
-                      value={editForm.credit_limit_dop}
-                      onValueChange={(value) => setEditForm({ ...editForm, credit_limit_dop: value })}
-                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Límite USD</label>
-                    <MoneyInput
-                      value={editForm.credit_limit_usd}
-                      onValueChange={(value) => setEditForm({ ...editForm, credit_limit_usd: value })}
-                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                    />
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {editForm.currency !== "USD" && <div>
+                      <label className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
+                      <MoneyInput
+                        value={editForm.credit_limit}
+                        onValueChange={(value) => setEditForm({ ...editForm, credit_limit: value, credit_limit_dop: value })}
+                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                      />
+                    </div>}
+                    {editForm.currency !== "DOP" && <div>
+                      <label className="text-xs font-medium text-muted-foreground">Límite de crédito USD</label>
+                      <MoneyInput
+                        value={editForm.credit_limit_usd}
+                        onValueChange={(value) => setEditForm({ ...editForm, credit_limit_usd: value })}
+                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                      />
+                    </div>}
                   </div>
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Día de corte</label>
@@ -1045,16 +1081,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
               <div className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4">
                 <p className="text-sm font-semibold text-foreground">Personalización visual</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["icon", "image"] as const).map((value) => (
-                    <button
-                      key={value}
-                      onClick={() => setEditForm({ ...editForm, icon_type: value })}
-                      className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", editForm.icon_type === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                    >
-                      {value === "icon" ? "Ícono" : "Logo/Banco"}
-                    </button>
-                  ))}
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Tipo visual</p>
+                  <select value={editForm.icon_type} onChange={(e) => setEditForm({ ...editForm, icon_type: e.target.value as "icon" | "image" })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
+                    <option value="icon">Ícono</option>
+                    <option value="image">Logo/Banco</option>
+                  </select>
                 </div>
 
                 {editForm.icon_type === "image" ? (
@@ -1078,17 +1110,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     </select>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {DETAIL_ICON_PRESETS.map((preset) => (
-                      <button
-                        key={preset.value}
-                        onClick={() => setEditForm({ ...editForm, icon_value: preset.value })}
-                        className={cn("flex flex-col items-center gap-1 rounded-xl p-2 text-[10px]", editForm.icon_value === preset.value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                      >
-                        <preset.icon className="h-4 w-4" />
-                        <span>{preset.label}</span>
-                      </button>
-                    ))}
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">Ícono</p>
+                    <select value={editForm.icon_value} onChange={(e) => setEditForm({ ...editForm, icon_value: e.target.value })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
+                      {DETAIL_ICON_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+                    </select>
                   </div>
                 )}
 

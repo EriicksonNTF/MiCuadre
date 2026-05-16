@@ -574,6 +574,7 @@ if (!draggedId) return
         }} footer={<Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
           <div className="space-y-5 pb-safe-areas">
             <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre de la cuenta" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
+            <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de tarjeta/cuenta (opcional)" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
             <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button key={t} onClick={() => setAccountType(t)} className={cn("rounded-xl px-3 py-2 text-xs", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
             <MoneyInput value={initialBalance} onValueChange={setInitialBalance} placeholder="Balance inicial" className="w-full rounded-xl bg-muted p-3" />
 
@@ -588,10 +589,6 @@ if (!draggedId) return
                   </select>
                 </div>
               ) : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[10px]">{preset.label}</span></button>)}</div>}
-              <div>
-                <p className="mb-1 text-xs text-muted-foreground">Número de tarjeta/cuenta (opcional)</p>
-                <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="1234567890123456" className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm" />
-              </div>
               <div className="flex flex-wrap gap-2">{COLOR_PRESETS.map((preset) => <button key={preset.key} onClick={() => { setBrandingPrimaryColor(preset.primary); setBrandingSecondaryColor(preset.secondary) }} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", brandingPrimaryColor === preset.primary && brandingSecondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}><span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} /></button>)}</div>
               <div className="grid grid-cols-3 gap-2">{(["gradient", "solid", "glass"] as const).map((style) => <button key={style} onClick={() => setBrandingBackgroundStyle(style)} className={cn("rounded-xl px-3 py-2 text-xs", brandingBackgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>{style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Soft"}</button>)}</div>
               <BrandedAccountCard account={previewAccount as any} compact />
@@ -599,8 +596,10 @@ if (!draggedId) return
 
             {accountType === "credit" && (
               <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-                <MoneyInput value={creditLimitDop} onValueChange={setCreditLimitDop} placeholder="Límite DOP" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
-                <MoneyInput value={creditLimitUsd} onValueChange={setCreditLimitUsd} placeholder="Límite USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {accountCurrency !== "USD" && <MoneyInput value={creditLimitDop} onValueChange={setCreditLimitDop} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
+                  {accountCurrency !== "DOP" && <MoneyInput value={creditLimitUsd} onValueChange={setCreditLimitUsd} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
+                </div>
                 <input type="text" inputMode="numeric" value={closingDate} onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de cierre" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
                 <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
               </div>

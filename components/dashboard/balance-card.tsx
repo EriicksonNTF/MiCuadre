@@ -9,27 +9,32 @@ export function BalanceCard() {
   const [showBalance, setShowBalance] = useState(true)
   const { data: accounts, isLoading } = useAccounts()
   const netBalance = accounts ? calculateNetBalance(accounts) : 0
+  const totalCreditDebt = accounts
+    ? accounts
+        .filter((account) => account.type === "credit")
+        .reduce((sum, account) => sum + Number(account.current_debt_dop || 0), 0)
+    : 0
 
   return (
-    <div className="rounded-3xl bg-primary px-6 py-8 text-primary-foreground">
+    <div className="rounded-3xl border border-black/5 bg-white px-6 py-8 text-black shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#0B0F14] dark:text-white dark:shadow-[0_14px_34px_rgba(0,0,0,0.35)]">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium opacity-70">Balance neto</p>
+        <p className="text-sm font-medium text-black/70 dark:text-white/75">Balance neto</p>
         <button
           onClick={() => setShowBalance(!showBalance)}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-white/10"
+          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10"
           aria-label={showBalance ? "Ocultar balance" : "Mostrar balance"}
         >
           {showBalance ? (
-            <Eye className="h-4 w-4 opacity-70" />
+            <Eye className="h-4 w-4 text-black/55 dark:text-white/60" />
           ) : (
-            <EyeOff className="h-4 w-4 opacity-70" />
+            <EyeOff className="h-4 w-4 text-black/55 dark:text-white/60" />
           )}
         </button>
       </div>
 
-      <h2 className="mt-3 text-4xl font-bold tracking-tight">
+      <h2 className="mt-3 text-4xl font-bold tracking-tight text-black dark:text-white">
         {isLoading ? (
-          <span className="inline-block h-10 w-48 animate-pulse rounded bg-white/20" />
+          <span className="inline-block h-10 w-48 animate-pulse rounded bg-black/10 dark:bg-white/15" />
         ) : showBalance ? (
           formatCurrency(netBalance)
         ) : (
@@ -37,8 +42,9 @@ export function BalanceCard() {
         )}
       </h2>
 
-      <p className="mt-2 text-xs opacity-60">
-        Activos menos deudas
+      <p className="mt-2 text-xs text-black/55 dark:text-white/55">Activos menos deudas</p>
+      <p className={totalCreditDebt > 0 ? "mt-1 text-xs text-red-600 dark:text-red-300" : "mt-1 text-xs text-black/60 dark:text-white/60"}>
+        Deuda total de tarjetas: {showBalance ? formatCurrency(totalCreditDebt, "DOP") : "••••••••"}
       </p>
     </div>
   )

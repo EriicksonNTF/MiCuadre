@@ -18,6 +18,7 @@ export default function PayPage() {
   const [sourceAccount, setSourceAccount] = useState("")
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("statement_balance")
   const [customAmount, setCustomAmount] = useState("")
+  const [paymentComment, setPaymentComment] = useState("")
   const [isPaying, setIsPaying] = useState(false)
   const [applyCommission, setApplyCommission] = useState(true)
 
@@ -44,22 +45,11 @@ export default function PayPage() {
   const availableCredit = Number.isFinite(availableCreditStored) && availableCreditStored > 0
     ? availableCreditStored
     : availableCreditComputed
-  const financedBalance = currencyTab === "DOP" ? Number(card?.financed_balance_dop || 0) : Number(card?.financed_balance_usd || 0)
-
-  const selectedAmount = paymentMode === "balance_to_date"
-    ? balanceToDate
-    : paymentMode === "statement_balance"
-    ? pendingStatement
-    : paymentMode === "minimum_payment"
-    ? minimumPayment
-: parseFloat(customAmount || "0")
+  const selectedAmount = parseFloat(customAmount || "0")
 
   const COMMISSION_RATE = 0.0015
   const commissionAmount = applyCommission ? Math.round(selectedAmount * COMMISSION_RATE * 100) / 100 : 0
   const totalWithCommission = selectedAmount + commissionAmount
-
-  const projectedDebt = Math.max(0, balanceToDate - selectedAmount)
-  const availableAfterPayment = Math.min(creditLimit, Math.max(0, creditLimit - projectedDebt))
 
   const valid = applyCommission
     ? Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && totalWithCommission <= Number(source?.balance || 0))
@@ -82,9 +72,11 @@ export default function PayPage() {
         amount: selectedAmount,
         currency: currencyTab,
         payment_kind: paymentMode,
+        notes: paymentComment.trim() || undefined,
         apply_commission: applyCommission,
       })
       setCustomAmount("")
+      setPaymentComment("")
     } finally {
       setIsPaying(false)
     }
@@ -118,35 +110,36 @@ export default function PayPage() {
         <>
           <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1">
             {(["DOP", "USD"] as const).filter((tab) => tab === "DOP" || hasUsdOnCard).map((tab) => (
-              <button key={tab} onClick={() => { setCurrencyTab(tab); setSourceAccount("") }} className={`rounded-xl py-2 text-sm font-medium ${currencyTab === tab ? "bg-card" : "text-muted-foreground"}`}>{tab}</button>
+              <button key={tab} onClick={() => { setCurrencyTab(tab); setSourceAccount(""); setCustomAmount(""); setPaymentMode("custom") }} className={`rounded-xl py-2 text-sm font-medium ${currencyTab === tab ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{tab}</button>
             ))}
           </div>
 
-            <div className="mt-4 rounded-2xl bg-card p-4 text-sm space-y-2">
-              <div className="flex justify-between"><span className="text-muted-foreground">Balance actual</span><span>{formatCurrency(balanceToDate, currencyTab)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Balance al corte</span><span>{formatCurrency(statementBalance, currencyTab)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Pendiente del corte</span><span>{formatCurrency(pendingStatement, currencyTab)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Pago mínimo</span><span>{formatCurrency(minimumPayment, currencyTab)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Balance financiado</span><span>{formatCurrency(financedBalance, currencyTab)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Disponible</span><span>{formatCurrency(availableCredit, currencyTab)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Pagando ahora</span><span>{formatCurrency(Math.max(0, selectedAmount), currencyTab)}</span></div>
-              <div className="flex justify-between font-medium"><span className="text-muted-foreground">Disponible despues del pago</span><span>{formatCurrency(availableAfterPayment, currencyTab)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Pagar antes de</span><span>{card.statement_due_date ? formatDate(card.statement_due_date) : "-"}</span></div>
+          <div className="mt-4 rounded-2xl bg-card p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resumen de pago</p>
+            <div className="mt-3 space-y-2.5 text-sm">
+              <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Balance actual</span><span className="text-right text-base font-semibold text-foreground">{formatCurrency(balanceToDate, currencyTab)}</span></div>
+              <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Balance al corte</span><span className="text-right text-base font-semibold text-foreground">{formatCurrency(pendingStatement, currencyTab)}</span></div>
+              <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Pago mínimo</span><span className="text-right text-base font-semibold text-foreground">{formatCurrency(minimumPayment, currencyTab)}</span></div>
+              <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Balance disponible</span><span className="text-right text-base font-semibold text-foreground">{formatCurrency(availableCredit, currencyTab)}</span></div>
+              <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Pagar antes del</span><span className="text-right font-medium text-foreground">{card.statement_due_date ? formatDate(card.statement_due_date) : "-"}</span></div>
             </div>
+          </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
-            {["balance_to_date", "statement_balance", "minimum_payment", "custom"].map((mode) => (
-              <button key={mode} onClick={() => setPaymentMode(mode as PaymentMode)} className={`rounded-xl border p-2 text-xs ${paymentMode === mode ? "border-primary bg-primary/10" : "border-border bg-card"}`}>
-                {mode === "balance_to_date" ? "Pagar balance actual" : mode === "statement_balance" ? "Pagar corte" : mode === "minimum_payment" ? "Pago mínimo" : "Otro monto"}
-              </button>
-            ))}
+            <button onClick={() => { setPaymentMode("balance_to_date"); setCustomAmount(String(balanceToDate)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "balance_to_date" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pagar balance actual</button>
+            <button onClick={() => { setPaymentMode("statement_balance"); setCustomAmount(String(pendingStatement)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "statement_balance" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pagar corte</button>
+            <button onClick={() => { setPaymentMode("minimum_payment"); setCustomAmount(String(minimumPayment)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "minimum_payment" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pago mínimo</button>
+            <button onClick={() => { setPaymentMode("custom"); setCustomAmount("") }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "custom" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Otro monto</button>
           </div>
 
-          {paymentMode === "custom" && (
-            <div className="mt-3 rounded-xl bg-card p-3">
-              <MoneyInput value={customAmount} onValueChange={setCustomAmount} placeholder="0" className="w-full bg-transparent text-2xl font-bold outline-none" />
-            </div>
-          )}
+          <div className="mt-3 rounded-xl bg-card p-3">
+            <MoneyInput value={customAmount} onValueChange={(value) => { setCustomAmount(value); if (paymentMode !== "custom") setPaymentMode("custom") }} placeholder="0" className="w-full bg-transparent text-2xl font-bold outline-none" />
+          </div>
+
+          <div className="mt-3 rounded-xl bg-card p-3">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Comentario (opcional)</p>
+            <input value={paymentComment} onChange={(e) => setPaymentComment(e.target.value)} placeholder="Pago de mayo" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none" />
+          </div>
 
           <p className="mt-4 text-sm font-medium text-muted-foreground">Cuenta origen ({currencyTab})</p>
           <div className="mt-2">
@@ -186,9 +179,11 @@ export default function PayPage() {
             </div>
           )}
 
-          <Button className="mt-5 h-12 w-full" onClick={handlePay} disabled={!valid || isPaying}>
+          <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+12px)] mt-5 bg-background/90 pb-1 pt-2 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+          <Button className="h-12 w-full" onClick={handlePay} disabled={!valid || isPaying}>
             {isPaying ? "Procesando..." : `Pagar ${formatCurrency(selectedAmount, currencyTab)}`}
           </Button>
+          </div>
         </>
       )}
     </div>
