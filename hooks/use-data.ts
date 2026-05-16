@@ -891,13 +891,39 @@ export async function createAccount(account: NewAccountInput) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  const { data, error } = await supabase
-    .from("accounts")
-    .insert({ ...account, user_id: user.id })
-    .select()
-    .single()
+  const extractMissingAccountColumn = (message: string) => {
+    const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"accounts"\s+does\s+not\s+exist/i)
+    return match?.[1] || null
+  }
 
-  if (error) throw error
+  let payload: Record<string, unknown> = { ...account, user_id: user.id }
+  let data: Account | null = null
+  let finalError: any = null
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await supabase
+      .from("accounts")
+      .insert(payload)
+      .select()
+      .single()
+
+    if (!response.error) {
+      data = response.data as Account
+      finalError = null
+      break
+    }
+
+    const missingColumn = extractMissingAccountColumn(response.error.message || "")
+    if (!missingColumn || !(missingColumn in payload)) {
+      finalError = response.error
+      break
+    }
+
+    delete payload[missingColumn]
+    finalError = response.error
+  }
+
+  if (finalError || !data) throw finalError || new Error("No se pudo crear la cuenta")
   await mutate("accounts", undefined, { revalidate: true })
 
   await createNotification({
@@ -2184,40 +2210,42 @@ export async function deleteCategory(id: string, force = false) {
 }
 
 export async function updateAccount(id: string, updates: Partial<Account>) {
-  const { data, error } = await supabase
-    .from("accounts")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single()
-
-  if (!error) {
-    mutate("accounts")
-    return data
+  const extractMissingAccountColumn = (message: string) => {
+    const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"accounts"\s+does\s+not\s+exist/i)
+    return match?.[1] || null
   }
 
-  if (error.code === "PGRST204") {
-    const fallback = { ...updates }
-    delete fallback.icon_url
-    delete fallback.icon_type
-    delete fallback.icon_value
-    delete fallback.primary_color
-    delete fallback.secondary_color
-    delete fallback.background_style
+  let payload: Record<string, unknown> = { ...updates }
+  let data: Account | null = null
+  let finalError: any = null
 
-    const { data: fallbackData, error: fallbackError } = await supabase
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await supabase
       .from("accounts")
-      .update(fallback)
+      .update(payload)
       .eq("id", id)
       .select()
       .single()
 
-    if (fallbackError) throw fallbackError
-    mutate("accounts")
-    return fallbackData
+    if (!response.error) {
+      data = response.data as Account
+      finalError = null
+      break
+    }
+
+    const missingColumn = extractMissingAccountColumn(response.error.message || "")
+    if (!missingColumn || !(missingColumn in payload)) {
+      finalError = response.error
+      break
+    }
+
+    delete payload[missingColumn]
+    finalError = response.error
   }
 
-  throw error
+  if (finalError || !data) throw finalError || new Error("No se pudo actualizar la cuenta")
+  mutate("accounts")
+  return data
 }
 
 export async function reorderAccounts(accountIdsInOrder: string[]) {

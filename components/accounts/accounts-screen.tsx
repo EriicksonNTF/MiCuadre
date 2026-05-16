@@ -12,12 +12,12 @@ import { AccountCarouselSelector } from "@/components/ui/account-carousel-select
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { createClient } from "@/lib/supabase/client"
 import { createAccount, createTransfer, deleteAccount, reorderAccounts, useAccounts } from "@/hooks/use-data"
 import { formatCurrency } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
 import type { Account } from "@/lib/types/database"
+import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
 
 const ICON_PRESETS = [
   { value: "banknote", label: "Efectivo", icon: Banknote },
@@ -29,15 +29,15 @@ const ICON_PRESETS = [
 ]
 
 const COLOR_PRESETS = [
-  { name: "Azul banco", primary: "#0b4a8a", secondary: "#38bdf8" },
-  { name: "Verde efectivo", primary: "#0f766e", secondary: "#14b8a6" },
-  { name: "Crédito premium", primary: "#07111f", secondary: "#0ea5e9" },
-  { name: "Violeta moderno", primary: "#4338ca", secondary: "#6366f1" },
-  { name: "Naranja cálido", primary: "#b45309", secondary: "#fb923c" },
-  { name: "Personalizado", primary: "#334155", secondary: "#64748b" },
+  { key: "banreservas", name: "Banreservas", primary: "#0b4a8a", secondary: "#38bdf8" },
+  { key: "premium", name: "Premium", primary: "#07111f", secondary: "#1f2937" },
+  { key: "emerald", name: "Emerald", primary: "#0f766e", secondary: "#14b8a6" },
+  { key: "sky", name: "Sky", primary: "#0369a1", secondary: "#38bdf8" },
+  { key: "purple", name: "Purple", primary: "#4338ca", secondary: "#8b5cf6" },
+  { key: "orange", name: "Orange", primary: "#b45309", secondary: "#fb923c" },
+  { key: "teal", name: "Teal", primary: "#0f766e", secondary: "#2dd4bf" },
+  { key: "neutral", name: "Neutral", primary: "#334155", secondary: "#64748b" },
 ]
-
-const EMOJI_PRESETS = ["💳", "🏦", "💵", "🪙", "🧾", "💼", "📈", "🛍️"]
 
 export function AccountsScreen() {
   const router = useRouter()
@@ -67,13 +67,14 @@ export function AccountsScreen() {
   const [dueDate, setDueDate] = useState("")
   const [isCreating, setIsCreating] = useState(false)
 
-  const [brandingIconType, setBrandingIconType] = useState<"emoji" | "icon" | "image">("icon")
+  const [brandingIconType, setBrandingIconType] = useState<"icon" | "image">("icon")
   const [brandingIconValue, setBrandingIconValue] = useState("building-2")
   const [brandingIconUrl, setBrandingIconUrl] = useState<string | null>(null)
+  const [accountNumber, setAccountNumber] = useState("")
   const [brandingPrimaryColor, setBrandingPrimaryColor] = useState("#0b4a8a")
   const [brandingSecondaryColor, setBrandingSecondaryColor] = useState("#38bdf8")
   const [brandingBackgroundStyle, setBrandingBackgroundStyle] = useState<"gradient" | "solid" | "glass">("gradient")
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [brandingBankKey, setBrandingBankKey] = useState("none")
 
   const [fromAccount, setFromAccount] = useState("")
   const [toAccount, setToAccount] = useState("")
@@ -93,9 +94,11 @@ export function AccountsScreen() {
     setBrandingIconType("icon")
     setBrandingIconValue("building-2")
     setBrandingIconUrl(null)
+    setAccountNumber("")
     setBrandingPrimaryColor("#0b4a8a")
     setBrandingSecondaryColor("#38bdf8")
     setBrandingBackgroundStyle("gradient")
+    setBrandingBankKey("none")
   }
 
   const resetTransferForm = () => {
@@ -177,6 +180,7 @@ export function AccountsScreen() {
     icon_url: brandingIconUrl,
     icon_type: brandingIconType,
     icon_value: brandingIconValue,
+    account_number: accountNumber || null,
     primary_color: brandingPrimaryColor,
     secondary_color: brandingSecondaryColor,
     background_style: brandingBackgroundStyle,
@@ -185,7 +189,7 @@ export function AccountsScreen() {
     is_favorite: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }), [accountName, accountType, accountCurrency, initialBalance, creditLimitDop, creditLimitUsd, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle])
+  }), [accountName, accountType, accountCurrency, initialBalance, creditLimitDop, creditLimitUsd, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle, accountNumber])
 
   const triggerHaptic = () => {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -258,34 +262,18 @@ if (!draggedId) return
     }
   }
 
-  const handleLogoUpload = async (file?: File) => {
-    if (!file) return
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
-    if (!validTypes.includes(file.type) || file.size > 2 * 1024 * 1024) {
-      notify({ title: "Archivo no válido", message: "Usa PNG/JPG/WEBP y máximo 2MB." })
+  const handleBankLogoChange = (key: string) => {
+    const selected = getBankLogoByKey(key)
+    setBrandingBankKey(key)
+    if (!selected || key === "none") {
+      setBrandingIconUrl(null)
+      setBrandingIconType("icon")
+      setBrandingIconValue("building-2")
       return
     }
-
-    setIsUploadingLogo(true)
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const ext = file.name.split(".").pop() || "png"
-      const path = `${user.id}/accounts/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from("account-logos").upload(path, file, { upsert: true, contentType: file.type })
-      if (error) throw error
-      const { data } = supabase.storage.from("account-logos").getPublicUrl(path)
-      setBrandingIconUrl(data.publicUrl)
-      setBrandingIconType("image")
-    } catch (error) {
-      const message = error instanceof Error && error.message.toLowerCase().includes("bucket not found")
-        ? "Falta configurar el bucket 'account-logos' en Supabase. Ejecuta scripts/009_storage_buckets_setup.sql."
-        : "No se pudo subir el logo."
-      notify({ title: "Error", message })
-    } finally {
-      setIsUploadingLogo(false)
-    }
+    setBrandingIconType("image")
+    setBrandingIconValue(key)
+    setBrandingIconUrl(selected.logoUrl)
   }
 
   const handleCreateAccount = async () => {
@@ -321,9 +309,13 @@ if (!draggedId) return
         icon_url: brandingIconUrl,
         icon_type: brandingIconType,
         icon_value: brandingIconValue,
+        account_number: accountNumber || null,
         primary_color: brandingPrimaryColor,
         secondary_color: brandingSecondaryColor,
         background_style: brandingBackgroundStyle,
+        bank_name: brandingBankKey !== "none" ? getBankLogoByKey(brandingBankKey)?.name || null : null,
+        bank_logo_key: brandingBankKey !== "none" ? brandingBankKey : null,
+        bank_logo_url: brandingBankKey !== "none" ? getBankLogoByKey(brandingBankKey)?.logoUrl || null : null,
       })
       notify({ title: "Cuenta creada", message: "Tu cuenta fue creada correctamente." })
       EventBus.emit({ type: "account_created", payload: { name: accountName } })
@@ -587,10 +579,20 @@ if (!draggedId) return
 
             <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
               <p className="text-sm font-semibold">Personalización visual</p>
-              <div className="grid grid-cols-3 gap-2">{(["icon", "emoji", "image"] as const).map((value) => <button key={value} onClick={() => setBrandingIconType(value)} className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", brandingIconType === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{value === "icon" ? "Ícono" : value === "emoji" ? "Emoji" : "Logo"}</button>)}</div>
-              {brandingIconType === "image" ? <div><input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => void handleLogoUpload(e.target.files?.[0])} className="text-xs" />{isUploadingLogo && <p className="mt-1 text-xs text-muted-foreground">Subiendo logo...</p>}</div> : brandingIconType === "emoji" ? <div className="grid grid-cols-8 gap-2">{EMOJI_PRESETS.map((emoji) => <button key={emoji} onClick={() => setBrandingIconValue(emoji)} className={cn("rounded-lg p-2 text-lg", brandingIconValue === emoji ? "bg-primary/15 ring-1 ring-primary" : "bg-muted")}>{emoji}</button>)}</div> : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[10px]">{preset.label}</span></button>)}</div>}
-              <div className="grid grid-cols-2 gap-2">{COLOR_PRESETS.map((preset) => <button key={preset.name} onClick={() => { setBrandingPrimaryColor(preset.primary); setBrandingSecondaryColor(preset.secondary) }} className="rounded-xl border border-border p-2 text-left"><div className="h-6 rounded-md" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} /><p className="mt-1 text-[10px] text-muted-foreground">{preset.name}</p></button>)}</div>
-              <div className="grid grid-cols-2 gap-2"><input type="color" value={brandingPrimaryColor} onChange={(e) => setBrandingPrimaryColor(e.target.value)} className="h-10 w-full rounded-xl" /><input type="color" value={brandingSecondaryColor} onChange={(e) => setBrandingSecondaryColor(e.target.value)} className="h-10 w-full rounded-xl" /></div>
+              <div className="grid grid-cols-2 gap-2">{(["icon", "image"] as const).map((value) => <button key={value} onClick={() => setBrandingIconType(value)} className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", brandingIconType === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{value === "icon" ? "Ícono" : "Logo/Banco"}</button>)}</div>
+              {brandingIconType === "image" ? (
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Banco / Logo</p>
+                  <select value={brandingBankKey} onChange={(e) => handleBankLogoChange(e.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
+                    {BANK_LOGO_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.name}</option>)}
+                  </select>
+                </div>
+              ) : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[10px]">{preset.label}</span></button>)}</div>}
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground">Número de tarjeta/cuenta (opcional)</p>
+                <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="1234567890123456" className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm" />
+              </div>
+              <div className="flex flex-wrap gap-2">{COLOR_PRESETS.map((preset) => <button key={preset.key} onClick={() => { setBrandingPrimaryColor(preset.primary); setBrandingSecondaryColor(preset.secondary) }} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", brandingPrimaryColor === preset.primary && brandingSecondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}><span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} /></button>)}</div>
               <div className="grid grid-cols-3 gap-2">{(["gradient", "solid", "glass"] as const).map((style) => <button key={style} onClick={() => setBrandingBackgroundStyle(style)} className={cn("rounded-xl px-3 py-2 text-xs", brandingBackgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>{style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Soft"}</button>)}</div>
               <BrandedAccountCard account={previewAccount as any} compact />
             </div>

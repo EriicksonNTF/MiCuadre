@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { mutate } from "swr"
 import {
   ChevronLeft,
@@ -37,9 +37,9 @@ import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard, updateTransaction, deleteTransaction } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getLocalDateString, getReadableTextColor } from "@/lib/data"
-import { createClient } from "@/lib/supabase/client"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import type { AccountType, Currency } from "@/lib/types/database"
+import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
 
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
@@ -83,15 +83,15 @@ const DETAIL_ICON_PRESETS = [
   { value: "wallet", label: "Billetera", icon: Banknote },
 ]
 
-const DETAIL_EMOJI_PRESETS = ["💳", "🏦", "💵", "🪙", "🧾", "💼", "🛟", "📈"]
-
 const DETAIL_COLOR_PRESETS = [
-  { name: "Azul Banreservas", primary: "#0b4a8a", secondary: "#38bdf8" },
-  { name: "Premium oscuro", primary: "#07111f", secondary: "#0ea5e9" },
-  { name: "Efectivo esmeralda", primary: "#0f766e", secondary: "#14b8a6" },
-  { name: "Ahorro violeta", primary: "#4338ca", secondary: "#8b5cf6" },
-  { name: "Acento naranja", primary: "#b45309", secondary: "#fb923c" },
-  { name: "Cielo claro", primary: "#0369a1", secondary: "#38bdf8" },
+  { key: "banreservas", name: "Banreservas", primary: "#0b4a8a", secondary: "#38bdf8" },
+  { key: "premium", name: "Premium", primary: "#07111f", secondary: "#1f2937" },
+  { key: "emerald", name: "Emerald", primary: "#0f766e", secondary: "#14b8a6" },
+  { key: "sky", name: "Sky", primary: "#0369a1", secondary: "#38bdf8" },
+  { key: "purple", name: "Purple", primary: "#4338ca", secondary: "#8b5cf6" },
+  { key: "orange", name: "Orange", primary: "#b45309", secondary: "#fb923c" },
+  { key: "teal", name: "Teal", primary: "#0f766e", secondary: "#2dd4bf" },
+  { key: "neutral", name: "Neutral", primary: "#334155", secondary: "#64748b" },
 ]
 
 type DateRange = "week" | "month" | "all"
@@ -102,6 +102,7 @@ interface AccountDetailProps {
 
 export function AccountDetail({ accountId }: AccountDetailProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
   const [dateFilter, setDateFilter] = usePersistentState<DateRange>(`account:${accountId}:dateFilter`, "all")
   const [showPayment, setShowPayment] = useState(false)
@@ -133,8 +134,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     closing_date: string
     due_date: string
     icon_url: string
-    icon_type: "emoji" | "icon" | "image"
+    icon_type: "icon" | "image"
     icon_value: string
+    account_number: string
+    bank_name: string
+    bank_logo_key: string
+    bank_logo_url: string
     primary_color: string
     secondary_color: string
     background_style: string
@@ -151,6 +156,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     icon_url: "",
     icon_type: "icon",
     icon_value: "building-2",
+    account_number: "",
+    bank_name: "",
+    bank_logo_key: "none",
+    bank_logo_url: "",
     primary_color: "#0b4a8a",
     secondary_color: "#38bdf8",
     background_style: "gradient",
@@ -158,7 +167,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState("")
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
 
   const { data: rawAccounts = [] } = useAccounts()
   const { data: rawTransactions = [] } = useTransactions(100)
@@ -384,6 +392,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         icon_url: editForm.icon_url || null,
         icon_type: editForm.icon_type,
         icon_value: editForm.icon_value,
+        account_number: editForm.account_number || null,
+        bank_name: editForm.bank_logo_key !== "none" ? editForm.bank_name || null : null,
+        bank_logo_key: editForm.bank_logo_key !== "none" ? editForm.bank_logo_key : null,
+        bank_logo_url: editForm.bank_logo_key !== "none" ? editForm.bank_logo_url || null : null,
         primary_color: editForm.primary_color,
         secondary_color: editForm.secondary_color,
         background_style: editForm.background_style,
@@ -392,9 +404,16 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       notify({ title: "Cuenta actualizada", message: "Los cambios fueron guardados exitosamente." })
       EventBus.emit({ type: "account_updated", payload: { name: editForm.name } })
       setShowEditModal(false)
+      if (searchParams.get("edit") === "1") {
+        router.replace(pathname)
+      }
     } catch (error) {
       console.error(error)
-      const rawMessage = error instanceof Error ? error.message : ""
+      const rawMessage = error instanceof Error
+        ? error.message
+        : typeof error === "object" && error !== null && "message" in error
+          ? String((error as { message?: unknown }).message || "")
+          : ""
       const message = rawMessage.includes("background_style")
         ? "Faltan columnas de personalización en la base de datos. Ejecuta scripts/008_account_branding.sql."
         : rawMessage || "No se pudo actualizar la cuenta"
@@ -420,6 +439,13 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     }
   }
 
+  const closeEditModal = () => {
+    setShowEditModal(false)
+    if (searchParams.get("edit") === "1") {
+      router.replace(pathname)
+    }
+  }
+
   useEffect(() => {
     if (searchParams.get("edit") !== "1" || !account) return
 
@@ -434,8 +460,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       closing_date: String(account.cutoffDate || ""),
       due_date: String(account.dueDate || ""),
       icon_url: String(rawAccounts.find((a) => a.id === accountId)?.icon_url || ""),
-      icon_type: (rawAccounts.find((a) => a.id === accountId)?.icon_type || "icon") as "emoji" | "icon" | "image",
+      icon_type: ((rawAccounts.find((a) => a.id === accountId)?.icon_type === "image" ? "image" : "icon") as "icon" | "image"),
       icon_value: String(rawAccounts.find((a) => a.id === accountId)?.icon_value || "building-2"),
+      account_number: String((rawAccounts.find((a) => a.id === accountId) as any)?.account_number || ""),
+      bank_name: String((rawAccounts.find((a) => a.id === accountId) as any)?.bank_name || ""),
+      bank_logo_key: String((rawAccounts.find((a) => a.id === accountId) as any)?.bank_logo_key || "none"),
+      bank_logo_url: String((rawAccounts.find((a) => a.id === accountId) as any)?.bank_logo_url || ""),
       primary_color: String(rawAccounts.find((a) => a.id === accountId)?.primary_color || "#0b4a8a"),
       secondary_color: String(rawAccounts.find((a) => a.id === accountId)?.secondary_color || "#38bdf8"),
       background_style: String(rawAccounts.find((a) => a.id === accountId)?.background_style || "gradient"),
@@ -458,35 +488,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       setPaymentAmount("")
     }
   }, [hasUsdOnCard, paymentCurrency])
-
-  const uploadAccountLogo = async (file?: File) => {
-    if (!file) return
-    const validTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"]
-    if (!validTypes.includes(file.type) || file.size > 2 * 1024 * 1024) {
-      notify({ title: "Archivo no válido", message: "Usa PNG/JPG/WEBP y máximo 2MB." })
-      return
-    }
-
-    setIsUploadingLogo(true)
-    try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const ext = file.name.split(".").pop() || "png"
-      const path = `${user.id}/accounts/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from("account-logos").upload(path, file, { upsert: true, contentType: file.type })
-      if (error) throw error
-      const { data } = supabase.storage.from("account-logos").getPublicUrl(path)
-      setEditForm((prev) => ({ ...prev, icon_url: data.publicUrl, icon_type: "image" }))
-    } catch (error) {
-      const message = error instanceof Error && error.message.toLowerCase().includes("bucket not found")
-        ? "Falta configurar el bucket 'account-logos' en Supabase. Ejecuta scripts/009_storage_buckets_setup.sql."
-        : "No se pudo subir el logo."
-      notify({ title: "Error", message })
-    } finally {
-      setIsUploadingLogo(false)
-    }
-  }
 
   if (!account) {
     return (
@@ -534,8 +535,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   closing_date: String(account.cutoffDate || ""),
                   due_date: String(account.dueDate || ""),
                   icon_url: String(rawAccounts.find((a) => a.id === accountId)?.icon_url || ""),
-                  icon_type: (rawAccounts.find((a) => a.id === accountId)?.icon_type || "icon") as "emoji" | "icon" | "image",
+                  icon_type: ((rawAccounts.find((a) => a.id === accountId)?.icon_type === "image" ? "image" : "icon") as "icon" | "image"),
                   icon_value: String(rawAccounts.find((a) => a.id === accountId)?.icon_value || "building-2"),
+                  account_number: String((rawAccounts.find((a) => a.id === accountId) as any)?.account_number || ""),
+                  bank_name: String((rawAccounts.find((a) => a.id === accountId) as any)?.bank_name || ""),
+                  bank_logo_key: String((rawAccounts.find((a) => a.id === accountId) as any)?.bank_logo_key || "none"),
+                  bank_logo_url: String((rawAccounts.find((a) => a.id === accountId) as any)?.bank_logo_url || ""),
                   primary_color: String(rawAccounts.find((a) => a.id === accountId)?.primary_color || "#0b4a8a"),
                   secondary_color: String(rawAccounts.find((a) => a.id === accountId)?.secondary_color || "#38bdf8"),
                   background_style: String(rawAccounts.find((a) => a.id === accountId)?.background_style || "gradient"),
@@ -921,7 +926,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       {showEditModal && (
         <BaseModalForm
           title="Editar cuenta"
-          onClose={() => setShowEditModal(false)}
+          onClose={closeEditModal}
           footer={
             <Button
               onClick={handleEditSubmit}
@@ -1040,34 +1045,37 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
               <div className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4">
                 <p className="text-sm font-semibold text-foreground">Personalización visual</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {(["icon", "emoji", "image"] as const).map((value) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {(["icon", "image"] as const).map((value) => (
                     <button
                       key={value}
                       onClick={() => setEditForm({ ...editForm, icon_type: value })}
                       className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", editForm.icon_type === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
                     >
-                      {value === "icon" ? "Ícono" : value === "emoji" ? "Emoji" : "Logo"}
+                      {value === "icon" ? "Ícono" : "Logo/Banco"}
                     </button>
                   ))}
                 </div>
 
                 {editForm.icon_type === "image" ? (
                   <div>
-                    <input type="file" accept="image/png,image/jpeg,image/jpg,image/webp" onChange={(e) => void uploadAccountLogo(e.target.files?.[0])} className="text-xs" />
-                    {isUploadingLogo && <p className="mt-1 text-xs text-muted-foreground">Subiendo logo...</p>}
-                  </div>
-                ) : editForm.icon_type === "emoji" ? (
-                  <div className="grid grid-cols-8 gap-2">
-                    {DETAIL_EMOJI_PRESETS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => setEditForm({ ...editForm, icon_value: emoji })}
-                        className={cn("rounded-lg p-2 text-lg", editForm.icon_value === emoji ? "bg-primary/15 ring-1 ring-primary" : "bg-muted")}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
+                    <p className="mb-1 text-xs text-muted-foreground">Banco / Logo</p>
+                    <select
+                      value={editForm.bank_logo_key || "none"}
+                      onChange={(e) => {
+                        const selected = getBankLogoByKey(e.target.value)
+                        if (!selected || selected.key === "none") {
+                          setEditForm({ ...editForm, bank_logo_key: "none", bank_name: "", bank_logo_url: "", icon_type: "icon", icon_value: "building-2", icon_url: "" })
+                          return
+                        }
+                        setEditForm({ ...editForm, bank_logo_key: selected.key, bank_name: selected.name, bank_logo_url: selected.logoUrl, icon_type: "image", icon_value: selected.key, icon_url: selected.logoUrl })
+                      }}
+                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                    >
+                      {BANK_LOGO_OPTIONS.map((option) => (
+                        <option key={option.key} value={option.key}>{option.name}</option>
+                      ))}
+                    </select>
                   </div>
                 ) : (
                   <div className="grid grid-cols-3 gap-2">
@@ -1084,31 +1092,27 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   </div>
                 )}
 
-                {editForm.icon_type !== "image" && (
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Número de tarjeta/cuenta (opcional)</p>
                   <input
-                    value={editForm.icon_value}
-                    onChange={(e) => setEditForm({ ...editForm, icon_value: e.target.value })}
-                    className="w-full rounded-xl bg-muted px-3 py-2 text-sm"
-                    placeholder={editForm.icon_type === "emoji" ? "💳" : "credit-card"}
+                    value={editForm.account_number}
+                    onChange={(e) => setEditForm({ ...editForm, account_number: e.target.value.replace(/[^0-9]/g, "").slice(0, 24) })}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                    placeholder="1234567890123456"
                   />
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  {DETAIL_COLOR_PRESETS.map((preset) => (
-                    <button
-                      key={preset.name}
-                      onClick={() => setEditForm({ ...editForm, primary_color: preset.primary, secondary_color: preset.secondary })}
-                      className="rounded-xl border border-border bg-background p-2 text-left"
-                    >
-                      <div className="h-5 rounded-md" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
-                      <p className="mt-1 text-[10px] text-muted-foreground">{preset.name}</p>
-                    </button>
-                  ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="color" value={editForm.primary_color} onChange={(e) => setEditForm({ ...editForm, primary_color: e.target.value })} className="h-10 w-full rounded-lg" />
-                  <input type="color" value={editForm.secondary_color} onChange={(e) => setEditForm({ ...editForm, secondary_color: e.target.value })} className="h-10 w-full rounded-lg" />
+                <div className="flex flex-wrap gap-2">
+                  {DETAIL_COLOR_PRESETS.map((preset) => (
+                    <button
+                      key={preset.key}
+                      onClick={() => setEditForm({ ...editForm, primary_color: preset.primary, secondary_color: preset.secondary })}
+                      className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", editForm.primary_color === preset.primary && editForm.secondary_color === preset.secondary ? "ring-primary" : "ring-transparent")}
+                      title={preset.name}
+                    >
+                      <span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
+                    </button>
+                  ))}
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
@@ -1137,6 +1141,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     icon_url: editForm.icon_url || null,
                     icon_type: editForm.icon_type,
                     icon_value: editForm.icon_value,
+                    account_number: editForm.account_number || null,
                     primary_color: editForm.primary_color,
                     secondary_color: editForm.secondary_color,
                     background_style: editForm.background_style,

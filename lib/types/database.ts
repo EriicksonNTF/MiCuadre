@@ -85,6 +85,10 @@ export interface Account {
   icon_url: string | null
   icon_type: "emoji" | "icon" | "image" | null
   icon_value: string | null
+  account_number?: string | null
+  bank_name?: string | null
+  bank_logo_key?: string | null
+  bank_logo_url?: string | null
   primary_color: string | null
   secondary_color: string | null
   background_style: string | null
