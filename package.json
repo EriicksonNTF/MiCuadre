@@ -4,7 +4,7 @@
   "private": true,
   "corepack": { "enable": true },
   "scripts": {
-    "dev": "pnpm next dev --turbopack -p 3000",
+    "dev": "pnpm next dev --webpack -p 3000",
     "dev:turbo": "pnpm next dev --turbopack -p 3000",
     "dev:preview": "pnpm build && pnpm start",
     "build": "pnpm next build",

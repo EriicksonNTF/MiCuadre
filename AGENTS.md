@@ -36,3 +36,35 @@
 - Path alias `@/*` is enabled in `tsconfig.json`.
 - UI uses shadcn-style structure (`components/ui`) with Tailwind v4 (`@tailwindcss/postcss`).
 - Bottom nav visibility is centralized in `components/navigation/bottom-nav.tsx` and already hides on `/auth*` and `/onboarding*`.
+
+## Troubleshooting
+
+### Next.js Dev Server Fails with "ENOENT: no such file or directory"
+If you get errors like:
+```
+Error: ENOENT: no such file or directory, open '.../.next/dev/server/middleware-manifest.json'
+```
+This indicates a corrupted `.next` cache or dependency issue.
+
+**Solution:**
+```bash
+# 1. Kill any running Next processes
+pkill -f "next" 2>/dev/null
+
+# 2. Clean .next directory completely
+rm -rf .next
+
+# 3. Reinstall dependencies to fix corrupted packages
+pnpm install --force
+
+# 4. Test with production build first
+pnpm build && pnpm start
+
+# 5. If production works, dev server should also work
+pnpm dev
+```
+
+**Alternative (if dev server keeps failing):** Use build + start as dev:
+```bash
+"dev": "pnpm build && pnpm start"
+```
