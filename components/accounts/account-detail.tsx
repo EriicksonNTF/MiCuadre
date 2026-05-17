@@ -21,12 +21,13 @@ import {
   GraduationCap,
   Plane,
   MoreHorizontal,
-  Calendar,
+  CalendarDays,
   AlertTriangle,
   Settings,
   Trash2,
   Pencil,
   Search,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -127,6 +128,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showSummaryPeriodMenu, setShowSummaryPeriodMenu] = useState(false)
   const [editForm, setEditForm] = useState<{ 
     name: string
     type: AccountType
@@ -580,33 +582,62 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
         {isCredit && account.creditLimit && (
           <div className="mt-6 space-y-4">
-              <div className="rounded-2xl bg-white/85 p-4 text-sm text-foreground">
-                <p className="font-semibold">Resumen de tarjeta</p>
-              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <div className="rounded-xl bg-background/70 p-3">
-                  <p className="text-xs text-muted-foreground">Limite DOP</p>
-                  <p className="font-semibold">{formatCurrency(Number(account.creditLimitDop || 0), "DOP")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Disponible: {formatCurrency(Number(account.available_credit_dop || Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0)), "DOP")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Balance actual: {formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Balance al corte: {formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Pago mínimo: {formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p>
+              <div className="rounded-2xl border border-white/15 bg-slate-950/55 p-4 text-sm text-white backdrop-blur-md">
+                <p className="font-semibold tracking-tight text-white">Resumen de tarjeta</p>
+                <div className="mt-3 space-y-3">
+                  <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                    <p className="text-[11px] text-white/70">Límite DOP</p>
+                    <p className="mt-1 text-lg font-bold text-white">{formatCurrency(Number(account.creditLimitDop || 0), "DOP")}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                      <div>
+                        <p className="text-white/60">Disponible</p>
+                        <p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_dop || Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0)), "DOP")}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/60">Balance actual</p>
+                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/60">Balance al corte</p>
+                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/60">Pago mínimo</p>
+                        <p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {hasUsdOnCard && <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                    <p className="text-[11px] text-white/70">Límite USD</p>
+                    <p className="mt-1 text-lg font-bold text-white">{formatCurrency(Number(account.creditLimitUsd || 0), "USD")}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                      <div>
+                        <p className="text-white/60">Disponible</p>
+                        <p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_usd || Number(account.creditLimitUsd || 0) - Number(account.currentDebtUsd || 0)), "USD")}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/60">Balance actual</p>
+                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/60">Balance al corte</p>
+                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p>
+                      </div>
+                      <div>
+                        <p className="text-white/60">Pago mínimo</p>
+                        <p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p>
+                      </div>
+                    </div>
+                  </div>}
                 </div>
-                {hasUsdOnCard && <div className="rounded-xl bg-background/70 p-3">
-                  <p className="text-xs text-muted-foreground">Limite USD</p>
-                  <p className="font-semibold">{formatCurrency(Number(account.creditLimitUsd || 0), "USD")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Disponible: {formatCurrency(Number(account.available_credit_usd || Number(account.creditLimitUsd || 0) - Number(account.currentDebtUsd || 0)), "USD")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Balance actual: {formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Balance al corte: {formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Pago mínimo: {formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p>
-                </div>}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">Pagar antes de: {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
+                <p className="mt-3 text-xs text-white/65">Pagar antes de: {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
             </div>
             
             {/* Pay button */}
             <Button
               onClick={() => setShowPayment(true)}
-              className="h-12 w-full rounded-2xl bg-white/85 text-foreground hover:bg-white"
+              className="h-12 w-full rounded-2xl border border-white/15 bg-slate-900/90 text-white shadow-[0_12px_30px_-18px_rgba(0,0,0,0.7)] transition active:scale-[0.99] disabled:bg-slate-900/45 disabled:text-white/65"
             >
               Pagar tarjeta
             </Button>
@@ -616,48 +647,106 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
       {/* Summary Section */}
       <div className="px-6 pt-6">
-        <h2 className="text-sm font-semibold text-foreground">Resumen del mes</h2>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-card p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
-              <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-foreground">Resumen del mes</h2>
+          <button
+            type="button"
+            onClick={() => setShowSummaryPeriodMenu((prev) => !prev)}
+            className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground"
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            <span>{dateFilter === "week" ? "7 días" : dateFilter === "month" ? "Este mes" : "Todo"}</span>
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {showSummaryPeriodMenu && (
+          <div className="mt-2 flex justify-end">
+            <div className="w-36 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+              {[
+                { value: "week", label: "7 días" },
+                { value: "month", label: "Este mes" },
+                { value: "all", label: "Todo" },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => {
+                    setDateFilter(option.value as DateRange)
+                    setShowSummaryPeriodMenu(false)
+                  }}
+                  className={cn(
+                    "w-full px-3 py-2 text-left text-xs",
+                    dateFilter === option.value ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  {option.label}
+                </button>
+              ))}
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Ingresos</p>
-            <p className="mt-1 font-semibold text-emerald-600 dark:text-emerald-400">
+          </div>
+        )}
+
+        <div className="mt-3 grid max-h-[116px] grid-cols-3 overflow-hidden rounded-2xl border border-border bg-card">
+          <div className="min-w-0 border-r border-border px-3 py-3.5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
+                <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <p className="truncate text-[11px] text-muted-foreground">Ingresos</p>
+            </div>
+            <p className="mt-2 truncate text-sm font-bold text-emerald-600 dark:text-emerald-400">
               +{formatCurrency(monthlyIncome)}
             </p>
           </div>
-          <div className="rounded-2xl bg-card p-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
-              <TrendingDown className="h-4 w-4 text-red-600" />
+
+          <div className="min-w-0 border-r border-border px-3 py-3.5">
+            <div className="flex items-center gap-2">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                <TrendingDown className="h-3.5 w-3.5 text-red-600" />
+              </div>
+              <p className="truncate text-[11px] text-muted-foreground">Gastos</p>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Gastos</p>
-            <p className="mt-1 font-semibold text-red-600">
+            <p className="mt-2 truncate text-sm font-bold text-red-600">
               -{formatCurrency(monthlyExpenses)}
             </p>
           </div>
-          <div className="rounded-2xl bg-card p-4">
-            <div
-              className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-full",
-                netFlow >= 0 ? "bg-emerald-100" : "bg-red-100"
-              )}
-            >
-              <Minus
+
+          <div className="min-w-0 px-3 py-3.5">
+            <div className="flex items-center gap-2">
+              <div
                 className={cn(
-                  "h-4 w-4",
-                  netFlow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600"
+                  "flex h-6 w-6 items-center justify-center rounded-full",
+                  netFlow > 0
+                    ? "bg-emerald-100 dark:bg-emerald-900/30"
+                    : netFlow < 0
+                    ? "bg-red-100 dark:bg-red-900/30"
+                    : "bg-muted"
                 )}
-              />
+              >
+                <Minus
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    netFlow > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : netFlow < 0
+                      ? "text-red-600"
+                      : "text-muted-foreground"
+                  )}
+                />
+              </div>
+              <p className="truncate text-[11px] text-muted-foreground">Neto</p>
             </div>
-            <p className="mt-3 text-xs text-muted-foreground">Neto</p>
             <p
               className={cn(
-                "mt-1 font-semibold",
-                netFlow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600"
+                "mt-2 truncate text-sm font-bold",
+                netFlow > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : netFlow < 0
+                  ? "text-red-600"
+                  : "text-foreground"
               )}
             >
-              {netFlow >= 0 ? "+" : ""}
+              {netFlow > 0 ? "+" : ""}
               {formatCurrency(netFlow)}
             </p>
           </div>
