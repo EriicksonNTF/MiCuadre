@@ -42,7 +42,7 @@ export function BalanceCard() {
         )}
       </h2>
 
-      <p className="mt-2 text-xs text-black/55 dark:text-white/55">Activos menos deudas</p>
+      <p className="mt-2 text-xs text-black/55 dark:text-white/55">Efectivo y débito</p>
       <p className={totalCreditDebt > 0 ? "mt-1 text-xs text-red-600 dark:text-red-300" : "mt-1 text-xs text-black/60 dark:text-white/60"}>
         Deuda total de tarjetas: {showBalance ? formatCurrency(totalCreditDebt, "DOP") : "••••••••"}
       </p>

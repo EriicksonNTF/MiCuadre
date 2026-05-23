@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ChevronLeft, Pause, Play, Trash2, XCircle } from "lucide-react"
 import { format } from "date-fns"
@@ -8,11 +8,16 @@ import { es } from "date-fns/locale"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { MoneyInput } from "@/components/ui/money-input"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
-import { SUBSCRIPTION_PROVIDERS, getSubscriptionProvider, getNextBillingDateFrom } from "@/lib/subscriptions"
-import { createSubscription, deleteSubscription, updateSubscription, useAccounts, useCategories, useSubscriptions } from "@/hooks/use-data"
+import { FINANCIAL_SUBSCRIPTION_PROVIDERS, getFinancialSubscriptionProvider, getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
+import { createFinancialSubscription, deleteFinancialSubscription, updateFinancialSubscription, useAccounts, useCategories, useFinancialSubscriptions } from "@/hooks/use-data"
+import { notify } from "@/lib/notifications"
+import { useEntitlementBlocked } from "@/hooks/use-entitlement-blocked"
+import { UpsellModal } from "@/components/entitlements/upsell-modal"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 
 export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpenCreate?: boolean }) {
-  const { data: subscriptions = [] } = useSubscriptions()
+  const { data: subscriptions = [] } = useFinancialSubscriptions()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const [showCreate, setShowCreate] = useState(initialOpenCreate)
@@ -21,6 +26,23 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
   const [currency, setCurrency] = useState<"DOP" | "USD">("DOP")
   const [accountId, setAccountId] = useState("")
   const [billingDay, setBillingDay] = useState(String(new Date().getDate()))
+  const { blocked, isUpsellOpen, handleEntitlementBlocked, closeUpsell } = useEntitlementBlocked()
+  const { canUseFinancialSubscriptions } = useEntitlements()
+
+  useEffect(() => {
+    if (initialOpenCreate && !canUseFinancialSubscriptions) {
+      handleEntitlementBlocked(createBlockedResponse("financial_subscriptions", { requiredPlan: "pro" }))
+      setShowCreate(false)
+    }
+  }, [canUseFinancialSubscriptions, handleEntitlementBlocked, initialOpenCreate])
+
+  const openCreateSubscription = () => {
+    if (!canUseFinancialSubscriptions) {
+      handleEntitlementBlocked(createBlockedResponse("financial_subscriptions", { requiredPlan: "pro" }))
+      return
+    }
+    setShowCreate(true)
+  }
 
   const active = subscriptions.filter((item) => item.status === "active")
   const pausedOrCancelled = subscriptions.filter((item) => item.status !== "active")
@@ -34,20 +56,28 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
   const save = async () => {
     const parsed = Number(amount)
     if (!accountId || !parsed || !billingDay) return
-    const provider = getSubscriptionProvider(providerKey)
-    const nextDate = getNextBillingDateFrom(new Date(), Number(billingDay))
-    await createSubscription({
-      name: provider.name,
-      provider_key: provider.key,
-      amount: parsed,
-      currency,
-      account_id: accountId,
-      category_id: subscriptionCategoryId,
-      billing_day: Number(billingDay),
-      next_payment_date: getLocalDateString(nextDate),
-    })
-    setShowCreate(false)
-    setAmount("")
+        const provider = getFinancialSubscriptionProvider(providerKey)
+    const nextDate = getNextFinancialBillingDateFrom(new Date(), Number(billingDay))
+    try {
+      await createFinancialSubscription({
+        name: provider.name,
+        provider_key: provider.key,
+        amount: parsed,
+        currency,
+        account_id: accountId,
+        category_id: subscriptionCategoryId,
+        billing_day: Number(billingDay),
+        next_payment_date: getLocalDateString(nextDate),
+      })
+      setShowCreate(false)
+      setAmount("")
+    } catch (error) {
+      if (handleEntitlementBlocked(error)) return
+      notify({
+        title: "No se pudo guardar",
+        message: "Intenta de nuevo en unos segundos.",
+      })
+    }
   }
 
   return (
@@ -58,7 +88,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
             <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><ChevronLeft className="h-5 w-5 text-foreground" /></Link>
             <h1 className="text-lg font-semibold text-foreground">Suscripciones</h1>
           </div>
-          <button onClick={() => setShowCreate(true)} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Nueva</button>
+          <button onClick={openCreateSubscription} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Nueva</button>
         </div>
       </div>
 
@@ -91,9 +121,9 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
                   <p className="text-xs text-muted-foreground">Proximo pago: {item.next_payment_date} · Cuenta: {item.account?.name || "-"}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => updateSubscription(item.id, { status: "paused" })} className="rounded-lg bg-muted p-2"><Pause className="h-4 w-4" /></button>
-                  <button onClick={() => updateSubscription(item.id, { status: "cancelled" })} className="rounded-lg bg-red-50 p-2 text-red-600 dark:bg-red-900/30"><XCircle className="h-4 w-4" /></button>
-                  <button onClick={() => deleteSubscription(item.id)} className="rounded-lg bg-muted p-2"><Trash2 className="h-4 w-4" /></button>
+                  <button onClick={() => updateFinancialSubscription(item.id, { status: "paused" })} className="rounded-lg bg-muted p-2"><Pause className="h-4 w-4" /></button>
+                  <button onClick={() => updateFinancialSubscription(item.id, { status: "cancelled" })} className="rounded-lg bg-red-50 p-2 text-red-600 dark:bg-red-900/30"><XCircle className="h-4 w-4" /></button>
+                  <button onClick={() => deleteFinancialSubscription(item.id)} className="rounded-lg bg-muted p-2"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>
@@ -107,7 +137,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
               {pausedOrCancelled.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-sm">
                   <span>{item.name}</span>
-                  <button onClick={() => updateSubscription(item.id, { status: "active" })} className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs"><Play className="h-3 w-3" />Reactivar</button>
+                  <button onClick={() => updateFinancialSubscription(item.id, { status: "active" })} className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs"><Play className="h-3 w-3" />Reactivar</button>
                 </div>
               ))}
             </div>
@@ -123,7 +153,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
         >
           <div className="space-y-3 pb-safe-areas">
             <select value={providerKey} onChange={(event) => setProviderKey(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-              {SUBSCRIPTION_PROVIDERS.map((provider) => <option key={provider.key} value={provider.key}>{provider.name}</option>)}
+              {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => <option key={provider.key} value={provider.key}>{provider.name}</option>)}
             </select>
             <MoneyInput value={amount} onValueChange={setAmount} placeholder="Monto mensual" className="h-12 w-full rounded-xl border border-border bg-background px-4" />
             <select value={currency} onChange={(event) => setCurrency(event.target.value as "DOP" | "USD")} className="h-12 w-full rounded-xl border border-border bg-background px-4">
@@ -138,6 +168,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
           </div>
         </BaseModalForm>
       )}
+      <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </div>
   )
 }

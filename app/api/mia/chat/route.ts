@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { coachRequestSchema } from "@/lib/mia/schemas"
 import { formatCurrency } from "@/lib/data"
-import type { Account, CreditCardCycle, Goal, Subscription, Transaction } from "@/lib/types/database"
+import type { Account, CreditCardCycle, FinancialSubscription, Goal, Transaction } from "@/lib/types/database"
 
 type MiaActionType =
   | "create_transaction"
@@ -186,17 +186,17 @@ function buildSummary(data: {
   accounts: Account[]
   transactions: Transaction[]
   goals: Goal[]
-  subscriptions: Subscription[]
+  financialSubscriptions: FinancialSubscription[]
   cycles: CreditCardCycle[]
 }) {
   const { start, prevStart, next } = getMonthBounds(new Date())
   const thisMonth = data.transactions.filter((tx) => {
     const d = toDate(tx.date)
-    return d >= start && d < next
+    return d >= start && d < next && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal")
   })
   const prevMonth = data.transactions.filter((tx) => {
     const d = toDate(tx.date)
-    return d >= prevStart && d < start
+    return d >= prevStart && d < start && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal")
   })
 
   const totalBalance = data.accounts.reduce((sum, a) => sum + Number(a.balance || 0), 0)
@@ -224,7 +224,7 @@ function buildSummary(data: {
     .filter((card) => Boolean(card.statement_due_date))
     .map((card) => ({ name: card.name, dueDate: card.statement_due_date, pending: Number(card.pending_amount || 0) }))
 
-  const subscriptionTotal = data.subscriptions
+  const subscriptionTotal = data.financialSubscriptions
     .filter((sub) => sub.status === "active")
     .reduce((sum, sub) => sum + Number(sub.amount || 0), 0)
 
@@ -251,7 +251,7 @@ function buildSummary(data: {
     biggestExpenses,
     cardDebt,
     upcomingPayments,
-    activeSubscriptions: data.subscriptions.filter((s) => s.status === "active").map((s) => ({ name: s.name, amount: Number(s.amount), nextPaymentDate: s.next_payment_date })),
+    activeSubscriptions: data.financialSubscriptions.filter((s) => s.status === "active").map((s) => ({ name: s.name, amount: Number(s.amount), nextPaymentDate: s.next_payment_date })),
     subscriptionTotal,
     goals,
     recentCardCycles: data.cycles.slice(0, 5).map((c) => ({
@@ -345,7 +345,7 @@ export async function POST(request: Request) {
     const message = parsed.data.message?.trim()
     if (!message) return NextResponse.json({ error: "Mensaje vacio" }, { status: 400 })
 
-    const [{ data: accountsRaw }, { data: txRaw }, { data: categoriesRaw }, { data: goalsRaw }, { data: subscriptionsRaw }, { data: cyclesRaw }, { data: notificationsRaw }] = await Promise.all([
+    const [{ data: accountsRaw }, { data: txRaw }, { data: categoriesRaw }, { data: goalsRaw }, { data: financialSubscriptionsRaw }, { data: cyclesRaw }, { data: notificationsRaw }] = await Promise.all([
       supabase.from("accounts").select("*").eq("user_id", user.id),
       supabase.from("transactions").select("*, category:categories(name)").eq("user_id", user.id).order("date", { ascending: false }).limit(300),
       supabase.from("categories").select("id,name,type").eq("user_id", user.id),
@@ -355,7 +355,7 @@ export async function POST(request: Request) {
       supabase.from("notifications").select("id,type,title,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
     ])
 
-    if (!accountsRaw || !txRaw || !goalsRaw || !subscriptionsRaw || !cyclesRaw) {
+    if (!accountsRaw || !txRaw || !goalsRaw || !financialSubscriptionsRaw || !cyclesRaw) {
       return NextResponse.json({ answer: "No pude cargar tus datos financieros en este momento.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
     }
 
@@ -363,7 +363,7 @@ export async function POST(request: Request) {
       accounts: accountsRaw as Account[],
       transactions: txRaw as Transaction[],
       goals: goalsRaw as Goal[],
-      subscriptions: subscriptionsRaw as Subscription[],
+      financialSubscriptions: financialSubscriptionsRaw as FinancialSubscription[],
       cycles: cyclesRaw as CreditCardCycle[],
     })
 

@@ -243,6 +243,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       rawDate: tx.date,
       date: formatDate(tx.date),
       createdAt: tx.created_at,
+      metadata: tx.metadata,
     }))
   }, [rawTransactions])
 
@@ -348,11 +349,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }
 
   const monthlyIncome = accountTransactions
-    .filter((tx) => tx.type === "income")
+    .filter((tx) => tx.type === "income" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal"))
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   const monthlyExpenses = accountTransactions
-    .filter((tx) => tx.type === "expense")
+    .filter((tx) => tx.type === "expense" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal"))
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   const netFlow = monthlyIncome - monthlyExpenses

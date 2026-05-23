@@ -137,7 +137,7 @@ export function TransactionsList() {
           const categoryColor = transaction.category?.color || "#64748b"
           const accountType = transaction.account?.type || "cash"
           const AccountIcon = accountIconsSmall[accountType]
-          const txDate = parseTxDate(transaction.date)
+          const txDate = transaction.created_at ? new Date(transaction.created_at) : parseTxDate(transaction.date)
           const txTime = txDate.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
 
           return (

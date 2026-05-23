@@ -5,10 +5,14 @@ import Link from "next/link"
 import { AlertCircle, CheckCircle2, ChevronLeft, Info, TriangleAlert } from "lucide-react"
 import { format, subDays } from "date-fns"
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts"
-import { useAccounts, useCategories, useProfile, useSubscriptions, useTransactions } from "@/hooks/use-data"
+import { useAccounts, useCategories, useFinancialSubscriptions, useProfile, useTransactions } from "@/hooks/use-data"
 import { formatCurrency } from "@/lib/data"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { generateFinancialInsights } from "@/lib/insights"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { FeatureGate } from "@/components/entitlements/feature-gate"
+import { PlanBadge } from "@/components/entitlements/plan-badge"
+import { getEntitlementCopy } from "@/lib/entitlements/entitlement-copy"
 
 type ReportRange = "daily" | "weekly" | "monthly"
 
@@ -22,9 +26,11 @@ export function ReportsScreen() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const { data: transactions = [] } = useTransactions(500)
-  const { data: subscriptions = [] } = useSubscriptions()
+  const { data: subscriptions = [] } = useFinancialSubscriptions()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
+  const { canUseAdvancedReports, plan } = useEntitlements()
+  const advancedReportsCopy = getEntitlementCopy("advanced_reports")
 
   const dateFrom = useMemo(() => {
     const now = new Date()
@@ -57,6 +63,7 @@ export function ReportsScreen() {
 
   const filtered = useMemo(() => transactions.filter((tx) => {
     const txDate = new Date(`${tx.date}T12:00:00`)
+    if (tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") return false
     if (startDate && tx.date < startDate) return false
     if (endDate && tx.date > endDate) return false
     if (!startDate && !endDate && txDate < dateFrom) return false
@@ -126,6 +133,7 @@ export function ReportsScreen() {
     const previousEnd = dateFrom
     return transactions.filter((tx) => {
       const txDate = new Date(`${tx.date}T12:00:00`)
+      if (tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") return false
       if (txDate < previousStart || txDate >= previousEnd) return false
       if (typeFilter !== "all" && tx.type !== typeFilter) return false
       if (accountFilter !== "all" && tx.account_id !== accountFilter) return false
@@ -201,6 +209,9 @@ export function ReportsScreen() {
         </div>
 
         <div className="space-y-2">
+          <div className="mb-1">
+            <PlanBadge plan={plan} />
+          </div>
           {insights.map((insight, index) => {
             const Icon = insightIcon[insight.type]
             return (
@@ -289,6 +300,12 @@ export function ReportsScreen() {
               </div>
             </div>
 
+            <FeatureGate
+              allowed={canUseAdvancedReports}
+              title={advancedReportsCopy.title}
+              description={advancedReportsCopy.shortDescription}
+              feature="advanced_reports"
+            >
             <div className="rounded-2xl bg-card p-4">
               <p className="mb-3 text-sm font-semibold text-foreground">Flujo por cuenta</p>
               <div className="space-y-2">
@@ -316,6 +333,7 @@ export function ReportsScreen() {
                 ))}
               </div>
             </div>
+            </FeatureGate>
           </>
         )}
       </div>

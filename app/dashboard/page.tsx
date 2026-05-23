@@ -10,8 +10,8 @@ import { QuickActions } from "@/components/dashboard/quick-actions"
 import { TransactionsList } from "@/components/dashboard/transactions-list"
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
-import { processDueSubscriptions, useProfile } from "@/hooks/use-data"
-import { useAccounts, useSubscriptions, useTransactions } from "@/hooks/use-data"
+import { processDueFinancialSubscriptions, useProfile } from "@/hooks/use-data"
+import { useAccounts, useFinancialSubscriptions, useTransactions } from "@/hooks/use-data"
 import { Button } from "@/components/ui/button"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { generateFinancialInsights } from "@/lib/insights"
@@ -35,7 +35,7 @@ export default function DashboardPage() {
   const { loading, user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useProfile()
   const { data: accounts = [] } = useAccounts()
-  const { data: subscriptions = [] } = useSubscriptions()
+  const { data: subscriptions = [] } = useFinancialSubscriptions()
   const { data: recentTransactions = [] } = useTransactions(120)
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user || !isReady) return
-    processDueSubscriptions().catch(() => {
+    processDueFinancialSubscriptions().catch(() => {
       // noop
     })
   }, [isReady, user])

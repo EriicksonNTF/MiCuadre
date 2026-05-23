@@ -4,7 +4,6 @@ import Link from "next/link"
 import { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Loader2, Upload, AlertTriangle, CheckCircle2, Sparkles, FileImage } from "lucide-react"
-import { createWorker, PSM } from "tesseract.js"
 import { Button } from "@/components/ui/button"
 import { parseReceiptText } from "@/lib/receipt-parser"
 
@@ -199,8 +198,10 @@ export default function ScanPage() {
     setStep("preprocess")
     setStatus("Mejorando imagen...")
 
-    let worker: Awaited<ReturnType<typeof createWorker>> | null = null
+    let worker: any = null
     try {
+      const { createWorker, PSM } = await import("tesseract.js")
+
       const { variants, blurScore: score } = await preprocessImage(file)
       setBlurScore(score)
       setProgress(20)

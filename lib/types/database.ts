@@ -1,5 +1,7 @@
 // Database types matching the Supabase schema
 
+import type { PlanTier } from "@/types/billing"
+
 export type Currency = "DOP" | "USD"
 export type AccountType = "cash" | "debit" | "credit"
 export type TransactionType = "income" | "expense"
@@ -22,6 +24,8 @@ export interface Profile {
   theme: Theme
   notifications_enabled: boolean
   onboarding_completed: boolean
+  plan_tier?: PlanTier | null
+  plan_status?: string | null
   created_at: string
   updated_at: string
 }
@@ -142,6 +146,9 @@ export interface Subscription {
   account?: Account
   category?: Category
 }
+
+// financial_subscriptions domain (recurring user expenses: Netflix/Spotify/etc)
+export type FinancialSubscription = Subscription
 
 export interface Beneficiary {
   id: string

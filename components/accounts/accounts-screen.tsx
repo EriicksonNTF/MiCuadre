@@ -18,6 +18,11 @@ import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
 import type { Account } from "@/lib/types/database"
 import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { UsageLimitBanner } from "@/components/entitlements/usage-limit-banner"
+import { useEntitlementBlocked } from "@/hooks/use-entitlement-blocked"
+import { UpsellModal } from "@/components/entitlements/upsell-modal"
+import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 
 const ICON_PRESETS = [
   { value: "banknote", label: "Efectivo", icon: Banknote },
@@ -42,6 +47,8 @@ const COLOR_PRESETS = [
 export function AccountsScreen() {
   const router = useRouter()
   const { data: accounts = [], isLoading } = useAccounts()
+  const { canCreateAccount, limits, isFree } = useEntitlements()
+  const { blocked, isUpsellOpen, handleEntitlementBlocked, closeUpsell } = useEntitlementBlocked()
   const [showTransfer, setShowTransfer] = useState(false)
   const [showCreateAccount, setShowCreateAccount] = useState(false)
   const [orderedAccounts, setOrderedAccounts] = useState<Account[] | null>(null)
@@ -278,6 +285,16 @@ if (!draggedId) return
 
   const handleCreateAccount = async () => {
     if (!accountName || !initialBalance) return
+    if (!canCreateAccount) {
+      handleEntitlementBlocked({
+        ...createBlockedResponse("max_accounts", {
+          currentUsage: accounts.length,
+          limit: typeof limits.max_accounts === "number" ? limits.max_accounts : undefined,
+          requiredPlan: "pro",
+        }),
+      })
+      return
+    }
     setIsCreating(true)
     try {
       await createAccount({
@@ -321,6 +338,12 @@ if (!draggedId) return
       EventBus.emit({ type: "account_created", payload: { name: accountName } })
       resetCreateAccountForm()
       setShowCreateAccount(false)
+    } catch (error) {
+      if (handleEntitlementBlocked(error)) return
+      notify({
+        title: "No se pudo crear la cuenta",
+        message: "Intenta de nuevo en unos segundos.",
+      })
     } finally {
       setIsCreating(false)
     }
@@ -369,7 +392,19 @@ if (!draggedId) return
             </button>
             <button
               type="button"
-              onClick={() => setShowCreateAccount(true)}
+              onClick={() => {
+                if (!canCreateAccount) {
+                  handleEntitlementBlocked({
+                    ...createBlockedResponse("max_accounts", {
+                      currentUsage: accounts.length,
+                      limit: typeof limits.max_accounts === "number" ? limits.max_accounts : undefined,
+                      requiredPlan: "pro",
+                    }),
+                  })
+                  return
+                }
+                setShowCreateAccount(true)
+              }}
               aria-label="Agregar cuenta"
               className="group flex h-12 w-12 items-center justify-center rounded-full border border-border/70 bg-card/80 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
             >
@@ -377,6 +412,15 @@ if (!draggedId) return
             </button>
           </div>
         </div>
+        {isFree && !canCreateAccount && (
+          <div className="mt-4">
+            <UsageLimitBanner
+              feature="max_accounts"
+              currentUsage={accounts.length}
+              limit={typeof limits.max_accounts === "number" ? limits.max_accounts : undefined}
+            />
+          </div>
+        )}
       </header>
 
 {isLoading ? (
@@ -571,7 +615,7 @@ if (!draggedId) return
         <BaseModalForm title="Nueva cuenta" onClose={() => {
           setShowCreateAccount(false)
           resetCreateAccountForm()
-        }} footer={<Button onClick={handleCreateAccount} disabled={!accountName || !initialBalance || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
+        }} footer={<Button onClick={handleCreateAccount} disabled={!canCreateAccount || !accountName || !initialBalance || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
           <div className="space-y-5 pb-safe-areas">
             <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre de la cuenta" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
             <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de tarjeta/cuenta (opcional)" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
@@ -626,6 +670,7 @@ if (!draggedId) return
           <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer. Solo se eliminarán cuentas sin transacciones.</p>
         </BaseModalForm>
       )}
+      <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </div>
   )
 }

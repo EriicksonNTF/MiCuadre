@@ -35,13 +35,17 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
-import { useAccounts, useCategories, createSubscription, createTransaction } from "@/hooks/use-data"
+import { useAccounts, useCategories, createFinancialSubscription, createTransaction } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
 import { EventBus } from "@/lib/event-bus"
-import { SUBSCRIPTION_PROVIDERS, getNextBillingDateFrom } from "@/lib/subscriptions"
+import { FINANCIAL_SUBSCRIPTION_PROVIDERS, getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
 import { showToast } from "@/components/toast/smart-toast"
+import { useEntitlementBlocked } from "@/hooks/use-entitlement-blocked"
+import { UpsellModal } from "@/components/entitlements/upsell-modal"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 
 const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: string }> = {
   comida: { icon: Utensils, color: "bg-orange-50 text-orange-500" },
@@ -74,6 +78,8 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const router = useRouter()
   const { data: rawAccounts = [] } = useAccounts()
   const { data: dbCategories = [] } = useCategories()
+  const { blocked, isUpsellOpen, handleEntitlementBlocked, closeUpsell } = useEntitlementBlocked()
+  const { canUseFinancialSubscriptions } = useEntitlements()
 
   const accounts = useMemo(() => {
     return rawAccounts.map(acc => ({
@@ -184,9 +190,9 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       }, { applyCommission })
 
       if (transactionType === "expense" && subscriptionMode === "recurring") {
-        const provider = SUBSCRIPTION_PROVIDERS.find((item) => item.key === subscriptionProvider)
-        const nextDate = getNextBillingDateFrom(date, Number(billingDay || date.getDate()))
-        await createSubscription({
+        const provider = FINANCIAL_SUBSCRIPTION_PROVIDERS.find((item) => item.key === subscriptionProvider)
+        const nextDate = getNextFinancialBillingDateFrom(date, Number(billingDay || date.getDate()))
+        await createFinancialSubscription({
           name: provider?.name || description,
           provider_key: provider?.key || "other",
           amount: parsedAmount,
@@ -215,7 +221,14 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       setSubscriptionMode("once")
       onBack?.()
     } catch (error) {
-      console.error(error)
+      if (!handleEntitlementBlocked(error)) {
+        showToast({
+          title: "No se pudo guardar",
+          body: "Intenta de nuevo en unos segundos.",
+          type: "error",
+          duration: 2500,
+        })
+      }
       setIsSaving(false)
     }
   }
@@ -375,6 +388,10 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             disabled={!isRecurringEnabled}
             onClick={() => {
               if (!isRecurringEnabled) return
+              if (subscriptionMode === "once" && !canUseFinancialSubscriptions) {
+                handleEntitlementBlocked(createBlockedResponse("financial_subscriptions", { requiredPlan: "pro" }))
+                return
+              }
               setSubscriptionMode((prev) => (prev === "recurring" ? "once" : "recurring"))
             }}
             className={cn(
@@ -400,7 +417,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             <p className="mb-2 text-xs font-medium text-muted-foreground">Suscripcion recurrente</p>
             <div className="grid grid-cols-2 gap-2">
               <select value={subscriptionProvider} onChange={(event) => setSubscriptionProvider(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
-                {SUBSCRIPTION_PROVIDERS.map((provider) => (
+                  {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => (
                   <option key={provider.key} value={provider.key}>{provider.name}</option>
                 ))}
               </select>
@@ -521,6 +538,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           )}
         </Button>
       </div>
+      <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </div>
   )
 }

@@ -2,12 +2,19 @@
   "name": "my-project",
   "version": "0.1.0",
   "private": true,
-  "corepack": { "enable": true },
+  "corepack": {
+    "enable": true
+  },
   "scripts": {
-    "dev": "pnpm next dev --webpack -p 3000",
-    "dev:turbo": "pnpm next dev --turbopack -p 3000",
+    "predev": "pkill -f 'next dev' 2>/dev/null || true; lsof -ti tcp:3000 | xargs kill -9 2>/dev/null || true; rm -rf .next/dev .next/cache",
+    "dev": "pnpm dev:webpack",
+    "dev:turbo": "TURBOPACK_PERSISTENT_CACHE=0 next dev --turbopack -p 3000",
+    "dev:webpack": "NEXT_DISABLE_TURBOPACK=1 next dev --webpack -p 3000",
+    "dev:reset": "pkill -f 'next' || true; rm -rf .next; pnpm dev",
+    "dev:fallback": "pnpm run dev || pnpm run dev:webpack",
     "dev:preview": "pnpm build && pnpm start",
     "build": "pnpm next build",
+    "build:safe": "pkill -f 'next dev' || true; pnpm next build",
     "start": "pnpm next start",
     "lint": "pnpm eslint ."
   },
@@ -62,6 +69,7 @@
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.0",
     "sonner": "^1.7.1",
+    "stripe": "^22.1.1",
     "swr": "^2.4.1",
     "tailwind-merge": "^3.3.1",
     "tesseract.js": "^7.0.0",

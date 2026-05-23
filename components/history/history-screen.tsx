@@ -104,6 +104,7 @@ type HistoryTx = {
   isCommission: boolean
   notes: string | null
   createdAt: string
+  isTransfer?: boolean
 }
 
 function parseTxDate(value: string) {
@@ -122,8 +123,9 @@ function formatDateLabel(date: Date) {
   return date.toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-function formatTime(value: string) {
-  const date = parseTxDate(value)
+function formatTime(value: string, createdAt?: string) {
+  const dateToParse = createdAt || value
+  const date = dateToParse.includes("T") ? new Date(dateToParse) : parseTxDate(dateToParse)
   return date.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
 }
 
@@ -180,6 +182,7 @@ export function HistoryScreen() {
         isCommission: tx.metadata?.kind === "commission",
         notes: tx.notes,
         createdAt: tx.created_at,
+        isTransfer: tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal",
       })),
     [rawTransactions]
   )
@@ -265,6 +268,7 @@ export function HistoryScreen() {
     let income = 0
     let expenses = 0
     for (const tx of filteredTransactions) {
+      if (tx.isTransfer) continue
       if (tx.type === "income") income += tx.amount
       else expenses += tx.amount
     }
@@ -569,7 +573,7 @@ export function HistoryScreen() {
                                   {tx.type === "income" ? "+" : "-"}
                                   {formatCurrency(tx.amount, tx.currency)}
                                 </p>
-                                <p className="mt-1 text-[11px] text-muted-foreground">{formatTime(tx.date)}</p>
+                                <p className="mt-1 text-[11px] text-muted-foreground">{formatTime(tx.date, tx.createdAt)}</p>
                               </div>
                             </div>
 

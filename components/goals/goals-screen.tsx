@@ -30,6 +30,10 @@ import { AccountCarouselSelector } from "@/components/ui/account-carousel-select
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { showToast } from "@/components/toast/smart-toast"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { useEntitlementBlocked } from "@/hooks/use-entitlement-blocked"
+import { UpsellModal } from "@/components/entitlements/upsell-modal"
+import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 
 const goalIcons = [
   { icon: Target, label: "General", value: "Target" },
@@ -71,6 +75,8 @@ function getIconComponent(iconName: string) {
 export function GoalsScreen() {
   const { data: dbGoals, isLoading } = useGoals()
   const { data: accounts = [] } = useAccounts()
+  const { canCreateGoal, limits } = useEntitlements()
+  const { blocked, isUpsellOpen, handleEntitlementBlocked, closeUpsell } = useEntitlementBlocked()
 
   const [showAddGoal, setShowAddGoal] = useState(false)
   const [showAddMoney, setShowAddMoney] = useState<string | null>(null)
@@ -114,7 +120,32 @@ export function GoalsScreen() {
   const totalSaved = goals.reduce((sum, goal) => sum + (goal.current_amount || 0), 0)
   const totalTarget = goals.reduce((sum, goal) => sum + (goal.target_amount || 0), 0)
 
+  const openCreateGoal = () => {
+    if (!canCreateGoal) {
+      handleEntitlementBlocked({
+        ...createBlockedResponse("max_goals", {
+          currentUsage: goals.length,
+          limit: typeof limits.max_goals === "number" ? limits.max_goals : undefined,
+          requiredPlan: "pro",
+        }),
+      })
+      return
+    }
+    setShowAddGoal(true)
+  }
+
   const handleCreateGoal = async () => {
+    if (!canCreateGoal) {
+      handleEntitlementBlocked({
+        ...createBlockedResponse("max_goals", {
+          currentUsage: goals.length,
+          limit: typeof limits.max_goals === "number" ? limits.max_goals : undefined,
+          requiredPlan: "pro",
+        }),
+      })
+      return
+    }
+
     const nameResult = createGoalSchema.shape.name.safeParse(goalName)
     if (!nameResult.success) {
       const error = nameResult.error.errors.find((e) => e.path[0] === "name")
@@ -148,7 +179,11 @@ export function GoalsScreen() {
       resetCreateGoalForm()
       setShowAddGoal(false)
     } catch (error) {
-      console.error("Error creating goal:", error)
+      if (handleEntitlementBlocked(error)) return
+      notify({
+        title: "No se pudo crear la meta",
+        message: "Intenta de nuevo en unos segundos.",
+      })
     } finally {
       setIsCreating(false)
     }
@@ -239,7 +274,7 @@ export function GoalsScreen() {
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-muted-foreground">Tus metas</p>
           <button
-            onClick={() => setShowAddGoal(true)}
+            onClick={openCreateGoal}
             className="flex items-center gap-1 text-sm font-medium text-accent"
           >
             <Plus className="h-4 w-4" />
@@ -262,7 +297,7 @@ export function GoalsScreen() {
                 Crea tu primera meta para comenzar.
               </p>
               <Button
-                onClick={() => setShowAddGoal(true)}
+                onClick={openCreateGoal}
                 className="mt-6 h-12 rounded-2xl text-base font-semibold"
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -534,6 +569,7 @@ export function GoalsScreen() {
           </div>
         </BaseModalForm>
       )}
+      <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </div>
   )
 }

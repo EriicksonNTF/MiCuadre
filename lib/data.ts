@@ -41,7 +41,7 @@ export function formatCurrency(amount: number, currency?: Currency) {
 export function calculateNetBalance(accounts: Account[]): number {
   return accounts.reduce((total, account) => {
     if (account.type === "credit") {
-      return total - (account.current_debt || 0)
+      return total
     }
     return total + account.balance
   }, 0)

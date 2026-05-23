@@ -9,6 +9,8 @@ import {
   ShieldCheck, Wallet, X, ChevronDown, Sparkles, PieChart, TrendingUp
 } from "lucide-react"
 import { showToast } from "@/components/toast/smart-toast"
+import { ANNUAL_DISCOUNT_PERCENT, PLAN_CONFIG, PLAN_ORDER, formatPlanPrice, getBillingIntervalSuffix } from "@/lib/billing/plans"
+import type { BillingInterval } from "@/types/billing"
 
 const navItems = [
   { id: "inicio", label: "Inicio" },
@@ -16,6 +18,7 @@ const navItems = [
   { id: "reportes", label: "Reportes" },
   { id: "tarjetas", label: "Tarjetas" },
   { id: "suscripciones", label: "Suscripciones" },
+  { id: "precios", label: "Precios" },
   { id: "preguntas", label: "Preguntas" },
 ]
 
@@ -35,6 +38,7 @@ export function PublicLanding() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [active, setActive] = useState("inicio")
   const [scrolled, setScrolled] = useState(false)
+  const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly")
   const sectionIds = useMemo(() => navItems.map((n) => n.id), [])
 
   useEffect(() => {
@@ -86,19 +90,19 @@ export function PublicLanding() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <LogoMark dark={true} />
           
-          <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md lg:flex">
+          <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md xl:flex">
             {navItems.map((item) => (
               <a 
                 key={item.id} 
                 href={`#${item.id}`} 
-                className={`rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-300 ${active === item.id ? "bg-white/15 text-white shadow-sm" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
+                className={`inline-flex whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-300 ${active === item.id ? "bg-white/15 text-white shadow-sm" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
               >
                 {item.label}
               </a>
             ))}
           </nav>
 
-          <div className="hidden items-center gap-4 lg:flex">
+          <div className="hidden items-center gap-4 xl:flex">
             <Link href="/login" className="text-sm font-semibold text-slate-300 transition-colors hover:text-white">
               Iniciar sesión
             </Link>
@@ -107,21 +111,21 @@ export function PublicLanding() {
             </Link>
           </div>
 
-          <button aria-label="Abrir menú" onClick={() => setMobileOpen((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/5 text-white backdrop-blur-md lg:hidden">
+          <button aria-label="Abrir menú" onClick={() => setMobileOpen((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/5 text-white backdrop-blur-md xl:hidden">
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
         {/* MOBILE MENU */}
         {mobileOpen && (
-          <div className="absolute inset-x-4 top-[calc(100%+1rem)] flex flex-col gap-4 rounded-3xl border border-white/10 bg-[#07111F]/95 p-5 shadow-2xl backdrop-blur-2xl lg:hidden animate-in slide-in-from-top-4 duration-300">
+          <div className="absolute inset-x-4 top-[calc(100%+1rem)] flex flex-col gap-4 rounded-3xl border border-white/10 bg-[#07111F]/95 p-5 shadow-2xl backdrop-blur-2xl xl:hidden animate-in slide-in-from-top-4 duration-300">
             <div className="flex flex-col gap-1">
               {navItems.map((item) => (
                 <a 
                   key={item.id} 
                   href={`#${item.id}`} 
                   onClick={() => setMobileOpen(false)} 
-                  className="rounded-xl px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
+                  className="block rounded-xl px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
                 >
                   {item.label}
                 </a>
@@ -438,6 +442,96 @@ export function PublicLanding() {
               </div>
             </div>
             
+          </div>
+        </div>
+      </section>
+
+      {/* PRECIOS SECTION */}
+      <section id="precios" className="bg-[#020617] py-28 text-white">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 text-sm font-bold text-emerald-300">
+              <ShieldCheck className="h-4 w-4" />
+              Pago seguro con Stripe
+            </div>
+            <h2 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl">
+              Empieza gratis. Mejora cuando necesites más control.
+            </h2>
+            <p className="mt-5 text-lg leading-relaxed text-slate-300">
+              MiCuadre te ayuda a organizar tus cuentas, tarjetas, metas, gastos y suscripciones desde una experiencia móvil simple.
+            </p>
+          </div>
+
+          <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-white/10 bg-white/5 p-1.5">
+            <div className="grid grid-cols-2 gap-1">
+              {(["monthly", "yearly"] as BillingInterval[]).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setBillingInterval(value)}
+                  className={`h-11 rounded-xl text-sm font-black transition-all active:scale-[0.98] ${billingInterval === value ? "bg-emerald-400 text-slate-950" : "text-slate-300 hover:bg-white/10"}`}
+                >
+                  {value === "monthly" ? "Mensual" : `Anual · Ahorra ${ANNUAL_DISCOUNT_PERCENT}%`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-10 grid gap-4 lg:grid-cols-3">
+            {PLAN_ORDER.map((tier) => {
+              const plan = PLAN_CONFIG[tier]
+              const highlighted = tier === "pro"
+              return (
+                <article
+                  key={tier}
+                  className={`relative overflow-hidden rounded-[2rem] border p-6 transition-all hover:-translate-y-1 ${
+                    highlighted
+                      ? "border-emerald-400/50 bg-emerald-400/10 shadow-[0_20px_60px_rgba(16,185,129,0.14)]"
+                      : "border-white/10 bg-white/[0.04]"
+                  }`}
+                >
+                  {plan.badge && (
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${highlighted ? "bg-emerald-400 text-slate-950" : "bg-amber-400/15 text-amber-200"}`}>
+                      {plan.badge}
+                    </span>
+                  )}
+                  <h3 className="mt-4 text-2xl font-black">{plan.label}</h3>
+                  <p className="mt-2 min-h-10 text-sm leading-relaxed text-slate-300">{plan.audience}</p>
+                  <div className="mt-5">
+                    <span className="text-4xl font-black">{formatPlanPrice(tier, billingInterval)}</span>
+                    <span className="ml-1 text-sm font-bold text-slate-400">{getBillingIntervalSuffix(billingInterval)}</span>
+                  </div>
+                  {billingInterval === "yearly" && tier !== "free" && (
+                    <p className="mt-1 text-xs font-bold text-emerald-300">
+                      Equivale a ${plan.price.yearlyMonthlyEquivalent.toFixed(2)}/mes
+                    </p>
+                  )}
+                  <div className="mt-6 space-y-2 text-sm text-slate-300">
+                    {plan.benefits.slice(0, 4).map((benefit) => (
+                      <p key={benefit} className="flex items-start gap-2">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                        {benefit}
+                      </p>
+                    ))}
+                  </div>
+                  <Link
+                    href={tier === "free" ? "/register" : "/register"}
+                    className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-black transition-all active:scale-[0.98] ${
+                      highlighted ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300" : "border border-white/15 bg-white/5 text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {tier === "free" ? "Comenzar gratis" : tier === "pro" ? "Actualizar a Pro" : "Ver Plus"}
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </article>
+              )
+            })}
+          </div>
+
+          <div className="mt-8 grid gap-3 text-center text-sm text-slate-400 sm:grid-cols-3">
+            <p>Pago seguro con Stripe.</p>
+            <p>Puedes cancelar cuando quieras.</p>
+            <p>Sin conexión bancaria obligatoria.</p>
           </div>
         </div>
       </section>

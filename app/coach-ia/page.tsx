@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button"
 import type { CoachResponse, CoachUIBlock, CoachAction } from "@/lib/coach-ia"
 import { useAuth } from "@/hooks/use-auth"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { UpgradePrompt } from "@/components/entitlements/upgrade-prompt"
+import { getEntitlementCopy } from "@/lib/entitlements/entitlement-copy"
 
 type Message = {
   id: string
@@ -72,6 +75,8 @@ function BlockCard({ block }: { block: CoachUIBlock }) {
 export default function CoachIAPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const { canUseMIAAdvanced } = useEntitlements()
+  const miaCopy = getEntitlementCopy("mia_advanced")
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
@@ -206,7 +211,7 @@ export default function CoachIAPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {SUGGESTED_PROMPTS.map((prompt) => (
+            {(canUseMIAAdvanced ? SUGGESTED_PROMPTS : SUGGESTED_PROMPTS.slice(0, 2)).map((prompt) => (
               <button
                 key={prompt}
                 onClick={() => askCoach(prompt)}
@@ -216,6 +221,15 @@ export default function CoachIAPage() {
               </button>
             ))}
           </div>
+          {!canUseMIAAdvanced && (
+            <div className="mt-4">
+              <UpgradePrompt
+                title={miaCopy.title}
+                description={miaCopy.shortDescription}
+                feature="mia_advanced"
+              />
+            </div>
+          )}
         </div>
 
         <div className="mt-4 space-y-3 pb-28">

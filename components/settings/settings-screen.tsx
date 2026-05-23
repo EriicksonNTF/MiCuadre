@@ -23,6 +23,9 @@ import {
   BarChart3,
   Repeat,
   Tags,
+  Sparkles,
+  RefreshCw,
+  CreditCard,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/providers/theme-provider"
@@ -34,12 +37,20 @@ import { useProfile, updateProfile } from "@/hooks/use-data"
 import { isPasskeyEnabled, verifyPasskeyUnlock } from "@/lib/passkey"
 import { setPreferredCurrency } from "@/lib/data"
 import type { Theme, Currency } from "@/lib/types/database"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { PlanBadge } from "@/components/entitlements/plan-badge"
+import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
+import { useBillingStatus } from "@/hooks/use-billing-status"
+import { isPaidPlan } from "@/lib/billing/plans"
+import { notify } from "@/lib/notifications"
 
 export function SettingsScreen() {
   const QA_EMAIL = "example@example.com"
   const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { data: profile, isLoading: profileLoading } = useProfile()
+  const { plan, limits, usage } = useEntitlements()
+  const { data: billingStatus, mutate: refreshBillingStatus } = useBillingStatus()
 
   const [showDebugQa, setShowDebugQa] = useState(false)
   const [authEmail, setAuthEmail] = useState<string | null>(null)
@@ -64,6 +75,9 @@ export function SettingsScreen() {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [showDeleteAccount, setShowDeleteAccount] = useState(false)
+  const [showPlanSelector, setShowPlanSelector] = useState(false)
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false)
+  const [isVerifyingPlan, setIsVerifyingPlan] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [isDeletingAccount, setIsDeletingAccount] = useState(false)
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
@@ -110,6 +124,41 @@ export function SettingsScreen() {
   ] as const
 
   const currentThemeOption = themeOptions.find((t) => t.value === currentTheme)
+  const planStatusLabels: Record<string, string> = {
+    active: "Activo",
+    trialing: "En prueba",
+    past_due: "Pago pendiente",
+    unpaid: "Pago pendiente",
+    canceled: "Cancelado",
+    incomplete: "Pendiente",
+  }
+  const financialSubscriptionLimit = limits.financial_subscriptions
+  const canManagePlan = isPaidPlan(plan) || Boolean(billingStatus?.billingReady)
+  const readablePlanStatus = planStatusLabels[billingStatus?.planStatus || profile?.plan_status || "active"] || "Activo"
+
+  const openBillingPortal = async () => {
+    setIsOpeningPortal(true)
+    try {
+      const response = await fetch("/api/billing/portal", { method: "POST" })
+      const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null
+      if (!response.ok || !data?.url) {
+        notify({ title: "Portal de facturación", message: "No pudimos abrir el portal de facturación." })
+        return
+      }
+      window.location.href = data.url
+    } catch {
+      notify({ title: "Portal de facturación", message: "Intenta de nuevo en unos segundos." })
+    } finally {
+      setIsOpeningPortal(false)
+    }
+  }
+
+  const verifyPlan = async () => {
+    setIsVerifyingPlan(true)
+    await refreshBillingStatus()
+    setIsVerifyingPlan(false)
+    notify({ title: "Estado verificado", message: "Tu plan se sincronizó correctamente." })
+  }
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -346,9 +395,97 @@ const isDevMode = process.env.NODE_ENV === "development"
         </div>
 
         <div className="mt-6">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mi plan</h2>
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Plan actual</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Estado: {readablePlanStatus}</p>
+              </div>
+              <PlanBadge plan={plan} />
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Cuentas</span>
+                  <span>{limits.max_accounts === "unlimited" ? `${usage.accounts} / ilimitado` : `${usage.accounts} / ${limits.max_accounts}`}</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted">
+                  <div className="h-2 rounded-full bg-primary" style={{ width: limits.max_accounts === "unlimited" ? "12%" : `${Math.min(100, Math.round((usage.accounts / Math.max(1, limits.max_accounts)) * 100))}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Metas</span>
+                  <span>{limits.max_goals === "unlimited" ? `${usage.goals} / ilimitado` : `${usage.goals} / ${limits.max_goals}`}</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted">
+                  <div className="h-2 rounded-full bg-primary" style={{ width: limits.max_goals === "unlimited" ? "12%" : `${Math.min(100, Math.round((usage.goals / Math.max(1, limits.max_goals)) * 100))}%` }} />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Suscripciones financieras</span>
+                  <span>
+                    {financialSubscriptionLimit === "unlimited" ? `${usage.subscriptions} / ilimitado` : `${usage.subscriptions} / ${financialSubscriptionLimit}`}
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-muted">
+                  <div
+                    className="h-2 rounded-full bg-primary"
+                    style={{
+                      width:
+                        financialSubscriptionLimit === "unlimited"
+                          ? "12%"
+                          : `${Math.min(100, Math.round((usage.subscriptions / Math.max(1, financialSubscriptionLimit)) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPlanSelector(true)}
+                className="h-11 rounded-xl bg-primary text-sm font-bold text-primary-foreground transition active:scale-[0.99]"
+              >
+                Ver planes
+              </button>
+              {canManagePlan && (
+                <button
+                  type="button"
+                  onClick={openBillingPortal}
+                  disabled={isOpeningPortal}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background text-sm font-bold text-foreground transition active:scale-[0.99] disabled:opacity-60"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  {isOpeningPortal ? "Abriendo..." : "Gestionar plan"}
+                </button>
+              )}
+              {(billingStatus?.planStatus === "past_due" || billingStatus?.planStatus === "incomplete" || billingStatus?.planStatus === "unpaid") && (
+                <button
+                  type="button"
+                  onClick={verifyPlan}
+                  disabled={isVerifyingPlan}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-muted text-sm font-bold text-foreground transition active:scale-[0.99] disabled:opacity-60"
+                >
+                  <RefreshCw className={cn("h-4 w-4", isVerifyingPlan && "animate-spin")} />
+                  Verificar estado
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Control financiero</h2>
           <div className="overflow-hidden rounded-2xl bg-card">
             {[
+              { icon: Sparkles, label: "Mi plan", href: "/settings" },
               { icon: BarChart3, label: "Reportes", href: "/settings/reports" },
               { icon: Repeat, label: "Suscripciones", href: "/settings/subscriptions" },
               { icon: Tags, label: "Categorias", href: "/settings/categories" },
@@ -553,6 +690,7 @@ const isDevMode = process.env.NODE_ENV === "development"
       )}
 
 
+      <PlanSelectorSheet open={showPlanSelector} onOpenChange={setShowPlanSelector} />
     </div>
   )
 }

@@ -12,11 +12,14 @@ import type {
   Beneficiary,
   Transfer,
   GoalContribution,
-  Subscription,
+  FinancialSubscription,
 } from "@/lib/types/database"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { getCycleForDate } from "@/lib/credit-cycle"
-import { getNextBillingDateFrom } from "@/lib/subscriptions"
+import { getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
+import { blockedEntitlement, DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
+import { normalizePlanTier } from "@/lib/billing/plans"
+import type { PlanTier } from "@/types/billing"
 
 type CreditAccountState = {
   id: string
@@ -319,7 +322,7 @@ async function createNotification(params: {
   await supabase.from("notifications").insert(payload)
 }
 
-async function fetchSubscriptions(): Promise<Subscription[]> {
+async function fetchFinancialSubscriptions(): Promise<FinancialSubscription[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
@@ -330,7 +333,19 @@ async function fetchSubscriptions(): Promise<Subscription[]> {
     .order("next_payment_date", { ascending: true })
 
   if (error) throw error
-  return (data as Subscription[]) || []
+  return (data as FinancialSubscription[]) || []
+}
+
+async function getUserPlanAndLimits(userId: string) {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("plan_tier")
+    .eq("id", userId)
+    .maybeSingle()
+
+  const plan = normalizePlanTier((profile as any)?.plan_tier as string | null) || DEFAULT_PLAN
+  const limits = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
+  return { plan, limits }
 }
 
 async function syncCreditAccountCycle(creditAccountId: string) {
@@ -833,11 +848,16 @@ export function useProfile() {
   })
 }
 
-export function useSubscriptions() {
-  return useSWR<Subscription[]>("subscriptions", fetchSubscriptions, {
+export function useFinancialSubscriptions() {
+  return useSWR<FinancialSubscription[]>("financial_subscriptions", fetchFinancialSubscriptions, {
     revalidateOnFocus: true,
     dedupingInterval: 10000,
   })
+}
+
+// Backward compatibility alias: `subscriptions` in current app means financial recurring expenses.
+export function useSubscriptions() {
+  return useFinancialSubscriptions()
 }
 
 export function useBeneficiaries() {
@@ -890,6 +910,24 @@ type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_
 export async function createAccount(account: NewAccountInput) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
+
+  const { limits } = await getUserPlanAndLimits(user.id)
+  if (limits.max_accounts !== "unlimited") {
+    const { count } = await supabase
+      .from("accounts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+
+    const currentUsage = count || 0
+    if (currentUsage >= limits.max_accounts) {
+      throw blockedEntitlement({
+        feature: "max_accounts",
+        reason: "Llegaste al límite de cuentas del plan Free.",
+        currentUsage,
+        limit: limits.max_accounts,
+      })
+    }
+  }
 
   const extractMissingAccountColumn = (message: string) => {
     const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"accounts"\s+does\s+not\s+exist/i)
@@ -1335,6 +1373,24 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
+  const { limits } = await getUserPlanAndLimits(user.id)
+  if (limits.max_goals !== "unlimited") {
+    const { count } = await supabase
+      .from("goals")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+
+    const currentUsage = count || 0
+    if (currentUsage >= limits.max_goals) {
+      throw blockedEntitlement({
+        feature: "max_goals",
+        reason: "Llegaste al límite de metas del plan Free.",
+        currentUsage,
+        limit: limits.max_goals,
+      })
+    }
+  }
+
   const { data, error } = await supabase
     .from("goals")
     .insert({ ...goal, user_id: user.id, current_amount: 0, is_completed: false })
@@ -1530,7 +1586,6 @@ export async function createTransfer(transfer: {
   const destinationLabel = transfer.to_beneficiary_id
     ? "beneficiario"
     : internalDestinationName || "cuenta destino"
-
   await supabase.from("transactions").insert({
     user_id: user.id,
     account_id: transfer.from_account_id,
@@ -1544,6 +1599,7 @@ export async function createTransfer(transfer: {
     date: getLocalDateString(),
     notes: transfer.description || null,
     is_recurring: false,
+    metadata: transfer.to_account_id ? { kind: "transfer", transfer_id: data.id, transfer_type: "internal" } : null,
   })
 
   if (transfer.to_account_id) {
@@ -1560,6 +1616,7 @@ export async function createTransfer(transfer: {
       date: getLocalDateString(),
       notes: null,
       is_recurring: false,
+      metadata: { kind: "transfer", transfer_id: data.id, transfer_type: "internal" },
     })
   }
 
@@ -1934,7 +1991,7 @@ export async function deleteBeneficiary(id: string) {
   if (error) throw error
 }
 
-export async function createSubscription(input: {
+export async function createFinancialSubscription(input: {
   name: string
   logo_url?: string | null
   provider_key?: string | null
@@ -1948,6 +2005,27 @@ export async function createSubscription(input: {
 }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
+
+  const { limits } = await getUserPlanAndLimits(user.id)
+  if (limits.financial_subscriptions !== "unlimited") {
+    const { count } = await supabase
+      .from("subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+
+    const currentUsage = count || 0
+    if (currentUsage >= limits.financial_subscriptions) {
+      throw blockedEntitlement({
+        feature: "financial_subscriptions",
+        reason: limits.financial_subscriptions === 0
+          ? "Las suscripciones financieras están disponibles en Pro y Plus."
+          : "Llegaste al límite de suscripciones financieras de tu plan.",
+        currentUsage,
+        limit: limits.financial_subscriptions,
+      })
+    }
+  }
+
   const categoryId = input.category_id || await getOrCreateSubscriptionCategoryId(user.id)
 
   const { data, error } = await supabase
@@ -1971,12 +2049,12 @@ export async function createSubscription(input: {
     actionUrl: "/settings/subscriptions",
   })
 
-  mutate("subscriptions")
+  mutate("financial_subscriptions")
   mutate("notifications")
   return data
 }
 
-export async function updateSubscription(id: string, updates: Partial<Subscription>) {
+export async function updateFinancialSubscription(id: string, updates: Partial<FinancialSubscription>) {
   const { data, error } = await supabase
     .from("subscriptions")
     .update(updates)
@@ -1985,21 +2063,21 @@ export async function updateSubscription(id: string, updates: Partial<Subscripti
     .single()
 
   if (error) throw error
-  mutate("subscriptions")
+  mutate("financial_subscriptions")
   return data
 }
 
-export async function deleteSubscription(id: string) {
+export async function deleteFinancialSubscription(id: string) {
   const { error } = await supabase
     .from("subscriptions")
     .delete()
     .eq("id", id)
 
   if (error) throw error
-  mutate("subscriptions")
+  mutate("financial_subscriptions")
 }
 
-export async function processDueSubscriptions() {
+export async function processDueFinancialSubscriptions() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
   const schema = await ensureCreditSchemas()
@@ -2070,7 +2148,7 @@ export async function processDueSubscriptions() {
       .limit(1)
 
     if (existingCycleTx && existingCycleTx.length > 0) {
-      const nextDate = getNextBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
+      const nextDate = getNextFinancialBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
       await updateSubscriptionProcessingMeta(subscription.id, {
         last_charged_date: today,
         next_payment_date: getLocalDateString(nextDate),
@@ -2098,7 +2176,7 @@ export async function processDueSubscriptions() {
         subscription_id: subscription.id,
       })
 
-      const nextDate = getNextBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
+      const nextDate = getNextFinancialBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
       await updateSubscriptionProcessingMeta(subscription.id, {
         last_charged_date: today,
         next_payment_date: getLocalDateString(nextDate),
@@ -2131,7 +2209,7 @@ export async function processDueSubscriptions() {
     }
   }
 
-  mutate("subscriptions")
+  mutate("financial_subscriptions")
   mutate("notifications")
   mutate("accounts")
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
@@ -2247,6 +2325,12 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
   mutate("accounts")
   return data
 }
+
+// Backward compatibility aliases (financial domain)
+export const createSubscription = createFinancialSubscription
+export const updateSubscription = updateFinancialSubscription
+export const deleteSubscription = deleteFinancialSubscription
+export const processDueSubscriptions = processDueFinancialSubscriptions
 
 export async function reorderAccounts(accountIdsInOrder: string[]) {
   if (accountIdsInOrder.length === 0) return
