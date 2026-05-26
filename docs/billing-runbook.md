@@ -31,15 +31,15 @@
 
 ## 5) Si checkout falla
 
-- Confirmar `STRIPE_PRO_MONTHLY_PRICE_ID`, `STRIPE_PRO_YEARLY_PRICE_ID`, `STRIPE_PLUS_MONTHLY_PRICE_ID` y `STRIPE_PLUS_YEARLY_PRICE_ID`.
+- Confirmar `STRIPE_PRO_MONTHLY_PRICE_ID` y `STRIPE_PRO_YEARLY_PRICE_ID`.
 - Confirmar `STRIPE_SECRET_KEY` configurada.
 - Confirmar usuario autenticado en app.
 - Revisar logs `[billing-checkout]` en servidor.
 
-## 6) Si Plus no está disponible
+## 6) Si Pro no está disponible
 
-- Confirmar `STRIPE_PLUS_MONTHLY_PRICE_ID` y `STRIPE_PLUS_YEARLY_PRICE_ID`.
-- Si estás en transición desde Business, `STRIPE_BUSINESS_PRICE_ID` puede usarse como fallback mensual legacy hacia Plus.
+- Confirmar `STRIPE_PRO_MONTHLY_PRICE_ID` y `STRIPE_PRO_YEARLY_PRICE_ID`.
+- Si estás en transición desde Business/Plus, los tiers legacy se normalizan internamente a Pro.
 - Si no esta configurado, usar flujo de contacto/sales temporal.
 
 ## 7) Inspeccion manual en Supabase

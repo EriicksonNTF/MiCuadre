@@ -20,10 +20,8 @@ type BrandedAccountCardProps = {
   className?: string
 }
 
-function maskAccountNumber(value?: string | null, fallback?: string) {
-  const source = (value || fallback || "").replace(/\s+/g, "")
-  if (!source) return "••••"
-  return `•••• ${source.slice(-4)}`
+function getDisplayAccountNumber(value?: string | null, fallback?: string) {
+  return value?.trim() || fallback || "Sin número"
 }
 
 export function BrandedAccountCard({ account, compact = false, className }: BrandedAccountCardProps) {
@@ -34,10 +32,34 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
   const iconValue = account.icon_value || defaults.iconValue
   const textColor = getReadableTextColor(primaryColor)
   const isCredit = account.type === "credit"
-  const balanceValue = isCredit ? Math.abs(account.current_debt || 0) : Number(account.balance || 0)
+  const debtDop = Math.abs(Number(account.current_debt_dop ?? account.current_debt ?? 0))
+  const debtUsd = Math.abs(Number(account.current_debt_usd || 0))
+  const debtLines = isCredit
+    ? [
+        debtDop > 0 ? { currency: "DOP" as const, value: debtDop } : null,
+        debtUsd > 0 ? { currency: "USD" as const, value: debtUsd } : null,
+      ].filter(Boolean) as Array<{ currency: "DOP" | "USD"; value: number }>
+    : []
+  const primaryDebt = debtLines[0] || { currency: account.currency, value: Math.abs(Number(account.current_debt || 0)) }
+  const balanceValue = isCredit ? Math.max(debtDop, debtUsd, Math.abs(Number(account.current_debt || 0))) : Number(account.balance || 0)
+  const displayCreditCurrency = debtUsd > 0 && debtDop <= 0 ? "USD" : account.currency
+  const availableCredit = displayCreditCurrency === "USD"
+    ? Number(account.available_credit_usd ?? 0) || Math.max(0, Number(account.credit_limit_usd || 0) - debtUsd)
+    : Number(account.available_credit_dop ?? 0) || getAvailableCredit({
+        type: account.type,
+        creditLimit: account.credit_limit,
+        currentDebt: account.current_debt,
+      })
+  const dueDate = account.statement_due_date ? new Date(`${account.statement_due_date}T12:00:00`) : null
+  const today = new Date()
+  const daysUntilDue = dueDate
+    ? Math.ceil((new Date(dueDate.toDateString()).getTime() - new Date(today.toDateString()).getTime()) / (1000 * 60 * 60 * 24))
+    : null
+  const dueSoon = typeof daysUntilDue === "number" && daysUntilDue >= 0 && daysUntilDue <= 3 && balanceValue > 0
+  const overdue = typeof daysUntilDue === "number" && daysUntilDue < 0 && balanceValue > 0
   const Icon = iconMap[(iconValue as keyof typeof iconMap) || "building-2"] || Building2
   const accountTypeLabel = account.type === "cash" ? "Efectivo" : account.type === "debit" ? "Débito" : "Crédito"
-  const maskedNumber = maskAccountNumber((account as any).account_number as string | null | undefined, account.id)
+  const displayNumber = getDisplayAccountNumber((account as any).account_number as string | null | undefined, account.id)
 
   const styleMode = account.background_style || "gradient"
   const background =
@@ -84,7 +106,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           <p className="text-xs font-semibold opacity-75">{isCredit ? "Tarjeta de crédito" : accountTypeLabel}</p>
           <h3 className="truncate text-[1.04rem] font-bold leading-tight">{account.name}</h3>
           <p className="mt-1 text-[11px] opacity-80">
-            Cuenta <span className="rounded-full bg-white/15 px-2 py-0.5 font-medium">{maskedNumber}</span>
+            Cuenta <span className="break-all rounded-full bg-white/15 px-2 py-0.5 font-medium">{displayNumber}</span>
           </p>
         </div>
       </div>
@@ -94,22 +116,42 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
       <div className="relative z-10 mt-3">
         {isCredit ? (
           <>
-            <div className={cn("grid grid-cols-3 gap-2", compact ? "text-[11px]" : "text-xs")}>
+            <div>
+              <p className="text-xs font-semibold opacity-80">Deuda actual</p>
+              <div className="mt-1 space-y-0.5">
+                {debtLines.length > 0 ? debtLines.map((line, index) => (
+                  <p key={line.currency} className={cn("font-black tracking-tight", compact ? "text-2xl" : index === 0 ? "text-[1.85rem]" : "text-[1.45rem]")}>
+                    {formatCurrency(line.value, line.currency)}
+                  </p>
+                )) : (
+                  <p className={cn("font-black tracking-tight", compact ? "text-2xl" : "text-[1.85rem]")}>
+                    {formatCurrency(primaryDebt.value, primaryDebt.currency)}
+                  </p>
+                )}
+              </div>
+              {(dueSoon || overdue) && (
+                <div className={cn(
+                  "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm",
+                  overdue ? "bg-red-500/20 text-white" : "bg-amber-400/20 text-white"
+                )}>
+                  {overdue ? "Pago vencido" : daysUntilDue === 0 ? "Pago vence hoy" : `Pago en ${daysUntilDue} días`}
+                </div>
+              )}
+            </div>
+            <div className={cn("mt-3 grid grid-cols-3 gap-2 border-t border-white/20 pt-3", compact ? "text-[11px]" : "text-xs")}>
               <div>
-                <p className="opacity-75">Deuda</p>
-                <p className="mt-1 font-bold">{formatCurrency(balanceValue, account.currency)}</p>
+                <p className="opacity-70">Disponible</p>
+                <p className="mt-0.5 font-semibold text-emerald-200">{formatCurrency(availableCredit, displayCreditCurrency)}</p>
               </div>
               <div className="border-l border-white/20 pl-2">
-                <p className="opacity-75">Disponible</p>
-                <p className="font-semibold">{formatCurrency(getAvailableCredit({
-                  type: account.type,
-                  creditLimit: account.credit_limit,
-                  currentDebt: account.current_debt,
-                }), account.currency)}</p>
+                <p className="opacity-70">Corte</p>
+                <p className="mt-0.5 font-semibold">{account.last_statement_cutoff_date ? new Date(`${account.last_statement_cutoff_date}T12:00:00`).toLocaleDateString("es-DO", { day: "2-digit", month: "short" }) : "-"}</p>
               </div>
               <div className="border-l border-white/20 pl-2">
-                <p className="opacity-75">Límite</p>
-                <p className="font-semibold">{formatCurrency(account.credit_limit || 0, account.currency)}</p>
+                <p className="opacity-70">Pago</p>
+                <p className={cn("mt-0.5 font-semibold", dueSoon && "text-amber-100", overdue && "text-red-100")}>
+                  {account.statement_due_date ? new Date(`${account.statement_due_date}T12:00:00`).toLocaleDateString("es-DO", { day: "2-digit", month: "short" }) : "-"}
+                </p>
               </div>
             </div>
           </>

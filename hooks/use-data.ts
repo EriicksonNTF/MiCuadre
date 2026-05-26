@@ -15,6 +15,7 @@ import type {
   FinancialSubscription,
 } from "@/lib/types/database"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
+import { offlineDB, OutboxItem } from "@/lib/offline/db"
 import { getCycleForDate } from "@/lib/credit-cycle"
 import { getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
 import { blockedEntitlement, DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
@@ -684,42 +685,184 @@ async function applyAccountImpact(params: {
 
 // Generic fetcher for Supabase
 async function fetchAccounts(): Promise<Account[]> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+  const userId = user?.id
 
-  // Fetch accounts first without blocking on credit cycle sync
-  const { data, error } = await supabase
-    .from("accounts")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true })
+  let accounts: Account[] = []
 
-  if (error) throw error
+  try {
+    if (!userId) return []
+    const { data, error } = await supabase
+      .from("accounts")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
 
-  // Sync credit cycles in background (non-blocking)
-  void maybeRefreshCreditCycles()
+    if (error) throw error
+    accounts = sortAccountsList(data || [])
+    
+    // Save to offline cache
+    if (userId) {
+      for (const account of accounts) {
+        await offlineDB.put("accounts_cache", account)
+      }
+    }
+    
+    void maybeRefreshCreditCycles()
+  } catch (err) {
+    console.warn("fetchAccounts failed, trying offline cache:", err)
+    const cached = await offlineDB.getAll<Account>("accounts_cache")
+    if (userId) {
+      accounts = cached.filter(a => a.user_id === userId)
+    } else {
+      accounts = cached
+    }
+  }
 
-  return sortAccountsList(data || [])
+  // Adjust balances dynamically based on pending outbox transactions for local preview
+  const outbox = await offlineDB.getAll<OutboxItem>("offline_outbox")
+  const pendingTxs = outbox.filter(item => item.operation === "create_transaction" && item.status === "pending")
+
+  if (pendingTxs.length > 0) {
+    accounts = accounts.map(account => {
+      let balance = Number(account.balance || 0)
+      let currentDebtDop = Number(account.current_debt_dop || account.current_debt || 0)
+      let currentDebtUsd = Number(account.current_debt_usd || 0)
+      let availableCreditDop = Number(account.available_credit_dop || 0)
+      let availableCreditUsd = Number(account.available_credit_usd || 0)
+      let hasPending = false
+
+      for (const tx of pendingTxs) {
+        const payload = tx.payload
+        if (payload.account_id !== account.id) continue
+
+        hasPending = true
+        const isExpense = payload.type === "expense"
+        const amount = Number(payload.amount || 0)
+        const isCommission = payload.applyCommission
+        const commission = isCommission ? Math.round(amount * 0.15) / 100 : 0
+        const totalAmount = amount + commission
+
+        if (account.type === "credit") {
+          const signed = isExpense ? totalAmount : -totalAmount
+          if (payload.currency === "USD") {
+            currentDebtUsd = Math.max(0, currentDebtUsd + signed)
+            availableCreditUsd = Math.max(0, Number(account.credit_limit_usd || 0) - currentDebtUsd)
+          } else {
+            currentDebtDop = Math.max(0, currentDebtDop + signed)
+            availableCreditDop = Math.max(0, Number(account.credit_limit_dop || account.credit_limit || 0) - currentDebtDop)
+          }
+        } else {
+          const signed = isExpense ? -totalAmount : totalAmount
+          balance += signed
+        }
+      }
+
+      if (hasPending) {
+        return {
+          ...account,
+          balance,
+          current_debt_dop: currentDebtDop,
+          current_debt: currentDebtDop,
+          current_debt_usd: currentDebtUsd,
+          available_credit_dop: availableCreditDop,
+          available_credit_usd: availableCreditUsd,
+          hasPendingChanges: true,
+        } as any
+      }
+
+      return account
+    })
+  }
+
+  return accounts
 }
 
 async function fetchTransactions(limit = 10): Promise<Transaction[]> {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+  const userId = user?.id
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .select("*, category:categories(*), account:accounts(*)")
-    .eq("user_id", user.id)
-    .order("date", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(limit)
+  let serverTxs: Transaction[] = []
 
-  if (error) throw error
-  return (data as Transaction[]).map((tx) => ({
-    ...tx,
-    date: normalizeTransactionDateInput(tx.date),
-  }))
+  try {
+    if (!userId) return []
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*, category:categories(*), account:accounts(*)")
+      .eq("user_id", userId)
+      .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit)
+
+    if (error) throw error
+    serverTxs = (data as Transaction[]).map((tx) => ({
+      ...tx,
+      date: normalizeTransactionDateInput(tx.date),
+    }))
+
+    // Save to offline cache
+    if (userId) {
+      for (const tx of serverTxs) {
+        await offlineDB.put("transactions_cache", tx)
+      }
+    }
+  } catch (err) {
+    console.warn("fetchTransactions failed, trying offline cache:", err)
+    const cached = await offlineDB.getAll<Transaction>("transactions_cache")
+    if (userId) {
+      serverTxs = cached.filter(t => t.user_id === userId)
+    } else {
+      serverTxs = cached
+    }
+  }
+
+  // Always merge pending outbox transactions
+  const outbox = await offlineDB.getAll<OutboxItem>("offline_outbox")
+  const pendingTxs = outbox
+    .filter(item => item.operation === "create_transaction")
+    .map(item => {
+      const payload = item.payload
+      return {
+        id: item.id,
+        user_id: userId || "",
+        account_id: payload.account_id,
+        category_id: payload.category_id,
+        type: payload.type,
+        amount: payload.amount,
+        currency: payload.currency,
+        amount_base: payload.amount_base,
+        exchange_rate: payload.exchange_rate,
+        description: payload.description,
+        date: payload.date,
+        notes: payload.notes,
+        is_recurring: payload.is_recurring,
+        parent_transaction_id: payload.parent_transaction_id,
+        created_at: item.created_at,
+        metadata: {
+          ...(payload.metadata || {}),
+          kind: "offline_pending",
+          sync_status: item.status,
+          idempotency_key: item.idempotency_key,
+          last_error: item.last_error,
+        }
+      } as unknown as Transaction
+    })
+
+  // Exclude server transactions that match synced outbox transactions to avoid duplicates
+  const serverTxsFiltered = serverTxs.filter(stx => {
+    const isOfflineDup = pendingTxs.some(ptx => ptx.id === stx.id || (stx.metadata?.idempotency_key && stx.metadata?.idempotency_key === ptx.metadata?.idempotency_key))
+    return !isOfflineDup
+  })
+
+  const combined = [...pendingTxs, ...serverTxsFiltered]
+  
+  return combined.sort((a, b) => {
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    if (dateA !== dateB) return dateB - dateA
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+  })
 }
 
 async function fetchCategories(): Promise<Category[]> {
@@ -977,149 +1120,239 @@ export async function createAccount(account: NewAccountInput) {
 
 export async function createTransaction(
   transaction: Omit<Transaction, "id" | "user_id" | "created_at" | "category" | "account">,
-  options?: { applyCommission?: boolean }
+  options?: { applyCommission?: boolean; skipOutbox?: boolean; idempotencyKey?: string }
 ) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
   if (!user) throw new Error("Not authenticated")
 
-  const normalizedDate = normalizeTransactionDateInput(transaction.date)
-  const transactionToInsert = {
-    ...transaction,
-    date: normalizedDate,
+  const idempotencyKey = options?.idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+  const localId = `local_tx_${Math.random().toString(36).substring(2, 15)}`
+
+  const outboxItem = {
+    id: localId,
+    operation: "create_transaction" as const,
+    entity: "transactions" as const,
+    payload: {
+      ...transaction,
+      applyCommission: options?.applyCommission,
+    },
+    status: "pending" as const,
+    retry_count: 0,
+    created_at: new Date().toISOString(),
+    last_attempt_at: null,
+    last_error: null,
+    idempotency_key: idempotencyKey,
   }
 
-  const applyCommission = Boolean(options?.applyCommission && transaction.type === "expense")
-  const commissionAmount = applyCommission ? getCommissionAmount(transaction.amount) : 0
-  const totalAmount = roundCurrencyAmount(transaction.amount + commissionAmount)
+  const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true
 
-  if (transaction.type === "expense") {
-    await ensureSufficientFundsForExpense(transactionToInsert.account_id, totalAmount, transactionToInsert.currency)
-  }
+  if (!options?.skipOutbox && !isOnline) {
+    console.log("Device is offline. Enqueuing transaction to offline outbox.")
+    await offlineDB.put("offline_outbox", outboxItem)
+    mutate("accounts")
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
 
-  let billingCycleId: string | null = null
-  let isStatementTransaction = false
-
-  const { data: accountForCycle } = await supabase
-    .from("accounts")
-    .select("id, user_id, type, closing_day, due_days_after_cutoff")
-    .eq("id", transactionToInsert.account_id)
-    .single()
-
-  if (accountForCycle?.type === "credit" && accountForCycle.closing_day) {
-    const txDate = /^\d{4}-\d{2}-\d{2}$/.test(transactionToInsert.date)
-      ? new Date(`${transactionToInsert.date}T12:00:00`)
-      : new Date(transactionToInsert.date)
-    const txCycle = getCycleForDate(Number(accountForCycle.closing_day), Number(accountForCycle.due_days_after_cutoff || 20), txDate)
-    const { data: existingCycle } = await supabase
-      .from("credit_card_cycles")
-      .select("id")
-      .eq("account_id", accountForCycle.id)
-      .eq("cycle_end_date", txCycle.cycleEndDate)
-      .maybeSingle()
-
-    if (existingCycle?.id) {
-      billingCycleId = existingCycle.id
-    } else {
-      const { data: createdCycle } = await supabase
-        .from("credit_card_cycles")
-        .insert({
-          user_id: accountForCycle.user_id,
-          account_id: accountForCycle.id,
-          cycle_start_date: txCycle.cycleStartDate,
-          cycle_end_date: txCycle.cycleEndDate,
-          due_date: txCycle.dueDate,
-          status: "open",
-        })
-        .select("id")
-        .single()
-      billingCycleId = createdCycle?.id || null
-    }
-
-    const nowCycle = getCycleForDate(Number(accountForCycle.closing_day), Number(accountForCycle.due_days_after_cutoff || 20))
-    isStatementTransaction = txCycle.cycleEndDate <= nowCycle.cycleEndDate
-  }
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .insert({ ...transactionToInsert, user_id: user.id, billing_cycle_id: billingCycleId, is_statement_transaction: isStatementTransaction })
-    .select()
-    .single()
-
-  if (error) throw error
-
-  let commissionTxId: string | null = null
-
-  if (applyCommission && commissionAmount > 0) {
-    const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
-    const { data: commissionTx, error: commissionError } = await supabase
-      .from("transactions")
-      .insert({
-        user_id: user.id,
-        account_id: transactionToInsert.account_id,
-        category_id: commissionCategoryId,
-        type: "expense",
-        amount: commissionAmount,
-        currency: transactionToInsert.currency,
-        amount_base: commissionAmount,
-        exchange_rate: transactionToInsert.exchange_rate,
-        description: `0.15% commission of ${transactionToInsert.description || "transaction"}`,
-        date: transactionToInsert.date,
-        notes: null,
-        is_recurring: false,
-        parent_transaction_id: data.id,
-        metadata: { kind: "commission", rate: COMMISSION_RATE },
-      })
-      .select("id")
-      .single()
-
-    if (commissionError) {
-      await supabase.from("transactions").delete().eq("id", data.id)
-      throw commissionError
-    }
-
-    commissionTxId = commissionTx?.id || null
+    return {
+      id: localId,
+      user_id: user.id,
+      account_id: transaction.account_id,
+      category_id: transaction.category_id,
+      type: transaction.type,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      amount_base: transaction.amount_base || transaction.amount,
+      exchange_rate: transaction.exchange_rate || 1,
+      description: transaction.description,
+      date: normalizeTransactionDateInput(transaction.date),
+      notes: transaction.notes,
+      is_recurring: transaction.is_recurring,
+      parent_transaction_id: transaction.parent_transaction_id,
+      created_at: outboxItem.created_at,
+      metadata: {
+        ...(transaction.metadata || {}),
+        kind: "offline_pending",
+        sync_status: "pending",
+        idempotency_key: idempotencyKey,
+      }
+    } as unknown as Transaction
   }
 
   try {
-    await applyAccountImpact({
-      accountId: transactionToInsert.account_id,
-      type: transactionToInsert.type,
-      amount: transactionToInsert.amount,
-      direction: 1,
-      currency: transactionToInsert.currency,
-    })
+    const normalizedDate = normalizeTransactionDateInput(transaction.date)
+    const transactionToInsert = {
+      ...transaction,
+      date: normalizedDate,
+      metadata: {
+        ...(transaction.metadata || {}),
+        idempotency_key: idempotencyKey,
+      }
+    }
 
-    if (commissionTxId && commissionAmount > 0) {
+    const applyCommission = Boolean(options?.applyCommission && transaction.type === "expense")
+    const commissionAmount = applyCommission ? getCommissionAmount(transaction.amount) : 0
+    const totalAmount = roundCurrencyAmount(transaction.amount + commissionAmount)
+
+    if (transaction.type === "expense") {
+      await ensureSufficientFundsForExpense(transactionToInsert.account_id, totalAmount, transactionToInsert.currency)
+    }
+
+    let billingCycleId: string | null = null
+    let isStatementTransaction = false
+
+    const { data: accountForCycle } = await supabase
+      .from("accounts")
+      .select("id, user_id, type, closing_day, due_days_after_cutoff")
+      .eq("id", transactionToInsert.account_id)
+      .single()
+
+    if (accountForCycle?.type === "credit" && accountForCycle.closing_day) {
+      const txDate = /^\d{4}-\d{2}-\d{2}$/.test(transactionToInsert.date)
+        ? new Date(`${transactionToInsert.date}T12:00:00`)
+        : new Date(transactionToInsert.date)
+      const txCycle = getCycleForDate(Number(accountForCycle.closing_day), Number(accountForCycle.due_days_after_cutoff || 20), txDate)
+      const { data: existingCycle } = await supabase
+        .from("credit_card_cycles")
+        .select("id")
+        .eq("account_id", accountForCycle.id)
+        .eq("cycle_end_date", txCycle.cycleEndDate)
+        .maybeSingle()
+
+      if (existingCycle?.id) {
+        billingCycleId = existingCycle.id
+      } else {
+        const { data: createdCycle } = await supabase
+          .from("credit_card_cycles")
+          .insert({
+            user_id: accountForCycle.user_id,
+            account_id: accountForCycle.id,
+            cycle_start_date: txCycle.cycleStartDate,
+            cycle_end_date: txCycle.cycleEndDate,
+            due_date: txCycle.dueDate,
+            status: "open",
+          })
+          .select("id")
+          .single()
+        billingCycleId = createdCycle?.id || null
+      }
+
+      const nowCycle = getCycleForDate(Number(accountForCycle.closing_day), Number(accountForCycle.due_days_after_cutoff || 20))
+      isStatementTransaction = txCycle.cycleEndDate <= nowCycle.cycleEndDate
+    }
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .insert({ ...transactionToInsert, user_id: user.id, billing_cycle_id: billingCycleId, is_statement_transaction: isStatementTransaction })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    let commissionTxId: string | null = null
+
+    if (applyCommission && commissionAmount > 0) {
+      const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
+      const { data: commissionTx, error: commissionError } = await supabase
+        .from("transactions")
+        .insert({
+          user_id: user.id,
+          account_id: transactionToInsert.account_id,
+          category_id: commissionCategoryId,
+          type: "expense",
+          amount: commissionAmount,
+          currency: transactionToInsert.currency,
+          amount_base: commissionAmount,
+          exchange_rate: transactionToInsert.exchange_rate,
+          description: `0.15% commission of ${transactionToInsert.description || "transaction"}`,
+          date: transactionToInsert.date,
+          notes: null,
+          is_recurring: false,
+          parent_transaction_id: data.id,
+          metadata: { kind: "commission", rate: COMMISSION_RATE },
+        })
+        .select("id")
+        .single()
+
+      if (commissionError) {
+        await supabase.from("transactions").delete().eq("id", data.id)
+        throw commissionError
+      }
+
+      commissionTxId = commissionTx?.id || null
+    }
+
+    try {
       await applyAccountImpact({
         accountId: transactionToInsert.account_id,
-        type: "expense",
-        amount: commissionAmount,
+        type: transactionToInsert.type,
+        amount: transactionToInsert.amount,
         direction: 1,
         currency: transactionToInsert.currency,
       })
+
+      if (commissionTxId && commissionAmount > 0) {
+        await applyAccountImpact({
+          accountId: transactionToInsert.account_id,
+          type: "expense",
+          amount: commissionAmount,
+          direction: 1,
+          currency: transactionToInsert.currency,
+        })
+      }
+    } catch (impactError) {
+      if (commissionTxId) {
+        await supabase.from("transactions").delete().eq("id", commissionTxId)
+      }
+      await supabase.from("transactions").delete().eq("id", data.id)
+      throw impactError
     }
-  } catch (impactError) {
-    if (commissionTxId) {
-      await supabase.from("transactions").delete().eq("id", commissionTxId)
+
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    mutate("accounts")
+
+    await createNotification({
+      userId: user.id,
+      type: "transaction",
+      title: transactionToInsert.type === "income" ? "Ingreso registrado" : "Gasto registrado",
+      message: `${transactionToInsert.description || "Movimiento"}: ${transactionToInsert.currency} ${roundCurrencyAmount(transactionToInsert.amount).toFixed(2)}`,
+      actionUrl: "/history",
+    })
+    mutate("notifications")
+
+    return data
+  } catch (err: any) {
+    const isNetworkError = err.message?.includes("Failed to fetch") || err.name === "TypeError" || !navigator.onLine
+    if (!options?.skipOutbox && isNetworkError) {
+      console.warn("Network query failed, enqueuing offline:", err)
+      await offlineDB.put("offline_outbox", outboxItem)
+      mutate("accounts")
+      mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+
+      return {
+        id: localId,
+        user_id: user.id,
+        account_id: transaction.account_id,
+        category_id: transaction.category_id,
+        type: transaction.type,
+        amount: transaction.amount,
+        currency: transaction.currency,
+        amount_base: transaction.amount_base || transaction.amount,
+        exchange_rate: transaction.exchange_rate || 1,
+        description: transaction.description,
+        date: normalizeTransactionDateInput(transaction.date),
+        notes: transaction.notes,
+        is_recurring: transaction.is_recurring,
+        parent_transaction_id: transaction.parent_transaction_id,
+        created_at: outboxItem.created_at,
+        metadata: {
+          ...(transaction.metadata || {}),
+          kind: "offline_pending",
+          sync_status: "pending",
+          idempotency_key: idempotencyKey,
+        }
+      } as unknown as Transaction
     }
-    await supabase.from("transactions").delete().eq("id", data.id)
-    throw impactError
+    throw err
   }
-
-  // Mutate transactions and accounts
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  mutate("accounts")
-
-  await createNotification({
-    userId: user.id,
-    type: "transaction",
-    title: transactionToInsert.type === "income" ? "Ingreso registrado" : "Gasto registrado",
-    message: `${transactionToInsert.description || "Movimiento"}: ${transactionToInsert.currency} ${roundCurrencyAmount(transactionToInsert.amount).toFixed(2)}`,
-    actionUrl: "/history",
-  })
-  mutate("notifications")
-
-  return data
 }
 
 export async function updateTransaction(
@@ -1186,6 +1419,56 @@ export async function deleteTransaction(id: string) {
     .single()
 
   if (existingError || !existing) throw existingError || new Error("Transacción no encontrada")
+
+  if (existing.metadata?.kind === "credit_payment") {
+    const paymentId = existing.metadata.payment_id
+    if (paymentId) {
+      // Find all transactions with this payment_id
+      const { data: siblingTxs } = await supabase
+        .from("transactions")
+        .select("*")
+        .eq("metadata->>payment_id", paymentId)
+      
+      if (siblingTxs && siblingTxs.length > 0) {
+        for (const tx of siblingTxs) {
+          await applyAccountImpact({
+            accountId: tx.account_id,
+            type: tx.type,
+            amount: Number(tx.amount),
+            direction: -1,
+            currency: tx.currency,
+          })
+          
+          // Revert child commission transactions if any
+          const { data: childCommissionTxs } = await supabase
+            .from("transactions")
+            .select("*")
+            .eq("parent_transaction_id", tx.id)
+            .eq("metadata->>kind", "commission")
+          
+          if (childCommissionTxs && childCommissionTxs.length > 0) {
+            for (const commTx of childCommissionTxs) {
+              await applyAccountImpact({
+                accountId: commTx.account_id,
+                type: "expense",
+                amount: Number(commTx.amount),
+                direction: -1,
+                currency: commTx.currency,
+              })
+              await supabase.from("transactions").delete().eq("id", commTx.id)
+            }
+          }
+          await supabase.from("transactions").delete().eq("id", tx.id)
+        }
+      }
+      // Also delete the credit payment log record
+      await supabase.from("credit_payments").delete().eq("id", paymentId)
+      
+      mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+      mutate("accounts")
+      return
+    }
+  }
 
   await applyAccountImpact({
     accountId: existing.account_id,
@@ -1662,13 +1945,12 @@ export async function payCreditCard(payment: {
   source_account_id: string
   amount: number
   currency: "DOP" | "USD"
+  exchange_rate?: number
   payment_kind?: "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
   notes?: string
   apply_commission?: boolean
 }) {
   const applyCommission = Boolean(payment.apply_commission)
-  const commissionAmount = applyCommission ? getCommissionAmount(payment.amount) : 0
-  const totalAmount = roundCurrencyAmount(payment.amount + commissionAmount)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
@@ -1686,14 +1968,30 @@ export async function payCreditCard(payment: {
 
   const { data: sourceAccount } = await supabase
     .from("accounts")
-    .select("id,balance,currency")
+    .select("id,balance,currency,name")
     .eq("id", payment.source_account_id)
     .single()
 
   if (!sourceAccount) throw new Error("Source account not found")
-  if (sourceAccount.currency !== payment.currency) {
-    throw new Error("La cuenta origen debe tener la misma moneda del pago")
+
+  const sourceCurrency = sourceAccount.currency as "DOP" | "USD"
+  const conversionApplies = sourceCurrency !== payment.currency
+  const exchangeRate = conversionApplies ? Number(payment.exchange_rate || 0) : 1
+
+  if (conversionApplies && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) {
+    throw new Error("Ingresa una tasa de cambio válida")
   }
+
+  const sourceDebitAmount = roundCurrencyAmount(
+    conversionApplies
+      ? payment.currency === "USD" && sourceCurrency === "DOP"
+        ? payment.amount * exchangeRate
+        : payment.amount / exchangeRate
+      : payment.amount
+  )
+
+  const commissionAmount = applyCommission ? getCommissionAmount(sourceDebitAmount) : 0
+  const totalSourceDebit = roundCurrencyAmount(sourceDebitAmount + commissionAmount)
 
   const fields = getCurrencyFields(payment.currency)
   const currentDebt = Number((creditCard as Record<string, unknown>)[fields.debt] ?? 0)
@@ -1704,9 +2002,7 @@ export async function payCreditCard(payment: {
     throw new Error("No puedes pagar más que la deuda actual")
   }
 
-  if (applyCommission && Number(sourceAccount.balance) < totalAmount) {
-    throw new Error(COMMISSION_ERROR_MESSAGE)
-  } else if (!applyCommission && Number(sourceAccount.balance) < payment.amount) {
+  if (Number(sourceAccount.balance) < totalSourceDebit) {
     throw new Error("Disponible insuficiente en la cuenta origen para este pago")
   }
 
@@ -1716,8 +2012,20 @@ export async function payCreditCard(payment: {
   const newPaidStatement = roundCurrencyAmount(currentPaid + paidTowardStatement)
   const cardLimit = Number((creditCard as Record<string, unknown>)[fields.limit] ?? 0)
   const newAvailableCredit = roundCurrencyAmount(Math.min(cardLimit, Math.max(0, cardLimit - newDebt)))
-  const optimisticSourceBalance = roundCurrencyAmount(Number(sourceAccount.balance || 0) - totalAmount)
+  const optimisticSourceBalance = roundCurrencyAmount(Number(sourceAccount.balance || 0) - totalSourceDebit)
   const optimisticPendingAmount = Math.max(0, roundCurrencyAmount(currentStatement - newPaidStatement))
+
+  const conversionMetadata = conversionApplies
+    ? {
+        source_amount: sourceDebitAmount,
+        source_currency: sourceCurrency,
+        target_amount: payment.amount,
+        target_currency: payment.currency,
+        exchange_rate: exchangeRate,
+        conversion_direction: `${sourceCurrency}_TO_${payment.currency}`,
+        exchange_rate_source: "manual",
+      }
+    : null
 
   const updates: Record<string, unknown> = {
     [fields.debt]: newDebt,
@@ -1730,6 +2038,26 @@ export async function payCreditCard(payment: {
     updates.pending_amount = optimisticPendingAmount
     updates.paid_amount = newPaidStatement
   }
+
+  const originalCardUpdates: Record<string, unknown> = {
+    [fields.debt]: currentDebt,
+    [fields.paidStatement]: currentPaid,
+    [`available_credit_${payment.currency.toLowerCase()}`]: Number((creditCard as Record<string, unknown>)[`available_credit_${payment.currency.toLowerCase()}`] ?? 0),
+  }
+
+  if (payment.currency === "DOP") {
+    originalCardUpdates.current_debt = Number(creditCard.current_debt ?? 0)
+    originalCardUpdates.pending_amount = Number(creditCard.pending_amount ?? 0)
+    originalCardUpdates.paid_amount = Number(creditCard.paid_amount ?? 0)
+  }
+
+  const originalSourceBalance = Number(sourceAccount.balance || 0)
+
+  let paymentRecordId: string | null = null
+  let sourceTxId: string | null = null
+  let cardTxId: string | null = null
+  let commissionTxId: string | null = null
+  const updatedCyclesToRollback: Array<{ id: string; updates: Record<string, unknown> }> = []
 
   await mutate("accounts", (currentAccounts?: Account[]) => {
     if (!currentAccounts) return currentAccounts
@@ -1763,25 +2091,43 @@ export async function payCreditCard(payment: {
     (key: unknown) => Array.isArray(key) && key[0] === "transactions",
     (existing?: Transaction[]) => {
       if (!existing || existing.length === 0) return existing
-      const optimisticTx: Transaction = {
-        id: `optimistic-credit-payment-${Date.now()}`,
+      const optimisticSourceTx: Transaction = {
+        id: `optimistic-credit-payment-source-${Date.now()}`,
         user_id: user.id,
         account_id: payment.source_account_id,
         category_id: null,
         type: "expense",
-        amount: payment.amount,
-        currency: payment.currency,
+        amount: sourceDebitAmount,
+        currency: sourceCurrency,
         amount_base: payment.amount,
-        exchange_rate: 1,
-        description: `Payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
+        exchange_rate: exchangeRate,
+        description: `Pago a tarjeta ${creditCard.name}`,
         date: getLocalDateString(),
         notes: payment.notes || null,
         is_recurring: false,
         parent_transaction_id: null,
-        metadata: { kind: "credit_payment", credit_account_id: payment.credit_account_id },
+        metadata: { kind: "credit_payment", credit_account_id: payment.credit_account_id, payment_kind: payment.payment_kind || "custom", payment_currency: payment.currency, conversion: conversionMetadata },
         created_at: new Date().toISOString(),
       }
-      return [optimisticTx, ...existing]
+      const optimisticCardTx: Transaction = {
+        id: `optimistic-credit-payment-card-${Date.now()}`,
+        user_id: user.id,
+        account_id: payment.credit_account_id,
+        category_id: null,
+        type: "income",
+        amount: payment.amount,
+        currency: payment.currency,
+        amount_base: payment.amount,
+        exchange_rate: 1,
+        description: `Pago recibido desde ${sourceAccount.name}`,
+        date: getLocalDateString(),
+        notes: payment.notes || null,
+        is_recurring: false,
+        parent_transaction_id: optimisticSourceTx.id,
+        metadata: { kind: "credit_payment", source_account_id: payment.source_account_id, payment_kind: payment.payment_kind || "custom", payment_currency: payment.currency, conversion: conversionMetadata },
+        created_at: new Date().toISOString(),
+      }
+      return [optimisticSourceTx, optimisticCardTx, ...existing]
     },
     false
   )
@@ -1798,10 +2144,10 @@ export async function payCreditCard(payment: {
           category_id: null,
           type: "expense",
           amount: commissionAmount,
-          currency: payment.currency,
+          currency: sourceCurrency,
           amount_base: commissionAmount,
           exchange_rate: 1,
-          description: `0.15% commission of payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
+          description: `0.15% commission of payment to ${creditCard.name}`,
           date: getLocalDateString(),
           notes: null,
           is_recurring: false,
@@ -1816,10 +2162,12 @@ export async function payCreditCard(payment: {
   }
 
   try {
-    await supabase
+    const { error: cardUpdateError } = await supabase
       .from("accounts")
       .update(updates)
       .eq("id", payment.credit_account_id)
+
+    if (cardUpdateError) throw cardUpdateError
 
     const { data: openCycles } = await supabase
       .from("credit_card_cycles")
@@ -1856,16 +2204,30 @@ export async function payCreditCard(payment: {
           cycleUpdates.status = isOverdue ? "financed" : "partial"
         }
 
-        await supabase.from("credit_card_cycles").update(cycleUpdates).eq("id", cycleRow.id)
+        const originalCycleUpdates: Record<string, unknown> = {
+          status: cycleRow.status,
+        }
+        if (payment.currency === "USD") originalCycleUpdates.paid_amount_usd = cycleRow.paid_amount_usd
+        else originalCycleUpdates.paid_amount_dop = cycleRow.paid_amount_dop
+        updatedCyclesToRollback.push({ id: cycleRow.id, updates: originalCycleUpdates })
+
+        const { error: cycleUpdateError } = await supabase
+          .from("credit_card_cycles")
+          .update(cycleUpdates)
+          .eq("id", cycleRow.id)
+
+        if (cycleUpdateError) throw cycleUpdateError
       }
     }
 
-    await supabase
+    const { error: sourceUpdateError } = await supabase
       .from("accounts")
       .update({ balance: optimisticSourceBalance })
       .eq("id", payment.source_account_id)
 
-    const { data, error } = await supabase
+    if (sourceUpdateError) throw sourceUpdateError
+
+    const { data: paymentRecord, error: paymentError } = await supabase
       .from("credit_payments")
       .insert({
         user_id: user.id,
@@ -1879,57 +2241,119 @@ export async function payCreditCard(payment: {
       .select()
       .single()
 
-    if (error) {
-      console.error("Payment error:", error)
-      throw error
+    if (paymentError) {
+      console.error("Payment error:", paymentError)
+      throw paymentError
     }
+    paymentRecordId = paymentRecord.id
 
-    await supabase.from("transactions").insert({
-      user_id: user.id,
-      account_id: payment.source_account_id,
-      category_id: null,
-      type: "expense",
-      amount: payment.amount,
-      currency: payment.currency,
-      amount_base: payment.amount,
-      exchange_rate: 1,
-      description: `Payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
-      date: getLocalDateString(),
-      notes: payment.notes || null,
-      is_recurring: false,
-      metadata: { kind: "credit_payment", credit_account_id: payment.credit_account_id, payment_kind: payment.payment_kind || "custom" },
-    })
+    const { data: sourceTx, error: sourceTxError } = await supabase
+      .from("transactions")
+      .insert({
+        user_id: user.id,
+        account_id: payment.source_account_id,
+        category_id: null,
+        type: "expense",
+        amount: sourceDebitAmount,
+        currency: sourceCurrency,
+        amount_base: payment.amount,
+        exchange_rate: exchangeRate,
+        description: `Pago a tarjeta ${creditCard.name}`,
+        date: getLocalDateString(),
+        notes: payment.notes || null,
+        is_recurring: false,
+        metadata: {
+          kind: "credit_payment",
+          credit_account_id: payment.credit_account_id,
+          payment_kind: payment.payment_kind || "custom",
+          payment_currency: payment.currency,
+          conversion: conversionMetadata,
+          payment_id: paymentRecordId,
+        },
+      })
+      .select()
+      .single()
+
+    if (sourceTxError) {
+      console.error("Source transaction error:", sourceTxError)
+      throw sourceTxError
+    }
+    sourceTxId = sourceTx.id
+
+    const { data: cardTx, error: cardTxError } = await supabase
+      .from("transactions")
+      .insert({
+        user_id: user.id,
+        account_id: payment.credit_account_id,
+        category_id: null,
+        type: "income",
+        amount: payment.amount,
+        currency: payment.currency,
+        amount_base: payment.amount,
+        exchange_rate: 1,
+        description: `Pago recibido desde ${sourceAccount.name}`,
+        date: getLocalDateString(),
+        notes: payment.notes || null,
+        is_recurring: false,
+        parent_transaction_id: sourceTxId,
+        metadata: {
+          kind: "credit_payment",
+          source_account_id: payment.source_account_id,
+          payment_kind: payment.payment_kind || "custom",
+          payment_currency: payment.currency,
+          conversion: conversionMetadata,
+          payment_id: paymentRecordId,
+        },
+      })
+      .select()
+      .single()
+
+    if (cardTxError) {
+      console.error("Card transaction error:", cardTxError)
+      throw cardTxError
+    }
+    cardTxId = cardTx.id
 
     if (applyCommission && commissionAmount > 0) {
       const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
-      await supabase.from("transactions").insert({
-        user_id: user.id,
-        account_id: payment.source_account_id,
-        category_id: commissionCategoryId,
-        type: "expense",
-        amount: commissionAmount,
-        currency: payment.currency,
-        amount_base: commissionAmount,
-        exchange_rate: 1,
-        description: `0.15% commission of payment to ${String((creditCard as Record<string, unknown>).name || "tarjeta")}`,
-        date: getLocalDateString(),
-        notes: null,
-        is_recurring: false,
-        metadata: { kind: "commission", rate: COMMISSION_RATE },
-      })
+      const { data: commissionTx, error: commissionTxError } = await supabase
+        .from("transactions")
+        .insert({
+          user_id: user.id,
+          account_id: payment.source_account_id,
+          category_id: commissionCategoryId,
+          type: "expense",
+          amount: commissionAmount,
+          currency: sourceCurrency,
+          amount_base: commissionAmount,
+          exchange_rate: 1,
+          description: `0.15% commission of payment to ${creditCard.name}`,
+          date: getLocalDateString(),
+          notes: null,
+          is_recurring: false,
+          metadata: { kind: "commission", rate: COMMISSION_RATE },
+        })
+        .select()
+        .single()
+
+      if (commissionTxError) {
+        console.error("Commission transaction error:", commissionTxError)
+        throw commissionTxError
+      }
+      commissionTxId = commissionTx.id
     }
 
     await syncCreditAccountCycle(payment.credit_account_id)
 
-    const totalPaid = applyCommission ? totalAmount : payment.amount
+    const totalPaid = applyCommission ? totalSourceDebit : sourceDebitAmount
     const commissionText = applyCommission && commissionAmount > 0
-      ? ` (incluye ${payment.currency} ${commissionAmount.toFixed(2)} de comisión)`
+      ? ` (incluye ${sourceCurrency} ${commissionAmount.toFixed(2)} de comisión)`
       : ""
     await createNotification({
       userId: user.id,
       type: "credit",
       title: "Pago de tarjeta registrado",
-      message: `Pagaste ${payment.currency} ${roundCurrencyAmount(totalPaid).toFixed(2)} de tu tarjeta${commissionText}.`,
+      message: `Pagaste ${sourceCurrency} ${roundCurrencyAmount(totalPaid).toFixed(2)} de tu tarjeta${commissionText}.`,
       actionUrl: "/pay",
     })
     mutate("notifications")
@@ -1937,10 +2361,50 @@ export async function payCreditCard(payment: {
     mutate("accounts")
     mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
 
-    return data
+    return {
+      payment: paymentRecord,
+      sourceTransaction: sourceTx,
+      cardTransaction: cardTx,
+    }
   } catch (error) {
-    mutate("accounts")
-    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    console.error("Critical error in payCreditCard DB operations, rolling back...", error)
+    try {
+      if (commissionTxId) {
+        await supabase.from("transactions").delete().eq("id", commissionTxId)
+      }
+      if (cardTxId) {
+        await supabase.from("transactions").delete().eq("id", cardTxId)
+      }
+      if (sourceTxId) {
+        await supabase.from("transactions").delete().eq("id", sourceTxId)
+      }
+      if (paymentRecordId) {
+        await supabase.from("credit_payments").delete().eq("id", paymentRecordId)
+      }
+      await supabase
+        .from("accounts")
+        .update({ balance: originalSourceBalance })
+        .eq("id", payment.source_account_id)
+
+      for (const cycleToRollback of updatedCyclesToRollback) {
+        await supabase
+          .from("credit_card_cycles")
+          .update(cycleToRollback.updates)
+          .eq("id", cycleToRollback.id)
+      }
+
+      await supabase
+        .from("accounts")
+        .update(originalCardUpdates)
+        .eq("id", payment.credit_account_id)
+
+      await syncCreditAccountCycle(payment.credit_account_id)
+    } catch (rollbackError) {
+      console.error("Double failure: Rollback failed as well:", rollbackError)
+    }
+
+    await mutate("accounts", undefined, { revalidate: true })
+    await mutate((key: any) => Array.isArray(key) && key[0] === "transactions", undefined, { revalidate: true })
     throw error
   }
 }
@@ -2354,22 +2818,31 @@ export async function setFavoriteAccount(accountId: string) {
 }
 
 export async function deleteAccount(id: string) {
-  // Check if account has transactions
-  const { data: txs, error: txsError } = await supabase
-    .from("transactions")
-    .select("id")
-    .eq("account_id", id)
-    .limit(1)
-
-  if (txsError) throw txsError
-  if (txs && txs.length > 0) {
-    throw new Error("No se puede eliminar una cuenta con transacciones asociadas")
-  }
-
   const { error } = await supabase
     .from("accounts")
     .delete()
     .eq("id", id)
 
   if (error) throw error
+  mutate("accounts")
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+}
+
+export async function getAccountDeletionImpact(id: string) {
+  const [transactions, transfersFrom, transfersTo, payments, subscriptions] = await Promise.all([
+    supabase.from("transactions").select("id", { count: "exact", head: true }).eq("account_id", id),
+    supabase.from("transfers").select("id", { count: "exact", head: true }).eq("from_account_id", id),
+    supabase.from("transfers").select("id", { count: "exact", head: true }).eq("to_account_id", id),
+    supabase.from("credit_payments").select("id", { count: "exact", head: true }).or(`credit_account_id.eq.${id},source_account_id.eq.${id}`),
+    supabase.from("subscriptions").select("id", { count: "exact", head: true }).eq("account_id", id),
+  ])
+
+  const count =
+    Number(transactions.count || 0) +
+    Number(transfersFrom.count || 0) +
+    Number(transfersTo.count || 0) +
+    Number(payments.count || 0) +
+    Number(subscriptions.count || 0)
+
+  return { count, hasMovements: count > 0 }
 }

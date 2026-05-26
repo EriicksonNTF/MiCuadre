@@ -43,7 +43,5 @@ export function assertServerEnv() {
     stripeBusinessPriceId: readEnv("STRIPE_BUSINESS_PRICE_ID"),
     stripeProMonthlyPriceId: readEnv("STRIPE_PRO_MONTHLY_PRICE_ID"),
     stripeProYearlyPriceId: readEnv("STRIPE_PRO_YEARLY_PRICE_ID"),
-    stripePlusMonthlyPriceId: readEnv("STRIPE_PLUS_MONTHLY_PRICE_ID"),
-    stripePlusYearlyPriceId: readEnv("STRIPE_PLUS_YEARLY_PRICE_ID"),
   }
 }

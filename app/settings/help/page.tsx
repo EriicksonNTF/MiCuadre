@@ -10,7 +10,7 @@ const faqs = [
   { q: "¿Cómo funciona el ahorro?", a: "En Metas crea una meta de ahorro y agrega dinero cuando quieras. Verás tu progreso en tiempo real." },
   { q: "¿Cómo transfiero dinero?", a: "En Cuentas presiona Transferir. Selecciona la cuenta de origen, destino e ingresa el monto." },
   { q: "¿Mis datos son seguros?", a: "Sí. Usamos encriptación de grado bancario y nunca compartimos tu información financiera." },
-  { q: "¿Puedo exportar mis datos?", a: "Sí, con MiCuadre Pro o Plus puedes exportar tus movimientos en formato CSV o Excel desde la pantalla de reportes." },
+  { q: "¿Puedo exportar mis datos?", a: "Sí, con MiCuadre Pro puedes exportar tus movimientos en formato CSV o Excel desde la pantalla de reportes." },
 ]
 
 export default function HelpPage() {

@@ -111,12 +111,18 @@ export default function ProfilePage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !user) return
+    if (!file) return
 
     setIsUploading(true)
     try {
+      const { data: authData, error: authError } = await supabase.auth.getUser()
+      const authUser = authData.user
+      if (authError || !authUser) {
+        toast({ title: "Sesión requerida", description: "Inicia sesión para actualizar tu foto." })
+        return
+      }
       const extension = file.name.split(".").pop() || "jpg"
-      const filePath = `${user.id}/avatar.${extension}`
+      const filePath = `${authUser.id}/avatar.${extension}`
 
       const { error: uploadError } = await supabase.storage
         .from("avatars")
@@ -139,6 +145,8 @@ export default function ProfilePage() {
           : ""
       const message = rawMessage.toLowerCase().includes("bucket not found")
         ? "Falta configurar el bucket 'avatars' en Supabase. Ejecuta scripts/009_storage_buckets_setup.sql."
+        : rawMessage.toLowerCase().includes("row-level security policy")
+        ? "No tienes permisos de carga en el bucket de avatars. Ejecuta scripts/022_avatar_storage_rls_and_push_subscriptions.sql en Supabase y vuelve a intentar."
         : rawMessage || "No se pudo actualizar la foto de perfil."
       toast({ title: "Error", description: message })
     } finally {

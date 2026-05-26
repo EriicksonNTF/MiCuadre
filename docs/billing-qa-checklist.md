@@ -11,8 +11,6 @@ Esta guia valida el flujo SaaS de `billing_subscriptions` (NO `financial_subscri
 - `STRIPE_WEBHOOK_SECRET` (solo server)
 - `STRIPE_PRO_MONTHLY_PRICE_ID`
 - `STRIPE_PRO_YEARLY_PRICE_ID`
-- `STRIPE_PLUS_MONTHLY_PRICE_ID`
-- `STRIPE_PLUS_YEARLY_PRICE_ID`
 
 ## B) Migraciones de Supabase requeridas
 
@@ -29,7 +27,6 @@ Verificar tablas:
 ## C) Configuracion Stripe Dashboard requerida
 
 - Producto/price Pro mensual y anual activos.
-- Producto/price Plus mensual y anual activos.
 - Billing Portal habilitado.
 - Webhook endpoint con eventos:
   - `checkout.session.completed`
@@ -79,8 +76,8 @@ Fecha futura, CVC cualquiera, ZIP cualquiera.
    - Mensaje amigable sin error tecnico
    - Plan no cambia
 
-3. Plus sin price ID configurado
-   - Botón Plus no rompe
+3. Pro sin price ID configurado
+   - Botón Pro no rompe
    - Usuario ve error amigable sin nombres de variables.
    - Mensaje de contacto amigable
 

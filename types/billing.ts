@@ -1,7 +1,7 @@
 // Billing domain types for MiCuadre product plans.
 // Independent from financial_subscriptions (user recurring expenses).
 
-export type PlanTier = "free" | "pro" | "plus"
+export type PlanTier = "free" | "pro"
 
 export type PaidPlanTier = Exclude<PlanTier, "free">
 

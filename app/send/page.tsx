@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -23,6 +23,7 @@ import { mutate } from "swr"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
+import { MovementReceipt } from "@/components/receipts/movement-receipt"
 
 export default function SendPage() {
   const router = useRouter()
@@ -38,7 +39,20 @@ export default function SendPage() {
   const [description, setDescription] = useState("")
   const [applyCommission, setApplyCommission] = useState(false)
   const [isSending, setIsSending] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
+  const [receipt, setReceipt] = useState<{
+    id?: string
+    amount: number
+    currency: "DOP" | "USD"
+    sourceName: string
+    destinationName: string
+    previousSourceBalance: number
+    newSourceBalance: number
+    previousDestinationBalance?: number
+    newDestinationBalance?: number
+    note?: string
+    date: Date
+  } | null>(null)
+  const originalBalanceRef = useRef<number | null>(null)
 
   const [showAddBeneficiary, setShowAddBeneficiary] = useState(false)
   const [newBeneficiaryName, setNewBeneficiaryName] = useState("")
@@ -84,6 +98,7 @@ export default function SendPage() {
   }, [beneficiaries, searchQuery])
 
   const selectedSourceAccount = accounts.find(a => a.id === selectedAccount)
+  const selectedDestinationAccount = accounts.find(a => a.id === selectedRecipient)
   const selectedBeneficiary = beneficiaries.find(b => b.id === selectedRecipient)
   const parsedAmount = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0
   const availableBalance = selectedSourceAccount?.balance || 0
@@ -92,12 +107,16 @@ export default function SendPage() {
   const exceedsBalance = totalAmount > availableBalance
 
   const isValid = parsedAmount > 0 && !exceedsBalance && selectedRecipient
+  const previewOriginalBalance = originalBalanceRef.current ?? availableBalance
+  const newBalancePreview = previewOriginalBalance - totalAmount
 
   const handleSend = async () => {
     if (!isValid) return
     setIsSending(true)
     try {
-      await createTransfer({
+      const previousSourceBalance = Number(selectedSourceAccount?.balance || 0)
+      const previousDestinationBalance = recipientType === "account" ? Number(selectedDestinationAccount?.balance || 0) : undefined
+      const transfer = await createTransfer({
         from_account_id: selectedAccount,
         to_account_id: recipientType === "account" ? selectedRecipient : undefined,
         to_beneficiary_id: recipientType === "beneficiary" ? selectedRecipient : undefined,
@@ -107,10 +126,24 @@ export default function SendPage() {
         apply_commission: applyCommission,
       })
       setIsSending(false)
-      setShowSuccess(true)
       notify({ title: "Transferencia realizada", message: "Movimiento creado con éxito y balance actualizado." })
       EventBus.emit({ type: "transfer_completed" })
-      setTimeout(() => router.push("/"), 1500)
+      setReceipt({
+        id: transfer?.id,
+        amount: parsedAmount,
+        currency: (selectedSourceAccount?.currency || "DOP") as "DOP" | "USD",
+        sourceName: selectedSourceAccount?.name || "Cuenta origen",
+        destinationName: recipientType === "beneficiary"
+          ? selectedBeneficiary?.name || "Beneficiario"
+          : selectedDestinationAccount?.name || "Cuenta destino",
+        previousSourceBalance,
+        newSourceBalance: previousSourceBalance - totalAmount,
+        previousDestinationBalance,
+        newDestinationBalance: typeof previousDestinationBalance === "number" ? previousDestinationBalance + parsedAmount : undefined,
+        note: description || undefined,
+        date: new Date(),
+      })
+      resetFlowAfterReceipt()
     } catch (error) {
       console.error("Transfer error:", error)
       notify({
@@ -119,6 +152,23 @@ export default function SendPage() {
       })
       setIsSending(false)
     }
+  }
+
+  const resetFlowAfterReceipt = () => {
+    setStep("select")
+    setRecipientType("account")
+    setSelectedAccount("")
+    setSelectedRecipient("")
+    setSearchQuery("")
+    setAmount("")
+    setDescription("")
+    setApplyCommission(false)
+    originalBalanceRef.current = null
+  }
+
+  const closeReceiptToDashboard = () => {
+    setReceipt(null)
+    router.push("/dashboard")
   }
 
   return (
@@ -281,7 +331,10 @@ export default function SendPage() {
                 <span className="text-3xl font-medium text-muted-foreground">RD$</span>
                 <MoneyInput
                   value={amount}
-                  onValueChange={setAmount}
+                  onValueChange={(value) => {
+                    originalBalanceRef.current = null
+                    setAmount(value)
+                  }}
                   placeholder="0"
                   className="w-full bg-transparent text-center text-5xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
                   autoFocus
@@ -316,7 +369,10 @@ export default function SendPage() {
               {[500, 1000, 2000, 5000].map(val => (
                 <button
                   key={val}
-                  onClick={() => setAmount(val.toString())}
+                  onClick={() => {
+                    originalBalanceRef.current = null
+                    setAmount(val.toString())
+                  }}
                   className="rounded-full bg-muted px-4 py-2 text-sm font-medium"
                 >
                   RD${val.toLocaleString()}
@@ -338,7 +394,10 @@ export default function SendPage() {
             {/* Continue Button */}
             <div className="pb-6 pt-4">
                 <Button
-                  onClick={() => setStep("confirm")}
+                  onClick={() => {
+                    originalBalanceRef.current = availableBalance
+                    setStep("confirm")
+                  }}
                   disabled={parsedAmount <= 0 || exceedsBalance}
                   className="h-14 w-full rounded-2xl text-base font-semibold"
                 >
@@ -380,7 +439,7 @@ export default function SendPage() {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Nuevo balance</span>
                 <span className="font-medium text-muted-foreground">
-                  {formatCurrency(availableBalance - parsedAmount)}
+                  {formatCurrency(newBalancePreview, selectedSourceAccount?.currency)}
                 </span>
               </div>
             </div>
@@ -393,6 +452,8 @@ export default function SendPage() {
                 recipientName={recipientType === "beneficiary" ? selectedBeneficiary?.name || "" : accounts.find(a => a.id === selectedRecipient)?.name || ""}
                 onConfirm={handleSend}
                 disabled={!isValid || isSending}
+                loading={isSending}
+                label="Desliza para enviar"
               />
               <button
                 onClick={() => setStep("amount")}
@@ -443,6 +504,42 @@ export default function SendPage() {
           </div>
         </BaseModalForm>
       )}
+      <MovementReceipt
+        open={Boolean(receipt)}
+        title="Envío registrado"
+        amount={receipt ? formatCurrency(receipt.amount, receipt.currency) : ""}
+        onClose={closeReceiptToDashboard}
+        primaryActionLabel="Ver movimientos"
+        secondaryActionLabel="Listo"
+        onPrimaryAction={() => router.push("/history")}
+        onSecondaryAction={closeReceiptToDashboard}
+        sections={[
+          {
+            title: "Desde",
+            lines: [
+              { label: "Cuenta", value: receipt?.sourceName },
+              { label: "Balance anterior", value: receipt ? formatCurrency(receipt.previousSourceBalance, receipt.currency) : undefined },
+              { label: "Nuevo balance", value: receipt ? formatCurrency(receipt.newSourceBalance, receipt.currency) : undefined },
+            ],
+          },
+          {
+            title: "Hacia",
+            lines: [
+              { label: "Destino", value: receipt?.destinationName },
+              { label: "Balance anterior", value: receipt?.previousDestinationBalance !== undefined ? formatCurrency(receipt.previousDestinationBalance, receipt.currency) : undefined },
+              { label: "Nuevo balance", value: receipt?.newDestinationBalance !== undefined ? formatCurrency(receipt.newDestinationBalance, receipt.currency) : undefined },
+            ],
+          },
+          {
+            title: "Detalle",
+            lines: [
+              { label: "Fecha", value: receipt?.date.toLocaleString("es-DO", { day: "2-digit", month: "long", year: "numeric", hour: "numeric", minute: "2-digit" }) },
+              { label: "Nota", value: receipt?.note },
+              { label: "Referencia", value: receipt?.id },
+            ],
+          },
+        ]}
+      />
     </div>
   )
 }

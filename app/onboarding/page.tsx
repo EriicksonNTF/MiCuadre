@@ -247,11 +247,10 @@ export default function OnboardingPage() {
                   className={cn(
                     "rounded-2xl border bg-card p-5 relative overflow-hidden",
                     tier === "pro" && "border-primary/45 bg-gradient-to-b from-card via-card to-primary/[0.03] shadow-[0_4px_20px_rgba(34,197,94,0.08)]",
-                    tier === "plus" && "border-amber-500/40 bg-gradient-to-b from-card via-card to-amber-500/[0.04]"
                   )}
                 >
-                  {(tier === "pro" || tier === "plus") && (
-                    <div className={cn("absolute top-0 right-0 h-24 w-24 rounded-full blur-2xl -mr-4 -mt-4 pointer-events-none", tier === "pro" ? "bg-primary/10" : "bg-amber-500/10")} />
+                  {tier === "pro" && (
+                    <div className="absolute top-0 right-0 h-24 w-24 rounded-full bg-primary/10 blur-2xl -mr-4 -mt-4 pointer-events-none" />
                   )}
                   <div className="relative flex items-start justify-between gap-3">
                     <div>
@@ -274,7 +273,7 @@ export default function OnboardingPage() {
                         </p>
                       )}
                     </div>
-                    <div className={cn("rounded-full p-1.5 border", tier === "pro" ? "bg-primary/10 text-primary border-primary/20" : tier === "plus" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" : "bg-muted/60 text-muted-foreground border-border/10")}>
+                    <div className={cn("rounded-full p-1.5 border", tier === "pro" ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/60 text-muted-foreground border-border/10")}>
                       {tier === "free" ? <Wallet className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
                     </div>
                   </div>
@@ -314,7 +313,7 @@ export default function OnboardingPage() {
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />
               Pago seguro vía Stripe
             </p>
-            <p>Tus datos de pago están 100% cifrados y protegidos. Cancela cuando quieras desde tu perfil.</p>
+          <p>Tus datos de pago están protegidos por Stripe. Cancela cuando quieras desde tu perfil.</p>
           </div>
 
           <div className="mt-4 text-center">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
+import { offlineDB } from "@/lib/offline/db"
 
 const supabase = createClient()
 
@@ -19,7 +20,14 @@ export function useAuth() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (event, session) => {
+        if (event === "SIGNED_OUT" || !session) {
+          try {
+            await offlineDB.clearAllCaches()
+          } catch (err) {
+            console.error("Failed to clear offline caches on auth change:", err)
+          }
+        }
         setUser(session?.user ?? null)
         setLoading(false)
       }
@@ -29,6 +37,11 @@ export function useAuth() {
   }, [])
 
   const signOut = async () => {
+    try {
+      await offlineDB.clearAllCaches()
+    } catch (err) {
+      console.error("Failed to clear offline caches on signOut:", err)
+    }
     await supabase.auth.signOut()
   }
 
@@ -39,3 +52,4 @@ export function useAuth() {
     isAuthenticated: !!user,
   }
 }
+

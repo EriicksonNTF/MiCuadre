@@ -3,7 +3,7 @@
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS plan_tier TEXT NOT NULL DEFAULT 'free'
-    CHECK (plan_tier IN ('free', 'pro', 'plus'));
+    CHECK (plan_tier IN ('free', 'pro'));
 
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'active';

@@ -105,6 +105,7 @@ type HistoryTx = {
   notes: string | null
   createdAt: string
   isTransfer?: boolean
+  metadata?: any
 }
 
 function parseTxDate(value: string) {
@@ -183,6 +184,7 @@ export function HistoryScreen() {
         notes: tx.notes,
         createdAt: tx.created_at,
         isTransfer: tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal",
+        metadata: tx.metadata,
       })),
     [rawTransactions]
   )
@@ -268,7 +270,7 @@ export function HistoryScreen() {
     let income = 0
     let expenses = 0
     for (const tx of filteredTransactions) {
-      if (tx.isTransfer) continue
+      if (tx.isTransfer || tx.metadata?.kind === "credit_payment") continue
       if (tx.type === "income") income += tx.amount
       else expenses += tx.amount
     }
@@ -278,6 +280,10 @@ export function HistoryScreen() {
   const openEdit = (txId: string) => {
     const tx = transactions.find((item) => item.id === txId)
     if (!tx) return
+    if (tx.isTransfer || tx.isCommission || tx.metadata?.kind === "credit_payment") {
+      notify({ title: "No se puede editar", message: "Los pagos y transferencias no se pueden editar directamente. Elimínalo y vuelve a registrarlo." })
+      return
+    }
     setEditingId(txId)
     setEditAmount(String(tx.amount))
     setEditDescription(tx.title === "Sin descripcion" ? "" : tx.title)
@@ -558,14 +564,37 @@ export function HistoryScreen() {
 
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="truncate text-sm font-medium text-foreground">{tx.title}</p>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <p className="truncate text-sm font-medium text-foreground">{tx.title}</p>
+                                  {tx.metadata?.kind === "offline_pending" && (
+                                    <span className={cn(
+                                      "inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide border shrink-0",
+                                      tx.metadata.sync_status === "failed"
+                                        ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50"
+                                        : tx.metadata.sync_status === "syncing"
+                                          ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 animate-pulse"
+                                          : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50"
+                                    )}>
+                                      {tx.metadata.sync_status === "failed"
+                                        ? "Error"
+                                        : tx.metadata.sync_status === "syncing"
+                                          ? "Subiendo..."
+                                          : "Pendiente"}
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                                   <AccountIcon className="h-3 w-3 shrink-0" />
                                   <span className="truncate">{account?.name || "Cuenta"}</span>
                                   <span>·</span>
                                   <span className="truncate">{tx.categoryName}</span>
                                 </div>
+                                {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
+                                  <p className="mt-1 text-[10px] font-medium text-red-600 dark:text-red-400">
+                                    Error: {tx.metadata.last_error}
+                                  </p>
+                                )}
                               </div>
 
                               <div className="shrink-0 text-right">

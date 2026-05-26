@@ -10,7 +10,7 @@ export type EntitlementCheckResult = {
   reason?: string
   currentUsage?: number
   limit?: number
-  requiredPlan?: "pro" | "plus"
+  requiredPlan?: "pro"
 }
 
 export async function checkEntitlement(userId: string, feature: FeatureKey): Promise<EntitlementCheckResult> {
@@ -60,11 +60,11 @@ export async function checkEntitlement(userId: string, feature: FeatureKey): Pro
     const current = count || 0
     return current < config.financial_subscriptions
       ? { allowed: true, feature, plan }
-      : { ...blockedEntitlement({ feature, reason: "Llegaste al límite de suscripciones financieras de tu plan.", currentUsage: current, limit: config.financial_subscriptions }), plan }
+      : { ...blockedEntitlement({ feature, reason: "Llegaste al límite de suscripciones del plan Free.", currentUsage: current, limit: config.financial_subscriptions }), plan }
   }
 
   const allowed = Boolean(config[feature as "advanced_reports" | "exports" | "mia_advanced"])
   return allowed
     ? { allowed: true, feature, plan }
-    : { ...blockedEntitlement({ feature, reason: "Esta función estará disponible en Pro y Plus." }), plan }
+    : { ...blockedEntitlement({ feature, reason: "Esta función estará disponible en Pro." }), plan }
 }

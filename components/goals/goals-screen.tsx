@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Target,
   Plus,
@@ -73,6 +74,7 @@ function getIconComponent(iconName: string) {
 }
 
 export function GoalsScreen() {
+  const router = useRouter()
   const { data: dbGoals, isLoading } = useGoals()
   const { data: accounts = [] } = useAccounts()
   const { canCreateGoal, limits } = useEntitlements()
@@ -178,6 +180,7 @@ export function GoalsScreen() {
       EventBus.emit({ type: "goal_created", payload: { name: goalName } })
       resetCreateGoalForm()
       setShowAddGoal(false)
+      router.push("/goals")
     } catch (error) {
       if (handleEntitlementBlocked(error)) return
       notify({

@@ -18,13 +18,7 @@ function getPriceIdForCheckout(plan: PaidPlanTier, interval: BillingInterval) {
   if (plan === "pro" && interval === "monthly") {
     return env.stripeProMonthlyPriceId || env.stripeProPriceId
   }
-  if (plan === "pro" && interval === "yearly") {
-    return env.stripeProYearlyPriceId || ""
-  }
-  if (plan === "plus" && interval === "monthly") {
-    return env.stripePlusMonthlyPriceId || env.stripeBusinessPriceId || ""
-  }
-  return env.stripePlusYearlyPriceId || ""
+  return env.stripeProYearlyPriceId || ""
 }
 
 async function getAuthenticatedUser() {
@@ -57,7 +51,7 @@ export async function POST(request: Request) {
     }
 
     const body = (await request.json().catch(() => ({}))) as { plan?: string; interval?: string }
-    if (body.plan !== "pro" && body.plan !== "plus") {
+    if (body.plan !== "pro") {
       return NextResponse.json({ error: "Plan inválido" }, { status: 400 })
     }
     if (body.interval !== "monthly" && body.interval !== "yearly") {

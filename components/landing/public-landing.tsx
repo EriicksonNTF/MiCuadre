@@ -455,10 +455,10 @@ export function PublicLanding() {
               Pago seguro con Stripe
             </div>
             <h2 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl">
-              Empieza gratis. Mejora cuando necesites más control.
+              Empieza gratis. Mejora cuando necesites control total.
             </h2>
             <p className="mt-5 text-lg leading-relaxed text-slate-300">
-              MiCuadre te ayuda a organizar tus cuentas, tarjetas, metas, gastos y suscripciones desde una experiencia móvil simple.
+              Organiza tus cuentas, metas, tarjetas, gastos y suscripciones desde una experiencia simple y móvil.
             </p>
           </div>
 
@@ -477,7 +477,7 @@ export function PublicLanding() {
             </div>
           </div>
 
-          <div className="mt-10 grid gap-4 lg:grid-cols-3">
+          <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
             {PLAN_ORDER.map((tier) => {
               const plan = PLAN_CONFIG[tier]
               const highlighted = tier === "pro"
@@ -520,7 +520,7 @@ export function PublicLanding() {
                       highlighted ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300" : "border border-white/15 bg-white/5 text-white hover:bg-white/10"
                     }`}
                   >
-                    {tier === "free" ? "Comenzar gratis" : tier === "pro" ? "Actualizar a Pro" : "Ver Plus"}
+                  {tier === "free" ? "Comenzar gratis" : "Ver Pro"}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </article>

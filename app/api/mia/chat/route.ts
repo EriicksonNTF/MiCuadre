@@ -192,11 +192,11 @@ function buildSummary(data: {
   const { start, prevStart, next } = getMonthBounds(new Date())
   const thisMonth = data.transactions.filter((tx) => {
     const d = toDate(tx.date)
-    return d >= start && d < next && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal")
+    return d >= start && d < next && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment"
   })
   const prevMonth = data.transactions.filter((tx) => {
     const d = toDate(tx.date)
-    return d >= prevStart && d < start && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal")
+    return d >= prevStart && d < start && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment"
   })
 
   const totalBalance = data.accounts.reduce((sum, a) => sum + Number(a.balance || 0), 0)

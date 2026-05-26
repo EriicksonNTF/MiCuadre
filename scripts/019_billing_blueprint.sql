@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS public.billing_subscriptions (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   stripe_subscription_id TEXT NOT NULL UNIQUE,
   stripe_price_id TEXT,
-  plan_tier TEXT NOT NULL CHECK (plan_tier IN ('free', 'pro', 'plus')),
+  plan_tier TEXT NOT NULL CHECK (plan_tier IN ('free', 'pro')),
   status TEXT NOT NULL,
   current_period_start TIMESTAMPTZ,
   current_period_end TIMESTAMPTZ,
@@ -104,7 +104,7 @@ CREATE INDEX IF NOT EXISTS idx_billing_events_status
 CREATE TABLE IF NOT EXISTS public.billing_plan_snapshots (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  plan_tier TEXT NOT NULL CHECK (plan_tier IN ('free', 'pro', 'plus')),
+  plan_tier TEXT NOT NULL CHECK (plan_tier IN ('free', 'pro')),
   status TEXT NOT NULL,
   stripe_subscription_id TEXT,
   stripe_price_id TEXT,

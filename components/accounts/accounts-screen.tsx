@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { ArrowRightLeft, Banknote, Building2, ChevronDown, CreditCard, Landmark, Pencil, PiggyBank, Plus, Trash2, Wallet } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, Banknote, Building2, ChevronDown, CreditCard, Landmark, Pencil, PiggyBank, Plus, Trash2, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
@@ -12,7 +12,7 @@ import { AccountCarouselSelector } from "@/components/ui/account-carousel-select
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { createAccount, createTransfer, deleteAccount, reorderAccounts, useAccounts } from "@/hooks/use-data"
+import { createAccount, createTransfer, deleteAccount, getAccountDeletionImpact, reorderAccounts, useAccounts } from "@/hooks/use-data"
 import { formatCurrency } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
@@ -23,6 +23,7 @@ import { UsageLimitBanner } from "@/components/entitlements/usage-limit-banner"
 import { useEntitlementBlocked } from "@/hooks/use-entitlement-blocked"
 import { UpsellModal } from "@/components/entitlements/upsell-modal"
 import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
+import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
 
 const ICON_PRESETS = [
   { value: "banknote", label: "Efectivo", icon: Banknote },
@@ -56,6 +57,7 @@ export function AccountsScreen() {
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deleteImpact, setDeleteImpact] = useState<{ count: number; hasMovements: boolean } | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const pointerRef = useRef<{ id: string; startX: number; startY: number; moved: boolean; swiping: boolean } | null>(null)
@@ -70,6 +72,7 @@ export function AccountsScreen() {
   const [initialBalance, setInitialBalance] = useState("")
   const [creditLimitDop, setCreditLimitDop] = useState("")
   const [creditLimitUsd, setCreditLimitUsd] = useState("")
+  const [creditUsed, setCreditUsed] = useState("")
   const [closingDate, setClosingDate] = useState("")
   const [dueDate, setDueDate] = useState("")
   const [isCreating, setIsCreating] = useState(false)
@@ -96,6 +99,7 @@ export function AccountsScreen() {
     setInitialBalance("")
     setCreditLimitDop("")
     setCreditLimitUsd("")
+    setCreditUsed("")
     setClosingDate("")
     setDueDate("")
     setBrandingIconType("icon")
@@ -173,7 +177,9 @@ export function AccountsScreen() {
     credit_limit: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
     credit_limit_dop: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
     credit_limit_usd: accountType === "credit" ? parseAmount(creditLimitUsd || "0") : null,
-    current_debt: 0,
+    current_debt: accountType === "credit" && accountCurrency === "DOP" ? parseAmount(creditUsed || "0") : 0,
+    current_debt_dop: accountType === "credit" && accountCurrency === "DOP" ? parseAmount(creditUsed || "0") : 0,
+    current_debt_usd: accountType === "credit" && accountCurrency === "USD" ? parseAmount(creditUsed || "0") : 0,
     statement_balance: null,
     pending_amount: null,
     paid_amount: null,
@@ -196,7 +202,7 @@ export function AccountsScreen() {
     is_favorite: false,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  }), [accountName, accountType, accountCurrency, initialBalance, creditLimitDop, creditLimitUsd, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle, accountNumber])
+  }), [accountName, accountType, accountCurrency, initialBalance, creditLimitDop, creditLimitUsd, creditUsed, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle, accountNumber])
 
   const triggerHaptic = () => {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -258,6 +264,7 @@ if (!draggedId) return
       await deleteAccount(confirmDeleteId)
       notify({ title: "Cuenta eliminada", message: "La cuenta fue eliminada correctamente." })
       setConfirmDeleteId(null)
+      setDeleteImpact(null)
       setOpenSwipeId(null)
     } catch (error) {
       notify({
@@ -266,6 +273,16 @@ if (!draggedId) return
       })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const openDeleteConfirm = async (accountId: string) => {
+    setConfirmDeleteId(accountId)
+    setDeleteImpact(null)
+    try {
+      setDeleteImpact(await getAccountDeletionImpact(accountId))
+    } catch {
+      setDeleteImpact({ count: 1, hasMovements: true })
     }
   }
 
@@ -284,7 +301,9 @@ if (!draggedId) return
   }
 
   const handleCreateAccount = async () => {
-    if (!accountName || !initialBalance) return
+    const creditUsedAmount = parseAmount(creditUsed || "0")
+    const initialBalanceAmount = accountType === "credit" ? 0 : parseAmount(initialBalance || "0")
+    if (!accountName) return
     if (!canCreateAccount) {
       handleEntitlementBlocked({
         ...createBlockedResponse("max_accounts", {
@@ -301,15 +320,15 @@ if (!draggedId) return
         name: accountName,
         type: accountType,
         currency: accountCurrency,
-        balance: parseAmount(initialBalance),
+        balance: initialBalanceAmount,
         credit_limit: accountType === "credit" ? parseAmount(creditLimitDop || initialBalance || "0") : null,
-        current_debt: 0,
+        current_debt: accountType === "credit" && accountCurrency === "DOP" ? creditUsedAmount : 0,
         credit_limit_dop: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
         credit_limit_usd: accountType === "credit" ? parseAmount(creditLimitUsd || "0") : null,
-        current_debt_dop: 0,
-        current_debt_usd: 0,
-        statement_balance_dop: 0,
-        statement_balance_usd: 0,
+        current_debt_dop: accountType === "credit" && accountCurrency === "DOP" ? creditUsedAmount : 0,
+        current_debt_usd: accountType === "credit" && accountCurrency === "USD" ? creditUsedAmount : 0,
+        statement_balance_dop: accountType === "credit" && accountCurrency === "DOP" ? creditUsedAmount : 0,
+        statement_balance_usd: accountType === "credit" && accountCurrency === "USD" ? creditUsedAmount : 0,
         paid_statement_amount_dop: 0,
         paid_statement_amount_usd: 0,
         pending_transit_dop: 0,
@@ -338,6 +357,7 @@ if (!draggedId) return
       EventBus.emit({ type: "account_created", payload: { name: accountName } })
       resetCreateAccountForm()
       setShowCreateAccount(false)
+      router.push("/accounts")
     } catch (error) {
       if (handleEntitlementBlocked(error)) return
       notify({
@@ -464,7 +484,7 @@ if (!draggedId) return
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={() => setConfirmDeleteId(account.id)}
+                  onClick={() => openDeleteConfirm(account.id)}
                   className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500 text-white"
                   aria-label="Eliminar cuenta"
                 >
@@ -579,7 +599,7 @@ if (!draggedId) return
             setShowTransfer(false)
             resetTransferForm()
           }}
-          footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} />}
+          footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
         >
           <div className="space-y-4 pb-safe-areas">
             <div>
@@ -615,12 +635,35 @@ if (!draggedId) return
         <BaseModalForm title="Nueva cuenta" onClose={() => {
           setShowCreateAccount(false)
           resetCreateAccountForm()
-        }} footer={<Button onClick={handleCreateAccount} disabled={!canCreateAccount || !accountName || !initialBalance || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
+        }} footer={<Button onClick={handleCreateAccount} disabled={!canCreateAccount || !accountName || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
           <div className="space-y-5 pb-safe-areas">
-            <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre de la cuenta" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
-            <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de tarjeta/cuenta (opcional)" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
+            <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
+            {accountType !== "cash" && (
+              <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de cuenta" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
+            )}
             <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button key={t} onClick={() => setAccountType(t)} className={cn("rounded-xl px-3 py-2 text-xs", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
-            <MoneyInput value={initialBalance} onValueChange={setInitialBalance} placeholder="Balance inicial" className="w-full rounded-xl bg-muted p-3" />
+            <div className="grid grid-cols-2 gap-2">
+              {(["DOP", "USD"] as const).map((currency) => (
+                <button key={currency} onClick={() => { setAccountCurrency(currency); setCreditUsed("") }} className={cn("rounded-xl px-3 py-2 text-xs font-semibold", accountCurrency === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                  {currency === "DOP" ? "RD$" : "US$"}
+                </button>
+              ))}
+            </div>
+            {accountType !== "credit" && (
+              <MoneyInput value={initialBalance} onValueChange={setInitialBalance} placeholder="Balance" className="w-full rounded-xl bg-muted p-3" />
+            )}
+
+            {accountType === "credit" && (
+              <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {accountCurrency !== "USD" && <MoneyInput value={creditLimitDop} onValueChange={setCreditLimitDop} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
+                  {accountCurrency !== "DOP" && <MoneyInput value={creditLimitUsd} onValueChange={setCreditLimitUsd} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
+                </div>
+                <MoneyInput value={creditUsed} onValueChange={setCreditUsed} placeholder="Crédito utilizado" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                <input type="text" inputMode="numeric" value={closingDate} onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de corte" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
+              </div>
+            )}
 
             <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
               <p className="text-sm font-semibold">Personalización visual</p>
@@ -638,37 +681,36 @@ if (!draggedId) return
               <BrandedAccountCard account={previewAccount as any} compact />
             </div>
 
-            {accountType === "credit" && (
-              <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {accountCurrency !== "USD" && <MoneyInput value={creditLimitDop} onValueChange={setCreditLimitDop} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
-                  {accountCurrency !== "DOP" && <MoneyInput value={creditLimitUsd} onValueChange={setCreditLimitUsd} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
-                </div>
-                <input type="text" inputMode="numeric" value={closingDate} onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de cierre" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
-                <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
-              </div>
-            )}
           </div>
         </BaseModalForm>
       )}
 
       {confirmDeleteId && (
-        <BaseModalForm
-          title="Eliminar cuenta"
-          onClose={() => setConfirmDeleteId(null)}
-          footer={
-            <div className="space-y-2">
-              <Button variant="destructive" className="h-11 w-full" onClick={handleDeleteFromList} disabled={isDeleting}>
-                {isDeleting ? "Eliminando..." : "Confirmar eliminación"}
-              </Button>
-              <Button variant="outline" className="h-11 w-full" onClick={() => setConfirmDeleteId(null)}>
+        <>
+          <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
+          <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-card p-5 shadow-2xl">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <div className="mt-4 text-center">
+              <h2 className="text-lg font-black text-foreground">Eliminar cuenta</h2>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {deleteImpact?.hasMovements ? "Esta cuenta tiene movimientos registrados." : "¿Eliminar esta cuenta?"}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {deleteImpact?.hasMovements
+                  ? "Si la eliminas, también se perderán sus movimientos, historial e información asociada. Esta acción no se puede deshacer."
+                  : "Esta acción no se puede deshacer."}
+              </p>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <Button variant="outline" className="h-12 rounded-2xl" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }}>
                 Cancelar
               </Button>
+              <HoldToConfirmButton onConfirm={handleDeleteFromList} loading={isDeleting} className="w-full" label="Eliminar" />
             </div>
-          }
-        >
-          <p className="text-sm text-muted-foreground">Esta acción no se puede deshacer. Solo se eliminarán cuentas sin transacciones.</p>
-        </BaseModalForm>
+          </div>
+        </>
       )}
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </div>

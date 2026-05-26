@@ -36,12 +36,13 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { useAccounts, useTransactions, updateAccount, deleteAccount, payCreditCard, updateTransaction, deleteTransaction } from "@/hooks/use-data"
+import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountDeletionImpact, payCreditCard, updateTransaction, deleteTransaction } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getLocalDateString, getReadableTextColor } from "@/lib/data"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import type { AccountType, Currency } from "@/lib/types/database"
 import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
+import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
 
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
@@ -128,6 +129,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteImpact, setDeleteImpact] = useState<{ count: number; hasMovements: boolean } | null>(null)
   const [showSummaryPeriodMenu, setShowSummaryPeriodMenu] = useState(false)
   const [editForm, setEditForm] = useState<{ 
     name: string
@@ -243,7 +245,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       rawDate: tx.date,
       date: formatDate(tx.date),
       createdAt: tx.created_at,
-      metadata: tx.metadata,
+      metadata: tx.metadata as any,
     }))
   }, [rawTransactions])
 
@@ -291,6 +293,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const openEditTx = (txId: string) => {
     const tx = accountTransactions.find((item) => item.id === txId)
     if (!tx) return
+    if (tx.metadata?.kind === "transfer" || tx.metadata?.kind === "credit_payment") {
+      notify({ title: "No se puede editar", message: "Los pagos y transferencias no se pueden editar directamente. Elimínalo y vuelve a registrarlo." })
+      return
+    }
     setEditingTxId(txId)
     setEditAmount(String(tx.amount))
     setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
@@ -349,17 +355,17 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }
 
   const monthlyIncome = accountTransactions
-    .filter((tx) => tx.type === "income" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal"))
+    .filter((tx) => tx.type === "income" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment")
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   const monthlyExpenses = accountTransactions
-    .filter((tx) => tx.type === "expense" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal"))
+    .filter((tx) => tx.type === "expense" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment")
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   const netFlow = monthlyIncome - monthlyExpenses
 
   const handlePayment = async () => {
-    if (!paymentSource || !paymentAmount) return
+    if (!paymentSource || !paymentAmount || isPaying) return
     setIsPaying(true)
     try {
       await payCreditCard({
@@ -388,7 +394,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }
 
   const handleEditSubmit = async () => {
-    if (!editForm.name) return
     setIsEditing(true)
     try {
       const parsedBalance = Number(editForm.balance || 0)
@@ -452,11 +457,18 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       EventBus.emit({ type: "account_deleted" })
       router.push("/accounts")
     } catch (error) {
-      setDeleteError("No se pudo eliminar la cuenta. Verifica que no tenga transacciones.")
+      setDeleteError("No se pudo eliminar la cuenta. Intenta de nuevo.")
     } finally {
       setIsDeleting(false)
     }
   }
+
+  useEffect(() => {
+    if (!showDeleteModal) return
+    getAccountDeletionImpact(accountId)
+      .then(setDeleteImpact)
+      .catch(() => setDeleteImpact({ count: 1, hasMovements: true }))
+  }, [accountId, showDeleteModal])
 
   const closeEditModal = () => {
     setShowEditModal(false)
@@ -865,8 +877,27 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       <CategoryIcon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate font-medium text-foreground">{tx.title}</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="truncate font-medium text-foreground">{tx.title}</p>
+                        {tx.metadata?.kind === "offline_pending" && (
+                          <span className={cn(
+                            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide border shrink-0",
+                            tx.metadata.sync_status === "failed"
+                              ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50"
+                              : tx.metadata.sync_status === "syncing"
+                                ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 animate-pulse"
+                                : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50"
+                          )}>
+                            {tx.metadata.sync_status === "failed" ? "Error" : tx.metadata.sync_status === "syncing" ? "Subiendo..." : "Pendiente"}
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">{tx.date}</p>
+                      {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
+                        <p className="mt-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                          Error: {tx.metadata.last_error}
+                        </p>
+                      )}
                     </div>
                     <p
                       className={cn(
@@ -1270,51 +1301,39 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
         {/* Delete Modal */}
         {showDeleteModal && (
-          <BaseModalForm
-            title="Eliminar cuenta"
-            onClose={() => {
-              setShowDeleteModal(false)
-              setDeleteError("")
-            }}
-            footer={
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setDeleteError("")
-                  }}
-                  className="flex-1 h-12 rounded-2xl"
-                >
+          <>
+            <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
+            <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-card p-5 shadow-2xl">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
+                <AlertTriangle className="h-7 w-7" />
+              </div>
+              <div className="mt-4 text-center">
+                <h2 className="text-lg font-black text-foreground">Eliminar {account.type === "credit" ? "tarjeta" : "cuenta"}</h2>
+                <p className="mt-2 text-sm font-semibold text-foreground">
+                  {deleteImpact?.hasMovements
+                    ? account.type === "credit" ? "Esta tarjeta tiene movimientos registrados." : "Esta cuenta tiene movimientos registrados."
+                    : `¿Eliminar ${account.name}?`}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                  {deleteImpact?.hasMovements
+                    ? "Si la eliminas, también se perderán sus movimientos, historial e información asociada. Esta acción no se puede deshacer."
+                    : "Esta acción no se puede deshacer."}
+                </p>
+                {deleteError && (
+                  <div className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-left text-red-600 dark:bg-red-950/30">
+                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                    <span className="text-xs">{deleteError}</span>
+                  </div>
+                )}
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-12 rounded-2xl" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }}>
                   Cancelar
                 </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteAccount}
-                  disabled={isDeleting}
-                  className="flex-1 h-12 rounded-2xl bg-red-600 text-white hover:bg-red-700"
-                >
-                  {isDeleting ? "Eliminando..." : "Eliminar"}
-                </Button>
+                <HoldToConfirmButton onConfirm={handleDeleteAccount} loading={isDeleting} className="w-full" label="Eliminar" />
               </div>
-            }
-          >
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-                <Trash2 className="h-8 w-8 text-red-600" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                ¿Estás seguro de que deseas eliminar la cuenta <span className="font-semibold text-foreground">{account.name}</span>? 
-                Esta acción no se puede deshacer.
-              </p>
-              {deleteError && (
-                <div className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-red-600">
-                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                  <span className="text-xs text-left">{deleteError}</span>
-                </div>
-              )}
             </div>
-          </BaseModalForm>
+          </>
         )}
       </div>
     )

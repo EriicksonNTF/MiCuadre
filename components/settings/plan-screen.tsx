@@ -33,7 +33,7 @@ export function PlanScreen() {
           </div>
           <h2 className="mt-4 text-xl font-black">Elige el plan ideal para ti</h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Consulta Free, Pro y Plus en una experiencia móvil simple.
+            Consulta Free y Pro en una experiencia móvil simple.
           </p>
           <button
             type="button"

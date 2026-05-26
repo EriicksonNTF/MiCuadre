@@ -21,16 +21,11 @@ function mapStripePriceToPlan(priceId: string | null | undefined): PlanTier {
     env.stripeProMonthlyPriceId,
     env.stripeProYearlyPriceId,
     env.stripeProPriceId,
-  ].filter(Boolean)
-  const plusPriceIds = [
-    env.stripePlusMonthlyPriceId,
-    env.stripePlusYearlyPriceId,
     env.stripeBusinessPriceId,
   ].filter(Boolean)
 
   if (!priceId) return "free"
   if (proPriceIds.includes(priceId)) return "pro"
-  if (plusPriceIds.includes(priceId)) return "plus"
   return "free"
 }
 

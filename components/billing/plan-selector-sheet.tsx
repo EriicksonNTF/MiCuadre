@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { ArrowUpRight, Check, CreditCard, RefreshCw, ShieldCheck, Sparkles, X } from "lucide-react"
-import { PlanBadge } from "@/components/entitlements/plan-badge"
 import {
   Drawer,
   DrawerClose,
@@ -19,7 +18,6 @@ import {
   PLAN_ORDER,
   formatPlanPrice,
   getBillingIntervalSuffix,
-  getFinancialSubscriptionLimitLabel,
   isPaidPlan,
   normalizePlanTier,
 } from "@/lib/billing/plans"
@@ -34,11 +32,7 @@ type PlanSelectorSheetProps = {
   reasonTitle?: string
   reasonBody?: string
   defaultInterval?: BillingInterval
-}
-
-function compactLimit(value: number | "unlimited", label: string) {
-  if (value === "unlimited") return `${label} ilimitadas`
-  return `${value} ${label}`
+  welcome?: boolean
 }
 
 export function PlanSelectorSheet({
@@ -47,6 +41,7 @@ export function PlanSelectorSheet({
   reasonTitle,
   reasonBody,
   defaultInterval = "monthly",
+  welcome = false,
 }: PlanSelectorSheetProps) {
   const { plan } = useEntitlements()
   const { data: billingStatus } = useBillingStatus()
@@ -109,10 +104,12 @@ export function PlanSelectorSheet({
                   Planes MiCuadre
                 </div>
                 <DrawerTitle className="mt-3 text-2xl font-black tracking-tight">
-                  Elige el plan ideal para ti
+                  {welcome ? "Bienvenido a MiCuadre" : "Elige tu plan"}
                 </DrawerTitle>
                 <DrawerDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  Empieza gratis y desbloquea más control financiero cuando lo necesites.
+                  {welcome
+                    ? "Puedes empezar gratis y desbloquear Pro cuando necesites más control."
+                    : "Empieza gratis y desbloquea todo MiCuadre cuando lo necesites."}
                 </DrawerDescription>
               </div>
               <DrawerClose className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground">
@@ -140,66 +137,63 @@ export function PlanSelectorSheet({
                     interval === value ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted/70"
                   )}
                 >
-                  {value === "monthly" ? "Mensual" : `Anual · Ahorra ${ANNUAL_DISCOUNT_PERCENT}%`}
+                  {value === "monthly" ? "Mensual" : `Anual -${ANNUAL_DISCOUNT_PERCENT}%`}
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 grid grid-cols-2 gap-3">
             {PLAN_ORDER.map((tier, index) => {
               const config = PLAN_CONFIG[tier]
               const current = tier === effectivePlan
               const paid = isPaidPlan(tier)
               const isPro = tier === "pro"
-              const isPlus = tier === "plus"
 
               return (
                 <article
                   key={tier}
                   className={cn(
-                    "relative overflow-hidden rounded-[1.35rem] border bg-card p-4 transition-all duration-300 active:scale-[0.995]",
+                    "relative overflow-hidden rounded-[1.25rem] border bg-card p-3 transition-all duration-300 active:scale-[0.995]",
                     current && "border-emerald-500/40 bg-emerald-500/[0.03]",
                     !current && isPro && "border-primary/40 shadow-[0_8px_28px_rgba(34,197,94,0.08)]",
-                    !current && isPlus && "border-amber-500/35 shadow-[0_8px_28px_rgba(245,158,11,0.08)]",
                     !current && !paid && "border-border"
                   )}
                   style={{ animationDelay: `${index * 70}ms` }}
                 >
-                  {(isPro || isPlus) && (
-                    <div className={cn("pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full blur-2xl", isPro ? "bg-primary/12" : "bg-amber-500/12")} />
+                  {isPro && (
+                    <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/12 blur-2xl" />
                   )}
-                  <div className="relative flex items-start justify-between gap-3">
+                  <div className="relative space-y-2">
                     <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-lg font-black">{config.label}</h3>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <h3 className="text-base font-black">{config.label}</h3>
                         {config.badge && (
-                          <span className={cn("rounded-full px-2.5 py-1 text-[10px] font-black", isPro ? "bg-primary/10 text-primary" : "bg-amber-500/15 text-amber-700 dark:text-amber-300")}>
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-black text-primary">
                             {config.badge}
                           </span>
                         )}
                         {current && (
-                          <span className="rounded-full bg-emerald-500/15 px-2.5 py-1 text-[10px] font-black text-emerald-700 dark:text-emerald-300">
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black text-emerald-700 dark:text-emerald-300">
                             Plan actual
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 text-xs font-medium text-muted-foreground">{config.audience}</p>
+                      <p className="mt-1 min-h-9 text-[11px] font-medium leading-relaxed text-muted-foreground">{config.description}</p>
                     </div>
-                    <PlanBadge plan={tier} />
                   </div>
 
-                  <div className="relative mt-4">
-                    <span className="text-3xl font-black tracking-tight">{formatPlanPrice(tier, interval)}</span>
-                    <span className="ml-1 text-sm font-semibold text-muted-foreground">{getBillingIntervalSuffix(interval)}</span>
+                  <div className="relative mt-3">
+                    <span className="text-2xl font-black tracking-tight">{formatPlanPrice(tier, interval)}</span>
+                    <span className="ml-1 text-xs font-semibold text-muted-foreground">{getBillingIntervalSuffix(interval)}</span>
                     {paid && interval === "yearly" && (
-                      <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <p className="mt-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                         Equivale a ${config.price.yearlyMonthlyEquivalent.toFixed(2)}/mes
                       </p>
                     )}
                   </div>
 
-                  <div className="relative mt-4 grid gap-2 text-xs text-muted-foreground">
+                  <div className="relative mt-3 grid gap-1.5 text-[11px] text-muted-foreground">
                     {config.benefits.slice(0, 4).map((benefit) => (
                       <span key={benefit} className="flex items-start gap-2">
                         <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
@@ -208,35 +202,27 @@ export function PlanSelectorSheet({
                     ))}
                   </div>
 
-                  <div className="relative mt-4 grid grid-cols-3 gap-2 text-center text-[10px]">
-                    <div className="rounded-xl bg-muted/35 px-2 py-2">
-                      <p className="font-bold text-foreground">{compactLimit(config.limits.max_accounts, "cuentas")}</p>
-                    </div>
-                    <div className="rounded-xl bg-muted/35 px-2 py-2">
-                      <p className="font-bold text-foreground">{compactLimit(config.limits.max_goals, "metas")}</p>
-                    </div>
-                    <div className="rounded-xl bg-muted/35 px-2 py-2">
-                      <p className="font-bold text-foreground">{getFinancialSubscriptionLimitLabel(tier)}</p>
-                    </div>
-                  </div>
-
-                  <div className="relative mt-4">
+                  <div className="relative mt-3">
                     {current ? (
-                      <button disabled className="h-11 w-full rounded-xl bg-muted/50 text-sm font-black text-muted-foreground">
+                      <button disabled className="h-10 w-full rounded-xl bg-muted/50 text-xs font-black text-muted-foreground">
                         Plan actual
                       </button>
                     ) : !paid ? (
-                      <button disabled className="h-11 w-full rounded-xl bg-muted/30 text-sm font-black text-muted-foreground">
-                        Incluido
+                      <button
+                        type="button"
+                        onClick={() => onOpenChange(false)}
+                        className="h-10 w-full rounded-xl bg-muted/60 text-xs font-black text-foreground transition active:scale-[0.99]"
+                      >
+                        Continuar gratis
                       </button>
                     ) : isPaidPlan(effectivePlan) ? (
                       <button
                         type="button"
                         onClick={openBillingPortal}
                         disabled={isOpeningPortal}
-                        className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-black transition hover:bg-muted/40 active:scale-[0.99] disabled:opacity-60"
+                        className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-black transition hover:bg-muted/40 active:scale-[0.99] disabled:opacity-60"
                       >
-                        <CreditCard className="h-4 w-4" />
+                        <CreditCard className="h-3.5 w-3.5" />
                         {isOpeningPortal ? "Abriendo..." : "Gestionar plan"}
                       </button>
                     ) : (
@@ -244,20 +230,17 @@ export function PlanSelectorSheet({
                         type="button"
                         onClick={() => startCheckout(tier as PaidPlanTier)}
                         disabled={isLoadingCheckout !== null}
-                        className={cn(
-                          "inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-black text-primary-foreground transition active:scale-[0.99] disabled:opacity-60",
-                          isPlus ? "bg-amber-600 hover:bg-amber-600/95" : "bg-primary hover:bg-primary/95"
-                        )}
+                        className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-black text-primary-foreground transition active:scale-[0.99] disabled:opacity-60"
                       >
                         {isLoadingCheckout === tier ? (
                           <>
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                            Abriendo pago seguro...
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                            Abriendo...
                           </>
                         ) : (
                           <>
                             {config.cta}
-                            <ArrowUpRight className="h-4 w-4" />
+                            <ArrowUpRight className="h-3.5 w-3.5" />
                           </>
                         )}
                       </button>

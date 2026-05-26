@@ -20,6 +20,7 @@ import { ActivationPanel } from "@/components/dashboard/activation-panel"
 import { showToast } from "@/components/toast/smart-toast"
 import { EventBus } from "@/lib/event-bus"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
+import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
 
 const CoachIAWidget = dynamic(() => import("@/components/dashboard/coach-ia-widget").then((mod) => mod.CoachIAWidget), {
   ssr: false,
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [isReady, setIsReady] = useState(false)
   const [showSplash, setShowSplash] = useState(true)
   const [showCreditReminder, setShowCreditReminder] = useState(false)
+  const [showWelcomePlanPrompt, setShowWelcomePlanPrompt] = useState(false)
   const [activeWarningIndex, setActiveWarningIndex] = useState(0)
   const { loading, user } = useAuth()
   const { data: profile, isLoading: profileLoading } = useProfile()
@@ -50,10 +52,15 @@ export default function DashboardPage() {
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem("onboarding_completed", "true")
+      const promptKey = `micuadre_plan_prompt_seen_${profile?.id || user?.id || "local"}`
+      if (window.localStorage.getItem(promptKey) !== "true") {
+        window.localStorage.setItem(promptKey, "true")
+        setShowWelcomePlanPrompt(true)
+      }
     }
 
     setIsReady(true)
-  }, [loading, profile?.onboarding_completed, profileLoading, router])
+  }, [loading, profile?.id, profile?.onboarding_completed, profileLoading, router, user?.id])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -273,6 +280,7 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+      <PlanSelectorSheet open={showWelcomePlanPrompt} onOpenChange={setShowWelcomePlanPrompt} welcome />
     </main>
   )
 }

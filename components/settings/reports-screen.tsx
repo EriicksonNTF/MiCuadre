@@ -64,6 +64,7 @@ export function ReportsScreen() {
   const filtered = useMemo(() => transactions.filter((tx) => {
     const txDate = new Date(`${tx.date}T12:00:00`)
     if (tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") return false
+    if (tx.metadata?.kind === "credit_payment") return false
     if (startDate && tx.date < startDate) return false
     if (endDate && tx.date > endDate) return false
     if (!startDate && !endDate && txDate < dateFrom) return false
@@ -134,6 +135,7 @@ export function ReportsScreen() {
     return transactions.filter((tx) => {
       const txDate = new Date(`${tx.date}T12:00:00`)
       if (tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") return false
+      if (tx.metadata?.kind === "credit_payment") return false
       if (txDate < previousStart || txDate >= previousEnd) return false
       if (typeFilter !== "all" && tx.type !== typeFilter) return false
       if (accountFilter !== "all" && tx.account_id !== accountFilter) return false

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ChevronLeft, Pause, Play, Trash2, XCircle } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -17,6 +18,7 @@ import { useEntitlements } from "@/hooks/use-entitlements"
 import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 
 export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpenCreate?: boolean }) {
+  const router = useRouter()
   const { data: subscriptions = [] } = useFinancialSubscriptions()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
@@ -71,6 +73,8 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
       })
       setShowCreate(false)
       setAmount("")
+      notify({ title: "Creado correctamente", message: "La suscripción fue guardada." })
+      router.push("/settings/subscriptions")
     } catch (error) {
       if (handleEntitlementBlocked(error)) return
       notify({

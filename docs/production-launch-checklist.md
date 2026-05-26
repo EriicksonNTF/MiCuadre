@@ -9,8 +9,6 @@
 - `STRIPE_WEBHOOK_SECRET` (server only)
 - `STRIPE_PRO_MONTHLY_PRICE_ID`
 - `STRIPE_PRO_YEARLY_PRICE_ID`
-- `STRIPE_PLUS_MONTHLY_PRICE_ID`
-- `STRIPE_PLUS_YEARLY_PRICE_ID`
 
 ## B. Supabase migration checklist
 
@@ -30,7 +28,6 @@
 ## D. Stripe product/price checklist
 
 - [ ] Producto Pro mensual/anual activo y prices configurados
-- [ ] Producto Plus mensual/anual activo y prices configurados
 - [ ] Moneda e intervalos revisados
 
 ## E. Stripe webhook checklist
@@ -89,5 +86,5 @@
 ## L. Known limitations before launch
 
 - Checkout success depende de webhook async (no instantaneo)
-- Plus depende de `STRIPE_PLUS_MONTHLY_PRICE_ID` y `STRIPE_PLUS_YEARLY_PRICE_ID`; `STRIPE_BUSINESS_PRICE_ID` solo es fallback legacy mensual.
+- Pro depende de `STRIPE_PRO_MONTHLY_PRICE_ID` y `STRIPE_PRO_YEARLY_PRICE_ID`; `STRIPE_PRO_PRICE_ID` solo es fallback legacy mensual.
 - Sin panel admin interno para reintentos masivos de billing events

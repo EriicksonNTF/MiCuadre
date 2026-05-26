@@ -40,7 +40,13 @@ const STORAGE_KEY = "activation_step_completed"
 
 function getCompletedSteps(): string[] {
   if (typeof window === "undefined") return []
-  return JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "[]")
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
+    return JSON.parse(raw)
+  } catch {
+    return []
+  }
 }
 
 function markStepCompleted(stepId: string) {

@@ -24,7 +24,6 @@ export function useEntitlements() {
       plan,
       isFree: plan === "free",
       isPro: plan === "pro",
-      isPlus: plan === "plus",
       canCreateAccount,
       canCreateGoal,
       canUseAdvancedReports: limits.advanced_reports,

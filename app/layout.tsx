@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/navigation/bottom-nav'
 import { AppProviders } from '@/components/providers/app-providers'
 import { ToastContainer } from '@/components/toast/smart-toast'
 import { BodyCleanup } from '@/components/providers/body-cleanup'
+import { OfflineStatusBanner } from '@/components/ui/offline-status-banner'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -97,6 +98,7 @@ export default function RootLayout({
           <BodyCleanup />
           {children}
           <BottomNav />
+          <OfflineStatusBanner />
           <ToastContainer />
         </AppProviders>
         {process.env.NODE_ENV === 'production' && <Analytics />}
@@ -104,3 +106,4 @@ export default function RootLayout({
     </html>
   )
 }
+

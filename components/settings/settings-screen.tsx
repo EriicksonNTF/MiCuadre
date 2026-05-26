@@ -23,7 +23,6 @@ import {
   BarChart3,
   Repeat,
   Tags,
-  Sparkles,
   RefreshCw,
   CreditCard,
 } from "lucide-react"
@@ -40,6 +39,7 @@ import type { Theme, Currency } from "@/lib/types/database"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { PlanBadge } from "@/components/entitlements/plan-badge"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
+import { PushNotificationCard } from "@/components/pwa/push-notification-card"
 import { useBillingStatus } from "@/hooks/use-billing-status"
 import { isPaidPlan } from "@/lib/billing/plans"
 import { notify } from "@/lib/notifications"
@@ -49,7 +49,7 @@ export function SettingsScreen() {
   const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
   const { data: profile, isLoading: profileLoading } = useProfile()
-  const { plan, limits, usage } = useEntitlements()
+  const { plan } = useEntitlements()
   const { data: billingStatus, mutate: refreshBillingStatus } = useBillingStatus()
 
   const [showDebugQa, setShowDebugQa] = useState(false)
@@ -132,7 +132,6 @@ export function SettingsScreen() {
     canceled: "Cancelado",
     incomplete: "Pendiente",
   }
-  const financialSubscriptionLimit = limits.financial_subscriptions
   const canManagePlan = isPaidPlan(plan) || Boolean(billingStatus?.billingReady)
   const readablePlanStatus = planStatusLabels[billingStatus?.planStatus || profile?.plan_status || "active"] || "Activo"
 
@@ -331,6 +330,9 @@ const isDevMode = process.env.NODE_ENV === "development"
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </button>
           </div>
+          <div className="mt-3">
+            <PushNotificationCard />
+          </div>
         </div>
 
         {/* Notifications Section */}
@@ -405,47 +407,9 @@ const isDevMode = process.env.NODE_ENV === "development"
               <PlanBadge plan={plan} />
             </div>
 
-            <div className="mt-4 space-y-3">
-              <div>
-                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Cuentas</span>
-                  <span>{limits.max_accounts === "unlimited" ? `${usage.accounts} / ilimitado` : `${usage.accounts} / ${limits.max_accounts}`}</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: limits.max_accounts === "unlimited" ? "12%" : `${Math.min(100, Math.round((usage.accounts / Math.max(1, limits.max_accounts)) * 100))}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Metas</span>
-                  <span>{limits.max_goals === "unlimited" ? `${usage.goals} / ilimitado` : `${usage.goals} / ${limits.max_goals}`}</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: limits.max_goals === "unlimited" ? "12%" : `${Math.min(100, Math.round((usage.goals / Math.max(1, limits.max_goals)) * 100))}%` }} />
-                </div>
-              </div>
-
-              <div>
-                <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>Suscripciones financieras</span>
-                  <span>
-                    {financialSubscriptionLimit === "unlimited" ? `${usage.subscriptions} / ilimitado` : `${usage.subscriptions} / ${financialSubscriptionLimit}`}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-muted">
-                  <div
-                    className="h-2 rounded-full bg-primary"
-                    style={{
-                      width:
-                        financialSubscriptionLimit === "unlimited"
-                          ? "12%"
-                          : `${Math.min(100, Math.round((usage.subscriptions / Math.max(1, financialSubscriptionLimit)) * 100))}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
+            <p className="mt-4 rounded-xl bg-muted/35 px-3 py-3 text-sm leading-relaxed text-muted-foreground">
+              {plan === "pro" ? "Acceso completo activo." : "Estás usando el plan gratis."}
+            </p>
 
             <div className="mt-4 grid grid-cols-1 gap-2">
               <button
@@ -485,7 +449,6 @@ const isDevMode = process.env.NODE_ENV === "development"
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Control financiero</h2>
           <div className="overflow-hidden rounded-2xl bg-card">
             {[
-              { icon: Sparkles, label: "Mi plan", href: "/settings" },
               { icon: BarChart3, label: "Reportes", href: "/settings/reports" },
               { icon: Repeat, label: "Suscripciones", href: "/settings/subscriptions" },
               { icon: Tags, label: "Categorias", href: "/settings/categories" },

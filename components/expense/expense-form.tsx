@@ -35,7 +35,7 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
-import { useAccounts, useCategories, createFinancialSubscription, createTransaction } from "@/hooks/use-data"
+import { useAccounts, useCategories, createFinancialSubscription, createTransaction, useTransactions } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
@@ -78,6 +78,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const router = useRouter()
   const { data: rawAccounts = [] } = useAccounts()
   const { data: dbCategories = [] } = useCategories()
+  const { data: rawTransactions = [] } = useTransactions(150)
   const { blocked, isUpsellOpen, handleEntitlementBlocked, closeUpsell } = useEntitlementBlocked()
   const { canUseFinancialSubscriptions } = useEntitlements()
 
@@ -109,6 +110,80 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [subscriptionProvider, setSubscriptionProvider] = useState("netflix")
   const [subscriptionMode, setSubscriptionMode] = useState<"once" | "recurring">("once")
   const [billingDay, setBillingDay] = useState(String(new Date().getDate()))
+
+  // Load last used account and currency for quick prefill next time
+  useEffect(() => {
+    if (typeof window === "undefined" || accounts.length === 0) return
+
+    const lastAcc = localStorage.getItem("micuadre:last_account_id")
+    const lastCur = localStorage.getItem("micuadre:last_currency")
+
+    if (lastAcc && accounts.some((a) => a.id === lastAcc)) {
+      setAccountId(lastAcc)
+    } else {
+      const cashAcc = accounts.find((a) => a.type === "cash")
+      if (cashAcc) {
+        setAccountId(cashAcc.id)
+      } else if (accounts.length > 0) {
+        setAccountId(accounts[0].id)
+      }
+    }
+
+    if (lastCur === "DOP" || lastCur === "USD") {
+      setCurrency(lastCur as Currency)
+    }
+  }, [accounts])
+
+  // Heuristic: compute unique recent expenses to use as quick templates
+  const quickTemplates = useMemo(() => {
+    if (!rawTransactions || rawTransactions.length === 0) return []
+    const expenses = rawTransactions.filter(tx => tx.type === "expense" && tx.description)
+    const unique: any[] = []
+    const seen = new Set<string>()
+
+    for (const tx of expenses) {
+      const key = `${tx.description?.toLowerCase()}_${tx.category_id || ""}_${tx.currency}`
+      if (!seen.has(key)) {
+        seen.add(key)
+        unique.push({
+          description: tx.description,
+          amount: String(tx.amount),
+          currency: tx.currency as Currency,
+          accountId: tx.account_id,
+          categoryId: tx.category_id,
+          categoryName: tx.category?.name || "Gastos",
+        })
+      }
+      if (unique.length >= 4) break
+    }
+    return unique
+  }, [rawTransactions])
+
+  // Heuristic: suggest category, account, and amount when user types a description
+  const descriptionSuggestion = useMemo(() => {
+    if (!description || transactionType !== "expense" || !rawTransactions || rawTransactions.length === 0) return null
+    const normalizedDesc = description.trim().toLowerCase()
+    if (normalizedDesc.length < 3) return null
+
+    // Find the most recent matching transaction
+    const match = rawTransactions.find(
+      (tx) => tx.type === "expense" && tx.description && tx.description.toLowerCase().includes(normalizedDesc)
+    )
+
+    if (!match) return null
+
+    // Don't suggest if it's the exact same as currently set
+    if (match.category_id === category && match.account_id === accountId) return null
+
+    return {
+      description: match.description,
+      amount: String(match.amount),
+      currency: match.currency as Currency,
+      accountId: match.account_id,
+      categoryId: match.category_id,
+      categoryName: match.category?.name || "Gastos",
+    }
+  }, [description, transactionType, category, accountId, rawTransactions])
 
   const categories = useMemo(() => {
     const allowedTypes = transactionType === "expense" ? ["expense", "both"] : ["income", "both"]
@@ -202,6 +277,12 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           billing_day: Number(billingDay || date.getDate()),
           next_payment_date: getLocalDateString(nextDate),
         })
+      }
+
+      // Save last used account and currency for quick prefill next time
+      if (typeof window !== "undefined") {
+        localStorage.setItem("micuadre:last_account_id", targetAccountId)
+        localStorage.setItem("micuadre:last_currency", currency)
       }
 
       showToast({
@@ -369,6 +450,38 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           )}
         </div>
 
+        {quickTemplates.length > 0 && transactionType === "expense" && (
+          <div className="space-y-2">
+            <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Frecuentes / Repetir rápido</p>
+            <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {quickTemplates.map((template, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => {
+                    setAmount(template.amount)
+                    setDescription(template.description)
+                    setCurrency(template.currency)
+                    if (template.accountId) setAccountId(template.accountId)
+                    if (template.categoryId) setCategory(template.categoryId)
+                    showToast({
+                      title: "Plantilla aplicada",
+                      body: `${template.description} por ${template.currency === "DOP" ? "RD$" : "US$"}${template.amount}`,
+                      type: "success",
+                      duration: 2000,
+                    })
+                  }}
+                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground transition hover:bg-muted active:scale-95 animate-in fade-in"
+                >
+                  <span className="font-semibold">{template.description}</span>
+                  <span className="text-muted-foreground">
+                    {template.currency === "DOP" ? "RD$" : "US$"}{parseFloat(template.amount).toLocaleString()}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <Popover>
@@ -515,6 +628,29 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             placeholder="Añade una descripción..."
             className="min-h-24 w-full rounded-2xl border-0 bg-card p-4 text-sm text-foreground outline-none ring-1 ring-border/60 placeholder:text-muted-foreground/50 focus:ring-accent"
           />
+          {descriptionSuggestion && (
+            <button
+              type="button"
+              onClick={() => {
+                setAmount(descriptionSuggestion.amount)
+                setCurrency(descriptionSuggestion.currency)
+                if (descriptionSuggestion.accountId) setAccountId(descriptionSuggestion.accountId)
+                if (descriptionSuggestion.categoryId) setCategory(descriptionSuggestion.categoryId)
+                showToast({
+                  title: "Sugerencia aplicada",
+                  body: `Autocompletado con tu último gasto en "${descriptionSuggestion.description}"`,
+                  type: "success",
+                  duration: 2000,
+                })
+              }}
+              className="mt-2 flex w-full items-center justify-between rounded-xl bg-muted/65 px-4 py-2.5 text-xs text-muted-foreground transition hover:bg-muted active:scale-99 border border-dashed border-border animate-in fade-in slide-in-from-top-1"
+            >
+              <span>¿Autocompletar como el último?</span>
+              <span className="font-semibold text-primary">
+                {descriptionSuggestion.currency === "DOP" ? "RD$" : "US$"}{parseFloat(descriptionSuggestion.amount).toLocaleString()} en {descriptionSuggestion.categoryName}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 

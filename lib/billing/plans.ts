@@ -3,9 +3,9 @@ import type { BillingInterval, PaidPlanTier, PlanTier } from "@/types/billing"
 
 export const BILLING_INTERVALS: BillingInterval[] = ["monthly", "yearly"]
 
-export const PLAN_ORDER: PlanTier[] = ["free", "pro", "plus"]
+export const PLAN_ORDER: PlanTier[] = ["free", "pro"]
 
-export const PAID_PLAN_ORDER: PaidPlanTier[] = ["pro", "plus"]
+export const PAID_PLAN_ORDER: PaidPlanTier[] = ["pro"]
 
 export const ANNUAL_DISCOUNT_PERCENT = 20
 
@@ -43,8 +43,8 @@ export const PLAN_CONFIG: Record<PlanTier, PublicPlanConfig> = {
     benefits: [
       "Hasta 3 cuentas",
       "Hasta 2 metas",
+      "Hasta 3 suscripciones",
       "Reportes básicos",
-      "MIA básica",
     ],
     limits: ENTITLEMENTS_BY_PLAN.free,
     cta: "Seguir con Free",
@@ -53,50 +53,28 @@ export const PLAN_CONFIG: Record<PlanTier, PublicPlanConfig> = {
     id: "pro",
     label: "Pro",
     shortLabel: "Pro",
-    description: "Para tener más control",
-    audience: "Ideal si quieres más capacidad, mejores reportes y MIA avanzada.",
+    description: "Control completo",
+    audience: "Acceso completo a MiCuadre, sin límites y con herramientas avanzadas.",
     badge: "Recomendado",
     price: {
-      monthly: 1.99,
-      yearly: 19.1,
-      yearlyMonthlyEquivalent: 1.59,
+      monthly: 2.99,
+      yearly: 28.7,
+      yearlyMonthlyEquivalent: 2.39,
     },
     benefits: [
-      "Cuentas y metas ilimitadas",
+      "Cuentas, metas y suscripciones ilimitadas",
       "Reportes avanzados",
       "MIA avanzada",
-      "Hasta 10 suscripciones financieras",
       "Exportaciones CSV/Excel",
+      "Acceso completo a MiCuadre",
     ],
     limits: ENTITLEMENTS_BY_PLAN.pro,
     cta: "Actualizar a Pro",
   },
-  plus: {
-    id: "plus",
-    label: "Plus",
-    shortLabel: "Plus",
-    description: "El plan más completo",
-    audience: "Para control avanzado, más capacidad y funciones premium.",
-    badge: "Más completo",
-    price: {
-      monthly: 3.99,
-      yearly: 38.3,
-      yearlyMonthlyEquivalent: 3.19,
-    },
-    benefits: [
-      "Todo lo incluido en Pro",
-      "Suscripciones financieras ilimitadas",
-      "Más capacidad para control avanzado",
-      "Insights premium listos para futuras funciones",
-      "Prioridad en mejoras premium",
-    ],
-    limits: ENTITLEMENTS_BY_PLAN.plus,
-    cta: "Actualizar a Plus",
-  },
 }
 
 export function isPaidPlan(plan: PlanTier): plan is PaidPlanTier {
-  return plan === "pro" || plan === "plus"
+  return plan === "pro"
 }
 
 export function formatPlanPrice(plan: PlanTier, interval: BillingInterval) {
@@ -117,7 +95,7 @@ export function getFinancialSubscriptionLimitLabel(plan: PlanTier) {
 }
 
 export function normalizePlanTier(plan: string | null | undefined): PlanTier {
-  if (plan === "pro" || plan === "plus" || plan === "free") return plan
-  if (plan === "business") return "plus"
+  if (plan === "pro" || plan === "free") return plan
+  if (plan === "plus" || plan === "business") return "pro"
   return "free"
 }

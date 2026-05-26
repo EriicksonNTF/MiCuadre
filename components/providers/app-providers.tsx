@@ -45,6 +45,12 @@ function RouteFadeTransition({ children }: { children: React.ReactNode }) {
 }
 
 export function AppProviders({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    // Import dynamically or statically to ensure it only initializes on client side
+    const { initSyncEngine } = require("@/lib/offline/sync-engine")
+    initSyncEngine()
+  }, [])
+
   return (
     <ThemeProvider>
       <ProfilePreferencesSync />
@@ -54,3 +60,4 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     </ThemeProvider>
   )
 }
+
