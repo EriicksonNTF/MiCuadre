@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useMemo, useState } from "react"
 import { MessageCircle, Send, Sparkles, X } from "lucide-react"
@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { CoachResponse, CoachUIBlock, CoachAction } from "@/lib/coach-ia"
 import { COACH_NAME } from "@/lib/coach-ia"
+import { useAuth } from "@/hooks/use-auth"
+import { useEntitlements } from "@/hooks/use-entitlements"
+import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
 
 type ChatMessage = {
   id: string
@@ -17,17 +20,17 @@ type ChatMessage = {
 }
 
 const quickPrompts = [
-  "Como voy este mes",
-  "En que gasto mas",
-  "Subir mi FinScore",
-  "Ver mis metas",
+  "¿Cuánto me queda del presupuesto de comida?",
+  "¿Qué pagos tengo esta semana?",
+  "¿Cuánto debo en préstamos?",
+  "¿Estoy cerca de pasarme del presupuesto?",
 ]
 
 function ThinkingBubble() {
   return (
     <div className="flex justify-start">
       <div className="max-w-[88%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 text-sm text-foreground">
-        <p className="text-xs text-muted-foreground">MiCuadre esta pensando...</p>
+        <p className="text-xs text-muted-foreground">MiCuadre estÃ¡ pensando...</p>
         <div className="mt-2 flex items-center gap-1.5">
           <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.2s]" />
           <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.1s]" />
@@ -76,22 +79,31 @@ function Block({ block }: { block: CoachUIBlock }) {
   return (
     <div className="mt-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
       <p className="font-medium">{block.title}</p>
-      <p className="mt-1">{block.amount} · {block.category}</p>
+      <p className="mt-1">{block.amount} Â· {block.category}</p>
     </div>
   )
 }
 
 export function CoachIAWidget() {
+  const { user, loading: authLoading } = useAuth()
+  const { canUseMIAAdvanced } = useEntitlements()
+  
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined)
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "init",
       role: "assistant",
-      text: `Soy ${COACH_NAME}, tu coach financiero IA. Te ayudo con gastos, metas y FinScore en corto.`,
+      text: `Soy ${COACH_NAME}, tu coach financiero IA. Te ayudo con gastos, planificacion y FinScore en corto.`,
     },
   ])
+
+  const hasAccess = useMemo(() => {
+    if (authLoading) return false
+    return canUseMIAAdvanced || isCoachIAEnabledForEmail(user?.email)
+  }, [canUseMIAAdvanced, user, authLoading])
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading])
 
@@ -108,9 +120,26 @@ export function CoachIAWidget() {
       const res = await fetch("/api/mia/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, screenContext: "dashboard_widget" }),
+        body: JSON.stringify({ message: text, screenContext: "dashboard_widget", conversationId }),
       })
-      const data = (await res.json()) as CoachResponse
+      
+      if (res.status === 403) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            text: "El asistente de MIA requiere una suscripciÃ³n Pro activa.",
+          },
+        ])
+        return
+      }
+
+      const data = (await res.json()) as CoachResponse & { conversationId?: string }
+      if (data.conversationId) {
+        setConversationId(data.conversationId)
+      }
+
       const bot: ChatMessage = {
         id: `a-${Date.now()}`,
         role: "assistant",
@@ -126,7 +155,7 @@ export function CoachIAWidget() {
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          text: "Se cayo la conexion por un momento. Intentalo de nuevo.",
+          text: "Se cayÃ³ la conexiÃ³n por un momento. IntÃ©ntalo de nuevo.",
         },
       ])
     } finally {
@@ -142,12 +171,26 @@ export function CoachIAWidget() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          conversationId,
           confirmAction: {
             mutationType: action.mutationType,
             payload: action.payload || {},
           },
         }),
       })
+
+      if (res.status === 403) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            text: "El asistente de MIA requiere una suscripciÃ³n Pro activa.",
+          },
+        ])
+        return
+      }
+
       const data = (await res.json()) as CoachResponse
       setMessages((prev) => [
         ...prev,
@@ -166,12 +209,16 @@ export function CoachIAWidget() {
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          text: "No pude confirmar esa accion ahora mismo. Intentalo de nuevo.",
+          text: "No pude confirmar esa acciÃ³n ahora mismo. IntÃ©ntalo de nuevo.",
         },
       ])
     } finally {
       setLoading(false)
     }
+  }
+
+  if (authLoading || !hasAccess) {
+    return null
   }
 
   return (
@@ -225,7 +272,7 @@ export function CoachIAWidget() {
                     ? "rounded-br-md bg-primary text-primary-foreground"
                     : "rounded-bl-md border border-border bg-card text-foreground"
                 )}>
-                  <p className="leading-relaxed">{message.text}</p>
+                  <p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
                   {message.uiBlocks?.map((block, idx) => <Block key={`${message.id}-${idx}`} block={block} />)}
 
                   {!!message.actions?.length && (
@@ -266,7 +313,7 @@ export function CoachIAWidget() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") sendMessage()
                 }}
-                placeholder="Preguntame algo..."
+                placeholder="PregÃºntame algo..."
                 className="h-9 flex-1 rounded-lg border border-border bg-background px-2.5 text-xs text-foreground outline-none focus:border-primary"
               />
               <Button size="icon" className="h-9 w-9 rounded-lg" disabled={!canSend} onClick={() => sendMessage()}>
@@ -279,3 +326,4 @@ export function CoachIAWidget() {
     </div>
   )
 }
+

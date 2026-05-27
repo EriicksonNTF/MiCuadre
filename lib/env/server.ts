@@ -43,5 +43,6 @@ export function assertServerEnv() {
     stripeBusinessPriceId: readEnv("STRIPE_BUSINESS_PRICE_ID"),
     stripeProMonthlyPriceId: readEnv("STRIPE_PRO_MONTHLY_PRICE_ID"),
     stripeProYearlyPriceId: readEnv("STRIPE_PRO_YEARLY_PRICE_ID"),
+    stripeCheckoutEnablePaypal: readEnv("STRIPE_CHECKOUT_ENABLE_PAYPAL") === "true",
   }
 }

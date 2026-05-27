@@ -15,6 +15,8 @@ export function BalanceCard() {
         .reduce((sum, account) => sum + Number(account.current_debt_dop || 0), 0)
     : 0
 
+  const hasPending = accounts ? accounts.some((acc: any) => acc.hasPendingChanges) : false
+
   return (
     <div className="rounded-3xl border border-black/5 bg-white px-6 py-8 text-black shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#0B0F14] dark:text-white dark:shadow-[0_14px_34px_rgba(0,0,0,0.35)]">
       <div className="flex items-center justify-between">
@@ -41,6 +43,13 @@ export function BalanceCard() {
           "••••••••"
         )}
       </h2>
+
+      {hasPending && (
+        <p className="mt-2 flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+          Incluye movimientos pendientes
+        </p>
+      )}
 
       <p className="mt-2 text-xs text-black/55 dark:text-white/55">Efectivo y débito</p>
       <p className={totalCreditDebt > 0 ? "mt-1 text-xs text-red-600 dark:text-red-300" : "mt-1 text-xs text-black/60 dark:text-white/60"}>

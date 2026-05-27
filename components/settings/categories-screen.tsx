@@ -72,7 +72,7 @@ export function CategoriesScreen() {
             <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
               <ChevronLeft className="h-5 w-5 text-foreground" />
             </Link>
-            <h1 className="text-lg font-semibold text-foreground">Categorias</h1>
+            <h1 className="text-lg font-semibold text-foreground">Categorías</h1>
           </div>
           <button onClick={openCreate} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Nueva</button>
         </div>
@@ -86,7 +86,7 @@ export function CategoriesScreen() {
           </div>
           <div className="overflow-hidden rounded-2xl border border-border/70 bg-card">
             {defaultCategories.length === 0 ? (
-              <p className="px-4 py-5 text-sm text-muted-foreground">No hay categorias predeterminadas.</p>
+              <p className="px-4 py-5 text-sm text-muted-foreground">No hay categorías predeterminadas.</p>
             ) : (
               defaultCategories.map((category, index) => (
                 <div key={category.id} className={cn("flex items-center gap-3 px-4 py-3", index !== defaultCategories.length - 1 && "border-b border-border/60")}>
@@ -94,8 +94,10 @@ export function CategoriesScreen() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
                     <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="rounded-full bg-muted px-2 py-0.5">{category.type}</span>
-                      {category.is_subscription && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">suscripcion</span>}
+                      <span className="rounded-full bg-muted px-2 py-0.5">
+                        {category.type === "expense" ? "Gasto" : category.type === "income" ? "Ingreso" : "Ambos"}
+                      </span>
+                      {category.is_subscription && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">suscripción</span>}
                       <Star className="h-3 w-3" />
                     </div>
                   </div>
@@ -113,7 +115,7 @@ export function CategoriesScreen() {
           <div className="space-y-2">
             {customCategories.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
-                Aun no tienes categorias personalizadas.
+                Aún no tienes categorías personalizadas.
               </div>
             ) : (
               customCategories.map((category) => (
@@ -123,8 +125,10 @@ export function CategoriesScreen() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
                       <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span className="rounded-full bg-muted px-2 py-0.5">{category.type}</span>
-                        {category.is_subscription && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">suscripcion</span>}
+                        <span className="rounded-full bg-muted px-2 py-0.5">
+                          {category.type === "expense" ? "Gasto" : category.type === "income" ? "Ingreso" : "Ambos"}
+                        </span>
+                        {category.is_subscription && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">suscripción</span>}
                       </div>
                     </div>
                     <div className="flex gap-1.5">
@@ -141,7 +145,7 @@ export function CategoriesScreen() {
 
       {showModal && (
         <BaseModalForm
-          title={editingId ? "Editar categoria" : "Nueva categoria"}
+          title={editingId ? "Editar categoría" : "Nueva categoría"}
           onClose={() => setShowModal(false)}
           footer={<button onClick={save} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
         >
@@ -204,7 +208,7 @@ export function CategoriesScreen() {
                 isSubscription ? "bg-amber-500 text-white" : "bg-muted text-foreground"
               )}
             >
-              {isSubscription ? "Categoria de suscripcion: activa" : "Categoria de suscripcion: inactiva"}
+              {isSubscription ? "Categoría de suscripción: activa" : "Categoría de suscripción: inactiva"}
             </button>
           </div>
         </BaseModalForm>

@@ -23,7 +23,7 @@ export default function SignUpSuccessPage() {
               </div>
               <CardTitle className="text-xl">Revisa tu correo</CardTitle>
               <CardDescription className="text-base">
-                Te hemos enviado un enlace de confirmacion a tu correo electronico.
+                Te hemos enviado un enlace de confirmación a tu correo electrónico.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
@@ -31,7 +31,7 @@ export default function SignUpSuccessPage() {
                 Haz clic en el enlace del correo para activar tu cuenta y comenzar a usar MiCuadre.
               </p>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/auth/login">Volver al inicio de sesion</Link>
+                <Link href="/auth/login">Volver al inicio de sesión</Link>
               </Button>
             </CardContent>
           </Card>

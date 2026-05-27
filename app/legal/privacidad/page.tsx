@@ -1,49 +1,49 @@
-import { LegalPageShell } from "@/components/legal/legal-page-shell"
+﻿import { LegalPageShell } from "@/components/legal/legal-page-shell"
 
 export default function PoliticaPrivacidadPage() {
   return (
-    <LegalPageShell title="Politica de Privacidad" updatedAt="14 de mayo de 2026">
+    <LegalPageShell title="PolÃ­tica de Privacidad" updatedAt="14 de mayo de 2026">
       <p>
-        En MiCuadre valoramos tu privacidad. Esta Politica de Privacidad describe como recopilamos,
-        usamos y protegemos la informacion personal y financiera que nos compartes al utilizar la
+        En MiCuadre valoramos tu privacidad. Esta PolÃ­tica de Privacidad describe cÃ³mo recopilamos,
+        usamos y protegemos la informaciÃ³n personal y financiera que nos compartes al utilizar la
         plataforma.
       </p>
 
-      <h2>1. Informacion que recopilamos</h2>
+      <h2>1. InformaciÃ³n que recopilamos</h2>
       <p>
-        Podemos recopilar datos de registro (como nombre y correo), datos de uso de la aplicacion,
-        datos financieros ingresados manualmente (cuentas, gastos, metas, suscripciones) y datos
-        tecnicos del dispositivo para seguridad y rendimiento.
+        Podemos recopilar datos de registro (como nombre y correo), datos de uso de la aplicaciÃ³n,
+        datos financieros ingresados manualmente (cuentas, gastos, planificacion, suscripciones) y datos
+        tÃ©cnicos del dispositivo para seguridad y rendimiento.
       </p>
 
-      <h2>2. Uso de la informacion</h2>
+      <h2>2. Uso de la informaciÃ³n</h2>
       <p>
-        Utilizamos la informacion para operar MiCuadre, mejorar la experiencia, generar analisis
+        Utilizamos la informaciÃ³n para operar MiCuadre, mejorar la experiencia, generar anÃ¡lisis
         financieros, brindar soporte y mantener la seguridad del servicio.
       </p>
 
-      <h2>3. Cookies y tecnologias similares</h2>
+      <h2>3. Cookies y tecnologÃ­as similares</h2>
       <p>
-        Podemos usar cookies o tecnologias equivalentes para sesiones de usuario, preferencias,
-        rendimiento y analitica basica del producto.
+        Podemos usar cookies o tecnologÃ­as equivalentes para sesiones de usuario, preferencias,
+        rendimiento y analÃ­tica bÃ¡sica del producto.
       </p>
 
       <h2>4. Seguridad y almacenamiento</h2>
       <p>
-        Aplicamos medidas tecnicas y organizativas razonables para proteger tus datos. Aunque no
+        Aplicamos medidas tÃ©cnicas y organizativas razonables para proteger tus datos. Aunque no
         existe seguridad absoluta, MiCuadre trabaja continuamente en fortalecer sus controles.
       </p>
 
-      <h2>5. Conservacion de datos</h2>
+      <h2>5. ConservaciÃ³n de datos</h2>
       <p>
-        Conservamos la informacion el tiempo necesario para operar el servicio, cumplir obligaciones
-        legales y resolver incidencias. Puedes solicitar eliminacion de cuenta y datos cuando aplique.
+        Conservamos la informaciÃ³n el tiempo necesario para operar el servicio, cumplir obligaciones
+        legales y resolver incidencias. Puedes solicitar la eliminaciÃ³n de cuenta y datos cuando aplique.
       </p>
 
       <h2>6. Derechos del usuario</h2>
       <p>
-        Puedes solicitar acceso, correccion o eliminacion de tu informacion, asi como actualizar tus
-        preferencias de cuenta cuando la funcionalidad este disponible.
+        Puedes solicitar acceso, correcciÃ³n o eliminaciÃ³n de tu informaciÃ³n, asÃ­ como actualizar tus
+        preferencias de cuenta cuando la funcionalidad estÃ© disponible.
       </p>
 
       <h2>7. Contacto</h2>
@@ -53,9 +53,10 @@ export default function PoliticaPrivacidadPage() {
 
       <h2>8. Cambios futuros</h2>
       <p>
-        MiCuadre se encuentra en evolucion continua. Algunos procesos y servicios pueden cambiar
-        durante el desarrollo, y esta politica se actualizara para reflejar dichos cambios.
+        MiCuadre se encuentra en evoluciÃ³n continua. Algunos procesos y servicios pueden cambiar
+        durante el desarrollo, y esta polÃ­tica se actualizarÃ¡ para reflejar dichos cambios.
       </p>
     </LegalPageShell>
   )
 }
+

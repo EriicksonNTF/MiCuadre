@@ -13,7 +13,11 @@ export type FeatureKey =
   | "mia_advanced"
   | "financial_subscriptions"
   | "max_accounts"
+  | "max_daily_transactions"
   | "max_goals"
+  | "max_budgets"
+  | "max_active_debts"
+  | "planning_full"
 
 export type BillingSubscriptionStatus =
   | "trialing"
@@ -25,7 +29,11 @@ export type BillingSubscriptionStatus =
 
 export type EntitlementConfig = {
   max_accounts: number | "unlimited"
+  max_daily_transactions: number | "unlimited"
   max_goals: number | "unlimited"
+  max_budgets: number | "unlimited"
+  max_active_debts: number | "unlimited"
+  planning_full: boolean
   basic_reports: boolean
   advanced_reports: boolean
   exports: boolean

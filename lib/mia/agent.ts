@@ -1,4 +1,4 @@
-import { formatCurrency } from "@/lib/data"
+﻿import { formatCurrency } from "@/lib/data"
 import { COACH_NAME, type CoachResponse } from "@/lib/coach-ia"
 import {
   formatTopCategoryList,
@@ -21,7 +21,7 @@ function normalizeText(value: string) {
 export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): CoachResponse {
   const q = normalizeText(message)
 
-  if (/(agrega|anade|añade|registra|crear|crea|guarda)/.test(q) && /(gasto|ingreso|transaccion)/.test(q)) {
+  if (/(agrega|anade|aÃ±ade|registra|crear|crea|guarda)/.test(q) && /(gasto|ingreso|transaccion)/.test(q)) {
     const amountMatch = q.match(/(\d+[\.,]?\d*)/)
     const amount = amountMatch ? Number(amountMatch[1].replace(",", ".")) : 0
     const currency = q.includes("usd") || q.includes("dolar") ? "USD" : "DOP"
@@ -70,7 +70,7 @@ export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): Coach
     }
   }
 
-  if (/(crea|crear|nueva|nueva meta|meta de)/.test(q) && q.includes("meta")) {
+  if (/(crea|crear|nueva|nueva presupuesto|presupuesto de)/.test(q) && q.includes("presupuesto")) {
     const amountMatch = q.match(/(\d+[\.,]?\d*)/)
     const targetAmount = amountMatch ? Number(amountMatch[1].replace(",", ".")) : 0
     const currency = q.includes("usd") || q.includes("dolar") ? "USD" : "DOP"
@@ -80,20 +80,20 @@ export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): Coach
         ? "Viaje"
         : q.includes("iphone")
           ? "Nuevo iPhone"
-          : "Nueva meta"
+          : "Nueva presupuesto"
 
     const parsedGoal = draftGoalSchema.safeParse({ name, targetAmount, currency })
     if (!parsedGoal.success) {
       return {
-        answer: "Para crear la meta necesito el monto objetivo. Ejemplo: Crea una meta de 50000 para viaje.",
-        uiBlocks: [{ type: "kpi_card", title: "Formato sugerido", value: "Meta de 50000 para viaje", tone: "info" }],
+        answer: "Para crear la presupuesto necesito el monto objetivo. Ejemplo: Crea una presupuesto de 50000 para viaje.",
+        uiBlocks: [{ type: "kpi_card", title: "Formato sugerido", value: "presupuesto de 50000 para viaje", tone: "info" }],
         actions: [{ label: "Intentar de nuevo", href: "/coach-ia", actionType: "navigate" }],
       }
     }
 
     return {
-      answer: `Perfecto. Te deje un borrador de meta "${parsedGoal.data.name}" por ${formatCurrency(parsedGoal.data.targetAmount, parsedGoal.data.currency)}.`,
-      uiBlocks: [{ type: "kpi_card", title: "Borrador de meta", value: `${parsedGoal.data.name} · ${formatCurrency(parsedGoal.data.targetAmount, parsedGoal.data.currency)}`, tone: "success" }],
+      answer: `Perfecto. Te deje un borrador de presupuesto "${parsedGoal.data.name}" por ${formatCurrency(parsedGoal.data.targetAmount, parsedGoal.data.currency)}.`,
+      uiBlocks: [{ type: "kpi_card", title: "Borrador de presupuesto", value: `${parsedGoal.data.name} Â· ${formatCurrency(parsedGoal.data.targetAmount, parsedGoal.data.currency)}`, tone: "success" }],
       actions: [
         {
           label: "Confirmar y crear",
@@ -106,9 +106,9 @@ export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): Coach
             currency: parsedGoal.data.currency,
           },
         },
-        { label: "Editar en Metas", href: "/goals", actionType: "navigate" },
+        { label: "Editar en planificacion", href: "/planning", actionType: "navigate" },
       ],
-      disclaimer: "MIA no crea la meta automaticamente en Fase 2. Debes confirmarla en la pantalla de Metas.",
+      disclaimer: "MIA no crea la presupuesto automaticamente en Fase 2. Debes confirmarla en la pantalla de planificacion.",
     }
   }
 
@@ -131,28 +131,28 @@ export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): Coach
         {
           type: "warning_bar",
           title: "Fechas de tarjeta",
-          value: `Corte: ${card.statementDate || "Sin fecha"} · Pago: ${card.statementDueDate || "Sin fecha"}`,
+          value: `Corte: ${card.statementDate || "Sin fecha"} Â· Pago: ${card.statementDueDate || "Sin fecha"}`,
         },
       ],
       actions: [{ label: "Ver cuentas", href: "/accounts", actionType: "navigate" }],
     }
   }
 
-  if (q.includes("meta") || q.includes("metas")) {
+  if (q.includes("presupuesto") || q.includes("planificacion")) {
     const goals = getGoalProgress(snapshot)
     if (goals.length === 0) {
       return {
-        answer: "No tienes metas activas ahora mismo. Si creas una, te acompano con seguimiento semanal.",
-        uiBlocks: [{ type: "kpi_card", title: "Meta recomendada", value: "Fondo de emergencia", tone: "info" }],
-        actions: [{ label: "Crear meta", href: "/goals", actionType: "navigate" }],
+        answer: "No tienes planificacion activas ahora mismo. Si creas una, te acompano con seguimiento semanal.",
+        uiBlocks: [{ type: "kpi_card", title: "presupuesto recomendada", value: "Fondo de emergencia", tone: "info" }],
+        actions: [{ label: "Crear presupuesto", href: "/planning", actionType: "navigate" }],
       }
     }
 
     const topGoal = goals[0]
     return {
-      answer: `Tu meta mas avanzada es "${topGoal.name}" con ${topGoal.progress}%. Te faltan ${formatCurrency(topGoal.missing)} para completarla.`,
-      uiBlocks: [{ type: "kpi_card", title: "Meta lider", value: `${topGoal.progress}% completado`, tone: "success" }],
-      actions: [{ label: "Ver metas", href: "/goals", actionType: "navigate" }],
+      answer: `Tu presupuesto mas avanzada es "${topGoal.name}" con ${topGoal.progress}%. Te faltan ${formatCurrency(topGoal.missing)} para completarla.`,
+      uiBlocks: [{ type: "kpi_card", title: "presupuesto lider", value: `${topGoal.progress}% completado`, tone: "success" }],
+      actions: [{ label: "Ver planificacion", href: "/planning", actionType: "navigate" }],
     }
   }
 
@@ -212,8 +212,9 @@ export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): Coach
     ],
     actions: [
       { label: "Ver historial", href: "/history", actionType: "navigate" },
-      { label: "Ir a metas", href: "/goals", actionType: "navigate" },
+      { label: "Ir a planificacion", href: "/planning", actionType: "navigate" },
     ],
     disclaimer: "Analisis educativo: no constituye asesoria financiera certificada.",
   }
 }
+

@@ -1,20 +1,21 @@
-import { NextResponse } from "next/server"
+﻿import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { coachRequestSchema } from "@/lib/mia/schemas"
 import { formatCurrency } from "@/lib/data"
-import type { Account, CreditCardCycle, FinancialSubscription, Goal, Transaction } from "@/lib/types/database"
+import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
+import { buildFinancialContext } from "@/lib/mia/context-builder"
 
 type MiaActionType =
   | "create_transaction"
   | "create_goal"
   | "create_subscription"
-  | "create_category"
-  | "pay_credit_card"
-  | "transfer_money"
+  | "add_money_to_goal"
 
 type MiaRequest = {
   message?: string
   screenContext?: string
+  action?: "new_conversation" | "clear_history"
+  conversationId?: string
   confirmAction?: {
     mutationType?: MiaActionType
     payload?: Record<string, unknown>
@@ -22,61 +23,62 @@ type MiaRequest = {
 }
 
 type MiaAIResponse = {
+  type: "answer" | "action_proposal" | "refusal"
   message: string
   action: null | {
-    type: MiaActionType
+    name: MiaActionType
     requires_confirmation: boolean
-    data: Record<string, unknown>
+    arguments: Record<string, any>
   }
 }
 
-const SYSTEM_PROMPT = `You are MIA, the intelligent financial copilot inside MiCuadre.
+const SYSTEM_PROMPT = `Eres MIA, la asistente financiera inteligente de MiCuadre.
+Tu objetivo es ayudar a los usuarios a entender sus finanzas personales basÃ¡ndote Ãºnicamente en sus datos reales de la aplicaciÃ³n.
 
-You help users understand their personal finances using their real app data.
+LIMITACIÃ“N DE DOMINIO - REGLA DE ORO DE SEGURIDAD:
+- Solo puedes hablar sobre temas financieros relacionados con MiCuadre: cuentas, transacciones, gastos, ingresos, planificacion de ahorro, tarjetas de crÃ©dito, presupuestos y salud financiera.
+- Si el usuario te pregunta sobre cualquier otro tema ajeno (como recetas de cocina, polÃ­tica, noticias, escribir cÃ³digo de programaciÃ³n, consejos no financieros o temas generales de ChatGPT), debes negarte cortÃ©smente usando el formato JSON con "type": "refusal" y explicar que solo puedes hablar sobre las finanzas del usuario dentro de MiCuadre.
 
-You can explain:
-- income
-- expenses
-- accounts
-- credit cards
-- subscriptions
-- savings goals
-- monthly trends
-- financial health
+NORMAS DE COMPORTAMIENTO:
+1. Responde en espaÃ±ol con un tono claro, amable, directo y financieramente responsable.
+2. Nunca inventes datos financieros. Si no hay datos suficientes para responder una pregunta, dilo claramente.
+3. No des asesorÃ­a de inversiÃ³n, tributaria o legal como verdades absolutas. AÃ±ade advertencias suaves de que es educaciÃ³n financiera.
+4. Para acciones que modifiquen o registren datos financieros, debes proponer una acciÃ³n estructurada en tu JSON y solicitar la confirmaciÃ³n del usuario.
 
-You must answer in Spanish by default.
-
-Your tone:
-- clear
-- friendly
-- practical
-- honest
-- concise
-- financially responsible
-
-Rules:
-- Never invent financial data.
-- If data is missing, say it clearly.
-- Use the user’s actual MiCuadre data when available.
-- Give actionable recommendations.
-- Do not give investment, tax or legal advice as absolute truth.
-- For actions like creating transactions, goals or subscriptions, prepare a draft and ask the user to confirm.
-- Never execute financial actions without confirmation.
-
-Output strictly as JSON:
+FORMATO DE RESPUESTA REQUERIDO:
+Debes responder STRICTAMENTE con un objeto JSON vÃ¡lido con los siguientes campos:
 {
-  "message": "string",
+  "type": "answer" | "action_proposal" | "refusal",
+  "message": "Tu respuesta o mensaje en espaÃ±ol aquÃ­ (soporta markdown bÃ¡sico)",
   "action": {
-    "type": "create_transaction|create_goal|create_subscription|create_category|pay_credit_card|transfer_money",
-    "requires_confirmation": true,
-    "data": {}
+    "name": "create_transaction" | "create_goal" | "create_subscription" | "add_money_to_goal",
+    "arguments": {
+      // Para create_transaction (creaciÃ³n de gasto o ingreso):
+      "amount": number,
+      "category": "comida" | "gasolina" | "ocio" | etc (nombre sugerido),
+      "type": "expense" | "income",
+      "currency": "DOP" | "USD",
+      "account": "efectivo" | "nÃ³mina" | etc (nombre sugerido, opcional)
+      
+      // Para create_goal (creaciÃ³n de presupuesto de ahorro):
+      "name": "Fondo de emergencia" | "Viaje" | etc (nombre de la presupuesto),
+      "targetAmount": number,
+      "currency": "DOP" | "USD"
+      
+      // Para create_subscription (suscripciones de streaming u otros recurrentes):
+      "name": "Netflix" | "Spotify" | etc (nombre de la suscripciÃ³n),
+      "amount": number,
+      "currency": "DOP" | "USD",
+      "billingDay": number (dÃ­a del mes del 1 al 31)
+      
+      // Para add_money_to_goal (aÃ±adir dinero a una presupuesto):
+      "goalName": string (nombre de la presupuesto),
+      "amount": number
+    },
+    "requires_confirmation": true
   }
 }
-or
-{
-  "message": "string",
-  "action": null
-}`
+Si no estÃ¡s proponiendo ninguna acciÃ³n, el campo "action" debe ser null.`
 
 function safeJsonParse<T>(value: string): T | null {
   try {
@@ -86,57 +88,130 @@ function safeJsonParse<T>(value: string): T | null {
   }
 }
 
-function toDate(value: string) {
-  return new Date(`${value}T12:00:00`)
+async function getOrCreateActiveConversation(supabase: any, userId: string) {
+  const { data: conversations } = await supabase
+    .from("mia_conversations")
+    .select("id")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false })
+    .limit(1)
+
+  if (conversations && conversations.length > 0) {
+    return conversations[0].id as string
+  }
+
+  const { data: newConv, error } = await supabase
+    .from("mia_conversations")
+    .insert({
+      user_id: userId,
+      title: `ConversaciÃ³n con MIA`,
+    })
+    .select("id")
+    .single()
+
+  if (error) throw error
+  return newConv.id as string
 }
 
-function getMonthBounds(now = new Date()) {
-  const start = new Date(now.getFullYear(), now.getMonth(), 1)
-  const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  return { start, prevStart, next }
+async function resolveAccountAndCategory(
+  supabase: any,
+  userId: string,
+  categoryName?: string,
+  accountName?: string
+) {
+  let accountId: string | null = null
+  let accountBalance = 0
+
+  if (accountName) {
+    const { data: accounts } = await supabase
+      .from("accounts")
+      .select("id, balance, name")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+
+    const matched = accounts?.find(
+      (a: any) => a.name.toLowerCase().includes(accountName.toLowerCase())
+    )
+    if (matched) {
+      accountId = matched.id
+      accountBalance = Number(matched.balance || 0)
+    }
+  }
+
+  if (!accountId) {
+    const { data: defaultAccount } = await supabase
+      .from("accounts")
+      .select("id, balance")
+      .eq("user_id", userId)
+      .in("type", ["cash", "debit"])
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (defaultAccount) {
+      accountId = defaultAccount.id
+      accountBalance = Number(defaultAccount.balance || 0)
+    }
+  }
+
+  let categoryId: string | null = null
+  if (categoryName) {
+    const { data: categories } = await supabase
+      .from("categories")
+      .select("id, name")
+      .or(`user_id.eq.${userId},is_default.eq.true`)
+
+    const matched = categories?.find(
+      (c: any) => c.name.toLowerCase().includes(categoryName.toLowerCase())
+    )
+    if (matched) {
+      categoryId = matched.id
+    }
+  }
+
+  return { accountId, accountBalance, categoryId }
 }
 
 async function createTransactionFromDraft(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: any,
   userId: string,
   payload: Record<string, unknown>
 ) {
   const amount = Number(payload.amount ?? 0)
   const currency = payload.currency === "USD" ? "USD" : "DOP"
-  const category = typeof payload.category === "string" ? payload.category : "Sin categoria"
+  const categoryName = typeof payload.category === "string" ? payload.category : undefined
+  const accountName = typeof payload.account === "string" ? payload.account : undefined
   const type = payload.type === "income" ? "income" : "expense"
-  if (amount <= 0) throw new Error("Monto invalido")
 
-  const { data: account } = await supabase
-    .from("accounts")
-    .select("id, balance, type")
-    .eq("user_id", userId)
-    .in("type", ["cash", "debit"])
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle()
+  if (amount <= 0) throw new Error("Monto invÃ¡lido")
 
-  if (!account) throw new Error("No hay cuenta disponible para registrar este movimiento")
-  if (type === "expense" && Number(account.balance || 0) < amount) throw new Error("Fondos insuficientes")
+  const { accountId, accountBalance, categoryId } = await resolveAccountAndCategory(
+    supabase,
+    userId,
+    categoryName,
+    accountName
+  )
+
+  if (!accountId) throw new Error("No hay cuenta disponible para registrar este movimiento")
+  if (type === "expense" && accountBalance < amount) throw new Error("Fondos insuficientes")
 
   const { data: tx, error: txError } = await supabase
     .from("transactions")
     .insert({
       user_id: userId,
-      account_id: account.id,
-      category_id: null,
+      account_id: accountId,
+      category_id: categoryId,
       type,
       amount,
       currency,
       amount_base: amount,
       exchange_rate: 1,
-      description: `MIA: ${category}`,
+      description: `MIA: ${categoryName || "Gasto"}`,
       date: new Date().toISOString().slice(0, 10),
       notes: "Registrado por MIA (confirmado por usuario)",
       is_recurring: false,
       parent_transaction_id: null,
-      metadata: { source: "mia", category_hint: category },
+      metadata: { source: "mia", category_hint: categoryName },
     })
     .select("id")
     .single()
@@ -144,13 +219,13 @@ async function createTransactionFromDraft(
   if (txError) throw txError
 
   const newBalance = type === "expense"
-    ? Number(account.balance || 0) - amount
-    : Number(account.balance || 0) + amount
+    ? accountBalance - amount
+    : accountBalance + amount
 
   const { error: balanceError } = await supabase
     .from("accounts")
     .update({ balance: newBalance })
-    .eq("id", account.id)
+    .eq("id", accountId)
 
   if (balanceError) {
     await supabase.from("transactions").delete().eq("id", tx.id)
@@ -159,14 +234,14 @@ async function createTransactionFromDraft(
 }
 
 async function createGoalFromDraft(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: any,
   userId: string,
   payload: Record<string, unknown>
 ) {
   const name = typeof payload.name === "string" ? payload.name.trim() : ""
   const targetAmount = Number(payload.targetAmount ?? 0)
   const currency = payload.currency === "USD" ? "USD" : "DOP"
-  if (name.length < 2 || targetAmount <= 0) throw new Error("Datos de meta invalidos")
+  if (name.length < 2 || targetAmount <= 0) throw new Error("Datos de presupuesto invÃ¡lidos")
 
   const { error } = await supabase.from("goals").insert({
     user_id: userId,
@@ -182,247 +257,498 @@ async function createGoalFromDraft(
   if (error) throw error
 }
 
-function buildSummary(data: {
-  accounts: Account[]
-  transactions: Transaction[]
-  goals: Goal[]
-  financialSubscriptions: FinancialSubscription[]
-  cycles: CreditCardCycle[]
-}) {
-  const { start, prevStart, next } = getMonthBounds(new Date())
-  const thisMonth = data.transactions.filter((tx) => {
-    const d = toDate(tx.date)
-    return d >= start && d < next && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment"
-  })
-  const prevMonth = data.transactions.filter((tx) => {
-    const d = toDate(tx.date)
-    return d >= prevStart && d < start && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment"
-  })
+async function createSubscriptionFromDraft(
+  supabase: any,
+  userId: string,
+  payload: Record<string, unknown>
+) {
+  const name = typeof payload.name === "string" ? payload.name.trim() : ""
+  const amount = Number(payload.amount ?? 0)
+  const currency = payload.currency === "USD" ? "USD" : "DOP"
+  const billingDay = Number(payload.billingDay ?? new Date().getDate())
 
-  const totalBalance = data.accounts.reduce((sum, a) => sum + Number(a.balance || 0), 0)
-  const totalIncomeMonth = thisMonth.filter((tx) => tx.type === "income").reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
-  const totalExpenseMonth = thisMonth.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
-  const totalExpensePrevMonth = prevMonth.filter((tx) => tx.type === "expense").reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+  if (name.length < 2 || amount <= 0) throw new Error("Datos de suscripciÃ³n invÃ¡lidos")
 
-  const catMap = new Map<string, number>()
-  for (const tx of thisMonth) {
-    if (tx.type !== "expense") continue
-    const key = tx.category?.name || "Sin categoria"
-    catMap.set(key, (catMap.get(key) || 0) + Number(tx.amount || 0))
+  const { accountId, categoryId } = await resolveAccountAndCategory(
+    supabase,
+    userId,
+    "Suscripciones",
+    undefined
+  )
+
+  if (!accountId) throw new Error("No hay cuenta disponible para la suscripciÃ³n")
+
+  const now = new Date()
+  let nextPayment = new Date(now.getFullYear(), now.getMonth(), billingDay)
+  if (nextPayment <= now) {
+    nextPayment = new Date(now.getFullYear(), now.getMonth() + 1, billingDay)
   }
-  const topCategories = Array.from(catMap.entries()).sort((a, b) => b[1] - a[1]).slice(0, 4)
 
-  const biggestExpenses = thisMonth
-    .filter((tx) => tx.type === "expense")
-    .sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))
-    .slice(0, 3)
-    .map((tx) => ({ description: tx.description || "Sin descripcion", amount: Number(tx.amount || 0), date: tx.date }))
+  const { error } = await supabase.from("subscriptions").insert({
+    user_id: userId,
+    name,
+    amount,
+    currency,
+    account_id: accountId,
+    category_id: categoryId,
+    billing_day: billingDay,
+    next_payment_date: nextPayment.toISOString().slice(0, 10),
+    status: "active",
+  })
 
-  const cards = data.accounts.filter((a) => a.type === "credit")
-  const cardDebt = cards.reduce((sum, card) => sum + Number(card.statement_balance || 0), 0)
-  const upcomingPayments = cards
-    .filter((card) => Boolean(card.statement_due_date))
-    .map((card) => ({ name: card.name, dueDate: card.statement_due_date, pending: Number(card.pending_amount || 0) }))
+  if (error) throw error
+}
 
-  const subscriptionTotal = data.financialSubscriptions
-    .filter((sub) => sub.status === "active")
-    .reduce((sum, sub) => sum + Number(sub.amount || 0), 0)
+async function addMoneyToGoalFromDraft(
+  supabase: any,
+  userId: string,
+  payload: Record<string, unknown>
+) {
+  const goalName = typeof payload.goalName === "string" ? payload.goalName.trim() : ""
+  const amount = Number(payload.amount ?? 0)
+  if (goalName.length < 2 || amount <= 0) throw new Error("Datos de contribuciÃ³n invÃ¡lidos")
 
-  const goals = data.goals
-    .filter((g) => !g.is_completed)
-    .map((g) => {
-      const current = Number(g.current_amount || 0)
-      const target = Number(g.target_amount || 0)
-      return {
-        name: g.name,
-        current,
-        target,
-        progress: target > 0 ? Math.round((current / target) * 100) : 0,
-      }
-    })
+  const { data: goals } = await supabase
+    .from("goals")
+    .select("id, name, current_amount")
+    .eq("user_id", userId)
+    .eq("is_completed", false)
 
-  return {
-    totalBalance,
-    totalIncomeMonth,
-    totalExpenseMonth,
-    netCashflowMonth: totalIncomeMonth - totalExpenseMonth,
-    expenseDeltaVsPrevMonth: totalExpenseMonth - totalExpensePrevMonth,
-    topCategories,
-    biggestExpenses,
-    cardDebt,
-    upcomingPayments,
-    activeSubscriptions: data.financialSubscriptions.filter((s) => s.status === "active").map((s) => ({ name: s.name, amount: Number(s.amount), nextPaymentDate: s.next_payment_date })),
-    subscriptionTotal,
-    goals,
-    recentCardCycles: data.cycles.slice(0, 5).map((c) => ({
-      accountId: c.account_id,
-      dueDate: c.due_date,
-      status: c.status,
-      statementBalanceDOP: Number(c.statement_balance_dop || 0),
-      statementBalanceUSD: Number(c.statement_balance_usd || 0),
-    })),
-  }
+  const matchedGoal = goals?.find(
+    (g: any) => g.name.toLowerCase().includes(goalName.toLowerCase())
+  )
+  if (!matchedGoal) throw new Error("No se encontrÃ³ la presupuesto de ahorro")
+
+  const { accountId, accountBalance } = await resolveAccountAndCategory(
+    supabase,
+    userId,
+    undefined,
+    undefined
+  )
+  if (!accountId) throw new Error("No hay cuenta disponible para realizar el dÃ©bito")
+  if (accountBalance < amount) throw new Error("Fondos insuficientes en la cuenta")
+
+  const { error: contribError } = await supabase.from("goal_contributions").insert({
+    user_id: userId,
+    goal_id: matchedGoal.id,
+    account_id: accountId,
+    amount,
+    date: new Date().toISOString(),
+    notes: "ContribuciÃ³n registrada por MIA",
+  })
+  if (contribError) throw contribError
+
+  const newGoalAmount = Number(matchedGoal.current_amount || 0) + amount
+  const { error: goalUpdateError } = await supabase
+    .from("goals")
+    .update({ current_amount: newGoalAmount })
+    .eq("id", matchedGoal.id)
+
+  if (goalUpdateError) throw goalUpdateError
+
+  const newAccountBalance = accountBalance - amount
+  const { error: accountUpdateError } = await supabase
+    .from("accounts")
+    .update({ balance: newAccountBalance })
+    .eq("id", accountId)
+
+  if (accountUpdateError) throw accountUpdateError
 }
 
 function mapAiToClientResponse(ai: MiaAIResponse) {
   const response = {
     answer: ai.message,
-    uiBlocks: [] as Array<{ type: "kpi_card" | "warning_bar" | "category_list" | "draft_tx"; title: string; value?: string; tone?: "info" | "warning" | "success"; items?: Array<{ label: string; value: string }>; amount?: string; category?: string }>,
-    actions: [] as Array<{ label: string; href: string; actionType: "navigate" | "confirm_draft"; mutationType?: MiaActionType; payload?: Record<string, unknown> }>,
-    disclaimer: "Analisis educativo: no constituye asesoria financiera certificada.",
+    uiBlocks: [] as any[],
+    actions: [] as any[],
+    disclaimer: "MIA ofrece informaciÃ³n basada en los datos registrados en MiCuadre. No sustituye asesorÃ­a financiera profesional.",
   }
 
-  if (!ai.action) return response
-
-  if (ai.action.type === "create_transaction") {
-    response.uiBlocks.push({
-      type: "draft_tx",
-      title: "Borrador de transaccion",
-      amount: formatCurrency(Number(ai.action.data.amount || 0), ai.action.data.currency === "USD" ? "USD" : "DOP"),
-      category: String(ai.action.data.category || "Sin categoria"),
-    })
-  } else if (ai.action.type === "create_goal") {
-    response.uiBlocks.push({
-      type: "kpi_card",
-      title: "Borrador de meta",
-      value: `${String(ai.action.data.name || "Nueva meta")} · ${formatCurrency(Number(ai.action.data.targetAmount || 0), ai.action.data.currency === "USD" ? "USD" : "DOP")}`,
-      tone: "success",
-    })
+  if (ai.type === "refusal") {
+    return response
   }
 
-  response.actions.push(
-    {
-      label: "Confirmar",
+  if (ai.type === "action_proposal" && ai.action) {
+    const actName = ai.action.name
+    const args = ai.action.arguments || {}
+
+    if (actName === "create_transaction") {
+      const amountStr = formatCurrency(Number(args.amount || 0), args.currency === "USD" ? "USD" : "DOP")
+      response.uiBlocks.push({
+        type: "draft_tx",
+        title: args.type === "income" ? "Borrador de ingreso" : "Borrador de gasto",
+        amount: amountStr,
+        category: String(args.category || "Sin categorÃ­a"),
+      })
+      response.actions.push({
+        label: "Confirmar",
+        href: "/coach-ia",
+        actionType: "confirm_draft",
+        mutationType: "create_transaction",
+        payload: {
+          amount: args.amount,
+          category: args.category,
+          type: args.type || "expense",
+          currency: args.currency || "DOP",
+          account: args.account,
+        },
+      })
+    } else if (actName === "create_goal") {
+      const amountStr = formatCurrency(Number(args.targetAmount || 0), args.currency === "USD" ? "USD" : "DOP")
+      response.uiBlocks.push({
+        type: "kpi_card",
+        title: "Borrador de presupuesto",
+        value: `${String(args.name || "Nueva presupuesto")} Â· ${amountStr}`,
+        tone: "success",
+      })
+      response.actions.push({
+        label: "Confirmar",
+        href: "/coach-ia",
+        actionType: "confirm_draft",
+        mutationType: "create_goal",
+        payload: {
+          name: args.name,
+          targetAmount: args.targetAmount,
+          currency: args.currency || "DOP",
+        },
+      })
+    } else if (actName === "create_subscription") {
+      const amountStr = formatCurrency(Number(args.amount || 0), args.currency === "USD" ? "USD" : "DOP")
+      response.uiBlocks.push({
+        type: "kpi_card",
+        title: "Borrador de suscripciÃ³n",
+        value: `${String(args.name || "Netflix")} Â· ${amountStr}/mes`,
+        tone: "info",
+      })
+      response.actions.push({
+        label: "Confirmar",
+        href: "/coach-ia",
+        actionType: "confirm_draft",
+        mutationType: "create_subscription",
+        payload: {
+          name: args.name,
+          amount: args.amount,
+          currency: args.currency || "DOP",
+          billingDay: args.billingDay || new Date().getDate(),
+        },
+      })
+    } else if (actName === "add_money_to_goal") {
+      const amountStr = formatCurrency(Number(args.amount || 0), "DOP")
+      response.uiBlocks.push({
+        type: "kpi_card",
+        title: "Borrador de ahorro",
+        value: `Ahorrar ${amountStr} en "${args.goalName || "presupuesto"}"`,
+        tone: "success",
+      })
+      response.actions.push({
+        label: "Confirmar",
+        href: "/coach-ia",
+        actionType: "confirm_draft",
+        mutationType: "add_money_to_goal",
+        payload: {
+          goalName: args.goalName,
+          amount: args.amount,
+        },
+      })
+    }
+
+    response.actions.push({
+      label: "Cancelar",
       href: "/coach-ia",
-      actionType: "confirm_draft",
-      mutationType: ai.action.type,
-      payload: ai.action.data,
-    },
-    { label: "Cancelar", href: "/coach-ia", actionType: "navigate" }
-  )
+      actionType: "navigate",
+    })
+  }
 
   return response
 }
 
-export async function POST(request: Request) {
+export async function GET() {
   try {
-    const body = (await request.json()) as MiaRequest
-    const parsed = coachRequestSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Mensaje vacio" }, { status: 400 })
-    }
-
     const supabase = await createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 })
 
-    if (body.confirmAction?.mutationType) {
-      if (body.confirmAction.mutationType === "create_transaction") {
-        await createTransactionFromDraft(supabase, user.id, body.confirmAction.payload || {})
-        return NextResponse.json({
-          answer: "Listo, registre el movimiento correctamente.",
-          uiBlocks: [{ type: "kpi_card", title: "Accion completada", value: "Transaccion guardada", tone: "success" }],
-          actions: [{ label: "Ver historial", href: "/history", actionType: "navigate" }],
-        })
-      }
-      if (body.confirmAction.mutationType === "create_goal") {
-        await createGoalFromDraft(supabase, user.id, body.confirmAction.payload || {})
-        return NextResponse.json({
-          answer: "Perfecto, tu meta fue creada exitosamente.",
-          uiBlocks: [{ type: "kpi_card", title: "Accion completada", value: "Meta creada", tone: "success" }],
-          actions: [{ label: "Ver metas", href: "/goals", actionType: "navigate" }],
-        })
-      }
+    // Entitlement check
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan_tier, email")
+      .eq("id", user.id)
+      .single()
+
+    const planTier = profile?.plan_tier || "free"
+    const userEmail = profile?.email || user.email
+    const isWhitelisted = isCoachIAEnabledForEmail(userEmail)
+    const isPro = planTier === "pro"
+
+    if (!isPro && !isWhitelisted) {
       return NextResponse.json({
-        answer: "Ese tipo de accion aun no esta habilitado para ejecucion directa.",
-        uiBlocks: [{ type: "kpi_card", title: "Pendiente", value: "Accion no disponible", tone: "warning" }],
-        actions: [{ label: "Continuar", href: "/coach-ia", actionType: "navigate" }],
+        error: "Forbidden",
+        message: "MIA advanced requires Pro plan.",
+        requiresUpgrade: true
+      }, { status: 403 })
+    }
+
+    // Get active conversation
+    const { data: conversations } = await supabase
+      .from("mia_conversations")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+
+    if (!conversations || conversations.length === 0) {
+      return NextResponse.json({
+        conversationId: null,
+        messages: [],
+        conversations: []
       })
     }
 
-    const message = parsed.data.message?.trim()
-    if (!message) return NextResponse.json({ error: "Mensaje vacio" }, { status: 400 })
+    const activeId = conversations[0].id
 
-    const [{ data: accountsRaw }, { data: txRaw }, { data: categoriesRaw }, { data: goalsRaw }, { data: financialSubscriptionsRaw }, { data: cyclesRaw }, { data: notificationsRaw }] = await Promise.all([
-      supabase.from("accounts").select("*").eq("user_id", user.id),
-      supabase.from("transactions").select("*, category:categories(name)").eq("user_id", user.id).order("date", { ascending: false }).limit(300),
-      supabase.from("categories").select("id,name,type").eq("user_id", user.id),
-      supabase.from("goals").select("*").eq("user_id", user.id),
-      supabase.from("subscriptions").select("*").eq("user_id", user.id),
-      supabase.from("credit_card_cycles").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(20),
-      supabase.from("notifications").select("id,type,title,created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(30),
-    ])
+    // Fetch messages for active conversation
+    const { data: messagesRaw } = await supabase
+      .from("mia_messages")
+      .select("*")
+      .eq("conversation_id", activeId)
+      .order("created_at", { ascending: true })
 
-    if (!accountsRaw || !txRaw || !goalsRaw || !financialSubscriptionsRaw || !cyclesRaw) {
-      return NextResponse.json({ answer: "No pude cargar tus datos financieros en este momento.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
+    const messages = (messagesRaw || []).map((m: any) => ({
+      id: m.id,
+      role: m.role,
+      text: m.content,
+      uiBlocks: m.metadata?.uiBlocks || [],
+      actions: m.metadata?.actions || [],
+      disclaimer: m.metadata?.disclaimer,
+    }))
+
+    return NextResponse.json({
+      conversationId: activeId,
+      messages,
+      conversations: conversations.map((c: any) => ({
+        id: c.id,
+        title: c.title,
+        updatedAt: c.updated_at
+      }))
+    })
+  } catch (error) {
+    console.error("GET MIA error:", error)
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = (await request.json()) as MiaRequest
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+
+    // Entitlement check
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("plan_tier, email")
+      .eq("id", user.id)
+      .single()
+
+    const planTier = profile?.plan_tier || "free"
+    const userEmail = profile?.email || user.email
+    const isWhitelisted = isCoachIAEnabledForEmail(userEmail)
+    const isPro = planTier === "pro"
+
+    if (!isPro && !isWhitelisted) {
+      return NextResponse.json({
+        error: "Forbidden",
+        message: "MIA advanced is a Pro-only feature.",
+        requiresUpgrade: true
+      }, { status: 403 })
     }
 
-    const summary = buildSummary({
-      accounts: accountsRaw as Account[],
-      transactions: txRaw as Transaction[],
-      goals: goalsRaw as Goal[],
-      financialSubscriptions: financialSubscriptionsRaw as FinancialSubscription[],
-      cycles: cyclesRaw as CreditCardCycle[],
+    // 1. Handle clear history
+    if (body.action === "clear_history") {
+      await supabase
+        .from("mia_conversations")
+        .delete()
+        .eq("user_id", user.id)
+
+      return NextResponse.json({ success: true })
+    }
+
+    // 2. Handle starting new conversation
+    if (body.action === "new_conversation") {
+      const { data: newConv, error } = await supabase
+        .from("mia_conversations")
+        .insert({
+          user_id: user.id,
+          title: `ConversaciÃ³n ${new Date().toLocaleDateString("es-ES")}`,
+        })
+        .select("*")
+        .single()
+
+      if (error) throw error
+
+      return NextResponse.json({
+        conversationId: newConv.id,
+        messages: [],
+      })
+    }
+
+    // 3. Handle confirmation of action
+    if (body.confirmAction?.mutationType) {
+      const mutationType = body.confirmAction.mutationType
+      const payload = body.confirmAction.payload || {}
+      const convId = body.conversationId || await getOrCreateActiveConversation(supabase, user.id)
+
+      const { data: toolCall } = await supabase
+        .from("mia_tool_calls")
+        .insert({
+          user_id: user.id,
+          conversation_id: convId,
+          tool_name: mutationType,
+          arguments: payload,
+          status: "pending",
+        })
+        .select("id")
+        .single()
+
+      let answer = ""
+      let uiBlocks: any[] = []
+      let actions: any[] = []
+
+      try {
+        if (mutationType === "create_transaction") {
+          await createTransactionFromDraft(supabase, user.id, payload)
+          answer = "Listo, registrÃ© el movimiento correctamente."
+          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "TransacciÃ³n guardada", tone: "success" }]
+          actions = [{ label: "Ver historial", href: "/history", actionType: "navigate" }]
+        } else if (mutationType === "create_goal") {
+          await createGoalFromDraft(supabase, user.id, payload)
+          answer = "Perfecto, tu presupuesto fue creada exitosamente."
+          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "presupuesto creada", tone: "success" }]
+          actions = [{ label: "Ver planificacion", href: "/planning", actionType: "navigate" }]
+        } else if (mutationType === "create_subscription") {
+          await createSubscriptionFromDraft(supabase, user.id, payload)
+          answer = "He registrado la suscripciÃ³n recurrente en tu cuenta."
+          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "SuscripciÃ³n creada", tone: "success" }]
+          actions = [{ label: "Ver suscripciones", href: "/subscriptions", actionType: "navigate" }]
+        } else if (mutationType === "add_money_to_goal") {
+          await addMoneyToGoalFromDraft(supabase, user.id, payload)
+          answer = "Perfecto, agreguÃ© los fondos a tu presupuesto de ahorro."
+          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "Ahorro registrado", tone: "success" }]
+          actions = [{ label: "Ver planificacion", href: "/planning", actionType: "navigate" }]
+        } else {
+          throw new Error("Tipo de acciÃ³n invÃ¡lido")
+        }
+
+        if (toolCall) {
+          await supabase
+            .from("mia_tool_calls")
+            .update({ status: "success", result: { success: true } })
+            .eq("id", toolCall.id)
+        }
+
+        await supabase.from("mia_messages").insert({
+          conversation_id: convId,
+          user_id: user.id,
+          role: "assistant",
+          content: answer,
+          metadata: { uiBlocks, actions },
+        })
+
+        await supabase
+          .from("mia_conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", convId)
+
+        return NextResponse.json({
+          answer,
+          uiBlocks,
+          actions,
+        })
+      } catch (err: any) {
+        console.error("Action execution error:", err)
+        if (toolCall) {
+          await supabase
+            .from("mia_tool_calls")
+            .update({ status: "failed", result: { error: err.message || "Error desconocido" } })
+            .eq("id", toolCall.id)
+        }
+        return NextResponse.json({
+          answer: `No pude realizar esa acciÃ³n: ${err.message || "Error desconocido"}`,
+          uiBlocks: [{ type: "kpi_card", title: "Error", value: err.message || "Error al ejecutar", tone: "warning" }],
+          actions: [{ label: "Continuar", href: "/coach-ia", actionType: "navigate" }],
+        }, { status: 400 })
+      }
+    }
+
+    // 4. Handle standard chat question
+    const parsed = coachRequestSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Mensaje vacÃ­o" }, { status: 400 })
+    }
+
+    const message = parsed.data.message?.trim()
+    if (!message) return NextResponse.json({ error: "Mensaje vacÃ­o" }, { status: 400 })
+
+    const convId = body.conversationId || await getOrCreateActiveConversation(supabase, user.id)
+
+    // Save user message
+    await supabase.from("mia_messages").insert({
+      conversation_id: convId,
+      user_id: user.id,
+      role: "user",
+      content: message,
     })
 
-    const userPrompt = {
-      screenContext: parsed.data.screenContext || "unknown",
-      question: message,
-      summary,
-      helpers: {
-        categories: (categoriesRaw || []).map((c: any) => c.name),
-        recentNotifications: (notificationsRaw || []).slice(0, 5),
-      },
-    }
+    // Build context
+    const { rawContext } = await buildFinancialContext(supabase, user.id)
+
+    // Retrieve conversation history
+    const { data: historyRows } = await supabase
+      .from("mia_messages")
+      .select("role, content")
+      .eq("conversation_id", convId)
+      .order("created_at", { ascending: true })
+      .limit(10)
+
+    const historyList = (historyRows || []).map((row: any) => ({
+      role: row.role === "user" ? "user" : "model",
+      parts: [{ text: row.content }]
+    }))
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
     if (!apiKey) {
       return NextResponse.json({
-        answer: "MIA no esta configurada en el servidor todavia. Falta GEMINI_API_KEY.",
-        uiBlocks: [{ type: "kpi_card", title: "Configuracion", value: "GEMINI_API_KEY no definida", tone: "warning" }],
+        answer: "MIA no estÃ¡ configurada en el servidor todavÃ­a. Falta GEMINI_API_KEY.",
+        uiBlocks: [{ type: "kpi_card", title: "ConfiguraciÃ³n", value: "GEMINI_API_KEY no definida", tone: "warning" }],
         actions: [{ label: "Continuar", href: "/coach-ia", actionType: "navigate" }],
       })
     }
 
-    const model = process.env.GEMINI_MODEL || "gemini-1.5-flash-001"
-    const fullPrompt = `${SYSTEM_PROMPT}
+    const model = process.env.GEMINI_MODEL || "gemini-1.5-flash"
+    const systemPromptCombined = `${SYSTEM_PROMPT}
 
-Contexto financiero del usuario:
-- Balance total: ${formatCurrency(summary.totalBalance)} DOP
-- Ingresos este mes: ${formatCurrency(summary.totalIncomeMonth)} DOP
-- Gastos este mes: ${formatCurrency(summary.totalExpenseMonth)} DOP
-- Flujo neto: ${formatCurrency(summary.netCashflowMonth)} DOP
-- Comparación vs mes anterior: ${summary.expenseDeltaVsPrevMonth >= 0 ? "+" : ""}${formatCurrency(summary.expenseDeltaVsPrevMonth)} DOP
-${summary.topCategories.length > 0 ? `- Top categorías: ${summary.topCategories.map(([name, total]) => `${name}: ${formatCurrency(total)}`).join(", ")}` : ""}
-${summary.cardDebt > 0 ? `- Deuda en tarjetas: ${formatCurrency(summary.cardDebt)} DOP` : ""}
-${summary.activeSubscriptions.length > 0 ? `- Suscripciones activas (${summary.subscriptionTotal}/mes): ${summary.activeSubscriptions.map(s => s.name).join(", ")}` : ""}
-${summary.goals.length > 0 ? `- Metas activas: ${summary.goals.map(g => `${g.name}: ${g.progress}%`).join(", ")}` : ""}
+CONTEXTO FINANCIERO ACTUAL DEL USUARIO:
+${rawContext}
+`
 
-Pregunta del usuario: ${message}
-
-Responde en español. Si quieres proponer una acción (crear transacción, meta, etc), responde STRICTAMENTE en este formato JSON:
-{"message": "...", "action": {"type": "create_transaction|create_goal|create_subscription|create_category|pay_credit_card|transfer_money", "requires_confirmation": true, "data": {"campo1": "valor1"}}}
-Si no hay acción, responde: {"message": "...", "action": null}`
-
+    // Call Gemini
     const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: fullPrompt },
-            ],
-          },
-        ],
+        contents: historyList,
+        systemInstruction: {
+          parts: [{ text: systemPromptCombined }],
+        },
         generationConfig: {
-          maxOutputTokens: 800,
+          maxOutputTokens: 1000,
           temperature: 0.2,
+          responseMimeType: "application/json",
         },
       }),
     })
@@ -437,32 +763,51 @@ Si no hay acción, responde: {"message": "...", "action": null}`
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
       error?: { message?: string }
     }
-    
+
     if (aiJson.error) {
       console.error("Gemini error:", aiJson.error)
       return NextResponse.json({ answer: "MIA no pudo responder ahora mismo. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
     }
-    
+
     const responseText = aiJson.candidates?.[0]?.content?.parts?.[0]?.text || ""
-    
+
     if (!responseText) {
       console.error("Gemini empty response")
       return NextResponse.json({ answer: "MIA no pudo responder ahora mismo. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
     }
-    
-    // Try to extract JSON from response (in case model adds markdown)
-    let jsonStr = responseText.trim()
-    if (jsonStr.startsWith("```json")) jsonStr = jsonStr.slice(7)
-    if (jsonStr.startsWith("```")) jsonStr = jsonStr.slice(3)
-    if (jsonStr.endsWith("```")) jsonStr = jsonStr.slice(0, -3)
-    
-    const parsedAi = safeJsonParse<MiaAIResponse>(jsonStr.trim())
+
+    const parsedAi = safeJsonParse<MiaAIResponse>(responseText.trim())
 
     if (!parsedAi?.message) {
-      return NextResponse.json({ answer: "MIA no pudo responder ahora mismo. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
+      console.error("Failed to parse Gemini response or message is empty", responseText)
+      return NextResponse.json({ answer: "MIA no pudo procesar la respuesta. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
     }
 
-    return NextResponse.json(mapAiToClientResponse(parsedAi))
+    const clientResponse = mapAiToClientResponse(parsedAi)
+
+    // Save assistant response to DB
+    await supabase.from("mia_messages").insert({
+      conversation_id: convId,
+      user_id: user.id,
+      role: "assistant",
+      content: clientResponse.answer,
+      metadata: {
+        uiBlocks: clientResponse.uiBlocks,
+        actions: clientResponse.actions,
+        disclaimer: clientResponse.disclaimer,
+      },
+    })
+
+    // Update conversation timestamp
+    await supabase
+      .from("mia_conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", convId)
+
+    return NextResponse.json({
+      ...clientResponse,
+      conversationId: convId
+    })
   } catch (error) {
     console.error("MIA chat error:", error)
     return NextResponse.json(
@@ -475,3 +820,5 @@ Si no hay acción, responde: {"message": "...", "action": null}`
     )
   }
 }
+
+

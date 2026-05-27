@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+﻿import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { runMiaPhase1Agent } from "@/lib/mia/agent"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
@@ -90,7 +90,7 @@ async function createGoalFromDraft(
   const targetAmount = Number(payload.targetAmount ?? 0)
   const currency = payload.currency === "USD" ? "USD" : "DOP"
 
-  if (name.length < 2 || targetAmount <= 0) throw new Error("Datos de meta invalidos")
+  if (name.length < 2 || targetAmount <= 0) throw new Error("Datos de presupuesto invalidos")
 
   const { data, error } = await supabase
     .from("goals")
@@ -149,9 +149,9 @@ export async function POST(request: Request) {
       if (body.confirmAction.mutationType === "create_goal") {
         await createGoalFromDraft(supabase, user.id, body.confirmAction.payload || {})
         return NextResponse.json({
-          answer: "Perfecto, tu meta fue creada exitosamente.",
-          uiBlocks: [{ type: "kpi_card", title: "Accion completada", value: "Meta creada", tone: "success" }],
-          actions: [{ label: "Ver metas", href: "/goals", actionType: "navigate" }],
+          answer: "Perfecto, tu presupuesto fue creada exitosamente.",
+          uiBlocks: [{ type: "kpi_card", title: "Accion completada", value: "presupuesto creada", tone: "success" }],
+          actions: [{ label: "Ver planificacion", href: "/planning", actionType: "navigate" }],
         })
       }
     }
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
     })
 
     if (/tarjeta|credito|corte|pago/i.test(message)) toolTrace.push("getCreditCards")
-    if (/meta/i.test(message)) toolTrace.push("getGoalProgress")
+    if (/presupuesto/i.test(message)) toolTrace.push("getGoalProgress")
     if (/mes pasado|compar/i.test(message)) toolTrace.push("getExpenseComparison")
     if (/gasto|categoria|dinero/i.test(message)) toolTrace.push("getTopCategories")
     if (toolTrace.length === 0) toolTrace.push("getMonthSummary")
@@ -207,3 +207,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+

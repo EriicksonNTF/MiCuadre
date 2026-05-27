@@ -119,8 +119,8 @@ function formatDateLabel(date: Date) {
   const yesterday = new Date()
   yesterday.setDate(today.getDate() - 1)
   const key = getLocalDateString(date)
-  if (key === getLocalDateString(today)) return "Today"
-  if (key === getLocalDateString(yesterday)) return "Yesterday"
+  if (key === getLocalDateString(today)) return "Hoy"
+  if (key === getLocalDateString(yesterday)) return "Ayer"
   return date.toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })
 }
 
@@ -173,9 +173,9 @@ export function HistoryScreen() {
         id: tx.id,
         accountId: tx.account_id,
         categoryId: tx.category_id,
-        title: tx.description || "Sin descripcion",
+        title: tx.description || "Sin descripción",
         category: nameToSlug[tx.category?.name || ""] || "other",
-        categoryName: tx.category?.name || "Sin categoria",
+        categoryName: tx.category?.name || "Sin categoría",
         amount: tx.amount,
         type: tx.type,
         date: tx.date,
@@ -286,7 +286,7 @@ export function HistoryScreen() {
     }
     setEditingId(txId)
     setEditAmount(String(tx.amount))
-    setEditDescription(tx.title === "Sin descripcion" ? "" : tx.title)
+    setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
     setEditType(tx.type)
     setEditAccountId(tx.accountId)
     setEditDate(getLocalDateString(parseTxDate(tx.date)))
@@ -314,11 +314,11 @@ export function HistoryScreen() {
         exchange_rate: 1,
         is_recurring: false,
       })
-      notify({ title: "Transaccion actualizada", message: "La transaccion fue editada correctamente." })
+      notify({ title: "Transacción actualizada", message: "La transacción fue editada correctamente." })
       EventBus.emit({ type: "transaction_updated" })
       setEditingId(null)
     } catch {
-      notify({ title: "Error", message: "No se pudo editar la transaccion." })
+      notify({ title: "Error", message: "No se pudo editar la transacción." })
     }
   }
 
@@ -326,13 +326,13 @@ export function HistoryScreen() {
     if (!deletingId) return
     try {
       await deleteTransaction(deletingId)
-      notify({ title: "Transaccion eliminada", message: "La transaccion fue eliminada correctamente." })
+      notify({ title: "Transacción eliminada", message: "La transacción fue eliminada correctamente." })
       EventBus.emit({ type: "transaction_deleted" })
       setDeletingId(null)
       setOpenSwipeId(null)
       setSwipeOffset(null)
     } catch {
-      notify({ title: "Error", message: "No se pudo eliminar la transaccion." })
+      notify({ title: "Error", message: "No se pudo eliminar la transacción." })
     }
   }
 
@@ -379,10 +379,10 @@ export function HistoryScreen() {
             <p className="mb-2 text-xs font-medium text-muted-foreground">Fecha</p>
             <div className="grid grid-cols-4 gap-2">
               {[
-                { value: "today", label: "Today" },
-                { value: "week", label: "This week" },
-                { value: "month", label: "This month" },
-                { value: "custom", label: "Custom" },
+                { value: "today", label: "Hoy" },
+                { value: "week", label: "Esta semana" },
+                { value: "month", label: "Este mes" },
+                { value: "custom", label: "Personalizado" },
               ].map((option) => (
                 <button
                   key={option.value}
@@ -497,14 +497,14 @@ export function HistoryScreen() {
                     <div key={tx.id} data-history-row="true" className="relative overflow-hidden rounded-2xl">
                       <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
                         <button
-                          aria-label="Editar transaccion"
+                          aria-label="Editar transacción"
                           onClick={() => openEdit(tx.id)}
                           className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          aria-label="Eliminar transaccion"
+                          aria-label="Eliminar transacción"
                           onClick={() => setDeletingId(tx.id)}
                           className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white"
                         >
@@ -607,7 +607,7 @@ export function HistoryScreen() {
                             </div>
 
                             {tx.isCommission && (
-                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Comision 0.15%</span>
+                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Comisión 0.15%</span>
                             )}
                           </div>
                         </div>
@@ -622,9 +622,9 @@ export function HistoryScreen() {
       </div>
 
       {editingId && (
-        <BaseModalForm title="Editar transaccion" onClose={() => setEditingId(null)} footer={<Button onClick={saveEdit} className="h-12 w-full">Guardar cambios</Button>}>
+        <BaseModalForm title="Editar transacción" onClose={() => setEditingId(null)} footer={<Button onClick={saveEdit} className="h-12 w-full">Guardar cambios</Button>}>
           <div className="space-y-3 pt-2">
-            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripcion" />
+            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripción" />
             <MoneyInput className="w-full rounded-xl border bg-background px-3 py-3" value={editAmount} onValueChange={setEditAmount} placeholder="Monto" />
             <input className="w-full rounded-xl border bg-background px-3 py-3" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
             <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}> 
@@ -642,16 +642,16 @@ export function HistoryScreen() {
 
       {deletingId && (
         <BaseModalForm
-          title="Eliminar transaccion"
+          title="Eliminar transacción"
           onClose={() => setDeletingId(null)}
           footer={
             <div className="space-y-2">
-              <Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminacion</Button>
+              <Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminación</Button>
               <Button variant="outline" onClick={() => setDeletingId(null)} className="h-12 w-full">Cancelar</Button>
             </div>
           }
         >
-          <p className="pt-2 text-sm text-muted-foreground">Esta accion revertira el impacto en el balance de la cuenta asociada.</p>
+          <p className="pt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
         </BaseModalForm>
       )}
     </div>

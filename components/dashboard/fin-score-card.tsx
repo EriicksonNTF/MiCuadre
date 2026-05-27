@@ -20,7 +20,7 @@ const breakdownConfig = [
   { key: "savings" as const, label: "Ahorro", icon: TrendingUp },
   { key: "budget" as const, label: "Presupuesto", icon: TrendingDown },
   { key: "debt" as const, label: "Deuda", icon: CreditCard },
-  { key: "goals" as const, label: "Metas", icon: Target },
+  { key: "goals" as const, label: "Planificación", icon: Target },
 ]
 
 export function FinScoreCard({ accounts, transactions, goals }: Props) {

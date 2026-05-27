@@ -11,6 +11,8 @@ type BillingStatusSummary = {
   currentPeriodEnd: string | null
   cancelAtPeriodEnd: boolean
   billingReady: boolean
+  paypalAvailable?: boolean
+  lastSyncedAt?: string | null
 }
 
 export function useBillingStatus() {
@@ -24,6 +26,8 @@ export function useBillingStatus() {
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
         billingReady: false,
+        paypalAvailable: false,
+        lastSyncedAt: null,
       }
     }
 

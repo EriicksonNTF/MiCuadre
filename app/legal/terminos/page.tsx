@@ -2,15 +2,15 @@ import { LegalPageShell } from "@/components/legal/legal-page-shell"
 
 export default function TerminosCondicionesPage() {
   return (
-    <LegalPageShell title="Terminos y Condiciones" updatedAt="14 de mayo de 2026">
+    <LegalPageShell title="Términos y Condiciones" updatedAt="14 de mayo de 2026">
       <p>
-        Estos Terminos y Condiciones regulan el acceso y uso de MiCuadre. Al utilizar la plataforma,
-        aceptas estas condiciones de manera provisional mientras el servicio continua su desarrollo.
+        Estos Términos y Condiciones regulan el acceso y uso de MiCuadre. Al utilizar la plataforma,
+        aceptas estas condiciones de manera provisional mientras el servicio continúa su desarrollo.
       </p>
 
       <h2>1. Uso permitido</h2>
       <p>
-        MiCuadre esta destinado a organizacion financiera personal. El usuario se compromete a usar
+        MiCuadre está destinado a la organización financiera personal. El usuario se compromete a usar
         la plataforma de forma legal, responsable y sin afectar el funcionamiento del servicio.
       </p>
 
@@ -22,38 +22,38 @@ export default function TerminosCondicionesPage() {
 
       <h2>3. Responsabilidades del usuario</h2>
       <p>
-        El usuario es responsable de la exactitud de la informacion financiera que registra y de las
-        decisiones que tome con base en dicha informacion.
+        El usuario es responsable de la exactitud de la información financiera que registra y de las
+        decisiones que tome con base en dicha información.
       </p>
 
       <h2>4. Limitaciones del servicio</h2>
       <p>
-        MiCuadre puede incluir funciones beta o en mejora continua. Algunas caracteristicas pueden
+        MiCuadre puede incluir funciones beta o en mejora continua. Algunas características pueden
         cambiar, limitarse o descontinuarse durante el desarrollo del producto.
       </p>
 
       <h2>5. Disponibilidad</h2>
       <p>
-        Hacemos esfuerzos razonables para mantener disponibilidad, pero no garantizamos operacion
+        Hacemos esfuerzos razonables para mantener disponibilidad, pero no garantizamos una operación
         ininterrumpida ni libre de errores en todo momento.
       </p>
 
       <h2>6. Propiedad intelectual</h2>
       <p>
-        El contenido, marca, diseno y software de MiCuadre estan protegidos por derechos de propiedad
-        intelectual. No esta permitido copiar, distribuir o explotar sin autorizacion.
+        El contenido, marca, diseño y software de MiCuadre están protegidos por derechos de propiedad
+        intelectual. No está permitido copiar, distribuir o explotar sin autorización.
       </p>
 
-      <h2>7. Suspension o cierre de acceso</h2>
+      <h2>7. Suspensión o cierre de acceso</h2>
       <p>
-        MiCuadre puede suspender o restringir acceso en casos de uso indebido, riesgo de seguridad,
-        incumplimiento de terminos o requisitos legales.
+        MiCuadre puede suspender o restringir el acceso en casos de uso indebido, riesgo de seguridad,
+        incumplimiento de términos o requisitos legales.
       </p>
 
       <h2>8. Modificaciones futuras</h2>
       <p>
-        Estos terminos pueden actualizarse para adaptarse a cambios funcionales, regulatorios o de
-        negocio. La version vigente se publicara en esta misma pagina.
+        Estos términos pueden actualizarse para adaptarse a cambios funcionales, regulatorios o de
+        negocio. La versión vigente se publicará en esta misma página.
       </p>
     </LegalPageShell>
   )

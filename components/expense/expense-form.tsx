@@ -285,11 +285,14 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         localStorage.setItem("micuadre:last_currency", currency)
       }
 
+      const isDeviceOnline = typeof navigator !== "undefined" ? navigator.onLine : true
       showToast({
         title: transactionType === "income" ? "Ingreso registrado" : "Gasto guardado",
-        body: `${formatCurrency(parsedAmount)} · ${description}`,
+        body: isDeviceOnline
+          ? `${formatCurrency(parsedAmount)} · ${description}`
+          : "Gasto guardado sin conexión. Se sincronizará cuando vuelva internet.",
         type: "success",
-        duration: 2500,
+        duration: isDeviceOnline ? 2500 : 3500,
       })
       EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount } })
       

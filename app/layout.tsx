@@ -8,8 +8,8 @@ import { BodyCleanup } from '@/components/providers/body-cleanup'
 import { OfflineStatusBanner } from '@/components/ui/offline-status-banner'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -93,7 +93,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="theme-color" content="#000000" />
       </head>
-      <body className="font-sans antialiased">
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <AppProviders>
           <BodyCleanup />
           {children}
@@ -106,4 +106,3 @@ export default function RootLayout({
     </html>
   )
 }
-

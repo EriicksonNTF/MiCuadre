@@ -18,7 +18,7 @@ export function NotificationInsightCard({ title, description }: NotificationInsi
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <NotificationBadge label="MIA Insight" tone="insight" />
+            <NotificationBadge label="Recomendación MIA" tone="insight" />
           </div>
           <p className="mt-2 text-sm font-semibold text-foreground">{title}</p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>

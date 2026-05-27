@@ -1,12 +1,9 @@
-import { ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
+﻿import { ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
 import type { BillingInterval, PaidPlanTier, PlanTier } from "@/types/billing"
 
 export const BILLING_INTERVALS: BillingInterval[] = ["monthly", "yearly"]
-
 export const PLAN_ORDER: PlanTier[] = ["free", "pro"]
-
 export const PAID_PLAN_ORDER: PaidPlanTier[] = ["pro"]
-
 export const ANNUAL_DISCOUNT_PERCENT = 20
 
 type PlanPrice = {
@@ -33,18 +30,19 @@ export const PLAN_CONFIG: Record<PlanTier, PublicPlanConfig> = {
     id: "free",
     label: "Free",
     shortLabel: "Free",
-    description: "Bueno para empezar",
-    audience: "Organización financiera básica sin costo.",
+    description: "Para empezar a organizar tus finanzas.",
+    audience: "Para empezar a organizar tus finanzas.",
     price: {
       monthly: 0,
       yearly: 0,
       yearlyMonthlyEquivalent: 0,
     },
     benefits: [
-      "Hasta 3 cuentas",
-      "Hasta 2 metas",
-      "Hasta 3 suscripciones",
-      "Reportes básicos",
+      "3 cuentas",
+      "10 transacciones por día",
+      "Historial básico",
+      "1 suscripción financiera",
+      "Sin módulos avanzados de planificación",
     ],
     limits: ENTITLEMENTS_BY_PLAN.free,
     cta: "Seguir con Free",
@@ -53,8 +51,8 @@ export const PLAN_CONFIG: Record<PlanTier, PublicPlanConfig> = {
     id: "pro",
     label: "Pro",
     shortLabel: "Pro",
-    description: "Control completo",
-    audience: "Acceso completo a MiCuadre, sin límites y con herramientas avanzadas.",
+    description: "Para controlar tu dinero sin limites.",
+    audience: "Para controlar tu dinero sin limites.",
     badge: "Recomendado",
     price: {
       monthly: 2.99,
@@ -62,11 +60,18 @@ export const PLAN_CONFIG: Record<PlanTier, PublicPlanConfig> = {
       yearlyMonthlyEquivalent: 2.39,
     },
     benefits: [
-      "Cuentas, metas y suscripciones ilimitadas",
+      "Cuentas ilimitadas",
+      "Transacciones ilimitadas",
+      "Historial completo",
+      "Presupuestos ilimitados",
+      "Suscripciones financieras ilimitadas",
+      "Deudas ilimitadas",
+      "Calendario financiero completo",
+      "Automatización de suscripciones",
+      "Alertas previas de pagos",
       "Reportes avanzados",
       "MIA avanzada",
       "Exportaciones CSV/Excel",
-      "Acceso completo a MiCuadre",
     ],
     limits: ENTITLEMENTS_BY_PLAN.pro,
     cta: "Actualizar a Pro",
@@ -84,7 +89,7 @@ export function formatPlanPrice(plan: PlanTier, interval: BillingInterval) {
 }
 
 export function getBillingIntervalSuffix(interval: BillingInterval) {
-  return interval === "monthly" ? "/mes" : "/año"
+  return interval === "monthly" ? "/mes" : "/ano"
 }
 
 export function getFinancialSubscriptionLimitLabel(plan: PlanTier) {

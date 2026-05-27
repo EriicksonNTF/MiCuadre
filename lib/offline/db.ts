@@ -1,5 +1,6 @@
 export interface OutboxItem {
   id: string; // client-generated local transaction ID
+  user_id?: string; // client-generated local user ID for isolation
   operation: "create_transaction";
   entity: "transactions";
   payload: any;

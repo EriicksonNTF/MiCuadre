@@ -33,7 +33,7 @@ export default function LoginPage() {
     e.preventDefault()
     const normalizedEmail = email.trim().toLowerCase()
     if (!normalizedEmail || !password) {
-      setError('Correo y contrasena son requeridos')
+      setError('Correo y contraseña son requeridos')
       return
     }
     const supabase = createClient()
@@ -116,7 +116,7 @@ export default function LoginPage() {
 
           <Card className="border-border/50">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Iniciar Sesion</CardTitle>
+              <CardTitle className="text-xl">Iniciar sesión</CardTitle>
               <CardDescription>
                 Entra y recupera control de tu dinero en menos de un minuto
               </CardDescription>
@@ -148,7 +148,7 @@ export default function LoginPage() {
               <form onSubmit={handleLogin}>
                 <div className="flex flex-col gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Correo electronico</Label>
+                    <Label htmlFor="email">Correo electrónico</Label>
                     <Input
                       id="email"
                       type="email"
@@ -160,7 +160,7 @@ export default function LoginPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="password">Contrasena</Label>
+                    <Label htmlFor="password">Contraseña</Label>
                     <Input
                       id="password"
                       type="password"
@@ -170,7 +170,7 @@ export default function LoginPage() {
                       className="h-11"
                     />
                      <Link href="/auth/forgot-password" className="text-xs text-primary hover:underline">
-                      Olvidaste tu contrasena?
+                      ¿Olvidaste tu contraseña?
                     </Link>
                   </div>
                   {error && (
@@ -179,13 +179,13 @@ export default function LoginPage() {
                     </p>
                   )}
                   <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                    {isLoading ? 'Iniciando sesion...' : 'Iniciar Sesion'}
+                    {isLoading ? 'Iniciando sesión...' : 'Iniciar sesión'}
                   </Button>
                 </div>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
-                  No tienes cuenta?{' '}
+                  ¿No tienes cuenta?{' '}
                     <Link href="/auth/sign-up" className="text-primary hover:underline underline-offset-4">
-                      Registrate
+                      Regístrate
                     </Link>
                 </div>
               </form>

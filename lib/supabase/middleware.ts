@@ -22,6 +22,7 @@ const protectedRoutes = [
   '/transactions',
   '/history',
   '/goals',
+  '/planning',
   '/settings',
   '/expense',
   '/notifications',

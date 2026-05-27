@@ -1,16 +1,13 @@
-"use client"
+﻿"use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ChevronLeft, Send, Sparkles } from "lucide-react"
+import { ChevronLeft, Send, Sparkles, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { CoachResponse, CoachUIBlock, CoachAction } from "@/lib/coach-ia"
 import { useAuth } from "@/hooks/use-auth"
-import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
-import { useEntitlements } from "@/hooks/use-entitlements"
 import { UpgradePrompt } from "@/components/entitlements/upgrade-prompt"
-import { getEntitlementCopy } from "@/lib/entitlements/entitlement-copy"
 
 type Message = {
   id: string
@@ -22,11 +19,11 @@ type Message = {
 }
 
 const SUGGESTED_PROMPTS = [
-  "Como voy este mes",
-  "En que estoy gastando mas",
-  "Subir mi FinScore",
-  "Como van mis metas",
-  "Estoy gastando mas que el mes pasado",
+  "¿Cuánto me queda del presupuesto de comida?",
+  "¿Qué pagos tengo esta semana?",
+  "¿Cuánto debo en préstamos?",
+  "¿Qué deuda vence primero?",
+  "¿Estoy cerca de pasarme del presupuesto?",
 ]
 
 function BlockCard({ block }: { block: CoachUIBlock }) {
@@ -67,37 +64,126 @@ function BlockCard({ block }: { block: CoachUIBlock }) {
   return (
     <div className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
-      <p className="mt-1 text-sm text-foreground">{block.amount} · {block.category}</p>
+      <p className="mt-1 text-sm text-foreground">{block.amount} Â· {block.category}</p>
     </div>
   )
 }
 
 export default function CoachIAPage() {
   const router = useRouter()
-  const { user, loading } = useAuth()
-  const { canUseMIAAdvanced } = useEntitlements()
-  const miaCopy = getEntitlementCopy("mia_advanced")
+  const { user, loading: authLoading } = useAuth()
+  
   const [input, setInput] = useState("")
   const [sending, setSending] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
+  const [requiresUpgrade, setRequiresUpgrade] = useState(false)
+  const [conversationId, setConversationId] = useState<string | undefined>(undefined)
+  
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "init",
       role: "assistant",
       text: "Soy tu Coach IA de MiCuadre. Te respondo con tus datos reales y con acciones concretas para hoy.",
-      actions: [{ label: "Agregar transaccion", href: "/expense", actionType: "navigate" }],
+      actions: [{ label: "Agregar transacciÃ³n", href: "/expense", actionType: "navigate" }],
     },
   ])
 
-  if (!loading && !isCoachIAEnabledForEmail(user?.email)) {
-    return (
-      <div className="min-h-[100dvh] bg-background p-6">
-        <div className="mx-auto mt-12 max-w-md rounded-2xl border border-border bg-card p-5 text-center">
-          <p className="text-sm font-semibold text-foreground">Coach IA no disponible</p>
-          <p className="mt-1 text-xs text-muted-foreground">Esta funcion esta habilitada solo para pruebas internas.</p>
-          <Button className="mt-4" onClick={() => router.push("/")}>Volver al inicio</Button>
-        </div>
-      </div>
-    )
+  useEffect(() => {
+    async function loadHistory() {
+      if (authLoading) return
+      if (!user) {
+        setInitialLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch("/api/mia/chat")
+        if (response.status === 403) {
+          setRequiresUpgrade(true)
+          return
+        }
+        
+        const data = await response.json()
+        if (data.requiresUpgrade) {
+          setRequiresUpgrade(true)
+          return
+        }
+
+        if (data.conversationId) {
+          setConversationId(data.conversationId)
+        }
+        
+        if (data.messages && data.messages.length > 0) {
+          setMessages(data.messages)
+        }
+      } catch (err) {
+        console.error("Failed to load MIA conversation history:", err)
+      } finally {
+        setInitialLoading(false)
+      }
+    }
+
+    void loadHistory()
+  }, [user, authLoading])
+
+  async function startNewChat() {
+    if (sending) return
+    setSending(true)
+    try {
+      const res = await fetch("/api/mia/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "new_conversation" }),
+      })
+      if (res.status === 403) {
+        setRequiresUpgrade(true)
+        return
+      }
+      const data = await res.json()
+      setConversationId(data.conversationId)
+      setMessages([
+        {
+          id: "init",
+          role: "assistant",
+          text: "Soy tu Coach IA de MiCuadre. Te respondo con tus datos reales y con acciones concretas para hoy.",
+          actions: [{ label: "Agregar transacciÃ³n", href: "/expense", actionType: "navigate" }],
+        },
+      ])
+    } catch (err) {
+      console.error("Failed to start new chat:", err)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function clearHistory() {
+    if (sending) return
+    if (!confirm("Â¿EstÃ¡s seguro de que quieres borrar todo tu historial de conversaciones con MIA?")) return
+    setSending(true)
+    try {
+      const res = await fetch("/api/mia/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear_history" }),
+      })
+      if (res.status === 403) {
+        setRequiresUpgrade(true)
+        return
+      }
+      setConversationId(undefined)
+      setMessages([
+        {
+          id: "init",
+          role: "assistant",
+          text: "Historial borrado. Soy tu Coach IA de MiCuadre. Â¿En quÃ© te puedo ayudar hoy?",
+          actions: [{ label: "Agregar transacciÃ³n", href: "/expense", actionType: "navigate" }],
+        },
+      ])
+    } catch (err) {
+      console.error("Failed to clear chat history:", err)
+    } finally {
+      setSending(false)
+    }
   }
 
   async function askCoach(question: string) {
@@ -117,8 +203,13 @@ export default function CoachIAPage() {
       const response = await fetch("/api/mia/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: trimmed, screenContext: "coach_page" }),
+        body: JSON.stringify({ message: trimmed, screenContext: "coach_page", conversationId }),
       })
+
+      if (response.status === 403) {
+        setRequiresUpgrade(true)
+        return
+      }
 
       const data = (await response.json()) as CoachResponse
       const assistantMessage: Message = {
@@ -153,12 +244,18 @@ export default function CoachIAPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          conversationId,
           confirmAction: {
             mutationType: action.mutationType,
             payload: action.payload || {},
           },
         }),
       })
+
+      if (response.status === 403) {
+        setRequiresUpgrade(true)
+        return
+      }
 
       const data = (await response.json()) as CoachResponse
       setMessages((prev) => [
@@ -178,7 +275,7 @@ export default function CoachIAPage() {
         {
           id: `a-${Date.now() + 1}`,
           role: "assistant",
-          text: "No pude confirmar esa accion ahora mismo. Intenta otra vez.",
+          text: "No pude confirmar esa acciÃ³n ahora mismo. Intenta otra vez.",
           actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }],
         },
       ])
@@ -187,16 +284,68 @@ export default function CoachIAPage() {
     }
   }
 
+  if (initialLoading || authLoading) {
+    return (
+      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center p-6">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-primary" />
+        <p className="mt-4 text-xs text-muted-foreground">Iniciando copiloto financiero...</p>
+      </div>
+    )
+  }
+
+  if (requiresUpgrade) {
+    return (
+      <div className="min-h-[100dvh] bg-background p-6 flex items-center justify-center">
+        <div className="w-full max-w-md">
+          <div className="flex justify-center mb-6">
+            <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+              <ChevronLeft className="h-5 w-5 text-foreground" />
+            </Link>
+          </div>
+          <UpgradePrompt
+            title="MIA Avanzada requiere Pro"
+            description="Tu plan actual no incluye acceso al asistente inteligente de MIA. Actualiza hoy para hacerle preguntas personalizadas sobre tus finanzas, saldos, planificacion y realizar acciones con confirmaciÃ³n."
+            feature="mia_advanced"
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-md items-center gap-4 px-6 py-4">
-          <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <ChevronLeft className="h-5 w-5 text-foreground" />
-          </Link>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">Coach IA</h1>
-            <p className="text-xs text-muted-foreground">Tu copiloto financiero dominicano</p>
+        <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+              <ChevronLeft className="h-5 w-5 text-foreground" />
+            </Link>
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">Coach IA</h1>
+              <p className="text-xs text-muted-foreground">Tu copiloto financiero dominicano</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={startNewChat}
+              size="icon"
+              variant="ghost"
+              title="Nuevo chat"
+              disabled={sending}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button
+              onClick={clearHistory}
+              size="icon"
+              variant="ghost"
+              title="Limpiar chat"
+              disabled={sending}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
@@ -206,37 +355,29 @@ export default function CoachIAPage() {
           <div className="flex items-start gap-3">
             <div className="rounded-xl bg-primary/10 p-2 text-primary"><Sparkles className="h-4 w-4" /></div>
             <div>
-              <p className="text-sm font-semibold text-foreground">Preguntale a MiCuadre</p>
-              <p className="text-xs text-muted-foreground">Respuestas cortas con accion directa.</p>
+              <p className="text-sm font-semibold text-foreground">PregÃºntale a MiCuadre</p>
+              <p className="text-xs text-muted-foreground">Respuestas cortas con acciÃ³n directa.</p>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            {(canUseMIAAdvanced ? SUGGESTED_PROMPTS : SUGGESTED_PROMPTS.slice(0, 2)).map((prompt) => (
+            {SUGGESTED_PROMPTS.map((prompt) => (
               <button
                 key={prompt}
                 onClick={() => askCoach(prompt)}
+                disabled={sending}
                 className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
               >
                 {prompt}
               </button>
             ))}
           </div>
-          {!canUseMIAAdvanced && (
-            <div className="mt-4">
-              <UpgradePrompt
-                title={miaCopy.title}
-                description={miaCopy.shortDescription}
-                feature="mia_advanced"
-              />
-            </div>
-          )}
         </div>
 
         <div className="mt-4 space-y-3 pb-28">
           {messages.map((message) => (
             <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
               <div className={message.role === "user" ? "max-w-[86%] rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm text-primary-foreground" : "max-w-[94%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 text-sm text-foreground"}>
-                <p className="leading-relaxed">{message.text}</p>
+                <p className="leading-relaxed whitespace-pre-wrap">{message.text}</p>
 
                 {message.uiBlocks?.map((block, index) => (
                   <BlockCard key={`${message.id}-block-${index}`} block={block} />
@@ -247,6 +388,7 @@ export default function CoachIAPage() {
                     {message.actions.map((action) => (
                       <button
                         key={`${message.id}-${action.label}`}
+                        disabled={sending}
                         onClick={() => {
                           if (action.actionType === "confirm_draft") {
                             void confirmDraft(action)
@@ -275,14 +417,15 @@ export default function CoachIAPage() {
         <div className="mx-auto flex max-w-md items-center gap-2">
           <input
             value={input}
+            disabled={sending}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") askCoach(input)
             }}
-            placeholder="Ej: En que estoy gastando mas?"
+            placeholder="Ej: Â¿En quÃ© estoy gastando mÃ¡s?"
             className="h-11 flex-1 rounded-xl border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"
           />
-          <Button onClick={() => askCoach(input)} size="icon" disabled={sending} className="h-11 w-11 rounded-xl">
+          <Button onClick={() => askCoach(input)} size="icon" disabled={sending || !input.trim()} className="h-11 w-11 rounded-xl">
             <Send className="h-4 w-4" />
           </Button>
         </div>
@@ -290,3 +433,4 @@ export default function CoachIAPage() {
     </div>
   )
 }
+

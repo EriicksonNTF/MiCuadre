@@ -4,11 +4,14 @@ import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { Wifi, WifiOff, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react"
 import { offlineDB, OutboxItem } from "@/lib/offline/db"
+import { createClient } from "@/lib/supabase/client"
 import { syncPendingOperations } from "@/lib/offline/sync-engine"
 import { EventBus } from "@/lib/event-bus"
 import { cn } from "@/lib/utils"
 
-const MAIN_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/goals"])
+const supabase = createClient()
+
+const MAIN_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/planning"])
 
 export function OfflineStatusBanner() {
   const pathname = usePathname()
@@ -25,9 +28,14 @@ export function OfflineStatusBanner() {
   // Function to refresh outbox status from IndexedDB
   const refreshOutboxStatus = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
       const outbox = await offlineDB.getAll<OutboxItem>("offline_outbox")
-      const pending = outbox.filter((item) => item.status === "pending" || item.status === "failed")
-      const failed = outbox.filter((item) => item.status === "failed")
+      
+      // Filter outbox items belonging to the current user (with fallback)
+      const userOutbox = outbox.filter(item => !user || !item.user_id || item.user_id === user.id)
+      
+      const pending = userOutbox.filter((item) => item.status === "pending" || item.status === "failed")
+      const failed = userOutbox.filter((item) => item.status === "failed")
       setPendingCount(pending.length)
       setFailedCount(failed.length)
     } catch (err) {

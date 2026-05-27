@@ -1,5 +1,5 @@
-import { GoalsScreen } from "@/components/goals/goals-screen"
+import { redirect } from "next/navigation"
 
 export default function GoalsPage() {
-  return <GoalsScreen />
+  redirect("/planning")
 }

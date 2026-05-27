@@ -7,21 +7,21 @@ const sections = [
   {
     icon: ShieldCheck,
     title: "Tus datos son privados",
-    body: "Usamos tu informacion financiera solo para personalizar tu experiencia dentro de MiCuadre. No vendemos tus datos.",
+    body: "Usamos tu información financiera solo para personalizar tu experiencia dentro de MiCuadre. No vendemos tus datos.",
   },
   {
     icon: Brain,
     title: "La IA te ayuda, pero no decide por ti",
-    body: "Coach IA te da sugerencias educativas y practicas. Tu decides que accion tomar con tu dinero.",
+    body: "Coach IA te da sugerencias educativas y prácticas. Tú decides qué acción tomar con tu dinero.",
   },
   {
     icon: BadgeAlert,
     title: "No somos asesores financieros certificados",
-    body: "MiCuadre no ofrece asesoria financiera, de inversion, fiscal ni legal certificada.",
+    body: "MiCuadre no ofrece asesoría financiera, de inversión, fiscal ni legal certificada.",
   },
   {
     icon: SlidersHorizontal,
-    title: "Tu tienes el control",
+    title: "Tú tienes el control",
     body: "Puedes ajustar notificaciones, preferencias y uso de la app cuando quieras desde Ajustes.",
   },
   {
@@ -41,7 +41,7 @@ export default function SecurityPrivacyPage() {
           </Link>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Seguridad y privacidad</h1>
-            <p className="text-xs text-muted-foreground">Como protegemos tus datos en MiCuadre</p>
+            <p className="text-xs text-muted-foreground">Cómo protegemos tus datos en MiCuadre</p>
           </div>
         </div>
       </div>

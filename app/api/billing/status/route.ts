@@ -31,6 +31,7 @@ async function getAuthenticatedUser() {
 
 export async function GET() {
   try {
+    const paypalAvailable = process.env.STRIPE_CHECKOUT_ENABLE_PAYPAL === "true"
     const { user, supabase } = await getAuthenticatedUser()
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
@@ -50,9 +51,18 @@ export async function GET() {
 
     const { data: subscription } = await supabase
       .from("billing_subscriptions")
-      .select("status, current_period_end, cancel_at_period_end")
+      .select("status, current_period_end, cancel_at_period_end, updated_at")
       .eq("user_id", user.id)
       .order("current_period_end", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle()
+
+    const { data: latestEvent } = await supabase
+      .from("billing_events")
+      .select("processed_at, status")
+      .eq("user_id", user.id)
+      .eq("status", "processed")
+      .order("processed_at", { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle()
 
@@ -71,11 +81,13 @@ export async function GET() {
         currentPeriodEnd: subscription?.current_period_end || null,
         cancelAtPeriodEnd: Boolean(subscription?.cancel_at_period_end),
         billingReady,
+        paypalAvailable,
+        lastSyncedAt: latestEvent?.processed_at || subscription?.updated_at || null,
       },
       { status: 200 }
     )
-  } catch {
-    console.error("[billing-status] failed")
+  } catch (error) {
+    console.error("[billing-status] failed", error)
     return NextResponse.json({ error: "No pudimos verificar tu plan ahora mismo." }, { status: 500 })
   }
 }

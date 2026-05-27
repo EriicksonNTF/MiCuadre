@@ -1,37 +1,27 @@
-"use client"
+﻿"use client"
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import {
-  ChevronLeft,
-  Bell,
-  Check,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+import { ArrowLeft, Check } from "lucide-react"
 import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/hooks/use-data"
 import { NotificationStack } from "@/components/notifications/notification-stack"
-import { NotificationInsightCard } from "@/components/notifications/notification-insight-card"
+import { NotificationFilterTabs } from "@/components/notifications/notification-filter-tabs"
+import { NotificationEmptyState } from "@/components/notifications/notification-empty-state"
+import { matchesNotificationFilter, type NotificationFilterKey } from "@/lib/notifications/notification-type-map"
 
-type NotificationType = "transaction" | "goal" | "credit" | "system" | "transfer" | "subscription"
-
-type FilterType = "all" | NotificationType
+function emptyMessageByFilter(filter: NotificationFilterKey) {
+  if (filter === "movement") return "No hay movimientos recientes para este filtro."
+  if (filter === "subscription") return "No hay suscripciones recientes para este filtro."
+  if (filter === "planning") return "No hay alertas de planificación en este momento."
+  if (filter === "system") return "No hay notificaciones del sistema en este momento."
+  return "Cuando registres movimientos, pagos o alertas importantes, aparecerán aquí."
+}
 
 export function NotificationsScreen() {
   const { data: notifications = [] } = useNotifications()
-  const [filter, setFilter] = useState<FilterType>("all")
-  const [dismissedIds, setDismissedIds] = useState<string[]>([])
+  const [filter, setFilter] = useState<NotificationFilterKey>("all")
 
-  const liveNotifications = useMemo(
-    () => notifications.filter((item) => !dismissedIds.includes(item.id)),
-    [dismissedIds, notifications]
-  )
-
-  const filteredNotifications = useMemo(() =>
-    filter === "all"
-      ? liveNotifications
-      : liveNotifications.filter((n) => n.type === filter)
-  , [filter, liveNotifications])
-
+  const filteredNotifications = useMemo(() => notifications.filter((item) => matchesNotificationFilter(item, filter)), [notifications, filter])
   const unreadCount = notifications.filter((n) => !n.read).length
 
   const markAsRead = async (id: string) => {
@@ -50,116 +40,39 @@ export function NotificationsScreen() {
     }
   }
 
-  const dismissNotification = (id: string) => {
-    setDismissedIds((prev) => [...prev, id])
-  }
-
-  const smartInsight = useMemo(() => {
-    if (filteredNotifications.length === 0) return null
-    const unread = filteredNotifications.filter((n) => !n.read)
-    const latest = unread[0] || filteredNotifications[0]
-    return {
-      title: latest.title,
-      description: latest.message,
-    }
-  }, [filteredNotifications])
-
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(15,118,110,0.12),_transparent_45%),linear-gradient(180deg,#f8f6f0_0%,#f7f5ef_42%,#f3f2ee_100%)] pb-nav-safe dark:bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.2),_transparent_30%),linear-gradient(180deg,#070b12_0%,#0a1018_100%)]">
-      {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-border/60 bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto max-w-md px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link
-                href="/"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
-              >
-                <ChevronLeft className="h-5 w-5 text-foreground" />
+    <main className="min-h-screen bg-background pb-nav-safe text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-5 pb-4 pt-4 backdrop-blur">
+        <div className="mx-auto max-w-xl">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <Link href="/dashboard" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition hover:bg-accent" aria-label="Volver">
+                <ArrowLeft className="h-6 w-6" />
               </Link>
-                <div>
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                  Notificaciones
-                </h1>
-                {unreadCount > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {unreadCount} sin leer
-                  </p>
-                )}
+
+              <div className="min-w-0">
+                <h1 className="text-3xl font-bold tracking-tight text-foreground">Notificaciones</h1>
+                <p className="text-sm text-muted-foreground">{unreadCount} sin leer</p>
               </div>
             </div>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllAsRead}
-                className="flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-xs font-medium text-foreground"
-              >
-                <Check className="h-3.5 w-3.5" />
-                Marcar todo
-              </button>
-            )}
+
+            <button type="button" onClick={markAllAsRead} className="inline-flex h-12 shrink-0 items-center gap-2 rounded-full border border-border bg-card px-5 text-sm font-semibold text-foreground shadow-sm transition hover:bg-muted">
+              <Check className="h-4 w-4" />
+              Marcar todo
+            </button>
           </div>
 
-          {/* Filter tabs */}
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {[
-              { value: "all", label: "Todas" },
-              { value: "transaction", label: "Transacciones" },
-              { value: "goal", label: "Metas" },
-              { value: "credit", label: "Tarjetas" },
-              { value: "subscription", label: "Suscripciones" },
-            ].map((tab) => (
-              <button
-                key={tab.value}
-                onClick={() => setFilter(tab.value as FilterType)}
-                className={cn(
-                  "shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                  filter === tab.value
-                    ? "bg-foreground text-background"
-                    : "bg-background/70 text-muted-foreground ring-1 ring-border/70"
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <NotificationFilterTabs value={filter} onChange={setFilter} />
         </div>
-      </div>
+      </header>
 
-      {/* Notifications List */}
-      <div className="mx-auto max-w-md px-6 pt-4">
-        {smartInsight && (
-          <div className="mb-4">
-            <NotificationInsightCard title={smartInsight.title} description={smartInsight.description} />
-          </div>
-        )}
-
-        {filteredNotifications.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card/80 shadow-sm ring-1 ring-border/60">
-              <Bell className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <p className="mt-4 text-sm font-medium text-foreground">
-              No hay notificaciones
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Te avisaremos cuando ocurra algo importante
-            </p>
-          </div>
+      <section className="mx-auto flex w-full max-w-xl flex-col gap-4 px-5 pt-5">
+        {filteredNotifications.length > 0 ? (
+          <NotificationStack notifications={filteredNotifications} onRead={markAsRead} />
         ) : (
-          <NotificationStack
-            notifications={filteredNotifications}
-            onRead={markAsRead}
-            onDismiss={dismissNotification}
-          />
+          <NotificationEmptyState message={emptyMessageByFilter(filter)} />
         )}
-      </div>
-
-      <style jsx global>{`
-        @keyframes notification-in {
-          0% { opacity: 0; transform: translateY(8px) scale(0.985); }
-          100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
-    </div>
+      </section>
+    </main>
   )
 }

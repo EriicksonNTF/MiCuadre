@@ -36,6 +36,20 @@ export async function checkEntitlement(userId: string, feature: FeatureKey): Pro
       : { ...blockedEntitlement({ feature, reason: "Alcanzaste el límite de tu plan Free.", currentUsage: current, limit: config.max_accounts }), plan }
   }
 
+  if (feature === "max_daily_transactions") {
+    if (config.max_daily_transactions === "unlimited") return { allowed: true, feature, plan }
+    const today = new Date().toISOString().slice(0, 10)
+    const { count } = await supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("date", today)
+    const current = Number(count || 0)
+    return current < config.max_daily_transactions
+      ? { allowed: true, feature, plan }
+      : { ...blockedEntitlement({ feature, reason: "Alcanzaste el límite diario del plan Free.", currentUsage: current, limit: config.max_daily_transactions }), plan }
+  }
+
   if (feature === "max_goals") {
     if (config.max_goals === "unlimited") return { allowed: true, feature, plan }
     const { count } = await supabase
@@ -46,6 +60,32 @@ export async function checkEntitlement(userId: string, feature: FeatureKey): Pro
     return current < config.max_goals
       ? { allowed: true, feature, plan }
       : { ...blockedEntitlement({ feature, reason: "Alcanzaste el límite de tu plan Free.", currentUsage: current, limit: config.max_goals }), plan }
+  }
+
+  if (feature === "max_budgets") {
+    if (config.max_budgets === "unlimited") return { allowed: true, feature, plan }
+    const { count } = await supabase
+      .from("budgets")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_active", true)
+    const current = Number(count || 0)
+    return current < config.max_budgets
+      ? { allowed: true, feature, plan }
+      : { ...blockedEntitlement({ feature, reason: "Alcanzaste el límite de presupuestos de tu plan Free.", currentUsage: current, limit: config.max_budgets }), plan }
+  }
+
+  if (feature === "max_active_debts") {
+    if (config.max_active_debts === "unlimited") return { allowed: true, feature, plan }
+    const { count } = await supabase
+      .from("debts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_active", true)
+    const current = Number(count || 0)
+    return current < config.max_active_debts
+      ? { allowed: true, feature, plan }
+      : { ...blockedEntitlement({ feature, reason: "Alcanzaste el límite de deudas activas de tu plan Free.", currentUsage: current, limit: config.max_active_debts }), plan }
   }
 
   if (feature === "financial_subscriptions") {
@@ -63,7 +103,7 @@ export async function checkEntitlement(userId: string, feature: FeatureKey): Pro
       : { ...blockedEntitlement({ feature, reason: "Llegaste al límite de suscripciones del plan Free.", currentUsage: current, limit: config.financial_subscriptions }), plan }
   }
 
-  const allowed = Boolean(config[feature as "advanced_reports" | "exports" | "mia_advanced"])
+  const allowed = Boolean(config[feature as "advanced_reports" | "exports" | "mia_advanced" | "planning_full"])
   return allowed
     ? { allowed: true, feature, plan }
     : { ...blockedEntitlement({ feature, reason: "Esta función estará disponible en Pro." }), plan }

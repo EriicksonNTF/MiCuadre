@@ -1,4 +1,4 @@
-import { ImageResponse } from "next/og"
+﻿import { ImageResponse } from "next/og"
 
 export const size = {
   width: 1200,
@@ -37,7 +37,7 @@ export default function OpenGraphImage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: "78%" }}>
           <div style={{ fontSize: 72, lineHeight: 1.05, fontWeight: 800 }}>Controla tu dinero con claridad</div>
-          <div style={{ fontSize: 30, color: "#cbd5e1" }}>Finanzas personales para RD: cuentas, tarjetas, metas, suscripciones y reportes.</div>
+          <div style={{ fontSize: 30, color: "#cbd5e1" }}>Finanzas personales para RD: cuentas, tarjetas, planificacion, suscripciones y reportes.</div>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 24, color: "#99f6e4" }}>
@@ -51,3 +51,4 @@ export default function OpenGraphImage() {
     }
   )
 }
+

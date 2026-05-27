@@ -16,7 +16,7 @@ export async function syncPendingOperations() {
   if (!user) return
 
   const outbox = await offlineDB.getAll<OutboxItem>("offline_outbox")
-  const pendingItems = outbox.filter(item => item.status === "pending" || item.status === "failed")
+  const pendingItems = outbox.filter(item => (item.status === "pending" || item.status === "failed") && (!item.user_id || item.user_id === user.id))
 
   if (pendingItems.length === 0) return
 

@@ -17,10 +17,12 @@ import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { generateFinancialInsights } from "@/lib/insights"
 import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-splash"
 import { ActivationPanel } from "@/components/dashboard/activation-panel"
+import { PlanningSummaryCard } from "@/components/dashboard/planning-summary-card"
 import { showToast } from "@/components/toast/smart-toast"
 import { EventBus } from "@/lib/event-bus"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
+import { useEntitlements } from "@/hooks/use-entitlements"
 
 const CoachIAWidget = dynamic(() => import("@/components/dashboard/coach-ia-widget").then((mod) => mod.CoachIAWidget), {
   ssr: false,
@@ -39,6 +41,8 @@ export default function DashboardPage() {
   const { data: accounts = [] } = useAccounts()
   const { data: subscriptions = [] } = useFinancialSubscriptions()
   const { data: recentTransactions = [] } = useTransactions(120)
+  const { isPro } = useEntitlements()
+  const [planningUpsellOpen, setPlanningUpsellOpen] = useState(false)
 
   useEffect(() => {
     if (loading || profileLoading) return
@@ -242,6 +246,24 @@ export default function DashboardPage() {
         )}
 
         <div className="mt-10">
+          {isPro ? (
+            <PlanningSummaryCard />
+          ) : (
+            <section className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
+              <p className="text-sm font-semibold">Controla tu mes con Pro</p>
+              <p className="mt-1 text-xs text-muted-foreground">Presupuestos, deudas y pagos próximos en un solo lugar.</p>
+              <button
+                type="button"
+                onClick={() => setPlanningUpsellOpen(true)}
+                className="mt-3 inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"
+              >
+                Ver planes
+              </button>
+            </section>
+          )}
+        </div>
+
+        <div className="mt-10">
           <AccountsList />
         </div>
 
@@ -281,6 +303,7 @@ export default function DashboardPage() {
         </div>
       )}
       <PlanSelectorSheet open={showWelcomePlanPrompt} onOpenChange={setShowWelcomePlanPrompt} welcome />
+      <PlanSelectorSheet open={planningUpsellOpen} onOpenChange={setPlanningUpsellOpen} reasonTitle="Planificación Pro" reasonBody="Desbloquea presupuestos, calendario y deudas con Pro." />
     </main>
   )
 }

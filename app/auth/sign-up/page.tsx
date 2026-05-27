@@ -38,13 +38,13 @@ export default function SignUpPage() {
     setError(null)
 
     if (password !== repeatPassword) {
-      setError('Las contrasenas no coinciden')
+      setError('Las contraseñas no coinciden')
       setIsLoading(false)
       return
     }
 
     if (password.length < 6) {
-      setError('La contrasena debe tener al menos 6 caracteres')
+      setError('La contraseña debe tener al menos 6 caracteres')
       setIsLoading(false)
       return
     }
@@ -113,7 +113,7 @@ export default function SignUpPage() {
 
           <Card className="border-border/50">
             <CardHeader className="text-center">
-              <CardTitle className="text-xl">Crear Cuenta</CardTitle>
+              <CardTitle className="text-xl">Crear cuenta</CardTitle>
               <CardDescription>
                 Crea tu cuenta y empieza a tomar mejores decisiones con tu dinero
               </CardDescription>
@@ -157,7 +157,7 @@ export default function SignUpPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Correo electronico</Label>
+                    <Label htmlFor="email">Correo electrónico</Label>
                     <Input
                       id="email"
                       type="email"
@@ -169,7 +169,7 @@ export default function SignUpPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="password">Contrasena</Label>
+                    <Label htmlFor="password">Contraseña</Label>
                     <Input
                       id="password"
                       type="password"
@@ -180,7 +180,7 @@ export default function SignUpPage() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="repeat-password">Confirmar Contrasena</Label>
+                    <Label htmlFor="repeat-password">Confirmar contraseña</Label>
                     <Input
                       id="repeat-password"
                       type="password"
@@ -196,13 +196,13 @@ export default function SignUpPage() {
                     </p>
                   )}
                   <Button type="submit" className="w-full h-11" disabled={isLoading}>
-                    {isLoading ? 'Creando cuenta...' : 'Crear Cuenta'}
+                    {isLoading ? 'Creando cuenta...' : 'Crear cuenta'}
                   </Button>
                 </div>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
-                  Ya tienes cuenta?{' '}
+                  ¿Ya tienes cuenta?{' '}
                   <Link href="/auth/login" className="text-primary hover:underline underline-offset-4">
-                    Inicia sesion
+                    Inicia sesión
                   </Link>
                 </div>
               </form>

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
@@ -26,8 +26,10 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
   const [providerKey, setProviderKey] = useState("netflix")
   const [amount, setAmount] = useState("")
   const [currency, setCurrency] = useState<"DOP" | "USD">("DOP")
-  const [accountId, setAccountId] = useState("")
+  const [sourceAccountId, setSourceAccountId] = useState("")
   const [billingDay, setBillingDay] = useState(String(new Date().getDate()))
+  const [autoRecordEnabled, setAutoRecordEnabled] = useState(false)
+  const [preAlertEnabled, setPreAlertEnabled] = useState(true)
   const { blocked, isUpsellOpen, handleEntitlementBlocked, closeUpsell } = useEntitlementBlocked()
   const { canUseFinancialSubscriptions } = useEntitlements()
 
@@ -57,30 +59,36 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
 
   const save = async () => {
     const parsed = Number(amount)
-    if (!accountId || !parsed || !billingDay) return
-        const provider = getFinancialSubscriptionProvider(providerKey)
+    if (!sourceAccountId || !parsed || !billingDay) return
+
+    const linkedAccount = accounts.find((account) => account.id === sourceAccountId) || null
+    const provider = getFinancialSubscriptionProvider(providerKey)
     const nextDate = getNextFinancialBillingDateFrom(new Date(), Number(billingDay))
+
     try {
       await createFinancialSubscription({
         name: provider.name,
         provider_key: provider.key,
         amount: parsed,
         currency,
-        account_id: accountId,
+        account_id: sourceAccountId,
+        linked_account_id: linkedAccount?.type === "credit" ? null : sourceAccountId,
+        linked_credit_card_id: linkedAccount?.type === "credit" ? sourceAccountId : null,
+        auto_record_enabled: autoRecordEnabled,
+        pre_alert_enabled: preAlertEnabled,
         category_id: subscriptionCategoryId,
         billing_day: Number(billingDay),
         next_payment_date: getLocalDateString(nextDate),
       })
       setShowCreate(false)
       setAmount("")
+      setAutoRecordEnabled(false)
+      setPreAlertEnabled(true)
       notify({ title: "Creado correctamente", message: "La suscripción fue guardada." })
       router.push("/settings/subscriptions")
     } catch (error) {
       if (handleEntitlementBlocked(error)) return
-      notify({
-        title: "No se pudo guardar",
-        message: "Intenta de nuevo en unos segundos.",
-      })
+      notify({ title: "No se pudo guardar", message: "Intenta de nuevo en unos segundos." })
     }
   }
 
@@ -104,9 +112,9 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
         </div>
 
         <div className="rounded-2xl bg-card p-4">
-          <p className="text-sm font-semibold text-foreground">Proximos pagos</p>
+          <p className="text-sm font-semibold text-foreground">Próximos pagos</p>
           <div className="mt-3 space-y-2">
-            {upcoming.length === 0 ? <p className="text-xs text-muted-foreground">No hay pagos proximos.</p> : upcoming.map((item) => (
+            {upcoming.length === 0 ? <p className="text-xs text-muted-foreground">No hay pagos próximos.</p> : upcoming.map((item) => (
               <div key={item.id} className="flex items-center justify-between text-sm">
                 <span>{item.name}</span>
                 <span className="text-muted-foreground">{format(new Date(`${item.next_payment_date}T12:00:00`), "d MMM", { locale: es })}</span>
@@ -122,7 +130,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
                 <div>
                   <p className="font-semibold text-foreground">{item.name}</p>
                   <p className="text-sm text-muted-foreground">{formatCurrency(Number(item.amount), item.currency)} / mes</p>
-                  <p className="text-xs text-muted-foreground">Proximo pago: {item.next_payment_date} · Cuenta: {item.account?.name || "-"}</p>
+                  <p className="text-xs text-muted-foreground">Próximo pago: {item.next_payment_date} · Cuenta: {item.account?.name || "-"}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => updateFinancialSubscription(item.id, { status: "paused" })} className="rounded-lg bg-muted p-2"><Pause className="h-4 w-4" /></button>
@@ -151,7 +159,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
 
       {showCreate && (
         <BaseModalForm
-          title="Nueva suscripcion"
+          title="Nueva suscripción"
           onClose={() => setShowCreate(false)}
           footer={<button onClick={save} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
         >
@@ -164,11 +172,23 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
               <option value="DOP">DOP</option>
               <option value="USD">USD</option>
             </select>
-            <select value={accountId} onChange={(event) => setAccountId(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-              <option value="">Selecciona cuenta</option>
-              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+            <select value={sourceAccountId} onChange={(event) => setSourceAccountId(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
+              <option value="">Cuenta o tarjeta vinculada</option>
+              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.type === "credit" ? "Tarjeta" : "Cuenta"}</option>)}
             </select>
-            <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} type="number" min={1} max={31} className="h-12 w-full rounded-xl border border-border bg-background px-4" placeholder="Dia de cobro" />
+            <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} type="number" min={1} max={31} className="h-12 w-full rounded-xl border border-border bg-background px-4" placeholder="Día de cobro" />
+
+            <label className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3 text-sm">
+              <span>Registrar automáticamente</span>
+              <input type="checkbox" checked={autoRecordEnabled} onChange={(event) => setAutoRecordEnabled(event.target.checked)} />
+            </label>
+            <label className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3 text-sm">
+              <span>Alerta 1 día antes</span>
+              <input type="checkbox" checked={preAlertEnabled} onChange={(event) => setPreAlertEnabled(event.target.checked)} />
+            </label>
+
+            <p className="text-xs text-muted-foreground">Se registrará automáticamente en MiCuadre cuando llegue la fecha.</p>
+            <p className="text-xs text-muted-foreground">Esto no realiza cargos reales en tu banco.</p>
           </div>
         </BaseModalForm>
       )}

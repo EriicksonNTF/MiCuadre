@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useEffect, useRef, useState, type TouchEvent } from "react"
 import Image from "next/image"
@@ -42,25 +42,25 @@ const steps: {
   variant: StepVariant
 }[] = [
   {
-    title: "Recupera el",
-    highlight: "control",
-    text: "Descubre en segundos en que se te va el dinero y toma mejores decisiones hoy.",
+    title: "Organiza tu",
+    highlight: "mes",
+    text: "Empieza creando una cuenta para ver tu balance base desde hoy.",
     icon: Wallet,
-    variant: "money",
+    variant: "accounts",
   },
   {
-    title: "MiCuadre te",
-    highlight: "entiende",
-    text: "Analiza tus movimientos y te recomienda acciones claras para ahorrar mas este mes.",
-    icon: Sparkles,
-    variant: "helper",
-  },
-  {
-    title: "Empieza con tu",
-    highlight: "primera cuenta",
-    text: "Crea tu base en un paso y recibe tu primera lectura financiera desde hoy.",
+    title: "Crea tu primer",
+    highlight: "presupuesto",
+    text: "Define cuanto puedes gastar por categoria y recibe alertas antes de pasarte.",
     icon: Target,
     variant: "goals",
+  },
+  {
+    title: "Agrega un",
+    highlight: "compromiso",
+    text: "Opcional: agrega una suscripcion o deuda para ver proximos pagos en calendario.",
+    icon: CalendarDays,
+    variant: "helper",
   },
 ]
 
@@ -119,7 +119,7 @@ export default function OnboardingPage() {
 
       const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null
       if (!response.ok || !data?.url) {
-        notify({ title: "Error de facturación", message: data?.error || BILLING_COPY.checkout.error })
+        notify({ title: "Error de facturaciÃ³n", message: data?.error || BILLING_COPY.checkout.error })
         router.replace("/dashboard")
         return
       }
@@ -127,7 +127,7 @@ export default function OnboardingPage() {
       // 3. Redirect to Stripe
       window.location.href = data.url
     } catch {
-      notify({ title: "Error de facturación", message: BILLING_COPY.checkout.error })
+      notify({ title: "Error de facturaciÃ³n", message: BILLING_COPY.checkout.error })
       router.replace("/dashboard")
     } finally {
       setIsLoadingCheckoutPlan(null)
@@ -231,7 +231,7 @@ export default function OnboardingPage() {
                       : "text-muted-foreground hover:bg-muted/70"
                   )}
                 >
-                  {value === "monthly" ? "Mensual" : `Anual · Ahorra ${ANNUAL_DISCOUNT_PERCENT}%`}
+                  {value === "monthly" ? "Mensual" : `Anual Â· Ahorra ${ANNUAL_DISCOUNT_PERCENT}%`}
                 </button>
               ))}
             </div>
@@ -311,9 +311,9 @@ export default function OnboardingPage() {
           <div className="mt-4 rounded-xl bg-muted/20 border border-border/40 p-4 space-y-2 text-center text-[10px] text-muted-foreground">
             <p className="font-semibold text-foreground flex items-center justify-center gap-1">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-              Pago seguro vía Stripe
+              Pago seguro vÃ­a Stripe
             </p>
-          <p>Tus datos de pago están protegidos por Stripe. Cancela cuando quieras desde tu perfil.</p>
+          <p>Tus datos de pago estÃ¡n protegidos por Stripe. Cancela cuando quieras desde tu perfil.</p>
           </div>
 
           <div className="mt-4 text-center">
@@ -426,7 +426,7 @@ export default function OnboardingPage() {
             {loading
               ? "Guardando..."
               : index === steps.length - 1
-                ? "Ver mi primer plan"
+                ? "Continuar"
                 : "Continuar"}
           </span>
           {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
@@ -475,7 +475,7 @@ function MoneyVisual() {
               RD$3,000
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Efectivo y débito
+              Efectivo y dÃ©bito
             </p>
           </div>
 
@@ -544,7 +544,7 @@ function AccountsVisual() {
       />
 
       <AccountCard
-        title="Tarjeta de crédito"
+        title="Tarjeta de crÃ©dito"
         subtitle="Deuda actual"
         amount="RD$1,250"
         icon={CreditCard}
@@ -604,7 +604,7 @@ function GoalsVisual() {
           <div className="text-center">
             <p className="text-3xl font-bold text-foreground">75%</p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Meta alcanzada
+              presupuesto usado
             </p>
           </div>
         </div>
@@ -617,12 +617,12 @@ function GoalsVisual() {
           </div>
 
           <div className="flex-1">
-            <p className="text-sm font-bold text-foreground">Viaje a Cancún</p>
+            <p className="text-sm font-bold text-foreground">presupuesto de comida</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Meta: RD$5,000
+              Limite: RD$5,000
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Ahorrado:{" "}
+              Gastado:{" "}
               <span className="font-semibold text-green-700">RD$3,750</span>
             </p>
           </div>
@@ -754,7 +754,7 @@ function HelperVisual() {
       />
 
       <HelperCard
-        title="Próximos pagos"
+        title="PrÃ³ximos pagos"
         amount="RD$850"
         subtitle="3 pendientes"
         icon={CalendarDays}
@@ -769,7 +769,7 @@ function HelperVisual() {
 
           <div>
             <p className="text-sm font-bold text-foreground">
-              MiCuadre te acompaña
+              MiCuadre te acompaÃ±a
             </p>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               Te ayuda a tomar mejores decisiones financieras.
@@ -806,3 +806,6 @@ function HelperCard({
     </div>
   )
 }
+
+
+

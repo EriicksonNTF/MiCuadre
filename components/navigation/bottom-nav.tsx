@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Home, Plus, Wallet, Target, Clock, Repeat, ReceiptText } from "lucide-react"
+import { Home, Plus, Wallet, CalendarCog, Clock, Repeat, ReceiptText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 
@@ -12,10 +12,10 @@ const navItems = [
   { href: "/accounts", icon: Wallet, label: "Cuentas" },
   { href: "/expense", icon: Plus, label: "Agregar", isAction: true },
   { href: "/history", icon: Clock, label: "Historial" },
-  { href: "/goals", icon: Target, label: "Metas" },
+  { href: "/planning", icon: CalendarCog, label: "Planificación" },
 ]
 
-const MAIN_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/goals"])
+const MAIN_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/planning"])
 
 export function BottomNav() {
   const pathname = usePathname()

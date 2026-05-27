@@ -95,6 +95,15 @@ export default function PayPage() {
     }
   }, [activeCurrencies, card, currencyTab])
 
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const preselectedCardId = new URLSearchParams(window.location.search).get("card")
+    if (!preselectedCardId) return
+    if (creditCards.some((cardItem) => cardItem.id === preselectedCardId)) {
+      setSelectedCard(preselectedCardId)
+    }
+  }, [creditCards])
+
   const balanceToDate = currencyTab === "DOP" ? Number(card?.current_debt_dop || card?.current_debt || 0) : Number(card?.current_debt_usd || 0)
   const statementBalance = currencyTab === "DOP" ? Number(card?.statement_balance_dop || 0) : Number(card?.statement_balance_usd || 0)
   const paidStatement = currencyTab === "DOP" ? Number(card?.paid_statement_amount_dop || 0) : Number(card?.paid_statement_amount_usd || 0)

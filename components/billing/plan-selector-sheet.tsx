@@ -269,6 +269,11 @@ export function PlanSelectorSheet({
               Pago seguro con Stripe
             </div>
             <div className="mt-2 space-y-1 text-xs leading-relaxed text-muted-foreground">
+              <p>
+                {billingStatus?.paypalAvailable
+                  ? "Tarjeta y PayPal disponibles según disponibilidad."
+                  : "Pago seguro con tarjeta mediante Stripe."}
+              </p>
               <p>Puedes cancelar cuando quieras.</p>
               <p>Tu plan puede tardar unos segundos en actualizarse después del pago.</p>
             </div>

@@ -722,7 +722,7 @@ async function fetchAccounts(): Promise<Account[]> {
 
   // Adjust balances dynamically based on pending outbox transactions for local preview
   const outbox = await offlineDB.getAll<OutboxItem>("offline_outbox")
-  const pendingTxs = outbox.filter(item => item.operation === "create_transaction" && item.status === "pending")
+  const pendingTxs = outbox.filter(item => item.operation === "create_transaction" && item.status === "pending" && (!item.user_id || item.user_id === userId))
 
   if (pendingTxs.length > 0) {
     accounts = accounts.map(account => {
@@ -820,7 +820,7 @@ async function fetchTransactions(limit = 10): Promise<Transaction[]> {
   // Always merge pending outbox transactions
   const outbox = await offlineDB.getAll<OutboxItem>("offline_outbox")
   const pendingTxs = outbox
-    .filter(item => item.operation === "create_transaction")
+    .filter(item => item.operation === "create_transaction" && (!item.user_id || item.user_id === userId))
     .map(item => {
       const payload = item.payload
       return {
@@ -1127,9 +1127,28 @@ export async function createTransaction(
 
   const idempotencyKey = options?.idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
   const localId = `local_tx_${Math.random().toString(36).substring(2, 15)}`
+  const { limits } = await getUserPlanAndLimits(user.id)
+  if (limits.max_daily_transactions !== "unlimited") {
+    const today = getLocalDateString()
+    const { count } = await supabase
+      .from("transactions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("date", today)
+    const dailyUsage = Number(count || 0)
+    if (dailyUsage >= limits.max_daily_transactions) {
+      throw blockedEntitlement({
+        feature: "max_daily_transactions",
+        reason: "Llegaste al límite diario de 10 transacciones del plan Free.",
+        currentUsage: dailyUsage,
+        limit: limits.max_daily_transactions,
+      })
+    }
+  }
 
   const outboxItem = {
     id: localId,
+    user_id: user.id,
     operation: "create_transaction" as const,
     entity: "transactions" as const,
     payload: {
@@ -1514,10 +1533,24 @@ export async function updateProfile(updates: Partial<Profile> & { username?: str
     updated_at: new Date().toISOString(),
   }
 
+  const allowedProfileUpdates: Record<string, unknown> = {
+    full_name: updates.full_name,
+    first_name: updates.first_name,
+    last_name: updates.last_name,
+    avatar_url: updates.avatar_url,
+    preferred_currency: updates.preferred_currency,
+    language: updates.language,
+    theme: updates.theme,
+    notifications_enabled: updates.notifications_enabled,
+    onboarding_completed: updates.onboarding_completed,
+    username: (updates as any).username,
+    phone: (updates as any).phone,
+  }
+
   const payload = {
     ...basePayload,
     ...(existing || {}),
-    ...updates,
+    ...Object.fromEntries(Object.entries(allowedProfileUpdates).filter(([, value]) => typeof value !== "undefined")),
     id: user.id,
     updated_at: new Date().toISOString(),
   }
@@ -1610,6 +1643,9 @@ async function updateSubscriptionProcessingMeta(subscriptionId: string, payload:
 }
 
 export async function markNotificationAsRead(id: string) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+
   mutate("notifications", (prev?: Notification[]) =>
     (prev || []).map((n) => (n.id === id ? { ...n, read: true } : n)),
     false
@@ -1619,6 +1655,7 @@ export async function markNotificationAsRead(id: string) {
     .from("notifications")
     .update({ read: true })
     .eq("id", id)
+    .eq("user_id", user.id)
 
   if (error) {
     mutate("notifications")
@@ -2462,9 +2499,13 @@ export async function createFinancialSubscription(input: {
   amount: number
   currency: "DOP" | "USD"
   account_id: string
+  linked_account_id?: string | null
+  linked_credit_card_id?: string | null
   category_id?: string | null
   billing_day: number
   next_payment_date: string
+  auto_record_enabled?: boolean
+  pre_alert_enabled?: boolean
   status?: "active" | "paused" | "cancelled"
 }) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -2496,6 +2537,10 @@ export async function createFinancialSubscription(input: {
     .from("subscriptions")
     .insert({
       ...input,
+      linked_account_id: input.linked_account_id || null,
+      linked_credit_card_id: input.linked_credit_card_id || null,
+      auto_record_enabled: input.auto_record_enabled ?? false,
+      pre_alert_enabled: input.pre_alert_enabled ?? true,
       category_id: categoryId,
       user_id: user.id,
       status: input.status || "active",
@@ -2519,10 +2564,25 @@ export async function createFinancialSubscription(input: {
 }
 
 export async function updateFinancialSubscription(id: string, updates: Partial<FinancialSubscription>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+
+  if (updates.auto_record_enabled || updates.pre_alert_enabled) {
+    const { limits } = await getUserPlanAndLimits(user.id)
+    if (!limits.planning_full) {
+      throw blockedEntitlement({
+        feature: "financial_subscriptions",
+        reason: "La automatización de suscripciones está disponible en Pro.",
+        requiredPlan: "pro",
+      })
+    }
+  }
+
   const { data, error } = await supabase
     .from("subscriptions")
     .update(updates)
     .eq("id", id)
+    .eq("user_id", user.id)
     .select("*")
     .single()
 
@@ -2557,7 +2617,7 @@ export async function processDueFinancialSubscriptions() {
     .eq("status", "active")
     .lte("next_payment_date", today)
 
-  if (error || !subscriptions?.length) return
+  if (error) return
 
   const { data: upcomingSubscriptions } = await supabase
     .from("subscriptions")
@@ -2568,14 +2628,14 @@ export async function processDueFinancialSubscriptions() {
   if (upcomingSubscriptions?.length) {
     for (const item of upcomingSubscriptions) {
       const daysUntil = Math.ceil((new Date(`${item.next_payment_date}T12:00:00`).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysUntil >= 0 && daysUntil <= 3) {
+      if (daysUntil === 1) {
         if (schema.hasNotificationMetadataSchema) {
           const { data: existingUpcoming } = await supabase
             .from("notifications")
             .select("id")
             .eq("user_id", user.id)
             .eq("type", "subscription")
-            .contains("metadata", { kind: "subscription_upcoming", subscription_id: item.id, date: today })
+            .contains("metadata", { kind: "subscription_pre_alert", subscription_id: item.id, date: today })
             .limit(1)
 
           if (existingUpcoming && existingUpcoming.length > 0) {
@@ -2586,16 +2646,19 @@ export async function processDueFinancialSubscriptions() {
         await createNotification({
           userId: user.id,
           type: "subscription",
-          title: "Pago de suscripcion proximo",
-          message: `${item.name} se cobrara en ${daysUntil} dia(s).`,
+          title: "Recordatorio de suscripción",
+          message: `Mañana se registrará ${item.name}.`,
           actionUrl: "/settings/subscriptions",
-          metadata: { kind: "subscription_upcoming", subscription_id: item.id, date: today },
+          metadata: { kind: "subscription_pre_alert", subscription_id: item.id, date: today },
         })
       }
     }
   }
 
+  if (!subscriptions?.length) return
+
   for (const subscription of subscriptions) {
+    if (!(subscription as any).auto_record_enabled) continue
     const lastProcessedAt = (subscription as any).last_processed_at as string | null
     const retryCount = Number((subscription as any).retry_count || 0)
     if (lastProcessedAt && lastProcessedAt >= today) {
@@ -2651,8 +2714,8 @@ export async function processDueFinancialSubscriptions() {
       await createNotification({
         userId: user.id,
         type: "subscription",
-        title: "Pago de suscripcion cargado",
-        message: `${subscription.name} fue cobrada exitosamente.`,
+        title: "Suscripción registrada",
+        message: `${subscription.name} se registró automáticamente en MiCuadre.`,
         actionUrl: "/history",
       })
     } catch {
@@ -2666,8 +2729,8 @@ export async function processDueFinancialSubscriptions() {
       await createNotification({
         userId: user.id,
         type: "subscription",
-        title: "No se pudo cobrar suscripcion",
-        message: `${subscription.name} no pudo cobrarse por balance insuficiente. Reintentaremos mañana.`,
+        title: "No pudimos registrar una suscripción",
+        message: `No pudimos registrar ${subscription.name} por fondos insuficientes.`,
         actionUrl: "/settings/subscriptions",
       })
     }

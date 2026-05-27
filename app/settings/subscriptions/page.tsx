@@ -1,9 +1,10 @@
 import { SubscriptionsScreen } from "@/components/settings/subscriptions-screen"
 
-export default function SettingsSubscriptionsPage({
+export default async function SettingsSubscriptionsPage({
   searchParams,
 }: {
-  searchParams?: { create?: string }
+  searchParams?: Promise<{ create?: string }>
 }) {
-  return <SubscriptionsScreen initialOpenCreate={searchParams?.create === "1"} />
+  const resolved = (await searchParams) || {}
+  return <SubscriptionsScreen initialOpenCreate={resolved.create === "1"} />
 }

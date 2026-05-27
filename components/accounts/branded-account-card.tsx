@@ -26,6 +26,7 @@ function getDisplayAccountNumber(value?: string | null, fallback?: string) {
 
 export function BrandedAccountCard({ account, compact = false, className }: BrandedAccountCardProps) {
   const defaults = getAccountBrandingDefaults(account.type)
+  const hasPending = Boolean((account as any).hasPendingChanges)
   const primaryColor = account.primary_color || defaults.primaryColor
   const secondaryColor = account.secondary_color || defaults.secondaryColor
   const iconType = account.icon_type || defaults.iconType
@@ -103,7 +104,12 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold opacity-75">{isCredit ? "Tarjeta de crédito" : accountTypeLabel}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-semibold opacity-75">{isCredit ? "Tarjeta de crédito" : accountTypeLabel}</p>
+            {hasPending && (
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" title="Tiene movimientos pendientes sin sincronizar" />
+            )}
+          </div>
           <h3 className="truncate text-[1.04rem] font-bold leading-tight">{account.name}</h3>
           <p className="mt-1 text-[11px] opacity-80">
             Cuenta <span className="break-all rounded-full bg-white/15 px-2 py-0.5 font-medium">{displayNumber}</span>
@@ -117,14 +123,21 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
         {isCredit ? (
           <>
             <div>
-              <p className="text-xs font-semibold opacity-80">Deuda actual</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold opacity-80">Deuda actual</p>
+                {hasPending && (
+                  <span className="text-[9px] font-medium text-amber-200 animate-pulse">
+                    (Tiene pendientes)
+                  </span>
+                )}
+              </div>
               <div className="mt-1 space-y-0.5">
                 {debtLines.length > 0 ? debtLines.map((line, index) => (
-                  <p key={line.currency} className={cn("font-black tracking-tight", compact ? "text-2xl" : index === 0 ? "text-[1.85rem]" : "text-[1.45rem]")}>
+                  <p key={line.currency} className={cn("font-black tabular-nums tracking-tight", compact ? "text-2xl" : index === 0 ? "text-[1.85rem]" : "text-[1.45rem]")}>
                     {formatCurrency(line.value, line.currency)}
                   </p>
                 )) : (
-                  <p className={cn("font-black tracking-tight", compact ? "text-2xl" : "text-[1.85rem]")}>
+                  <p className={cn("font-black tabular-nums tracking-tight", compact ? "text-2xl" : "text-[1.85rem]")}>
                     {formatCurrency(primaryDebt.value, primaryDebt.currency)}
                   </p>
                 )}
@@ -157,8 +170,15 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           </>
         ) : (
           <>
-            <p className="text-xs opacity-80">Balance disponible</p>
-            <p className="mt-1 text-2xl font-extrabold tracking-tight">{formatCurrency(Number(account.balance || 0), account.currency)}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs opacity-80">Balance disponible</p>
+              {hasPending && (
+                <span className="text-[9px] font-medium text-amber-200 animate-pulse">
+                  (Tiene pendientes)
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-2xl font-black tabular-nums tracking-tight">{formatCurrency(Number(account.balance || 0), account.currency)}</p>
           </>
         )}
       </div>

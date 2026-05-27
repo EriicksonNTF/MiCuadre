@@ -8,40 +8,40 @@ export default function AvisoLegalPage() {
         MiCuadre.
       </p>
 
-      <h2>1. Informacion general</h2>
+      <h2>1. Información general</h2>
       <p>
-        MiCuadre es una aplicacion de organizacion financiera personal orientada a usuarios en
-        Republica Dominicana.
+        MiCuadre es una aplicación de organización financiera personal orientada a usuarios en la
+        República Dominicana.
       </p>
 
       <h2>2. Naturaleza informativa</h2>
       <p>
-        La informacion y analisis mostrados por la plataforma tienen caracter orientativo. No
-        constituyen asesoria legal, fiscal, contable o de inversion profesional.
+        La información y análisis mostrados por la plataforma tienen carácter orientativo. No
+        constituyen asesoría legal, fiscal, contable o de inversión profesional.
       </p>
 
-      <h2>3. Limitacion de responsabilidad</h2>
+      <h2>3. Limitación de responsabilidad</h2>
       <p>
-        MiCuadre no garantiza resultados financieros especificos ni asume responsabilidad por
-        decisiones tomadas exclusivamente con base en la informacion de la app.
+        MiCuadre no garantiza resultados financieros específicos ni asume responsabilidad por
+        decisiones tomadas exclusivamente con base en la información de la app.
       </p>
 
       <h2>4. Disponibilidad del servicio</h2>
       <p>
-        El acceso puede verse afectado por mantenimientos, fallas tecnicas o cambios de producto.
+        El acceso puede verse afectado por mantenimientos, fallas técnicas o cambios de producto.
         Durante la etapa de desarrollo, algunas funciones pueden modificarse sin aviso previo.
       </p>
 
       <h2>5. Enlaces externos</h2>
       <p>
         La plataforma puede mostrar enlaces o referencias externas. MiCuadre no controla ni responde
-        por contenido, politicas o disponibilidad de sitios de terceros.
+        por el contenido, políticas o disponibilidad de sitios de terceros.
       </p>
 
       <h2>6. Propiedad intelectual</h2>
       <p>
         Los elementos visuales, textos, marca y software de MiCuadre son propiedad de sus titulares y
-        estan protegidos por normativa aplicable.
+        están protegidos por la normativa aplicable.
       </p>
 
       <h2>7. Contacto</h2>

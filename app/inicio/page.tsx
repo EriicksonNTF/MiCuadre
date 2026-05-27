@@ -1,15 +1,15 @@
-import type { Metadata } from "next"
+﻿import type { Metadata } from "next"
 import { PublicLanding } from "@/components/landing/public-landing"
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://micuadre.app"),
   title: "MiCuadre | Controla tu dinero con claridad",
   description:
-    "MiCuadre es la app de finanzas personales en RD para organizar cuentas, gastos, tarjetas, metas, suscripciones y reportes desde un solo lugar.",
+    "MiCuadre es la app de finanzas personales en RD para organizar cuentas, gastos, tarjetas, planificacion, suscripciones y reportes desde un solo lugar.",
   openGraph: {
     title: "MiCuadre | Controla tu dinero con claridad",
     description:
-      "Organiza tus cuentas, gastos, tarjetas, metas, suscripciones y reportes en una sola app.",
+      "Organiza tus cuentas, gastos, tarjetas, planificacion, suscripciones y reportes en una sola app.",
     url: "/inicio",
     siteName: "MiCuadre",
     locale: "es_DO",
@@ -27,3 +27,4 @@ export const metadata: Metadata = {
 export default function LandingInicioPage() {
   return <PublicLanding />
 }
+

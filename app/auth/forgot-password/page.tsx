@@ -33,7 +33,7 @@ export default function ForgotPasswordPage() {
     if (resetError) {
       setError(resetError.message)
     } else {
-      setMessage("Te enviamos un correo para restablecer tu contrasena")
+      setMessage("Te enviamos un correo para restablecer tu contraseña.")
     }
     setLoading(false)
   }
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-svh items-center justify-center bg-background p-6">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>Recuperar contrasena</CardTitle>
+          <CardTitle>Recuperar contraseña</CardTitle>
           <CardDescription>Ingresa tu correo para recibir el enlace</CardDescription>
         </CardHeader>
         <CardContent>
@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
             {message && <p className="rounded-md bg-emerald-500/10 p-2 text-sm text-emerald-600">{message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>{loading ? "Enviando..." : "Enviar enlace"}</Button>
           </form>
-          <Link href="/login" className="mt-4 block text-center text-sm text-primary hover:underline">Volver a iniciar sesion</Link>
+          <Link href="/login" className="mt-4 block text-center text-sm text-primary hover:underline">Volver a iniciar sesión</Link>
         </CardContent>
       </Card>
     </div>

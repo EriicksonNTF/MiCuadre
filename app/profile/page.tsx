@@ -234,13 +234,13 @@ export default function ProfilePage() {
             <div>
               <label className="mb-1 block text-xs font-medium text-muted-foreground">Usuario</label>
               {isEditing ? (
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="username" />
+                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="nombre de usuario" />
               ) : (
                 <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{username || "-"}</p>
               )}
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Telefono</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Teléfono</label>
               {isEditing ? (
                 <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="809..." />
               ) : (

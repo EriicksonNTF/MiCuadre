@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -67,7 +67,7 @@ export function SettingsScreen() {
   const [isLoadingTheme, setIsLoadingTheme] = useState(true)
   const [notifications, setNotifications] = useState({
     transactions: true,
-    goals: true,
+    budgets: true,
     creditAlerts: true,
     marketing: false,
   })
@@ -141,12 +141,12 @@ export function SettingsScreen() {
       const response = await fetch("/api/billing/portal", { method: "POST" })
       const data = (await response.json().catch(() => null)) as { url?: string; error?: string } | null
       if (!response.ok || !data?.url) {
-        notify({ title: "Portal de facturación", message: "No pudimos abrir el portal de facturación." })
+        notify({ title: "Portal de facturaciÃ³n", message: "No pudimos abrir el portal de facturaciÃ³n." })
         return
       }
       window.location.href = data.url
     } catch {
-      notify({ title: "Portal de facturación", message: "Intenta de nuevo en unos segundos." })
+      notify({ title: "Portal de facturaciÃ³n", message: "Intenta de nuevo en unos segundos." })
     } finally {
       setIsOpeningPortal(false)
     }
@@ -156,7 +156,7 @@ export function SettingsScreen() {
     setIsVerifyingPlan(true)
     await refreshBillingStatus()
     setIsVerifyingPlan(false)
-    notify({ title: "Estado verificado", message: "Tu plan se sincronizó correctamente." })
+    notify({ title: "Estado verificado", message: "Tu plan se sincronizÃ³ correctamente." })
   }
 
   const handleLogout = async () => {
@@ -323,7 +323,7 @@ const isDevMode = process.env.NODE_ENV === "development"
                 <div className="text-left">
                   <p className="font-medium text-foreground">Moneda principal</p>
                   <p className="text-sm text-muted-foreground">
-                    {primaryCurrency === "DOP" ? "Peso Dominicano (RD$)" : "Dólar (US$)"}
+                    {primaryCurrency === "DOP" ? "Peso Dominicano (RD$)" : "DÃ³lar (US$)"}
                   </p>
                 </div>
               </div>
@@ -348,9 +348,9 @@ const isDevMode = process.env.NODE_ENV === "development"
                 description: "Notificar nuevos gastos e ingresos",
               },
               {
-                key: "goals",
-                label: "Metas de ahorro",
-                description: "Progreso y logros de metas",
+                key: "budgets",
+                label: "Presupuestos",
+                description: "Alertas y progreso por categorÃ­a",
               },
               {
                 key: "creditAlerts",
@@ -408,7 +408,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             </div>
 
             <p className="mt-4 rounded-xl bg-muted/35 px-3 py-3 text-sm leading-relaxed text-muted-foreground">
-              {plan === "pro" ? "Acceso completo activo." : "Estás usando el plan gratis."}
+              {plan === "pro" ? "Acceso completo activo." : "EstÃ¡s usando el plan gratis."}
             </p>
 
             <div className="mt-4 grid grid-cols-1 gap-2">
@@ -451,7 +451,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             {[
               { icon: BarChart3, label: "Reportes", href: "/settings/reports" },
               { icon: Repeat, label: "Suscripciones", href: "/settings/subscriptions" },
-              { icon: Tags, label: "Categorias", href: "/settings/categories" },
+              { icon: Tags, label: "Categorías", href: "/settings/categories" },
             ].map((item, index) => (
               <div key={item.label}>
                 {index > 0 && <div className="mx-4 h-px bg-border" />}
@@ -501,7 +501,7 @@ const isDevMode = process.env.NODE_ENV === "development"
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 p-4 text-red-600 dark:bg-red-900/20 dark:text-red-400"
         >
           <LogOut className="h-5 w-5" />
-          <span className="font-medium">Cerrar sesión</span>
+          <span className="font-medium">Cerrar sesiÃ³n</span>
         </button>
 
         {/* Danger Zone */}
@@ -543,7 +543,7 @@ const isDevMode = process.env.NODE_ENV === "development"
 
         {/* Version */}
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          FinWallet v1.0.0
+          MiCuadre v1.0.0
         </p>
       </div>
 
@@ -569,7 +569,7 @@ const isDevMode = process.env.NODE_ENV === "development"
       {showCurrencyPicker && (
         <BaseModalForm title="Moneda principal" onClose={() => setShowCurrencyPicker(false)}>
           <div className="space-y-2 pb-2">
-            {[{ value: "DOP", label: "Peso Dominicano", symbol: "RD$" }, { value: "USD", label: "Dólar Estadounidense", symbol: "US$" }].map((option) => (
+            {[{ value: "DOP", label: "Peso Dominicano", symbol: "RD$" }, { value: "USD", label: "DÃ³lar Estadounidense", symbol: "US$" }].map((option) => (
               <button key={option.value} onClick={() => { handleCurrencyChange(option.value as Currency); setShowCurrencyPicker(false); }}
                 className={cn("flex w-full items-center justify-between rounded-2xl p-4 transition-colors", primaryCurrency === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
                 <span className="font-medium">{option.label}</span>
@@ -588,7 +588,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             <div className="space-y-3">
               <button onClick={handleLogout} disabled={isLoggingOut}
                 className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
-                {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
+                {isLoggingOut ? "Cerrando sesiÃ³n..." : "SÃ­, cerrar sesiÃ³n"}
               </button>
               <button onClick={() => setShowLogoutConfirm(false)}
                 className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
@@ -601,8 +601,8 @@ const isDevMode = process.env.NODE_ENV === "development"
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
               <LogOut className="h-7 w-7 text-red-600" />
             </div>
-            <h2 className="text-xl font-bold">¿Cerrar sesión?</h2>
-            <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
+            <h2 className="text-xl font-bold">Â¿Cerrar sesiÃ³n?</h2>
+            <p className="text-sm text-muted-foreground">Tu sesiÃ³n se cerrarÃ¡ y necesitarÃ¡s iniciar sesiÃ³n nuevamente para acceder a tu cuenta.</p>
           </div>
         </BaseModalForm>
       )}
@@ -630,7 +630,7 @@ const isDevMode = process.env.NODE_ENV === "development"
               <Trash2 className="h-7 w-7 text-red-600" />
             </div>
             <p className="text-sm text-muted-foreground">
-              Esta acción es permanente. Todos tus datos, transacciones, metas y cuentas serán eliminados para siempre y no podrán ser recuperados.
+              Esta acciÃ³n es permanente. Todos tus datos, transacciones, planificacion y cuentas serÃ¡n eliminados para siempre y no podrÃ¡n ser recuperados.
             </p>
             <div className="text-left">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
@@ -657,3 +657,5 @@ const isDevMode = process.env.NODE_ENV === "development"
     </div>
   )
 }
+
+

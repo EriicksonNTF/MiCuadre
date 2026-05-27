@@ -36,7 +36,7 @@ export function BodyCleanup() {
         .catch((err) => console.log("SW registration failed:", err))
     }
 
-    const PRIMARY_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/goals"])
+    const PRIMARY_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/planning"])
     let edgeSwipeStart: { x: number; y: number; active: boolean } | null = null
 
     const onPointerDown = (event: PointerEvent) => {

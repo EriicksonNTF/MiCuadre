@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Check, Plus, Target, TrendingUp, Wallet } from "lucide-react"
+import { Check, Plus, CalendarCog, TrendingUp, Wallet } from "lucide-react"
 
 type ActivationStep = {
   id: string
@@ -28,11 +28,11 @@ const steps: ActivationStep[] = [
     icon: TrendingUp,
   },
   {
-    id: "goal",
-    label: "Crea tu primera meta",
-    description: "Fija un objetivo de ahorro para mantenerte motivado",
-    href: "/goals",
-    icon: Target,
+    id: "planning",
+    label: "Crea tu primer presupuesto",
+    description: "Define un límite mensual por categoría para controlar tus gastos",
+    href: "/planning",
+    icon: CalendarCog,
   },
 ]
 

@@ -1,4 +1,4 @@
-import "server-only"
+﻿import "server-only"
 
 import { NextResponse } from "next/server"
 import Stripe from "stripe"
@@ -6,6 +6,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { assertServerEnv } from "@/lib/env/server"
+import { getUserPlanServer } from "@/lib/entitlements/server"
 import type { BillingInterval, PaidPlanTier } from "@/types/billing"
 
 function getStripeClient() {
@@ -19,6 +20,14 @@ function getPriceIdForCheckout(plan: PaidPlanTier, interval: BillingInterval) {
     return env.stripeProMonthlyPriceId || env.stripeProPriceId
   }
   return env.stripeProYearlyPriceId || ""
+}
+
+function isValidStripePriceId(value: string | null | undefined): value is string {
+  return typeof value === "string" && value.startsWith("price_")
+}
+
+function isStripeInvalidRequest(error: unknown): boolean {
+  return Boolean(error && typeof error === "object" && (error as { type?: string }).type === "StripeInvalidRequestError")
 }
 
 async function getAuthenticatedUser() {
@@ -50,6 +59,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
+    const currentPlan = await getUserPlanServer(user.id)
+    if (currentPlan === "pro") {
+      return NextResponse.json({ error: "Tu cuenta ya tiene Pro activo." }, { status: 400 })
+    }
+
     const body = (await request.json().catch(() => ({}))) as { plan?: string; interval?: string }
     if (body.plan !== "pro") {
       return NextResponse.json({ error: "Plan inválido" }, { status: 400 })
@@ -61,8 +75,8 @@ export async function POST(request: Request) {
     const plan = body.plan
     const interval = body.interval
     const priceId = getPriceIdForCheckout(plan, interval)
-    if (!priceId) {
-      return NextResponse.json({ error: "No pudimos iniciar el checkout para este plan ahora mismo." }, { status: 500 })
+    if (!isValidStripePriceId(priceId)) {
+      return NextResponse.json({ error: "La configuración de pago no está completa." }, { status: 500 })
     }
 
     const stripe = getStripeClient()
@@ -99,19 +113,42 @@ export async function POST(request: Request) {
     }
 
     const origin = new URL(request.url).origin
-    const session = await stripe.checkout.sessions.create({
+    const sessionInput: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription",
       customer: stripeCustomerId,
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
         user_id: user.id,
-        requested_plan: plan,
-        billing_interval: interval,
+        plan,
+        interval,
+      },
+      subscription_data: {
+        metadata: {
+          user_id: user.id,
+          plan,
+          interval,
+        },
       },
       success_url: `${origin}/settings/plan?checkout=success`,
       cancel_url: `${origin}/settings/plan?checkout=cancelled`,
       allow_promotion_codes: true,
-    })
+    }
+
+    if (assertServerEnv().stripeCheckoutEnablePaypal) {
+      sessionInput.payment_method_types = ["card", "paypal"]
+    }
+
+    let session: Stripe.Checkout.Session
+    try {
+      session = await stripe.checkout.sessions.create(sessionInput)
+    } catch (error) {
+      if (assertServerEnv().stripeCheckoutEnablePaypal && isStripeInvalidRequest(error)) {
+        console.warn("[billing-checkout] paypal unavailable, retrying with card", { userId: user.id })
+        session = await stripe.checkout.sessions.create({ ...sessionInput, payment_method_types: ["card"] })
+      } else {
+        throw error
+      }
+    }
 
     if (!session.url) {
       return NextResponse.json({ error: "No se pudo crear la sesión de checkout" }, { status: 500 })
@@ -120,8 +157,8 @@ export async function POST(request: Request) {
     console.info("[billing-checkout] session created", { userId: user.id, plan, interval, sessionId: session.id })
 
     return NextResponse.json({ url: session.url }, { status: 200 })
-  } catch (error) {
+  } catch {
     console.error("[billing-checkout] failed")
-    return NextResponse.json({ error: "No pudimos iniciar el checkout ahora mismo." }, { status: 500 })
+    return NextResponse.json({ error: "No pudimos iniciar el pago ahora mismo." }, { status: 500 })
   }
 }

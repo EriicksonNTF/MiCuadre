@@ -1,4 +1,4 @@
-import { formatCurrency } from "@/lib/data"
+﻿import { formatCurrency } from "@/lib/data"
 
 export type CoachIntent = "query" | "mutation" | "analysis" | "advice"
 
@@ -49,7 +49,7 @@ const INTENT_PATTERNS: Record<CoachIntent, RegExp[]> = {
     /en que .*gast/, /donde .*dinero/, /cuanto .*gast/, /resumen/, /como voy/, /ver/, /cuanto llevo/,
   ],
   mutation: [
-    /agrega/, /anade/, /añade/, /registr/, /crea/, /pon /, /guarda /,
+    /agrega/, /anade/, /aÃ±ade/, /registr/, /crea/, /pon /, /guarda /,
   ],
   analysis: [
     /mes pasado/, /compar/, /proyecc/, /me alcanza/, /voy bien/, /ritmo/, /semana/,
@@ -191,7 +191,7 @@ export function buildCoachReply(message: string, context: CoachContext): CoachRe
     }
   }
 
-  if (q.includes("meta") || q.includes("metas")) {
+  if (q.includes("presupuesto") || q.includes("planificacion")) {
     const sortedGoals = context.activeGoals
       .map((goal) => ({
         ...goal,
@@ -201,19 +201,19 @@ export function buildCoachReply(message: string, context: CoachContext): CoachRe
 
     if (sortedGoals.length === 0) {
       return {
-        answer: "No veo metas activas ahora mismo. Si creas una hoy, te ayudo a darle seguimiento semanal.",
-        uiBlocks: [{ type: "kpi_card", title: "Meta recomendada", value: "Fondo de emergencia", tone: "info" }],
-        actions: [{ label: "Crear meta", href: "/goals", actionType: "navigate" }],
+        answer: "No veo planificacion activas ahora mismo. Si creas una hoy, te ayudo a darle seguimiento semanal.",
+        uiBlocks: [{ type: "kpi_card", title: "presupuesto recomendada", value: "Fondo de emergencia", tone: "info" }],
+        actions: [{ label: "Crear presupuesto", href: "/planning", actionType: "navigate" }],
       }
     }
 
     const main = sortedGoals[0]
     return {
-      answer: `Tu meta mas avanzada es "${main.name}" con ${main.progress}%. Vas bien, te faltan ${formatCurrency(Math.max(0, main.target - main.current))}.`,
+      answer: `Tu presupuesto mas avanzada es "${main.name}" con ${main.progress}%. Vas bien, te faltan ${formatCurrency(Math.max(0, main.target - main.current))}.`,
       uiBlocks: [
-        { type: "kpi_card", title: "Meta lider", value: `${main.progress}% completado`, tone: "success" },
+        { type: "kpi_card", title: "presupuesto lider", value: `${main.progress}% completado`, tone: "success" },
       ],
-      actions: [{ label: "Ver mis metas", href: "/goals", actionType: "navigate" }],
+      actions: [{ label: "Ver mis planificacion", href: "/planning", actionType: "navigate" }],
     }
   }
 
@@ -241,12 +241,12 @@ export function buildCoachReply(message: string, context: CoachContext): CoachRe
     const suggestion = Math.round(freeCash * 0.25)
     return {
       answer: suggestion > 0
-        ? `Esta semana puedes apartar alrededor de ${formatCurrency(suggestion)} sin forzarte. Hazlo en una meta y te doy seguimiento.`
+        ? `Esta semana puedes apartar alrededor de ${formatCurrency(suggestion)} sin forzarte. Hazlo en una presupuesto y te doy seguimiento.`
         : "Esta semana estas justo. Primero recorta una categoria variable y luego apartamos un monto realista.",
       uiBlocks: [
         { type: "kpi_card", title: "Ahorro sugerido semanal", value: formatCurrency(Math.max(0, suggestion)), tone: suggestion > 0 ? "success" : "warning" },
       ],
-      actions: [{ label: "Crear meta", href: "/goals", actionType: "navigate" }],
+      actions: [{ label: "Crear presupuesto", href: "/planning", actionType: "navigate" }],
     }
   }
 
@@ -291,9 +291,9 @@ export function buildCoachReply(message: string, context: CoachContext): CoachRe
   }
 
   return {
-    answer: "Te puedo ayudar con gastos, metas, FinScore y comparativas del mes. Dime que quieres optimizar hoy.",
+    answer: "Te puedo ayudar con gastos, planificacion, FinScore y comparativas del mes. Dime que quieres optimizar hoy.",
     uiBlocks: [{ type: "kpi_card", title: "Sugerencia", value: "Prueba: Como voy este mes", tone: "info" }],
-    actions: [{ label: "Ver mis metas", href: "/goals", actionType: "navigate" }],
+    actions: [{ label: "Ver mis planificacion", href: "/planning", actionType: "navigate" }],
   }
 }
 
@@ -303,3 +303,4 @@ function normalizeText(value: string) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
 }
+

@@ -137,10 +137,16 @@ export interface Subscription {
   amount: number
   currency: Currency
   account_id: string
+  linked_account_id?: string | null
+  linked_credit_card_id?: string | null
   category_id: string | null
   billing_day: number
   next_payment_date: string
   last_charged_date: string | null
+  auto_record_enabled?: boolean
+  pre_alert_enabled?: boolean
+  last_alert_period?: string | null
+  last_processed_period?: string | null
   status: SubscriptionStatus
   created_at: string
   account?: Account

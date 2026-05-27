@@ -97,7 +97,7 @@ export function ReportsScreen() {
   const byCategory = useMemo(() => {
     const map = new Map<string, number>()
     filtered.filter((tx) => tx.type === "expense").forEach((tx) => {
-      const name = tx.category?.name || "Sin categoria"
+      const name = tx.category?.name || "Sin categoría"
       map.set(name, (map.get(name) || 0) + Number(tx.amount))
     })
     return Array.from(map.entries()).map(([name, value]) => ({ name, value }))
@@ -123,7 +123,7 @@ export function ReportsScreen() {
   const topSubscriptions = useMemo(() => {
     const map = new Map<string, number>()
     filtered.filter((tx) => tx.type === "expense" && tx.subscription_id).forEach((tx) => {
-      map.set(tx.description || "Suscripcion", (map.get(tx.description || "Suscripcion") || 0) + Number(tx.amount))
+      map.set(tx.description || "Suscripción", (map.get(tx.description || "Suscripción") || 0) + Number(tx.amount))
     })
     return Array.from(map.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3)
   }, [filtered])
