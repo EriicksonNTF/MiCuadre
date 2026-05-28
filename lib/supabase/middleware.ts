@@ -82,6 +82,9 @@ export async function updateSession(request: NextRequest) {
   const isProtectedRoute = matchesRoute(pathname, protectedRoutes)
   const isEmailVerified = Boolean(user?.email_confirmed_at)
 
+  const userAgent = request.headers.get('user-agent') || ""
+  const isCapacitor = userAgent.toLowerCase().includes('capacitor')
+
   let onboardingCompleted = false
   if (user) {
     const { data: profile } = await supabase
@@ -90,6 +93,13 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle()
     onboardingCompleted = Boolean(profile?.onboarding_completed)
+  }
+
+  // Redirect to login if user is not logged in and accessing root route from Capacitor/iOS wrapper
+  if (pathname === '/' && !user && isCapacitor) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
   }
 
   if (isProtectedRoute && !user) {

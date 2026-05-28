@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { headers } from "next/headers"
 import { PublicLanding } from "@/components/landing/public-landing"
 import { createClient } from "@/lib/supabase/server"
 
@@ -10,6 +11,14 @@ export default async function RootPage() {
 
   if (user) {
     redirect("/dashboard")
+  }
+
+  const headersList = await headers()
+  const userAgent = headersList.get("user-agent") || ""
+  const isCapacitor = userAgent.toLowerCase().includes("capacitor")
+
+  if (isCapacitor) {
+    redirect("/auth/login")
   }
 
   return <PublicLanding />
