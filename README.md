@@ -4,6 +4,32 @@
 
 ---
 
+## 📸 Vista Previa (Mockups 3D)
+
+<div align="center">
+  <table style="border-collapse: collapse; border: none; border-spacing: 15px;">
+    <tr>
+      <td align="center" valign="top" width="32%">
+        <img src="Mockup%203D/Mockup%203D%20Dashboard.png" width="100%" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Dashboard principal"/>
+        <br />
+        <sub style="font-size: 12px; color: #666;"><b>Dashboard Principal</b></sub>
+      </td>
+      <td align="center" valign="top" width="32%">
+        <img src="Mockup%203D/Mockup%203D%20Transaccion.png" width="100%" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Registro de transacciones"/>
+        <br />
+        <sub style="font-size: 12px; color: #666;"><b>Registro de Transacciones</b></sub>
+      </td>
+      <td align="center" valign="top" width="32%">
+        <img src="Mockup%203D/Mockup%203D%20Metas.png" width="100%" style="border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" alt="Metas de ahorro"/>
+        <br />
+        <sub style="font-size: 12px; color: #666;"><b>Metas de Ahorro</b></sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
 ## 🌟 Funcionalidades Principales
 
 ### 💳 Gestión de Cuentas y Tarjetas
