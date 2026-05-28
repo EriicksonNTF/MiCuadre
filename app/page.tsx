@@ -15,7 +15,7 @@ export default async function RootPage() {
 
   const headersList = await headers()
   const userAgent = headersList.get("user-agent") || ""
-  const isCapacitor = userAgent.toLowerCase().includes("capacitor")
+  const isCapacitor = userAgent.toLowerCase().includes("capacitor") || userAgent.toLowerCase().includes("micuadrenative")
 
   if (isCapacitor) {
     redirect("/auth/login")

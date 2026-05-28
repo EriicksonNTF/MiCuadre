@@ -83,7 +83,7 @@ export async function updateSession(request: NextRequest) {
   const isEmailVerified = Boolean(user?.email_confirmed_at)
 
   const userAgent = request.headers.get('user-agent') || ""
-  const isCapacitor = userAgent.toLowerCase().includes('capacitor')
+  const isCapacitor = userAgent.toLowerCase().includes('capacitor') || userAgent.toLowerCase().includes('micuadrenative')
 
   let onboardingCompleted = false
   if (user) {
