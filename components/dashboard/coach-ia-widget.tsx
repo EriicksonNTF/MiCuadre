@@ -30,7 +30,7 @@ function ThinkingBubble() {
   return (
     <div className="flex justify-start">
       <div className="max-w-[88%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 text-sm text-foreground">
-        <p className="text-xs text-muted-foreground">MiCuadre estÃ¡ pensando...</p>
+        <p className="text-xs text-muted-foreground">MiCuadre está pensando...</p>
         <div className="mt-2 flex items-center gap-1.5">
           <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.2s]" />
           <span className="h-2 w-2 animate-bounce rounded-full bg-primary [animation-delay:-0.1s]" />
@@ -79,7 +79,7 @@ function Block({ block }: { block: CoachUIBlock }) {
   return (
     <div className="mt-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
       <p className="font-medium">{block.title}</p>
-      <p className="mt-1">{block.amount} Â· {block.category}</p>
+      <p className="mt-1">{block.amount} · {block.category}</p>
     </div>
   )
 }
@@ -129,7 +129,7 @@ export function CoachIAWidget() {
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            text: "El asistente de MIA requiere una suscripciÃ³n Pro activa.",
+            text: "El asistente de MIA requiere una suscripción Pro activa.",
           },
         ])
         return
@@ -155,7 +155,7 @@ export function CoachIAWidget() {
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          text: "Se cayÃ³ la conexiÃ³n por un momento. IntÃ©ntalo de nuevo.",
+          text: "Se cayó la conexión por un momento. Inténtalo de nuevo.",
         },
       ])
     } finally {
@@ -185,7 +185,7 @@ export function CoachIAWidget() {
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            text: "El asistente de MIA requiere una suscripciÃ³n Pro activa.",
+            text: "El asistente de MIA requiere una suscripción Pro activa.",
           },
         ])
         return
@@ -209,7 +209,7 @@ export function CoachIAWidget() {
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          text: "No pude confirmar esa acciÃ³n ahora mismo. IntÃ©ntalo de nuevo.",
+          text: "No pude confirmar esa acción ahora mismo. Inténtalo de nuevo.",
         },
       ])
     } finally {
@@ -313,7 +313,7 @@ export function CoachIAWidget() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") sendMessage()
                 }}
-                placeholder="PregÃºntame algo..."
+                placeholder="Pregúntame algo..."
                 className="h-9 flex-1 rounded-lg border border-border bg-background px-2.5 text-xs text-foreground outline-none focus:border-primary"
               />
               <Button size="icon" className="h-9 w-9 rounded-lg" disabled={!canSend} onClick={() => sendMessage()}>

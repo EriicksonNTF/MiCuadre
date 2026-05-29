@@ -34,6 +34,7 @@ import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateTransaction, deleteTransaction } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
+import { isExcludedFromRealIncome } from "@/lib/transactions/reporting"
 import type { AccountType } from "@/lib/types/database"
 
 const categoryIcons: Record<string, typeof Utensils> = {
@@ -86,6 +87,13 @@ const nameToSlug: Record<string, string> = {
   Regalos: "other",
   Reembolsos: "income",
   "Otros Ingresos": "income",
+}
+
+const creditCardIncomeLabels: Record<string, string> = {
+  card_payment: "Abono a tarjeta",
+  card_refund: "Reembolso en tarjeta",
+  card_adjustment: "Ajuste positivo",
+  card_cashback: "Cashback",
 }
 
 type DatePreset = "today" | "week" | "month" | "custom"
@@ -270,7 +278,7 @@ export function HistoryScreen() {
     let income = 0
     let expenses = 0
     for (const tx of filteredTransactions) {
-      if (tx.isTransfer || tx.metadata?.kind === "credit_payment") continue
+      if (tx.isTransfer || isExcludedFromRealIncome(tx.metadata)) continue
       if (tx.type === "income") income += tx.amount
       else expenses += tx.amount
     }
@@ -280,7 +288,7 @@ export function HistoryScreen() {
   const openEdit = (txId: string) => {
     const tx = transactions.find((item) => item.id === txId)
     if (!tx) return
-    if (tx.isTransfer || tx.isCommission || tx.metadata?.kind === "credit_payment") {
+    if (tx.isTransfer || tx.isCommission || tx.metadata?.kind === "credit_payment" || tx.metadata?.kind === "credit_card_income") {
       notify({ title: "No se puede editar", message: "Los pagos y transferencias no se pueden editar directamente. Elimínalo y vuelve a registrarlo." })
       return
     }
@@ -590,6 +598,11 @@ export function HistoryScreen() {
                                   <span>·</span>
                                   <span className="truncate">{tx.categoryName}</span>
                                 </div>
+                                {tx.metadata?.kind === "credit_card_income" && (
+                                  <span className="mt-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                                    {creditCardIncomeLabels[String(tx.metadata.movement_kind || "")] || "Movimiento positivo de tarjeta"}
+                                  </span>
+                                )}
                                 {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
                                   <p className="mt-1 text-[10px] font-medium text-red-600 dark:text-red-400">
                                     Error: {tx.metadata.last_error}

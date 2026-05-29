@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from "react"
 import { 
   AlertCircle, Apple, ArrowRight, CheckCircle2, CircleDollarSign, 
   CreditCard, Goal, Instagram, Landmark, Menu, Repeat, 
-  ShieldCheck, Wallet, X, ChevronDown, Sparkles, PieChart, TrendingUp
+  ShieldCheck, Wallet, X, ChevronDown, Sparkles, PieChart, TrendingUp,
+  CalendarDays, BadgeDollarSign
 } from "lucide-react"
 import { showToast } from "@/components/toast/smart-toast"
 import { ANNUAL_DISCOUNT_PERCENT, PLAN_CONFIG, PLAN_ORDER, formatPlanPrice, getBillingIntervalSuffix } from "@/lib/billing/plans"
@@ -30,6 +31,135 @@ function LogoMark({ dark = true }: { dark?: boolean }) {
         <p className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}>MiCuadre</p>
         <p className={`text-[11px] font-medium tracking-wide uppercase ${dark ? "text-emerald-400/80" : "text-emerald-600/80"}`}>Copiloto Financiero</p>
       </div>
+    </div>
+  )
+}
+
+function PhoneFrame({ children, label }: { children: React.ReactNode; label: string }) {
+  return (
+    <div className="rounded-[2rem] border border-border bg-background p-2 shadow-xl shadow-slate-900/10">
+      <div className="overflow-hidden rounded-[1.5rem] border border-border bg-card text-card-foreground">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Planificación</p>
+            <p className="text-sm font-black text-foreground">{label}</p>
+          </div>
+          <span className="h-2.5 w-2.5 rounded-full bg-accent" />
+        </div>
+        <div className="min-h-[270px] p-4">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+function BudgetMockupCard() {
+  const budgets = [
+    { name: "Comida", value: 77, tone: "bg-accent" },
+    { name: "Transporte", value: 52, tone: "bg-sky-500" },
+    { name: "Entretenimiento", value: 112, tone: "bg-destructive" },
+  ]
+
+  return (
+    <PhoneFrame label="Presupuestos">
+      <div className="rounded-2xl bg-muted p-4">
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><BadgeDollarSign className="h-3.5 w-3.5" /> Presupuesto usado</p>
+        <p className="mt-1 text-2xl font-black text-foreground">RD$ 18,450</p>
+        <p className="text-xs text-muted-foreground">de RD$ 24,000 este mes</p>
+      </div>
+      <div className="mt-4 space-y-3">
+        {budgets.map((budget) => (
+          <div key={budget.name}>
+            <div className="mb-1 flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground">{budget.name}</span>
+              <span className={budget.value > 100 ? "font-bold text-destructive" : "text-muted-foreground"}>{budget.value}%</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div className={`h-full rounded-full ${budget.tone}`} style={{ width: `${Math.min(budget.value, 100)}%` }} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+        Entretenimiento excedido
+      </div>
+    </PhoneFrame>
+  )
+}
+
+function CalendarMockupCard() {
+  const marked = new Set([4, 8, 14, 21, 26])
+  const payments = [
+    { name: "Visa Popular", date: "08 Jun", amount: "RD$ 18,650" },
+    { name: "Netflix", date: "14 Jun", amount: "RD$ 450" },
+    { name: "Préstamo personal", date: "21 Jun", amount: "RD$ 7,200" },
+  ]
+
+  return (
+    <PhoneFrame label="Calendario">
+      <div className="grid grid-cols-7 gap-1.5">
+        {Array.from({ length: 28 }, (_, index) => {
+          const day = index + 1
+          return (
+            <div key={day} className="flex aspect-square flex-col items-center justify-center rounded-lg bg-muted text-[10px] font-semibold text-muted-foreground">
+              {day}
+              {marked.has(day) && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />}
+            </div>
+          )
+        })}
+      </div>
+      <div className="mt-4 space-y-2">
+        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> Próximos pagos</p>
+        {payments.map((item) => (
+          <div key={item.name} className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2">
+            <div>
+              <p className="text-xs font-bold text-foreground">{item.name}</p>
+              <p className="text-[11px] text-muted-foreground">{item.date}</p>
+            </div>
+            <p className="text-xs font-bold text-foreground">{item.amount}</p>
+          </div>
+        ))}
+      </div>
+    </PhoneFrame>
+  )
+}
+
+function DebtsMockupCard() {
+  const debts = [
+    { name: "Préstamo personal", paid: 64, next: "15 Jun" },
+    { name: "Tarjeta Visa", paid: 38, next: "08 Jun" },
+  ]
+
+  return (
+    <PhoneFrame label="Deudas">
+      <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
+        <p className="text-xs opacity-75">Total pendiente</p>
+        <p className="mt-1 text-2xl font-black">RD$ 92,300</p>
+        <p className="mt-2 text-xs opacity-80">Pago próximo: RD$ 7,200</p>
+      </div>
+      <div className="mt-4 space-y-3">
+        {debts.map((debt) => (
+          <div key={debt.name} className="rounded-xl border border-border bg-background p-3">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-bold text-foreground">{debt.name}</span>
+              <span className="text-muted-foreground">{debt.paid}% pagado</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-accent" style={{ width: `${debt.paid}%` }} />
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">Pago próximo: {debt.next}</p>
+          </div>
+        ))}
+      </div>
+    </PhoneFrame>
+  )
+}
+
+function PlanningMockups() {
+  return (
+    <div className="grid gap-5 lg:grid-cols-3">
+      <BudgetMockupCard />
+      <CalendarMockupCard />
+      <DebtsMockupCard />
     </div>
   )
 }
@@ -67,7 +197,7 @@ export function PublicLanding() {
 
   const showComingSoon = () => {
     showToast({
-      title: "PrÃ³ximamente disponible",
+      title: "Próximamente disponible",
       body: "Estamos preparando el lanzamiento para iOS y Android.",
       type: "info",
       duration: 2800,
@@ -76,7 +206,7 @@ export function PublicLanding() {
 
   const showInstagramSoon = () => {
     showToast({
-      title: "Instagram prÃ³ximamente",
+      title: "Instagram próximamente",
       body: "Estamos preparando nuestro perfil oficial.",
       type: "info",
       duration: 2400,
@@ -104,14 +234,14 @@ export function PublicLanding() {
 
           <div className="hidden items-center gap-4 xl:flex">
             <Link href="/login" className="text-sm font-semibold text-slate-300 transition-colors hover:text-white">
-              Iniciar sesiÃ³n
+              Iniciar sesión
             </Link>
             <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-bold text-slate-950 transition-all hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95">
               Crear cuenta <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
-          <button aria-label="Abrir menÃº" onClick={() => setMobileOpen((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/5 text-white backdrop-blur-md xl:hidden">
+          <button aria-label="Abrir menú" onClick={() => setMobileOpen((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/5 text-white backdrop-blur-md xl:hidden">
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
@@ -149,7 +279,7 @@ export function PublicLanding() {
             {/* Hero Content */}
             <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both">
               <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300 backdrop-blur-sm mb-6">
-                <Sparkles className="h-4 w-4" /> La revoluciÃ³n financiera dominicana
+                <Sparkles className="h-4 w-4" /> La revolución financiera dominicana
               </div>
               
               <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl leading-[1.1]">
@@ -158,7 +288,7 @@ export function PublicLanding() {
               </h1>
               
               <p className="mt-6 text-lg leading-relaxed text-slate-300 sm:text-xl">
-                Entiende cuÃ¡nto tienes, cuÃ¡nto debes y hacia dÃ³nde se va tu dinero. Controla cuentas, tarjetas, presupuestos y suscripciones en una sola app premium.
+                Entiende cuánto tienes, cuánto debes y hacia dónde se va tu dinero. Controla cuentas, tarjetas, presupuestos y suscripciones en una sola app premium.
               </p>
               
               <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
@@ -166,12 +296,12 @@ export function PublicLanding() {
                   Crear cuenta gratis <ArrowRight className="h-5 w-5" />
                 </Link>
                 <Link href="/login" className="flex w-full sm:w-auto items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-md transition-all hover:bg-white/10 hover:border-white/30">
-                  Iniciar sesiÃ³n
+                  Iniciar sesión
                 </Link>
               </div>
 
               <div className="mt-12 flex flex-col sm:flex-row items-start sm:items-center gap-4 border-t border-white/10 pt-8">
-                <span className="text-sm font-medium text-slate-400 uppercase tracking-wider">PrÃ³ximamente en</span>
+                <span className="text-sm font-medium text-slate-400 uppercase tracking-wider">Próximamente en</span>
                 <div className="flex gap-3">
                   <button onClick={showComingSoon} className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 transition-colors hover:bg-white/10">
                     <Apple className="h-4 w-4 text-slate-300 group-hover:text-white" />
@@ -191,7 +321,7 @@ export function PublicLanding() {
               
               <div className="relative rounded-[2.5rem] border border-white/10 bg-slate-900/50 p-2 shadow-2xl backdrop-blur-xl">
                 <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950">
-                  <Image src="/landing/mockup-dashboard-3d.png" alt="Dashboard MiCuadre" width={800} height={800} className="w-full h-auto opacity-90 transition-opacity hover:opacity-100" priority />
+                  <Image src="/landing/mockup-dashboard-3d.png" alt="Panel MiCuadre" width={800} height={800} className="w-full h-auto opacity-90 transition-opacity hover:opacity-100" priority />
                 </div>
               </div>
 
@@ -225,23 +355,23 @@ export function PublicLanding() {
               <div className="absolute inset-0 rounded-[3rem] bg-emerald-500/10 blur-3xl transform -rotate-6 scale-105" />
               <div className="relative rounded-[2.5rem] border border-slate-200 bg-white p-2 shadow-xl">
                 <div className="overflow-hidden rounded-[2rem] bg-slate-50">
-                  <Image src="/landing/mockup-transaccion-3d.png" alt="TransacciÃ³n MiCuadre" width={800} height={800} className="w-full h-auto" />
+                  <Image src="/landing/mockup-transaccion-3d.png" alt="Transacción MiCuadre" width={800} height={800} className="w-full h-auto" />
                 </div>
               </div>
             </div>
 
             <div className="order-1 lg:order-2">
-              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Registros rÃ¡pidos, precisos y sin fricciÃ³n.</h2>
+              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Registros rápidos, precisos y sin fricción.</h2>
               <p className="mt-6 text-lg text-slate-600 leading-relaxed">
-                Controla montos, cuentas, categorÃ­as y detalles del movimiento desde una sola pantalla para mantener tus finanzas actualizadas en tiempo real.
+                Controla montos, cuentas, categorías y detalles del movimiento desde una sola pantalla para mantener tus finanzas actualizadas en tiempo real.
               </p>
               
               <div className="mt-10 grid gap-4 sm:grid-cols-2">
                 {[
-                  { icon: Wallet, title: "Cuentas sincronizadas", desc: "MÃºltiples cuentas en un solo lugar" },
-                  { icon: CircleDollarSign, title: "Control de comisiones", desc: "Calcula impuestos automÃ¡ticamente" },
-                  { icon: Landmark, title: "Impacto inmediato", desc: "Reflejo instantÃ¡neo en balances" },
-                  { icon: Goal, title: "CategorizaciÃ³n Ã¡gil", desc: "Organiza sin pensar demasiado" }
+                  { icon: Wallet, title: "Cuentas sincronizadas", desc: "Múltiples cuentas en un solo lugar" },
+                  { icon: CircleDollarSign, title: "Control de comisiones", desc: "Calcula impuestos automáticamente" },
+                  { icon: Landmark, title: "Impacto inmediato", desc: "Reflejo instantáneo en balances" },
+                  { icon: Goal, title: "Categorización ágil", desc: "Organiza sin pensar demasiado" }
                 ].map(({ icon: Icon, title, desc }) => (
                   <article key={title} className="group rounded-3xl border border-slate-100 bg-slate-50 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1">
                     <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 transition-transform group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white">
@@ -261,9 +391,9 @@ export function PublicLanding() {
       {/* REPORTES SECTION */}
       <section id="reportes" className="bg-slate-50 py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Reportes que hablan por sÃ­ solos</h2>
+          <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Reportes que hablan por sí solos</h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
-            Convierte tus datos en decisiones. Visualiza hacia dÃ³nde se va tu dinero con grÃ¡ficos interactivos y resÃºmenes inteligentes de tu salud financiera.
+            Convierte tus datos en decisiones. Visualiza hacia dónde se va tu dinero con gráficos interactivos y resúmenes inteligentes de tu salud financiera.
           </p>
           
           <div className="mt-16 grid gap-6 sm:grid-cols-3">
@@ -285,7 +415,7 @@ export function PublicLanding() {
               <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><Repeat className="w-24 h-24 text-indigo-500" /></div>
               <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Suscripciones</p>
               <p className="mt-4 text-3xl font-extrabold text-slate-900">RD$ 1,850/mes</p>
-              <p className="mt-2 text-base font-medium text-slate-500">6 pagos automÃ¡ticos</p>
+              <p className="mt-2 text-base font-medium text-slate-500">6 pagos automáticos</p>
             </article>
           </div>
         </div>
@@ -298,11 +428,11 @@ export function PublicLanding() {
         <div className="relative mx-auto grid max-w-7xl gap-16 px-4 sm:px-6 lg:grid-cols-2 lg:px-8 items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm mb-6">
-              <CreditCard className="h-4 w-4" /> Tarjetas de crÃ©dito
+              <CreditCard className="h-4 w-4" /> Tarjetas de crédito
             </div>
-            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Domina los ciclos de tus tarjetas de crÃ©dito.</h2>
+            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Domina los ciclos de tus tarjetas de crédito.</h2>
             <p className="mt-6 text-lg leading-relaxed text-slate-300">
-              No pagues ni un peso en intereses. MiCuadre estÃ¡ diseÃ±ado para que tengas el control absoluto de tus fechas de corte, fechas de pago y separes mentalmente tu balance actual del balance que debes pagar.
+              No pagues ni un peso en intereses. MiCuadre está diseñado para que tengas el control absoluto de tus fechas de corte, fechas de pago y separes mentalmente tu balance actual del balance que debes pagar.
             </p>
             <div className="mt-10 grid gap-6">
               <div className="flex items-start gap-4">
@@ -311,7 +441,7 @@ export function PublicLanding() {
                 </div>
                 <div>
                   <h4 className="text-lg font-bold text-white">Domina las Fechas</h4>
-                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Alertas tempranas de cuÃ¡ndo cierra tu ciclo (Corte) y cuÃ¡l es el Ãºltimo dÃ­a para pagar sin penalidad.</p>
+                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Alertas tempranas de cuándo cierra tu ciclo (Corte) y cuál es el último día para pagar sin penalidad.</p>
                 </div>
               </div>
               
@@ -330,8 +460,8 @@ export function PublicLanding() {
                   <span className="font-bold text-xl">3</span>
                 </div>
                 <div>
-                  <h4 className="text-lg font-bold text-white">LÃ­mite Inteligente</h4>
-                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Conoce exactamente cuÃ¡nto dinero te queda disponible para gastar sin sobregirarte ni afectar tu burÃ³ de crÃ©dito.</p>
+                  <h4 className="text-lg font-bold text-white">Límite Inteligente</h4>
+                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Conoce exactamente cuánto dinero te queda disponible para gastar sin sobregirarte ni afectar tu buró de crédito.</p>
                 </div>
               </div>
             </div>
@@ -354,7 +484,7 @@ export function PublicLanding() {
                   <p className="text-xs text-slate-500 mt-1">**** **** **** 8421</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">LÃ­mite Total</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Límite Total</p>
                   <p className="text-sm font-semibold text-slate-300">RD$ 100,000</p>
                 </div>
               </div>
@@ -386,7 +516,7 @@ export function PublicLanding() {
                 
                 <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">PrÃ³ximo Corte</span>
+                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">Próximo Corte</span>
                     <div className="flex items-center gap-2 text-slate-300 font-medium bg-white/5 rounded-lg p-2 border border-white/5">
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> 24 de Mayo
                     </div>
@@ -407,49 +537,43 @@ export function PublicLanding() {
       {/* SUSCRIPCIONES Y PLANIFICACION SECTION */}
       <section id="suscripciones" className="overflow-hidden bg-white py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-16 lg:grid-cols-[1.1fr_1fr]">
-            
-            <div className="relative">
-              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-r from-emerald-500/10 to-teal-500/10 blur-3xl" />
-              <div className="relative rounded-[2.5rem] border border-slate-200 bg-white p-2 shadow-xl">
-                <div className="overflow-hidden rounded-[2rem] bg-slate-50">
-                  <Image src="/landing/mockup-metas-3d.png" alt="PlanificaciÃ³n MiCuadre" width={800} height={800} className="w-full h-auto" />
-                </div>
-              </div>
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-50 px-4 py-1.5 text-sm font-bold text-emerald-700">
+              <Goal className="h-4 w-4" /> Planificación financiera
             </div>
+            <h2 className="mt-6 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Planifica tu mes antes de gastar</h2>
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
+              Presupuestos, calendario y deudas trabajan juntos para que sepas cuánto puedes gastar, qué pagos vienen y qué compromisos siguen pendientes.
+            </p>
+          </div>
 
-            <div>
-              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Planifica tu mes antes de gastar</h2>
-              <p className="mt-6 text-lg text-slate-600 leading-relaxed">
-                MiCuadre te ayuda a saber cuanto puedes gastar, que pagos vienen y que deudas tienes pendientes.
-              </p>
-              <div className="mt-8 space-y-4">
-                {[
-                  { title: "Presupuestos inteligentes", desc: "Define limites por categoria y recibe alertas antes de pasarte." },
-                  { title: "Calendario financiero", desc: "Visualiza tarjetas, suscripciones y cuotas proximas." },
-                  { title: "Deudas y pagos", desc: "Controla prestamos, financiamientos y pagos personales desde tus cuentas." }
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-5 transition-colors hover:bg-emerald-50/50 hover:border-emerald-100 hover:shadow-sm">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                      <span className="font-bold text-sm">{i + 1}</span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900">{item.title}</h4>
-                      <p className="text-sm text-slate-600 mt-1">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+          <div className="mt-14">
+            <PlanningMockups />
+          </div>
+
+          <div className="mx-auto mt-12 grid max-w-5xl gap-4 md:grid-cols-3">
+            {[
+              { title: "Presupuestos inteligentes", desc: "Define límites por categoría y recibe alertas antes de pasarte." },
+              { title: "Calendario financiero", desc: "Visualiza tarjetas, suscripciones y deudas antes de que se te pasen." },
+              { title: "Deudas y pagos", desc: "Controla préstamos, cuotas y tarjetas con seguimiento claro." }
+            ].map((item, i) => (
+              <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 transition-colors hover:border-emerald-200 hover:bg-white hover:shadow-sm">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                  <span className="font-bold text-sm">{i + 1}</span>
+                </div>
+                <h4 className="mt-4 font-bold text-slate-900">{item.title}</h4>
+                <p className="mt-1 text-sm text-slate-600">{item.desc}</p>
               </div>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link href="/register" className="inline-flex h-11 items-center justify-center rounded-full bg-emerald-500 px-5 text-sm font-bold text-slate-950 transition hover:bg-emerald-400">
-                  Comenzar gratis
-                </Link>
-                <Link href="/register" className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-100">
-                  Ver Pro
-                </Link>
-              </div>
-            </div>
-            
+            ))}
+          </div>
+
+          <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link href="/register" className="inline-flex h-11 items-center justify-center rounded-full bg-emerald-500 px-5 text-sm font-bold text-slate-950 transition hover:bg-emerald-400">
+              Comenzar gratis
+            </Link>
+            <Link href="/register" className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-100">
+              Ver Pro
+            </Link>
           </div>
         </div>
       </section>
@@ -466,7 +590,7 @@ export function PublicLanding() {
               Empieza gratis. Mejora cuando necesites control total.
             </h2>
             <p className="mt-5 text-lg leading-relaxed text-slate-300">
-              Organiza tus cuentas, presupuestos, tarjetas, gastos y suscripciones desde una experiencia simple y mÃ³vil.
+              Organiza tus cuentas, presupuestos, tarjetas, gastos y suscripciones desde una experiencia simple y móvil.
             </p>
           </div>
 
@@ -479,7 +603,7 @@ export function PublicLanding() {
                   onClick={() => setBillingInterval(value)}
                   className={`h-11 rounded-xl text-sm font-black transition-all active:scale-[0.98] ${billingInterval === value ? "bg-emerald-400 text-slate-950" : "text-slate-300 hover:bg-white/10"}`}
                 >
-                  {value === "monthly" ? "Mensual" : `Anual Â· Ahorra ${ANNUAL_DISCOUNT_PERCENT}%`}
+                  {value === "monthly" ? "Mensual" : `Anual · Ahorra ${ANNUAL_DISCOUNT_PERCENT}%`}
                 </button>
               ))}
             </div>
@@ -539,7 +663,7 @@ export function PublicLanding() {
           <div className="mt-8 grid gap-3 text-center text-sm text-slate-400 sm:grid-cols-3">
             <p>Pago seguro con Stripe.</p>
             <p>Puedes cancelar cuando quieras.</p>
-            <p>Sin conexiÃ³n bancaria obligatoria.</p>
+            <p>Sin conexión bancaria obligatoria.</p>
           </div>
         </div>
       </section>
@@ -554,10 +678,10 @@ export function PublicLanding() {
           
           <div className="space-y-4">
             {[
-              ["Â¿MiCuadre se conecta automÃ¡ticamente con mis bancos?", "Por ahora funciona de forma manual para garantizar tu privacidad y darte control total sin depender de integraciones bancarias complejas."],
-              ["Â¿Soporta pesos dominicanos (DOP) y dÃ³lares (USD)?", "SÃ­. MiCuadre soporta mÃºltiples monedas, permitiendo registrar cuentas tanto en DOP como en USD sin confusiones."],
-              ["Â¿Puedo registrar mis tarjetas de crÃ©dito?", "Absolutamente. Puedes controlar tu balance actual, balance al corte, monto disponible y mantener a la vista tus fechas de corte y de pago."],
-              ["Â¿Hay una aplicaciÃ³n mÃ³vil disponible?", "Actualmente puedes usarla desde tu navegador web mÃ³vil o instalarla como PWA (AÃ±adir a la pantalla de inicio). Muy pronto lanzaremos versiones nativas para iOS y Android."],
+              ["¿MiCuadre se conecta automáticamente con mis bancos?", "Por ahora funciona de forma manual para garantizar tu privacidad y darte control total sin depender de integraciones bancarias complejas."],
+              ["¿Soporta pesos dominicanos (DOP) y dólares (USD)?", "Sí. MiCuadre soporta múltiples monedas, permitiendo registrar cuentas tanto en DOP como en USD sin confusiones."],
+              ["¿Puedo registrar mis tarjetas de crédito?", "Absolutamente. Puedes controlar tu balance actual, balance al corte, monto disponible y mantener a la vista tus fechas de corte y de pago."],
+              ["¿Hay una aplicación móvil disponible?", "Actualmente puedes usarla desde tu navegador web móvil o instalarla como PWA (Añadir a la pantalla de inicio). Muy pronto lanzaremos versiones nativas para iOS y Android."],
             ].map(([q, a]) => (
               <details key={String(q)} className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all open:ring-2 open:ring-emerald-500/20">
                 <summary className="flex cursor-pointer items-center justify-between text-lg font-semibold text-slate-900 list-none [&::-webkit-details-marker]:hidden">
@@ -578,7 +702,7 @@ export function PublicLanding() {
             <div className="lg:col-span-2">
               <LogoMark dark={false} />
               <p className="mt-6 max-w-xs text-sm text-slate-500 leading-relaxed">
-                El copiloto financiero diseÃ±ado para revolucionar cÃ³mo los dominicanos controlan su dinero.
+                El copiloto financiero diseñado para revolucionar cómo los dominicanos controlan su dinero.
               </p>
               <div className="mt-6 flex gap-4">
                 <button onClick={showInstagramSoon} aria-label="Instagram" className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-emerald-500 hover:text-white">
@@ -600,15 +724,15 @@ export function PublicLanding() {
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Legal</h3>
               <ul className="mt-4 space-y-3 text-sm text-slate-500">
                 <li><Link href="/legal/privacidad" className="hover:text-emerald-600 transition-colors">Privacidad</Link></li>
-                <li><Link href="/legal/terminos" className="hover:text-emerald-600 transition-colors">TÃ©rminos</Link></li>
+                <li><Link href="/legal/terminos" className="hover:text-emerald-600 transition-colors">Términos</Link></li>
                 <li><Link href="/legal/aviso-legal" className="hover:text-emerald-600 transition-colors">Aviso Legal</Link></li>
               </ul>
             </div>
           </div>
           
           <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-slate-400">Â© {new Date().getFullYear()} MiCuadre. Todos los derechos reservados.</p>
-            <div className="text-sm font-medium text-slate-400">Hecho con â¤ï¸ en RepÃºblica Dominicana</div>
+            <p className="text-sm text-slate-400">© {new Date().getFullYear()} MiCuadre. Todos los derechos reservados.</p>
+            <div className="text-sm font-medium text-slate-400">Hecho con ❤️ en República Dominicana</div>
           </div>
         </div>
       </footer>

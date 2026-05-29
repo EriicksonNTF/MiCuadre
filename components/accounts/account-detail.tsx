@@ -40,6 +40,7 @@ import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountD
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getLocalDateString, getReadableTextColor } from "@/lib/data"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
+import { isReportableExpense, isReportableIncome } from "@/lib/transactions/reporting"
 import type { AccountType, Currency } from "@/lib/types/database"
 import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
 import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
@@ -355,11 +356,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }
 
   const monthlyIncome = accountTransactions
-    .filter((tx) => tx.type === "income" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment")
+    .filter((tx) => tx.type === "income" && isReportableIncome(tx.metadata))
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   const monthlyExpenses = accountTransactions
-    .filter((tx) => tx.type === "expense" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") && tx.metadata?.kind !== "credit_payment")
+    .filter((tx) => tx.type === "expense" && isReportableExpense(tx.metadata))
     .reduce((sum, tx) => sum + tx.amount, 0)
 
   const netFlow = monthlyIncome - monthlyExpenses

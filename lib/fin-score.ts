@@ -1,4 +1,5 @@
 import type { Account, Transaction, Goal } from "@/lib/types/database"
+import { isReportableIncome } from "@/lib/transactions/reporting"
 
 type ScoreBreakdown = {
   consistency: number
@@ -67,9 +68,9 @@ function calculateSavingsScore(transactions: Transaction[], accounts: Account[])
   let totalExpenses = 0
 
   recentTx.forEach((t) => {
-    if (t.type === "income") {
+    if (t.type === "income" && isReportableIncome(t.metadata)) {
       totalIncome += Number(t.amount)
-    } else {
+    } else if (t.type === "expense") {
       totalExpenses += Number(t.amount)
     }
   })
@@ -95,9 +96,9 @@ function calculateBudgetScore(transactions: Transaction[]): number {
   recentTx.forEach((t) => {
     const key = t.category_id ?? "other"
     const existing = byCategory.get(key) ?? { income: 0, expense: 0 }
-    if (t.type === "income") {
+    if (t.type === "income" && isReportableIncome(t.metadata)) {
       existing.income += Number(t.amount)
-    } else {
+    } else if (t.type === "expense") {
       existing.expense += Number(t.amount)
     }
     byCategory.set(key, existing)

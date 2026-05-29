@@ -33,52 +33,52 @@ type MiaAIResponse = {
 }
 
 const SYSTEM_PROMPT = `Eres MIA, la asistente financiera inteligente de MiCuadre.
-Tu objetivo es ayudar a los usuarios a entender sus finanzas personales basÃ¡ndote Ãºnicamente en sus datos reales de la aplicaciÃ³n.
+Tu objetivo es ayudar a los usuarios a entender sus finanzas personales basándote únicamente en sus datos reales de la aplicación.
 
-LIMITACIÃ“N DE DOMINIO - REGLA DE ORO DE SEGURIDAD:
-- Solo puedes hablar sobre temas financieros relacionados con MiCuadre: cuentas, transacciones, gastos, ingresos, planificacion de ahorro, tarjetas de crÃ©dito, presupuestos y salud financiera.
-- Si el usuario te pregunta sobre cualquier otro tema ajeno (como recetas de cocina, polÃ­tica, noticias, escribir cÃ³digo de programaciÃ³n, consejos no financieros o temas generales de ChatGPT), debes negarte cortÃ©smente usando el formato JSON con "type": "refusal" y explicar que solo puedes hablar sobre las finanzas del usuario dentro de MiCuadre.
+LIMITACIÓN DE DOMINIO - REGLA DE ORO DE SEGURIDAD:
+- Solo puedes hablar sobre temas financieros relacionados con MiCuadre: cuentas, transacciones, gastos, ingresos, planificacion de ahorro, tarjetas de crédito, presupuestos y salud financiera.
+- Si el usuario te pregunta sobre cualquier otro tema ajeno (como recetas de cocina, política, noticias, escribir código de programación, consejos no financieros o temas generales de ChatGPT), debes negarte cortésmente usando el formato JSON con "type": "refusal" y explicar que solo puedes hablar sobre las finanzas del usuario dentro de MiCuadre.
 
 NORMAS DE COMPORTAMIENTO:
-1. Responde en espaÃ±ol con un tono claro, amable, directo y financieramente responsable.
+1. Responde en español con un tono claro, amable, directo y financieramente responsable.
 2. Nunca inventes datos financieros. Si no hay datos suficientes para responder una pregunta, dilo claramente.
-3. No des asesorÃ­a de inversiÃ³n, tributaria o legal como verdades absolutas. AÃ±ade advertencias suaves de que es educaciÃ³n financiera.
-4. Para acciones que modifiquen o registren datos financieros, debes proponer una acciÃ³n estructurada en tu JSON y solicitar la confirmaciÃ³n del usuario.
+3. No des asesoría de inversión, tributaria o legal como verdades absolutas. Añade advertencias suaves de que es educación financiera.
+4. Para acciones que modifiquen o registren datos financieros, debes proponer una acción estructurada en tu JSON y solicitar la confirmación del usuario.
 
 FORMATO DE RESPUESTA REQUERIDO:
-Debes responder STRICTAMENTE con un objeto JSON vÃ¡lido con los siguientes campos:
+Debes responder STRICTAMENTE con un objeto JSON válido con los siguientes campos:
 {
   "type": "answer" | "action_proposal" | "refusal",
-  "message": "Tu respuesta o mensaje en espaÃ±ol aquÃ­ (soporta markdown bÃ¡sico)",
+  "message": "Tu respuesta o mensaje en español aquí (soporta markdown básico)",
   "action": {
     "name": "create_transaction" | "create_goal" | "create_subscription" | "add_money_to_goal",
     "arguments": {
-      // Para create_transaction (creaciÃ³n de gasto o ingreso):
+      // Para create_transaction (creación de gasto o ingreso):
       "amount": number,
       "category": "comida" | "gasolina" | "ocio" | etc (nombre sugerido),
       "type": "expense" | "income",
       "currency": "DOP" | "USD",
-      "account": "efectivo" | "nÃ³mina" | etc (nombre sugerido, opcional)
+      "account": "efectivo" | "nómina" | etc (nombre sugerido, opcional)
       
-      // Para create_goal (creaciÃ³n de presupuesto de ahorro):
+      // Para create_goal (creación de presupuesto de ahorro):
       "name": "Fondo de emergencia" | "Viaje" | etc (nombre de la presupuesto),
       "targetAmount": number,
       "currency": "DOP" | "USD"
       
       // Para create_subscription (suscripciones de streaming u otros recurrentes):
-      "name": "Netflix" | "Spotify" | etc (nombre de la suscripciÃ³n),
+      "name": "Netflix" | "Spotify" | etc (nombre de la suscripción),
       "amount": number,
       "currency": "DOP" | "USD",
-      "billingDay": number (dÃ­a del mes del 1 al 31)
+      "billingDay": number (día del mes del 1 al 31)
       
-      // Para add_money_to_goal (aÃ±adir dinero a una presupuesto):
+      // Para add_money_to_goal (añadir dinero a una presupuesto):
       "goalName": string (nombre de la presupuesto),
       "amount": number
     },
     "requires_confirmation": true
   }
 }
-Si no estÃ¡s proponiendo ninguna acciÃ³n, el campo "action" debe ser null.`
+Si no estás proponiendo ninguna acción, el campo "action" debe ser null.`
 
 function safeJsonParse<T>(value: string): T | null {
   try {
@@ -104,7 +104,7 @@ async function getOrCreateActiveConversation(supabase: any, userId: string) {
     .from("mia_conversations")
     .insert({
       user_id: userId,
-      title: `ConversaciÃ³n con MIA`,
+      title: `Conversación con MIA`,
     })
     .select("id")
     .single()
@@ -183,7 +183,7 @@ async function createTransactionFromDraft(
   const accountName = typeof payload.account === "string" ? payload.account : undefined
   const type = payload.type === "income" ? "income" : "expense"
 
-  if (amount <= 0) throw new Error("Monto invÃ¡lido")
+  if (amount <= 0) throw new Error("Monto inválido")
 
   const { accountId, accountBalance, categoryId } = await resolveAccountAndCategory(
     supabase,
@@ -241,7 +241,7 @@ async function createGoalFromDraft(
   const name = typeof payload.name === "string" ? payload.name.trim() : ""
   const targetAmount = Number(payload.targetAmount ?? 0)
   const currency = payload.currency === "USD" ? "USD" : "DOP"
-  if (name.length < 2 || targetAmount <= 0) throw new Error("Datos de presupuesto invÃ¡lidos")
+  if (name.length < 2 || targetAmount <= 0) throw new Error("Datos de presupuesto inválidos")
 
   const { error } = await supabase.from("goals").insert({
     user_id: userId,
@@ -267,7 +267,7 @@ async function createSubscriptionFromDraft(
   const currency = payload.currency === "USD" ? "USD" : "DOP"
   const billingDay = Number(payload.billingDay ?? new Date().getDate())
 
-  if (name.length < 2 || amount <= 0) throw new Error("Datos de suscripciÃ³n invÃ¡lidos")
+  if (name.length < 2 || amount <= 0) throw new Error("Datos de suscripción inválidos")
 
   const { accountId, categoryId } = await resolveAccountAndCategory(
     supabase,
@@ -276,7 +276,7 @@ async function createSubscriptionFromDraft(
     undefined
   )
 
-  if (!accountId) throw new Error("No hay cuenta disponible para la suscripciÃ³n")
+  if (!accountId) throw new Error("No hay cuenta disponible para la suscripción")
 
   const now = new Date()
   let nextPayment = new Date(now.getFullYear(), now.getMonth(), billingDay)
@@ -306,7 +306,7 @@ async function addMoneyToGoalFromDraft(
 ) {
   const goalName = typeof payload.goalName === "string" ? payload.goalName.trim() : ""
   const amount = Number(payload.amount ?? 0)
-  if (goalName.length < 2 || amount <= 0) throw new Error("Datos de contribuciÃ³n invÃ¡lidos")
+  if (goalName.length < 2 || amount <= 0) throw new Error("Datos de contribución inválidos")
 
   const { data: goals } = await supabase
     .from("goals")
@@ -317,7 +317,7 @@ async function addMoneyToGoalFromDraft(
   const matchedGoal = goals?.find(
     (g: any) => g.name.toLowerCase().includes(goalName.toLowerCase())
   )
-  if (!matchedGoal) throw new Error("No se encontrÃ³ la presupuesto de ahorro")
+  if (!matchedGoal) throw new Error("No se encontró la presupuesto de ahorro")
 
   const { accountId, accountBalance } = await resolveAccountAndCategory(
     supabase,
@@ -325,7 +325,7 @@ async function addMoneyToGoalFromDraft(
     undefined,
     undefined
   )
-  if (!accountId) throw new Error("No hay cuenta disponible para realizar el dÃ©bito")
+  if (!accountId) throw new Error("No hay cuenta disponible para realizar el débito")
   if (accountBalance < amount) throw new Error("Fondos insuficientes en la cuenta")
 
   const { error: contribError } = await supabase.from("goal_contributions").insert({
@@ -334,7 +334,7 @@ async function addMoneyToGoalFromDraft(
     account_id: accountId,
     amount,
     date: new Date().toISOString(),
-    notes: "ContribuciÃ³n registrada por MIA",
+    notes: "Contribución registrada por MIA",
   })
   if (contribError) throw contribError
 
@@ -360,7 +360,7 @@ function mapAiToClientResponse(ai: MiaAIResponse) {
     answer: ai.message,
     uiBlocks: [] as any[],
     actions: [] as any[],
-    disclaimer: "MIA ofrece informaciÃ³n basada en los datos registrados en MiCuadre. No sustituye asesorÃ­a financiera profesional.",
+    disclaimer: "MIA ofrece información basada en los datos registrados en MiCuadre. No sustituye asesoría financiera profesional.",
   }
 
   if (ai.type === "refusal") {
@@ -377,7 +377,7 @@ function mapAiToClientResponse(ai: MiaAIResponse) {
         type: "draft_tx",
         title: args.type === "income" ? "Borrador de ingreso" : "Borrador de gasto",
         amount: amountStr,
-        category: String(args.category || "Sin categorÃ­a"),
+        category: String(args.category || "Sin categoría"),
       })
       response.actions.push({
         label: "Confirmar",
@@ -397,7 +397,7 @@ function mapAiToClientResponse(ai: MiaAIResponse) {
       response.uiBlocks.push({
         type: "kpi_card",
         title: "Borrador de presupuesto",
-        value: `${String(args.name || "Nueva presupuesto")} Â· ${amountStr}`,
+        value: `${String(args.name || "Nueva presupuesto")} · ${amountStr}`,
         tone: "success",
       })
       response.actions.push({
@@ -415,8 +415,8 @@ function mapAiToClientResponse(ai: MiaAIResponse) {
       const amountStr = formatCurrency(Number(args.amount || 0), args.currency === "USD" ? "USD" : "DOP")
       response.uiBlocks.push({
         type: "kpi_card",
-        title: "Borrador de suscripciÃ³n",
-        value: `${String(args.name || "Netflix")} Â· ${amountStr}/mes`,
+        title: "Borrador de suscripción",
+        value: `${String(args.name || "Netflix")} · ${amountStr}/mes`,
         tone: "info",
       })
       response.actions.push({
@@ -582,7 +582,7 @@ export async function POST(request: Request) {
         .from("mia_conversations")
         .insert({
           user_id: user.id,
-          title: `ConversaciÃ³n ${new Date().toLocaleDateString("es-ES")}`,
+          title: `Conversación ${new Date().toLocaleDateString("es-ES")}`,
         })
         .select("*")
         .single()
@@ -620,26 +620,26 @@ export async function POST(request: Request) {
       try {
         if (mutationType === "create_transaction") {
           await createTransactionFromDraft(supabase, user.id, payload)
-          answer = "Listo, registrÃ© el movimiento correctamente."
-          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "TransacciÃ³n guardada", tone: "success" }]
+          answer = "Listo, registré el movimiento correctamente."
+          uiBlocks = [{ type: "kpi_card", title: "Acción completada", value: "Transacción guardada", tone: "success" }]
           actions = [{ label: "Ver historial", href: "/history", actionType: "navigate" }]
         } else if (mutationType === "create_goal") {
           await createGoalFromDraft(supabase, user.id, payload)
           answer = "Perfecto, tu presupuesto fue creada exitosamente."
-          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "presupuesto creada", tone: "success" }]
+          uiBlocks = [{ type: "kpi_card", title: "Acción completada", value: "presupuesto creada", tone: "success" }]
           actions = [{ label: "Ver planificacion", href: "/planning", actionType: "navigate" }]
         } else if (mutationType === "create_subscription") {
           await createSubscriptionFromDraft(supabase, user.id, payload)
-          answer = "He registrado la suscripciÃ³n recurrente en tu cuenta."
-          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "SuscripciÃ³n creada", tone: "success" }]
+          answer = "He registrado la suscripción recurrente en tu cuenta."
+          uiBlocks = [{ type: "kpi_card", title: "Acción completada", value: "Suscripción creada", tone: "success" }]
           actions = [{ label: "Ver suscripciones", href: "/subscriptions", actionType: "navigate" }]
         } else if (mutationType === "add_money_to_goal") {
           await addMoneyToGoalFromDraft(supabase, user.id, payload)
-          answer = "Perfecto, agreguÃ© los fondos a tu presupuesto de ahorro."
-          uiBlocks = [{ type: "kpi_card", title: "AcciÃ³n completada", value: "Ahorro registrado", tone: "success" }]
+          answer = "Perfecto, agregué los fondos a tu presupuesto de ahorro."
+          uiBlocks = [{ type: "kpi_card", title: "Acción completada", value: "Ahorro registrado", tone: "success" }]
           actions = [{ label: "Ver planificacion", href: "/planning", actionType: "navigate" }]
         } else {
-          throw new Error("Tipo de acciÃ³n invÃ¡lido")
+          throw new Error("Tipo de acción inválido")
         }
 
         if (toolCall) {
@@ -676,7 +676,7 @@ export async function POST(request: Request) {
             .eq("id", toolCall.id)
         }
         return NextResponse.json({
-          answer: `No pude realizar esa acciÃ³n: ${err.message || "Error desconocido"}`,
+          answer: `No pude realizar esa acción: ${err.message || "Error desconocido"}`,
           uiBlocks: [{ type: "kpi_card", title: "Error", value: err.message || "Error al ejecutar", tone: "warning" }],
           actions: [{ label: "Continuar", href: "/coach-ia", actionType: "navigate" }],
         }, { status: 400 })
@@ -686,11 +686,11 @@ export async function POST(request: Request) {
     // 4. Handle standard chat question
     const parsed = coachRequestSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json({ error: "Mensaje vacÃ­o" }, { status: 400 })
+      return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 })
     }
 
     const message = parsed.data.message?.trim()
-    if (!message) return NextResponse.json({ error: "Mensaje vacÃ­o" }, { status: 400 })
+    if (!message) return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 })
 
     const convId = body.conversationId || await getOrCreateActiveConversation(supabase, user.id)
 
@@ -721,8 +721,8 @@ export async function POST(request: Request) {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
     if (!apiKey) {
       return NextResponse.json({
-        answer: "MIA no estÃ¡ configurada en el servidor todavÃ­a. Falta GEMINI_API_KEY.",
-        uiBlocks: [{ type: "kpi_card", title: "ConfiguraciÃ³n", value: "GEMINI_API_KEY no definida", tone: "warning" }],
+        answer: "MIA no está configurada en el servidor todavía. Falta GEMINI_API_KEY.",
+        uiBlocks: [{ type: "kpi_card", title: "Configuración", value: "GEMINI_API_KEY no definida", tone: "warning" }],
         actions: [{ label: "Continuar", href: "/coach-ia", actionType: "navigate" }],
       })
     }

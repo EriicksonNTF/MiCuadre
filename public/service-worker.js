@@ -1,4 +1,4 @@
-const CACHE_NAME = 'micuadre-v3';
+const CACHE_NAME = 'micuadre-v4';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -9,6 +9,21 @@ const STATIC_ASSETS = [
   '/icon-512x512.png',
   '/placeholder.svg',
 ];
+
+function isNextAsset(url) {
+  return url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/_next/image');
+}
+
+function isBypassedAsset(url) {
+  return (
+    isNextAsset(url) ||
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/auth/callback') ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/favicon.ico' ||
+    /\.(?:js|css|mjs|map|json|woff2?|png|jpg|jpeg|gif|webp|svg|ico)$/i.test(url.pathname)
+  );
+}
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
@@ -42,6 +57,13 @@ self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests
   if (!event.request.url.startsWith(self.location.origin)) return;
 
+  const url = new URL(event.request.url);
+
+  // Never serve app-shell HTML for framework assets, API/auth requests, or static files.
+  if (isBypassedAsset(url)) {
+    return;
+  }
+
   // Always prefer fresh document responses in web app mode
   if (event.request.mode === 'navigate' || event.request.destination === 'document') {
     event.respondWith(
@@ -56,8 +78,10 @@ self.addEventListener('fetch', (event) => {
         // Clone the response
         const responseClone = response.clone();
         
-        // Cache successful responses
-        if (response.status === 200 && event.request.destination !== 'document') {
+        const contentType = response.headers.get('content-type') || '';
+
+        // Cache only matching non-HTML responses. A redirected app shell must never poison JS/CSS caches.
+        if (response.status === 200 && event.request.destination !== 'document' && !contentType.includes('text/html')) {
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone);
           });

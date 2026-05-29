@@ -1,4 +1,5 @@
 import { formatCurrency } from "@/lib/data"
+import { isReportableIncome } from "@/lib/transactions/reporting"
 import type { Account, Goal, Transaction } from "@/lib/types/database"
 
 export type MiaSnapshot = {
@@ -33,7 +34,7 @@ export function getMonthSummary(snapshot: MiaSnapshot): MonthSummary {
   })
 
   const income = thisMonth
-    .filter((tx) => tx.type === "income")
+    .filter((tx) => tx.type === "income" && isReportableIncome(tx.metadata))
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
   const expense = thisMonth
     .filter((tx) => tx.type === "expense")

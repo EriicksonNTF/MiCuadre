@@ -5,19 +5,21 @@ import Link from "next/link"
 import { AlertCircle, CheckCircle2, ChevronLeft, Info, TriangleAlert } from "lucide-react"
 import { format, subDays } from "date-fns"
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts"
-import { useAccounts, useCategories, useFinancialSubscriptions, useProfile, useTransactions } from "@/hooks/use-data"
+import { useAccounts, useCategories, useFinancialSubscriptions, useTransactions } from "@/hooks/use-data"
 import { formatCurrency } from "@/lib/data"
+import { useTranslations } from "@/lib/i18n/use-translations"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { generateFinancialInsights } from "@/lib/insights"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { FeatureGate } from "@/components/entitlements/feature-gate"
 import { PlanBadge } from "@/components/entitlements/plan-badge"
 import { getEntitlementCopy } from "@/lib/entitlements/entitlement-copy"
+import { isExcludedFromRealIncome, isInternalTransfer } from "@/lib/transactions/reporting"
 
 type ReportRange = "daily" | "weekly" | "monthly"
 
 export function ReportsScreen() {
-  const { data: profile } = useProfile()
+  const { t } = useTranslations()
   const [range, setRange] = useState<ReportRange>("monthly")
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all")
   const [accountFilter, setAccountFilter] = useState("all")
@@ -39,32 +41,10 @@ export function ReportsScreen() {
     return subDays(now, 30)
   }, [range])
 
-  const t = useMemo(() => {
-    const lang = profile?.language || "es"
-    if (lang === "en") {
-      return {
-        daily: "Daily",
-        weekly: "Weekly",
-        monthly: "Monthly",
-        all: "All",
-        income: "Income",
-        expense: "Expenses",
-      }
-    }
-    return {
-      daily: "Diario",
-      weekly: "Semanal",
-      monthly: "Mensual",
-      all: "Todos",
-      income: "Ingresos",
-      expense: "Gastos",
-    }
-  }, [profile?.language])
-
   const filtered = useMemo(() => transactions.filter((tx) => {
     const txDate = new Date(`${tx.date}T12:00:00`)
-    if (tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") return false
-    if (tx.metadata?.kind === "credit_payment") return false
+    if (isInternalTransfer(tx.metadata)) return false
+    if (isExcludedFromRealIncome(tx.metadata)) return false
     if (startDate && tx.date < startDate) return false
     if (endDate && tx.date > endDate) return false
     if (!startDate && !endDate && txDate < dateFrom) return false
@@ -134,8 +114,8 @@ export function ReportsScreen() {
     const previousEnd = dateFrom
     return transactions.filter((tx) => {
       const txDate = new Date(`${tx.date}T12:00:00`)
-      if (tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal") return false
-      if (tx.metadata?.kind === "credit_payment") return false
+      if (isInternalTransfer(tx.metadata)) return false
+      if (isExcludedFromRealIncome(tx.metadata)) return false
       if (txDate < previousStart || txDate >= previousEnd) return false
       if (typeFilter !== "all" && tx.type !== typeFilter) return false
       if (accountFilter !== "all" && tx.account_id !== accountFilter) return false
@@ -174,7 +154,7 @@ export function ReportsScreen() {
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center gap-4">
             <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><ChevronLeft className="h-5 w-5 text-foreground" /></Link>
-            <h1 className="text-lg font-semibold text-foreground">Reportes</h1>
+            <h1 className="text-lg font-semibold text-foreground">{t.reports.title}</h1>
           </div>
         </div>
       </div>
@@ -182,13 +162,13 @@ export function ReportsScreen() {
       <div className="mx-auto max-w-md space-y-4 px-6 pt-6">
         <div className="flex gap-2 rounded-2xl bg-card p-1">
           {(["daily", "weekly", "monthly"] as const).map((item) => (
-            <button key={item} onClick={() => setRange(item)} className={`flex-1 rounded-xl py-2 text-sm ${range === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t[item]}</button>
+            <button key={item} onClick={() => setRange(item)} className={`flex-1 rounded-xl py-2 text-sm ${range === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.common[item]}</button>
           ))}
         </div>
 
         <div className="flex gap-2 rounded-2xl bg-card p-1">
           {(["all", "income", "expense"] as const).map((item) => (
-            <button key={item} onClick={() => setTypeFilter(item)} className={`flex-1 rounded-xl py-2 text-xs ${typeFilter === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t[item]}</button>
+            <button key={item} onClick={() => setTypeFilter(item)} className={`flex-1 rounded-xl py-2 text-xs ${typeFilter === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.common[item]}</button>
           ))}
         </div>
 
@@ -196,15 +176,15 @@ export function ReportsScreen() {
           <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs" />
           <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs" />
           <select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs">
-            <option value="all">Todas las cuentas</option>
+            <option value="all">{t.reports.allAccounts}</option>
             {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
           </select>
           <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs">
-            <option value="all">Todas las categorías</option>
+            <option value="all">{t.reports.allCategories}</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
           <select value={currencyFilter} onChange={(event) => setCurrencyFilter(event.target.value as "all" | "DOP" | "USD")} className="col-span-2 h-10 rounded-xl border border-border bg-background px-3 text-xs">
-            <option value="all">Todas las monedas</option>
+            <option value="all">{t.reports.allCurrencies}</option>
             <option value="DOP">DOP</option>
             <option value="USD">USD</option>
           </select>
@@ -231,18 +211,18 @@ export function ReportsScreen() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">Ingresos</p><p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.income)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">Gastos</p><p className="text-lg font-semibold text-red-600">{formatCurrency(totals.expense)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">Balance neto</p><p className="text-lg font-semibold text-foreground">{formatCurrency(totals.net)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">Suscripciones</p><p className="text-lg font-semibold text-amber-600">{formatCurrency(subscriptionTotal)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.income}</p><p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.income)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.expense}</p><p className="text-lg font-semibold text-red-600">{formatCurrency(totals.expense)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.netBalance}</p><p className="text-lg font-semibold text-foreground">{formatCurrency(totals.net)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.subscriptions}</p><p className="text-lg font-semibold text-amber-600">{formatCurrency(subscriptionTotal)}</p></div>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="rounded-2xl bg-card p-8 text-center text-sm text-muted-foreground">No hay datos para este rango.</div>
+          <div className="rounded-2xl bg-card p-8 text-center text-sm text-muted-foreground">{t.reports.noData}</div>
         ) : (
           <>
             <div className="rounded-2xl bg-card p-4">
-              <p className="mb-3 text-sm font-semibold text-foreground">Flujo de dinero</p>
+              <p className="mb-3 text-sm font-semibold text-foreground">{t.reports.moneyFlow}</p>
               <div className="w-full overflow-hidden">
               <ChartContainer
                 className="h-56 w-full max-w-full"
@@ -261,7 +241,7 @@ export function ReportsScreen() {
             </div>
 
             <div className="rounded-2xl bg-card p-4">
-              <p className="mb-3 text-sm font-semibold text-foreground">Ingresos vs gastos</p>
+              <p className="mb-3 text-sm font-semibold text-foreground">{t.reports.incomeVsExpense}</p>
               <div className="w-full overflow-hidden">
               <ChartContainer className="h-52 w-full max-w-full" config={{ income: { label: "Ingresos", color: "#10b981" }, expense: { label: "Gastos", color: "#ef4444" } }}>
                 <BarChart data={byDay}>
@@ -276,7 +256,7 @@ export function ReportsScreen() {
             </div>
 
             <div className="rounded-2xl bg-card p-4">
-              <p className="mb-3 text-sm font-semibold text-foreground">Top categorías de gasto</p>
+              <p className="mb-3 text-sm font-semibold text-foreground">{t.reports.topExpenseCategories}</p>
               <div className="w-full overflow-hidden">
               <ChartContainer className="h-52 w-full max-w-full" config={{ value: { label: "Monto", color: "#f59e0b" } }}>
                 <PieChart>
@@ -309,7 +289,7 @@ export function ReportsScreen() {
               feature="advanced_reports"
             >
             <div className="rounded-2xl bg-card p-4">
-              <p className="mb-3 text-sm font-semibold text-foreground">Flujo por cuenta</p>
+              <p className="mb-3 text-sm font-semibold text-foreground">{t.reports.accountFlow}</p>
               <div className="space-y-2">
                 {byAccount.slice(0, 6).map((item) => (
                   <div key={item.name} className="flex items-center justify-between text-sm">
@@ -323,10 +303,10 @@ export function ReportsScreen() {
             </div>
 
             <div className="rounded-2xl bg-card p-4">
-              <p className="text-sm font-semibold text-foreground">Top suscripciones</p>
+              <p className="text-sm font-semibold text-foreground">{t.reports.topSubscriptions}</p>
               <div className="mt-2 space-y-2">
                 {topSubscriptions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Aún no hay cargos de suscripciones en este rango.</p>
+                  <p className="text-xs text-muted-foreground">{t.reports.noSubscriptions}</p>
                 ) : topSubscriptions.map(([name, value]) => (
                   <div key={name} className="flex items-center justify-between text-sm">
                     <span>{name}</span>

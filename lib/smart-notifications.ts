@@ -1,5 +1,6 @@
 ﻿import type { Account, Transaction, Goal } from "@/lib/types/database"
 import { getLocalDateString } from "@/lib/data"
+import { isReportableIncome } from "@/lib/transactions/reporting"
 import type { BudgetWithUsage, DebtWithProgress } from "@/types/planning"
 
 export type SmartNotificationType =
@@ -43,7 +44,7 @@ function getDaysSinceLastTransaction(transactions: Transaction[]): number {
 }
 
 function getTotalIncome(transactions: Transaction[]): number {
-  return transactions.filter((t) => t.type === "income").reduce((sum, t) => sum + Number(t.amount), 0)
+  return transactions.filter((t) => t.type === "income" && isReportableIncome(t.metadata)).reduce((sum, t) => sum + Number(t.amount), 0)
 }
 
 function getTotalExpenses(transactions: Transaction[]): number {

@@ -65,6 +65,14 @@ const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: str
 
 type Currency = "DOP" | "USD"
 type TransactionType = "expense" | "income"
+type CreditCardIncomeKind = "card_payment" | "card_refund" | "card_adjustment" | "card_cashback"
+
+const creditCardIncomeOptions: Array<{ value: CreditCardIncomeKind; label: string; description: string; countAsIncome: boolean }> = [
+  { value: "card_payment", label: "Abono a tarjeta", description: "Reduce la deuda y no cuenta como ingreso real.", countAsIncome: false },
+  { value: "card_refund", label: "Reembolso", description: "Devolución o reverso aplicado a la tarjeta.", countAsIncome: true },
+  { value: "card_adjustment", label: "Ajuste positivo", description: "Corrección manual del balance de tarjeta.", countAsIncome: false },
+  { value: "card_cashback", label: "Cashback", description: "Beneficio o devolución de consumo.", countAsIncome: true },
+]
 
 type ExpensePrefill = {
   amount?: string
@@ -105,6 +113,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [currency, setCurrency] = useState<Currency>("DOP")
   const [date, setDate] = useState<Date>(new Date())
   const [applyCommission, setApplyCommission] = useState(false)
+  const [creditCardIncomeKind, setCreditCardIncomeKind] = useState<CreditCardIncomeKind>("card_payment")
   const [isSaving, setIsSaving] = useState(false)
   const [prefillApplied, setPrefillApplied] = useState(false)
   const [subscriptionProvider, setSubscriptionProvider] = useState("netflix")
@@ -133,31 +142,6 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       setCurrency(lastCur as Currency)
     }
   }, [accounts])
-
-  // Heuristic: compute unique recent expenses to use as quick templates
-  const quickTemplates = useMemo(() => {
-    if (!rawTransactions || rawTransactions.length === 0) return []
-    const expenses = rawTransactions.filter(tx => tx.type === "expense" && tx.description)
-    const unique: any[] = []
-    const seen = new Set<string>()
-
-    for (const tx of expenses) {
-      const key = `${tx.description?.toLowerCase()}_${tx.category_id || ""}_${tx.currency}`
-      if (!seen.has(key)) {
-        seen.add(key)
-        unique.push({
-          description: tx.description,
-          amount: String(tx.amount),
-          currency: tx.currency as Currency,
-          accountId: tx.account_id,
-          categoryId: tx.category_id,
-          categoryName: tx.category?.name || "Gastos",
-        })
-      }
-      if (unique.length >= 4) break
-    }
-    return unique
-  }, [rawTransactions])
 
   // Heuristic: suggest category, account, and amount when user types a description
   const descriptionSuggestion = useMemo(() => {
@@ -199,7 +183,22 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const selectedDbCategory = dbCategories.find((item) => item.id === selectedCategory?.id)
   const isSubscriptionCategory = Boolean(selectedDbCategory?.is_subscription || selectedDbCategory?.name.toLowerCase().includes("suscrip"))
   const selectedAccount = accounts.find(a => a.id === accountId)
+  const selectedRawAccount = rawAccounts.find((account) => account.id === accountId)
   const isCredit = selectedAccount?.type === "credit"
+  const supportedCurrencies = useMemo<Currency[]>(() => {
+    if (!selectedRawAccount) return ["DOP", "USD"]
+    if (selectedRawAccount.type !== "credit") return [selectedRawAccount.currency as Currency]
+    const currencies: Currency[] = []
+    if (Number(selectedRawAccount.credit_limit_dop || selectedRawAccount.current_debt_dop || 0) > 0 || selectedRawAccount.currency === "DOP") {
+      currencies.push("DOP")
+    }
+    if (Number(selectedRawAccount.credit_limit_usd || selectedRawAccount.current_debt_usd || 0) > 0 || selectedRawAccount.currency === "USD") {
+      currencies.push("USD")
+    }
+    return currencies.length > 0 ? currencies : [selectedRawAccount.currency as Currency]
+  }, [selectedRawAccount])
+  const isCreditCardIncome = transactionType === "income" && isCredit
+  const selectedCreditCardIncomeOption = creditCardIncomeOptions.find((option) => option.value === creditCardIncomeKind) || creditCardIncomeOptions[0]
   const availableAmount = selectedAccount
     ? isCredit
       ? getAvailableCredit(selectedAccount)
@@ -214,6 +213,12 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
 
   const commissionAmount = parsedAmount ? Math.round(parsedAmount * 0.15) / 100 : 0
   const totalWithCommission = parsedAmount ? parsedAmount + (transactionType === "expense" && applyCommission ? commissionAmount : 0) : 0
+
+  useEffect(() => {
+    if (supportedCurrencies.length > 0 && !supportedCurrencies.includes(currency)) {
+      setCurrency(supportedCurrencies[0])
+    }
+  }, [currency, supportedCurrencies])
 
   const handleAmountChange = (value: string) => {
     // Only allow numbers and one decimal point
@@ -247,6 +252,14 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         : accountId
 
       const txDate = getLocalDateString(date)
+      const metadata = isCreditCardIncome
+        ? {
+            kind: "credit_card_income",
+            movement_kind: creditCardIncomeKind,
+            reporting_treatment: selectedCreditCardIncomeOption.countAsIncome ? "income_adjustment" : "exclude_from_income",
+            affects_credit_debt: true,
+          }
+        : null
 
       await createTransaction({
         account_id: targetAccountId,
@@ -261,7 +274,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         amount_base: parsedAmount,
         exchange_rate: 1,
         parent_transaction_id: null,
-        metadata: null,
+        metadata,
       }, { applyCommission })
 
       if (transactionType === "expense" && subscriptionMode === "recurring") {
@@ -287,7 +300,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
 
       const isDeviceOnline = typeof navigator !== "undefined" ? navigator.onLine : true
       showToast({
-        title: transactionType === "income" ? "Ingreso registrado" : "Gasto guardado",
+        title: isCreditCardIncome ? selectedCreditCardIncomeOption.label : transactionType === "income" ? "Ingreso registrado" : "Gasto guardado",
         body: isDeviceOnline
           ? `${formatCurrency(parsedAmount)} · ${description}`
           : "Gasto guardado sin conexión. Se sincronizará cuando vuelva internet.",
@@ -302,6 +315,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       setCategory("")
       setDate(new Date())
       setApplyCommission(false)
+      setCreditCardIncomeKind("card_payment")
       setSubscriptionMode("once")
       onBack?.()
     } catch (error) {
@@ -409,30 +423,26 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             />
           </div>
 
-          <div className="mt-5 inline-flex h-10 overflow-hidden rounded-full bg-muted/70 p-1">
-            <button
-              onClick={() => setCurrency("DOP")}
-              className={cn(
-                "flex items-center justify-center rounded-full px-4 text-xs font-medium transition-colors",
-                currency === "DOP"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground"
-              )}
-            >
-              DOP
-            </button>
-            <button
-              onClick={() => setCurrency("USD")}
-              className={cn(
-                "flex items-center justify-center rounded-full px-4 text-xs font-medium transition-colors",
-                currency === "USD"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground"
-              )}
-            >
-              USD
-            </button>
-          </div>
+          {supportedCurrencies.length > 1 ? (
+            <div className="mt-5 inline-flex h-10 overflow-hidden rounded-full bg-muted/70 p-1">
+              {(["DOP", "USD"] as Currency[]).filter((item) => supportedCurrencies.includes(item)).map((item) => (
+                <button
+                  key={item}
+                  onClick={() => setCurrency(item)}
+                  className={cn(
+                    "flex items-center justify-center rounded-full px-4 text-xs font-medium transition-colors",
+                    currency === item
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-4 text-xs font-medium text-muted-foreground">{supportedCurrencies[0] === "USD" ? "Dólares" : "Pesos dominicanos"}</p>
+          )}
 
           {transactionType === "expense" && (
             <button
@@ -452,39 +462,6 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             </p>
           )}
         </div>
-
-        {quickTemplates.length > 0 && transactionType === "expense" && (
-          <div className="space-y-2">
-            <p className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Frecuentes / Repetir rápido</p>
-            <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {quickTemplates.map((template, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    setAmount(template.amount)
-                    setDescription(template.description)
-                    setCurrency(template.currency)
-                    if (template.accountId) setAccountId(template.accountId)
-                    if (template.categoryId) setCategory(template.categoryId)
-                    showToast({
-                      title: "Plantilla aplicada",
-                      body: `${template.description} por ${template.currency === "DOP" ? "RD$" : "US$"}${template.amount}`,
-                      type: "success",
-                      duration: 2000,
-                    })
-                  }}
-                  className="flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs text-foreground transition hover:bg-muted active:scale-95 animate-in fade-in"
-                >
-                  <span className="font-semibold">{template.description}</span>
-                  <span className="text-muted-foreground">
-                    {template.currency === "DOP" ? "RD$" : "US$"}{parseFloat(template.amount).toLocaleString()}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-2 gap-3">
           <Popover>
@@ -546,7 +523,6 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">Cuenta</p>
           <AccountCarouselSelector
             items={accounts
-              .filter((account) => !(transactionType === "income" && account.type === "credit"))
               .map((account) => ({
                 id: account.id,
                 title: account.name,
@@ -653,6 +629,30 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
                 {descriptionSuggestion.currency === "DOP" ? "RD$" : "US$"}{parseFloat(descriptionSuggestion.amount).toLocaleString()} en {descriptionSuggestion.categoryName}
               </span>
             </button>
+          )}
+
+          {isCreditCardIncome && (
+            <div className="mt-3 rounded-2xl border border-border bg-card p-3">
+              <p className="mb-2 px-1 text-xs font-medium text-muted-foreground">Tipo de ingreso en tarjeta</p>
+              <div className="grid grid-cols-2 gap-2">
+                {creditCardIncomeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setCreditCardIncomeKind(option.value)}
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-left transition-colors",
+                      creditCardIncomeKind === option.value
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border bg-background text-muted-foreground"
+                    )}
+                  >
+                    <span className="block text-xs font-semibold">{option.label}</span>
+                    <span className="mt-1 block text-[11px] leading-snug">{option.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       </div>

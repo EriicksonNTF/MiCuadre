@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { isReportableIncome } from "@/lib/transactions/reporting"
 import type { Account, Goal, Transaction, Subscription, CreditCardCycle } from "@/lib/types/database"
 
 function toDate(value: string) {
@@ -17,15 +18,15 @@ export async function getMonthlySpendingSummary(supabase: SupabaseClient, userId
   
   const { data: txs } = await supabase
     .from("transactions")
-    .select("amount, type, date")
+    .select("amount, type, date, metadata")
     .eq("user_id", userId)
     .gte("date", start.toISOString().slice(0, 10))
     .lt("date", next.toISOString().slice(0, 10))
 
-  const transactions = (txs || []) as Pick<Transaction, "amount" | "type" | "date">[]
+  const transactions = (txs || []) as Pick<Transaction, "amount" | "type" | "date" | "metadata">[]
   
   const income = transactions
-    .filter((tx) => tx.type === "income")
+    .filter((tx) => tx.type === "income" && isReportableIncome(tx.metadata))
     .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
   const expense = transactions
     .filter((tx) => tx.type === "expense")

@@ -1,5 +1,6 @@
 import type { Account, FinancialSubscription, Goal, Transaction } from "@/lib/types/database"
 import { formatCurrency } from "@/lib/data"
+import { isReportableExpense, isReportableIncome } from "@/lib/transactions/reporting"
 
 export type InsightType = "success" | "warning" | "info" | "danger"
 
@@ -20,8 +21,8 @@ type InsightInput = {
 
 export function generateFinancialInsights(input: InsightInput): FinancialInsight[] {
   const insights: FinancialInsight[] = []
-  const expenses = input.transactions.filter((tx) => tx.type === "expense" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal"))
-  const incomes = input.transactions.filter((tx) => tx.type === "income" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal"))
+  const expenses = input.transactions.filter((tx) => tx.type === "expense" && isReportableExpense(tx.metadata))
+  const incomes = input.transactions.filter((tx) => tx.type === "income" && isReportableIncome(tx.metadata))
   const totalExpense = expenses.reduce((sum, tx) => sum + Number(tx.amount), 0)
   const totalIncome = incomes.reduce((sum, tx) => sum + Number(tx.amount), 0)
   const net = totalIncome - totalExpense
@@ -69,7 +70,7 @@ export function generateFinancialInsights(input: InsightInput): FinancialInsight
 
   if (input.previousTransactions && input.previousTransactions.length > 0) {
     const prevExpenses = input.previousTransactions
-      .filter((tx) => tx.type === "expense" && !(tx.metadata?.kind === "transfer" && tx.metadata?.transfer_type === "internal"))
+      .filter((tx) => tx.type === "expense" && isReportableExpense(tx.metadata))
       .reduce((sum, tx) => sum + Number(tx.amount), 0)
     if (prevExpenses > 0 && totalExpense < prevExpenses) {
       insights.push({

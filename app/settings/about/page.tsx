@@ -22,17 +22,17 @@ export default function AboutPage() {
             <Smartphone className="h-10 w-10 text-white" />
           </div>
           <h2 className="mt-4 text-2xl font-bold">MiCuadre</h2>
-          <p className="mt-1 text-sm text-muted-foreground">VersiÃ³n 1.0.0</p>
+          <p className="mt-1 text-sm text-muted-foreground">Versión 1.0.0</p>
         </div>
         <div className="rounded-2xl bg-card p-5">
           <p className="text-sm text-muted-foreground leading-relaxed">
             MiCuadre es tu asistente de finanzas personales. Administra tus cuentas, controla tus gastos,
-            alcanza tus presupuestos y deudas y toma el control de tu dinero â€” todo en un solo lugar.
+            alcanza tus presupuestos y deudas y toma el control de tu dinero — todo en un solo lugar.
           </p>
         </div>
         <div className="rounded-2xl bg-card overflow-hidden divide-y divide-border">
           <div className="flex items-center justify-between p-5">
-            <span className="font-medium">VersiÃ³n</span>
+            <span className="font-medium">Versión</span>
             <span className="text-sm text-muted-foreground">1.0.0</span>
           </div>
           <div className="flex items-center justify-between p-5">
@@ -50,8 +50,8 @@ export default function AboutPage() {
               <Code className="h-5 w-5" />
             </div>
             <div>
-              <p className="font-semibold">CÃ³digo abierto</p>
-              <p className="text-sm text-muted-foreground">TecnologÃ­a: Next.js, React, Supabase</p>
+              <p className="font-semibold">Código abierto</p>
+              <p className="text-sm text-muted-foreground">Tecnología: Next.js, React, Supabase</p>
             </div>
           </div>
         </div>
@@ -62,12 +62,12 @@ export default function AboutPage() {
             </div>
             <div>
               <p className="font-semibold">Hecho con amor</p>
-              <p className="text-sm text-muted-foreground">Santo Domingo, RepÃºblica Dominicana</p>
+              <p className="text-sm text-muted-foreground">Santo Domingo, República Dominicana</p>
             </div>
           </div>
         </div>
         <p className="pt-4 text-center text-xs text-muted-foreground">
-          Â© 2026 MiCuadre. Todos los derechos reservados.
+          © 2026 MiCuadre. Todos los derechos reservados.
         </p>
       </div>
     </div>

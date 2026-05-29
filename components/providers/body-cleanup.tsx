@@ -28,12 +28,24 @@ export function BodyCleanup() {
     }
 
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/service-worker.js")
-        .then((reg) => {
-          reg.update()
-          console.log("SW registered:", reg.scope)
-        })
-        .catch((err) => console.log("SW registration failed:", err))
+      if (process.env.NODE_ENV === "development") {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const registration of registrations) {
+            registration.unregister().then((success) => {
+              if (success) {
+                console.log("SW unregistered successfully in development mode.")
+              }
+            })
+          }
+        }).catch((err) => console.log("Failed to get SW registrations:", err))
+      } else {
+        navigator.serviceWorker.register("/service-worker.js")
+          .then((reg) => {
+            reg.update()
+            console.log("SW registered:", reg.scope)
+          })
+          .catch((err) => console.log("SW registration failed:", err))
+      }
     }
 
     const PRIMARY_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/planning"])

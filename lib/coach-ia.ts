@@ -49,7 +49,7 @@ const INTENT_PATTERNS: Record<CoachIntent, RegExp[]> = {
     /en que .*gast/, /donde .*dinero/, /cuanto .*gast/, /resumen/, /como voy/, /ver/, /cuanto llevo/,
   ],
   mutation: [
-    /agrega/, /anade/, /aÃ±ade/, /registr/, /crea/, /pon /, /guarda /,
+    /agrega/, /anade/, /añade/, /registr/, /crea/, /pon /, /guarda /,
   ],
   analysis: [
     /mes pasado/, /compar/, /proyecc/, /me alcanza/, /voy bien/, /ritmo/, /semana/,

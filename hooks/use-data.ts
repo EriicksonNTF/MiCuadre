@@ -1328,10 +1328,21 @@ export async function createTransaction(
     mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
     mutate("accounts")
 
+    const notificationMetadata = transactionToInsert.metadata as Record<string, unknown> | null
+    const isCreditCardIncome = notificationMetadata?.kind === "credit_card_income"
+    const creditCardIncomeTitle =
+      notificationMetadata?.movement_kind === "card_refund"
+        ? "Reembolso en tarjeta"
+        : notificationMetadata?.movement_kind === "card_adjustment"
+          ? "Ajuste positivo de tarjeta"
+          : notificationMetadata?.movement_kind === "card_cashback"
+            ? "Cashback en tarjeta"
+            : "Abono a tarjeta"
+
     await createNotification({
       userId: user.id,
       type: "transaction",
-      title: transactionToInsert.type === "income" ? "Ingreso registrado" : "Gasto registrado",
+      title: isCreditCardIncome ? creditCardIncomeTitle : transactionToInsert.type === "income" ? "Ingreso registrado" : "Gasto registrado",
       message: `${transactionToInsert.description || "Movimiento"}: ${transactionToInsert.currency} ${roundCurrencyAmount(transactionToInsert.amount).toFixed(2)}`,
       actionUrl: "/history",
     })

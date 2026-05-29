@@ -21,7 +21,7 @@ function normalizeText(value: string) {
 export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): CoachResponse {
   const q = normalizeText(message)
 
-  if (/(agrega|anade|aÃ±ade|registra|crear|crea|guarda)/.test(q) && /(gasto|ingreso|transaccion)/.test(q)) {
+  if (/(agrega|anade|añade|registra|crear|crea|guarda)/.test(q) && /(gasto|ingreso|transaccion)/.test(q)) {
     const amountMatch = q.match(/(\d+[\.,]?\d*)/)
     const amount = amountMatch ? Number(amountMatch[1].replace(",", ".")) : 0
     const currency = q.includes("usd") || q.includes("dolar") ? "USD" : "DOP"
@@ -93,7 +93,7 @@ export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): Coach
 
     return {
       answer: `Perfecto. Te deje un borrador de presupuesto "${parsedGoal.data.name}" por ${formatCurrency(parsedGoal.data.targetAmount, parsedGoal.data.currency)}.`,
-      uiBlocks: [{ type: "kpi_card", title: "Borrador de presupuesto", value: `${parsedGoal.data.name} Â· ${formatCurrency(parsedGoal.data.targetAmount, parsedGoal.data.currency)}`, tone: "success" }],
+      uiBlocks: [{ type: "kpi_card", title: "Borrador de presupuesto", value: `${parsedGoal.data.name} · ${formatCurrency(parsedGoal.data.targetAmount, parsedGoal.data.currency)}`, tone: "success" }],
       actions: [
         {
           label: "Confirmar y crear",
@@ -131,7 +131,7 @@ export function runMiaPhase1Agent(message: string, snapshot: MiaSnapshot): Coach
         {
           type: "warning_bar",
           title: "Fechas de tarjeta",
-          value: `Corte: ${card.statementDate || "Sin fecha"} Â· Pago: ${card.statementDueDate || "Sin fecha"}`,
+          value: `Corte: ${card.statementDate || "Sin fecha"} · Pago: ${card.statementDueDate || "Sin fecha"}`,
         },
       ],
       actions: [{ label: "Ver cuentas", href: "/accounts", actionType: "navigate" }],
