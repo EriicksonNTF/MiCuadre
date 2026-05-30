@@ -139,6 +139,39 @@ body:not(.modal-open) {
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 
+.mobile-page {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 28rem;
+  padding-inline: 1.25rem;
+  padding-top: calc(1.5rem + env(safe-area-inset-top));
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+.mobile-card {
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.mobile-icon-badge {
+  display: inline-flex;
+  height: 3rem;
+  width: 3rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.mobile-action-button {
+  min-height: 3.5rem;
+  border-radius: 22px;
+  font-weight: 700;
+}
+
 @media (display-mode: standalone) {
   body {
     overscroll-behavior-y: auto;

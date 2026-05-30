@@ -24,14 +24,14 @@ export function MobileFullscreenForm({
   }, [])
 
   return (
-    <div data-app-modal="true" className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col bg-background">
-      <div className="shrink-0 border-b px-6 py-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+    <div data-app-modal="true" className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen flex-col overflow-hidden bg-background">
+      <div className="shrink-0 border-b border-border bg-background px-5 py-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <h2 className="min-w-0 truncate text-lg font-bold text-foreground">{title}</h2>
           {onClose && (
             <button
               onClick={onClose}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted"
               aria-label="Cerrar"
             >
               <X className="h-4 w-4" />
@@ -40,12 +40,12 @@ export function MobileFullscreenForm({
         </div>
       </div>
 
-      <div className={`flex-1 min-h-0 overflow-y-auto px-6 py-6 pb-32 ${contentClassName ?? ""}`}>
+      <div className={`min-h-0 flex-1 overflow-y-auto px-5 py-6 pb-8 ${contentClassName ?? ""}`}>
         {children}
       </div>
 
       {footer && (
-        <div className="shrink-0 border-t bg-background px-6 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
+        <div className="shrink-0 border-t border-border bg-card px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4">
           {footer}
         </div>
       )}

@@ -46,7 +46,7 @@ export function PlanningSummaryCards({
         <p className="mt-2 text-sm font-bold">{formatCurrency(debtPendingDop, "DOP")}</p>
         {debtPendingUsd > 0 ? <p className="text-sm font-bold">{formatCurrency(debtPendingUsd, "USD")}</p> : null}
         <p className="text-xs text-muted-foreground">
-          {next7Amount > 0 ? `${formatCurrency(next7Amount)} en proximos 7 dias` : "No tienes deudas pendientes"}
+          {next7Amount > 0 ? `${formatCurrency(next7Amount)} en próximos 7 días` : "No tienes deudas pendientes"}
         </p>
       </article>
 

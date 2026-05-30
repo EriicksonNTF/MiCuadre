@@ -19,6 +19,7 @@ import { offlineDB, OutboxItem } from "@/lib/offline/db"
 import { getCycleForDate } from "@/lib/credit-cycle"
 import { getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
 import { blockedEntitlement, DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
+import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 import { normalizePlanTier } from "@/lib/billing/plans"
 import type { PlanTier } from "@/types/billing"
 
@@ -337,12 +338,20 @@ async function fetchFinancialSubscriptions(): Promise<FinancialSubscription[]> {
   return (data as FinancialSubscription[]) || []
 }
 
-async function getUserPlanAndLimits(userId: string) {
+async function getUserPlanAndLimits(userId: string, email?: string | null) {
+  if (isTestFullAccessEmail(email)) {
+    return { plan: "pro" as const, limits: ENTITLEMENTS_BY_PLAN.pro }
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan_tier")
+    .select("plan_tier, email")
     .eq("id", userId)
     .maybeSingle()
+
+  if (isTestFullAccessEmail((profile as any)?.email)) {
+    return { plan: "pro" as const, limits: ENTITLEMENTS_BY_PLAN.pro }
+  }
 
   const plan = normalizePlanTier((profile as any)?.plan_tier as string | null) || DEFAULT_PLAN
   const limits = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
@@ -1054,7 +1063,7 @@ export async function createAccount(account: NewAccountInput) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  const { limits } = await getUserPlanAndLimits(user.id)
+  const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.max_accounts !== "unlimited") {
     const { count } = await supabase
       .from("accounts")
@@ -1127,7 +1136,7 @@ export async function createTransaction(
 
   const idempotencyKey = options?.idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
   const localId = `local_tx_${Math.random().toString(36).substring(2, 15)}`
-  const { limits } = await getUserPlanAndLimits(user.id)
+  const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.max_daily_transactions !== "unlimited") {
     const today = getLocalDateString()
     const { count } = await supabase
@@ -1704,7 +1713,7 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  const { limits } = await getUserPlanAndLimits(user.id)
+  const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.max_goals !== "unlimited") {
     const { count } = await supabase
       .from("goals")
@@ -2522,7 +2531,7 @@ export async function createFinancialSubscription(input: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
-  const { limits } = await getUserPlanAndLimits(user.id)
+  const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.financial_subscriptions !== "unlimited") {
     const { count } = await supabase
       .from("subscriptions")
@@ -2579,7 +2588,7 @@ export async function updateFinancialSubscription(id: string, updates: Partial<F
   if (!user) throw new Error("Not authenticated")
 
   if (updates.auto_record_enabled || updates.pre_alert_enabled) {
-    const { limits } = await getUserPlanAndLimits(user.id)
+    const { limits } = await getUserPlanAndLimits(user.id, user.email)
     if (!limits.planning_full) {
       throw blockedEntitlement({
         feature: "financial_subscriptions",

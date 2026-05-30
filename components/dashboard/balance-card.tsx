@@ -16,31 +16,30 @@ export function BalanceCard() {
     : 0
 
   const hasPending = accounts ? accounts.some((acc: any) => acc.hasPendingChanges) : false
+  const balanceText = showBalance ? formatCurrency(netBalance) : "••••••••"
 
   return (
-    <div className="rounded-3xl border border-black/5 bg-white px-6 py-8 text-black shadow-[0_10px_30px_rgba(15,23,42,0.08)] dark:border-white/10 dark:bg-[#0B0F14] dark:text-white dark:shadow-[0_14px_34px_rgba(0,0,0,0.35)]">
+    <div className="mobile-card px-6 py-7 shadow-sm">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-black/70 dark:text-white/75">Balance neto</p>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Balance total</p>
         <button
           onClick={() => setShowBalance(!showBalance)}
-          className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-muted transition-colors hover:bg-muted/80"
           aria-label={showBalance ? "Ocultar balance" : "Mostrar balance"}
         >
           {showBalance ? (
-            <Eye className="h-4 w-4 text-black/55 dark:text-white/60" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
           ) : (
-            <EyeOff className="h-4 w-4 text-black/55 dark:text-white/60" />
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
           )}
         </button>
       </div>
 
-      <h2 className="mt-3 text-4xl font-bold tracking-tight text-black dark:text-white">
+      <h2 className="mt-5 overflow-hidden text-[clamp(1.75rem,7.7vw,2.55rem)] font-extrabold leading-none tracking-tight text-foreground">
         {isLoading ? (
-          <span className="inline-block h-10 w-48 animate-pulse rounded bg-black/10 dark:bg-white/15" />
-        ) : showBalance ? (
-          formatCurrency(netBalance)
+          <span className="inline-block h-12 w-52 max-w-full animate-pulse rounded-2xl bg-muted" />
         ) : (
-          "••••••••"
+          <span className="block max-w-full whitespace-nowrap">{balanceText}</span>
         )}
       </h2>
 
@@ -51,8 +50,8 @@ export function BalanceCard() {
         </p>
       )}
 
-      <p className="mt-2 text-xs text-black/55 dark:text-white/55">Efectivo y débito</p>
-      <p className={totalCreditDebt > 0 ? "mt-1 text-xs text-red-600 dark:text-red-300" : "mt-1 text-xs text-black/60 dark:text-white/60"}>
+      <p className="mt-4 text-xs font-medium text-muted-foreground">Efectivo, débito y tarjetas</p>
+      <p className={totalCreditDebt > 0 ? "mt-1 text-xs font-semibold text-destructive" : "mt-1 text-xs text-muted-foreground"}>
         Deuda total de tarjetas: {showBalance ? formatCurrency(totalCreditDebt, "DOP") : "••••••••"}
       </p>
     </div>

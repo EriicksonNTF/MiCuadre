@@ -21,9 +21,9 @@ export function Header() {
     .join("") || "US"
 
   return (
-    <header className="flex items-center justify-between px-4">
-      <div className="flex items-center gap-3">
-        <Avatar className="h-10 w-10">
+    <header className="flex items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar className="h-12 w-12 shrink-0">
           <AvatarImage
             src={profile?.avatar_url || undefined}
             alt={displayName}
@@ -32,29 +32,29 @@ export function Header() {
             {initials}
           </AvatarFallback>
         </Avatar>
-        <div>
-          <p className="text-[10px] text-muted-foreground">Bienvenido</p>
-          <h1 className="text-sm font-semibold text-foreground">
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Bienvenido</p>
+          <h1 className="truncate text-base font-bold text-foreground">
             {displayName}
           </h1>
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-2">
         {loading ? (
-          <div className="h-10 w-24 rounded-full bg-muted/60" />
+          <div className="h-11 w-24 rounded-full bg-muted/60" />
         ) : isAuthenticated ? (
           <>
             <Link
               href="/settings"
-              className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted active:scale-95"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-card ring-1 ring-border transition-colors hover:bg-muted active:scale-95"
               aria-label="Ajustes"
             >
               <Settings className="h-5 w-5 text-muted-foreground" />
             </Link>
             <Link
               href="/notifications"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted active:scale-95"
+              className="relative flex h-11 w-11 items-center justify-center rounded-full bg-card ring-1 ring-border transition-colors hover:bg-muted active:scale-95"
               aria-label="Notificaciones"
             >
               <Bell className="h-5 w-5 text-muted-foreground" />

@@ -11,6 +11,7 @@ import type { Budget, BudgetWithUsage, Debt, DebtPayment, DebtWithProgress } fro
 import { getFinancialCalendarEvents, type FinancialCalendarEvent, type CalendarEventType } from "@/lib/planning/calendar"
 import { DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN, blockedEntitlement } from "@/lib/entitlements/entitlements"
 import { normalizePlanTier } from "@/lib/billing/plans"
+import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 
 const supabase = createClient()
 
@@ -309,10 +310,12 @@ export async function createBudget(input: {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan_tier")
+    .select("plan_tier, email")
     .eq("id", userId)
     .maybeSingle()
-  const plan = normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
+  const plan = isTestFullAccessEmail(userData.user.email) || isTestFullAccessEmail((profile as any)?.email)
+    ? "pro"
+    : normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
   const limits = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
 
   if (limits.max_budgets !== "unlimited") {
@@ -411,10 +414,12 @@ export async function createDebt(input: {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan_tier")
+    .select("plan_tier, email")
     .eq("id", userId)
     .maybeSingle()
-  const plan = normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
+  const plan = isTestFullAccessEmail(userData.user.email) || isTestFullAccessEmail((profile as any)?.email)
+    ? "pro"
+    : normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
   const limits = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
 
   if (limits.max_active_debts !== "unlimited") {

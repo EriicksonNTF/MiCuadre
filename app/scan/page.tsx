@@ -434,7 +434,7 @@ export default function ScanPage() {
             <div className="flex justify-between"><span className="text-muted-foreground">Monto</span><span>{result.amount.value ?? "-"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Moneda</span><span>{result.currency.value || "-"}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Fecha</span><span>{result.date.value || "-"}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Categoria sugerida</span><span>{result.categorySuggestion.value || "-"}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Categoría sugerida</span><span>{result.categorySuggestion.value || "-"}</span></div>
 
             <div className="flex justify-between"><span className="text-muted-foreground">Precision de monto</span><span>{Math.round(result.amount.confidence * 100)}%</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Confianza general</span><span>{Math.round(result.overallConfidence * 100)}%</span></div>

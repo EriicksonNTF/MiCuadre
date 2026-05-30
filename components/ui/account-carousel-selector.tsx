@@ -47,8 +47,8 @@ export const AccountCarouselSelector = memo(function AccountCarouselSelector({
     <div className="relative -mx-1">
       <div className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-6 bg-gradient-to-r from-background to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-6 bg-gradient-to-l from-background to-transparent" />
-      <div ref={scrollerRef} className="overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <div className="flex snap-x snap-mandatory gap-3 px-[10%]">
+      <div ref={scrollerRef} className="overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex snap-x snap-mandatory gap-3 px-4">
         {items.map((item) => {
           const selected = selectedId === item.id
           return (
@@ -60,8 +60,8 @@ export const AccountCarouselSelector = memo(function AccountCarouselSelector({
               onClick={() => handleSelect(item.id)}
               aria-pressed={selected}
               className={cn(
-                "w-[170px] shrink-0 snap-center rounded-2xl border p-3 text-left transition-all duration-300",
-                compact ? "w-[148px]" : "",
+                "w-[76vw] max-w-[190px] shrink-0 snap-center rounded-[22px] border p-4 text-left transition-all duration-300",
+                compact ? "w-[65vw] max-w-[160px]" : "",
                 selected
                   ? "scale-[1.04] border-primary bg-primary/10 shadow-lg ring-1 ring-primary/30"
                   : "border-border bg-card opacity-80"

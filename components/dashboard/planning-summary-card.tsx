@@ -23,10 +23,10 @@ export function PlanningSummaryCard() {
           : "Aun no tienes presupuestos activos"}
       </p>
       <p className="mt-1 text-xs text-muted-foreground">Proximos pagos: {formatCurrency(next7Amount)} esta semana</p>
-      <p className="text-xs text-muted-foreground">{nextEvent ? `${nextEvent.title} vence ${nextEvent.due_date}` : "Sin pagos proximos"}</p>
+      <p className="text-xs text-muted-foreground">{nextEvent ? `${nextEvent.title} vence ${nextEvent.due_date}` : "Sin pagos próximos"}</p>
       <p className="mt-1 text-xs text-muted-foreground">Deuda pendiente: {formatCurrency(debtsSummary.totalPending)}</p>
       <Link href="/planning" className="mt-3 inline-block text-sm font-semibold text-primary">
-        Ver planificacion
+        Ver planificación
       </Link>
     </section>
   )

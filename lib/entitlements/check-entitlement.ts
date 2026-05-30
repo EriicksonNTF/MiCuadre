@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { blockedEntitlement, DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
 import { normalizePlanTier } from "@/lib/billing/plans"
+import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 import type { FeatureKey, PlanTier } from "@/types/billing"
 
 export type EntitlementCheckResult = {
@@ -17,11 +18,13 @@ export async function checkEntitlement(userId: string, feature: FeatureKey): Pro
   const supabase = await createClient()
   const { data: profile } = await supabase
     .from("profiles")
-    .select("plan_tier")
+    .select("plan_tier, email")
     .eq("id", userId)
     .maybeSingle()
 
-  const plan = normalizePlanTier(profile?.plan_tier as string | null) || DEFAULT_PLAN
+  const plan = isTestFullAccessEmail((profile as any)?.email)
+    ? "pro"
+    : normalizePlanTier(profile?.plan_tier as string | null) || DEFAULT_PLAN
   const config = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
 
   if (feature === "max_accounts") {

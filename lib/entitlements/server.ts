@@ -3,15 +3,18 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { normalizePlanTier } from "@/lib/billing/plans"
 import { DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
+import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 import type { FeatureKey, PlanTier } from "@/types/billing"
 
 export async function getUserPlanServer(userId: string): Promise<PlanTier> {
   const admin = createAdminClient()
   const { data: profile } = await admin
     .from("profiles")
-    .select("plan_tier")
+    .select("plan_tier, email")
     .eq("id", userId)
     .maybeSingle()
+
+  if (isTestFullAccessEmail((profile as any)?.email)) return "pro"
 
   return normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
 }

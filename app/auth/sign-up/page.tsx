@@ -100,7 +100,7 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-background p-6">
+    <div className="flex min-h-[100dvh] w-full items-center justify-center bg-background px-5 py-[calc(1.5rem+env(safe-area-inset-top))] pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
@@ -111,7 +111,7 @@ export default function SignUpPage() {
             <p className="text-sm text-muted-foreground">Tu copiloto financiero dominicano</p>
           </div>
 
-          <Card className="border-border/50">
+          <Card className="rounded-[28px] border-border/70 shadow-sm">
             <CardHeader className="text-center">
               <CardTitle className="text-xl">Crear cuenta</CardTitle>
               <CardDescription>
@@ -123,7 +123,7 @@ export default function SignUpPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-11"
+                  className="mobile-action-button"
                   disabled={isLoading}
                   onClick={() => handleOAuthSignUp('google')}
                 >
@@ -133,7 +133,7 @@ export default function SignUpPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="hidden h-11"
+                  className="hidden mobile-action-button"
                   disabled={isLoading}
                   onClick={() => handleOAuthSignUp('apple')}
                 >
@@ -153,7 +153,7 @@ export default function SignUpPage() {
                       required
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="h-11"
+                      className="h-14 rounded-2xl"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -165,7 +165,7 @@ export default function SignUpPage() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="h-11"
+                      className="h-14 rounded-2xl"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -176,7 +176,7 @@ export default function SignUpPage() {
                       required
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="h-11"
+                      className="h-14 rounded-2xl"
                     />
                   </div>
                   <div className="grid gap-2">
@@ -187,7 +187,7 @@ export default function SignUpPage() {
                       required
                       value={repeatPassword}
                       onChange={(e) => setRepeatPassword(e.target.value)}
-                      className="h-11"
+                      className="h-14 rounded-2xl"
                     />
                   </div>
                   {error && (
@@ -195,7 +195,7 @@ export default function SignUpPage() {
                       {error}
                     </p>
                   )}
-                  <Button type="submit" className="w-full h-11" disabled={isLoading}>
+                  <Button type="submit" className="mobile-action-button w-full" disabled={isLoading}>
                     {isLoading ? 'Creando cuenta...' : 'Crear cuenta'}
                   </Button>
                 </div>

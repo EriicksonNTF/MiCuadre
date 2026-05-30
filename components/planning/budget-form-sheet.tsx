@@ -102,7 +102,7 @@ export function BudgetFormSheet({
         </DrawerHeader>
         <div className="space-y-3">
           <label className="block text-sm">
-            <span className="mb-1 block text-muted-foreground">Categoria</span>
+            <span className="mb-1 block text-muted-foreground">Categoría</span>
             <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={categoryId} onChange={(e) => {
               const next = e.target.value
               setCategoryId(next)

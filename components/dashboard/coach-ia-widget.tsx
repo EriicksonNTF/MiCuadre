@@ -96,7 +96,7 @@ export function CoachIAWidget() {
     {
       id: "init",
       role: "assistant",
-      text: `Soy ${COACH_NAME}, tu coach financiero IA. Te ayudo con gastos, planificacion y FinScore en corto.`,
+      text: `Soy ${COACH_NAME}, tu coach financiero IA. Te ayudo con gastos, planificación y FinScore en corto.`,
     },
   ])
 

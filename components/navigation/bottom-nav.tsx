@@ -95,8 +95,8 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-lg">
-      <div className="mx-auto flex h-20 max-w-md items-center justify-around px-2 pb-4">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg">
+      <div className="mx-auto flex h-20 max-w-md items-center justify-around px-3 pb-3">
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== "/" && pathname.startsWith(item.href))
@@ -139,7 +139,7 @@ export function BottomNav() {
                     clearLongPress()
                   }
                 }}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
               >
                 <Icon className="h-5 w-5" />
                 <span className="sr-only">{item.label}</span>
@@ -152,12 +152,12 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-1 px-2 transition-colors",
+                "flex min-w-0 flex-1 flex-col items-center gap-1 px-1 transition-colors",
                 isActive ? "text-foreground" : "text-muted-foreground"
               )}
             >
               <Icon className={cn("h-5 w-5", isActive && "text-accent")} />
-              <span className="text-[10px] font-medium">{item.label}</span>
+              <span className="max-w-full truncate text-[10px] font-medium">{item.label}</span>
             </Link>
           )
         })}

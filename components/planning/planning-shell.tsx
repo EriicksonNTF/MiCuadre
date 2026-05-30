@@ -8,9 +8,8 @@ import { FinancialCalendarTab } from "@/components/planning/financial-calendar-t
 import { DebtsTab } from "@/components/planning/debts-tab"
 import { PlanningSummaryCards } from "@/components/planning/planning-summary-cards"
 import { useDebtsSummary, useFinancialCalendarSummary, usePlanningSummary } from "@/hooks/use-planning"
-import { useProfile } from "@/hooks/use-data"
-import { normalizePlanTier } from "@/lib/billing/plans"
 import { PlanningProLockScreen } from "@/components/planning/planning-pro-lock-screen"
+import { useEntitlements } from "@/hooks/use-entitlements"
 
 type PlanningTab = "budgets" | "calendar" | "debts"
 
@@ -41,8 +40,7 @@ function PlanningProContent({ tab, onChangeTab }: { tab: PlanningTab; onChangeTa
 
 export function PlanningShell() {
   const router = useRouter()
-  const { data: profile } = useProfile()
-  const isPro = normalizePlanTier((profile as any)?.plan_tier as string | undefined) === "pro"
+  const { canAccessPlanningFull } = useEntitlements()
   const [tab, setTab] = useState<PlanningTab>("calendar")
 
   useEffect(() => {
@@ -83,7 +81,7 @@ export function PlanningShell() {
       </div>
 
       <main className="mx-auto max-w-md space-y-4 px-5 py-4">
-        {!isPro ? (
+        {!canAccessPlanningFull ? (
           <PlanningProLockScreen />
         ) : (
           <>

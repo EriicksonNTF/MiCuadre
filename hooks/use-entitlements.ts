@@ -4,13 +4,18 @@ import { useMemo } from "react"
 import { useAccounts, useFinancialSubscriptions, useProfile } from "@/hooks/use-data"
 import { DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
 import { normalizePlanTier } from "@/lib/billing/plans"
+import { useAuth } from "@/hooks/use-auth"
+import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 
 export function useEntitlements() {
   const { data: profile } = useProfile()
+  const { user } = useAuth()
   const { data: accounts = [] } = useAccounts()
   const { data: subscriptions = [] } = useFinancialSubscriptions()
 
-  const plan = normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
+  const plan = isTestFullAccessEmail(user?.email)
+    ? "pro"
+    : normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
   const limits = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
 
   return useMemo(() => {

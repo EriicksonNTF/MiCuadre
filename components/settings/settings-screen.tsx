@@ -630,7 +630,7 @@ const isDevMode = process.env.NODE_ENV === "development"
               <Trash2 className="h-7 w-7 text-red-600" />
             </div>
             <p className="text-sm text-muted-foreground">
-              Esta acción es permanente. Todos tus datos, transacciones, planificacion y cuentas serán eliminados para siempre y no podrán ser recuperados.
+              Esta acción es permanente. Todos tus datos, transacciones, planificación y cuentas serán eliminados para siempre y no podrán ser recuperados.
             </p>
             <div className="text-left">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">

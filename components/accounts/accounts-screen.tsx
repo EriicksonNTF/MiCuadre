@@ -395,18 +395,18 @@ if (!draggedId) return
 
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
-      <header className="px-6 pb-4 pt-8">
+      <header className="mx-auto max-w-md px-5 pb-4 pt-[calc(1.5rem+env(safe-area-inset-top))]">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Cuentas</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Administra tu dinero</p>
+          <div className="min-w-0">
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Cuentas</h1>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">Administra tu dinero, tarjetas y movimientos.</p>
           </div>
-          <div className="flex items-center gap-3 pt-0.5">
+          <div className="flex shrink-0 items-center gap-2 pt-0.5">
             <button
               type="button"
               onClick={() => setShowTransfer(true)}
-              aria-label="Transferir"
-              className="group flex h-12 w-12 items-center justify-center rounded-full border border-border/70 bg-card/80 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+              aria-label="Mover dinero"
+              className="group flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
             >
               <ArrowRightLeft className="h-4 w-4 text-foreground transition group-hover:text-accent" />
             </button>
@@ -425,10 +425,10 @@ if (!draggedId) return
                 }
                 setShowCreateAccount(true)
               }}
-              aria-label="Agregar cuenta"
-              className="group flex h-12 w-12 items-center justify-center rounded-full border border-border/70 bg-card/80 shadow-sm backdrop-blur transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+              aria-label="Crear cuenta"
+              className="group flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
             >
-              <Plus className="h-4 w-4 text-foreground transition group-hover:text-accent" />
+              <Plus className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -450,17 +450,17 @@ if (!draggedId) return
           ))}
         </div>
       ) : displayAccounts.length === 0 ? (
-        <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50/40 p-6 text-center dark:border-green-900/30 dark:bg-green-900/10">
+        <div className="mx-auto max-w-md rounded-[28px] border-2 border-dashed border-border bg-card p-6 text-center">
           <p className="text-sm font-semibold text-foreground">No tienes cuentas todavía</p>
           <p className="mt-1 text-xs text-muted-foreground">Agrega tu primera cuenta y empieza a rastrear tu dinero.</p>
         </div>
       ) : (
         <>
-          <div className="px-6 pt-3">
+          <div className="mx-auto max-w-md px-5 pt-3">
             <p className="mb-3 text-xs text-muted-foreground">Mantén presionado para ordenar</p>
           </div>
 
-          <div className="space-y-4 px-6 pt-1">
+          <div className="mx-auto max-w-md space-y-4 px-5 pt-1">
         {displayAccounts.map((account) => {
           const isOpen = openSwipeId === account.id
           const isDragging = draggingId === account.id
@@ -601,7 +601,7 @@ if (!draggedId) return
           }}
           footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
         >
-          <div className="space-y-4 pb-safe-areas">
+          <div className="space-y-5">
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
               <AccountCarouselSelector
@@ -621,9 +621,9 @@ if (!draggedId) return
                 onSelect={setToAccount}
               />
             </div>
-            <div>
+            <div className="mobile-card p-4">
               <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
-              <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="w-full rounded-xl bg-muted p-3 text-xl" />
+              <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="w-full rounded-2xl bg-muted p-4 text-2xl font-bold" />
               <button onClick={() => setApplyCommission((prev) => !prev)} className={cn("mt-2 rounded-full px-3 py-1 text-xs font-medium", applyCommission ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Comisión 0.15%</button>
               {applyCommission && parsedTransferAmount > 0 && <p className="mt-1 text-xs text-muted-foreground">Comisión: {formatCurrency(transferCommissionAmount)} · Total: {formatCurrency(totalTransferAmount)}</p>}
             </div>
@@ -635,13 +635,13 @@ if (!draggedId) return
         <BaseModalForm title="Nueva cuenta" onClose={() => {
           setShowCreateAccount(false)
           resetCreateAccountForm()
-        }} footer={<Button onClick={handleCreateAccount} disabled={!canCreateAccount || !accountName || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="h-12 w-full rounded-xl">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
-          <div className="space-y-5 pb-safe-areas">
-            <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
+        }} footer={<Button onClick={handleCreateAccount} disabled={!canCreateAccount || !accountName || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="mobile-action-button w-full">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
+          <div className="space-y-5">
+            <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre" className="h-14 w-full rounded-2xl border border-border bg-background px-4" />
             {accountType !== "cash" && (
-              <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de cuenta" className="w-full rounded-2xl border border-border bg-background px-4 py-4" />
+              <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de cuenta" className="h-14 w-full rounded-2xl border border-border bg-background px-4" />
             )}
-            <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button key={t} onClick={() => setAccountType(t)} className={cn("rounded-xl px-3 py-2 text-xs", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
+            <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button key={t} onClick={() => setAccountType(t)} className={cn("h-12 rounded-2xl px-2 text-xs font-bold", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
             <div className="grid grid-cols-2 gap-2">
               {(["DOP", "USD"] as const).map((currency) => (
                 <button key={currency} onClick={() => { setAccountCurrency(currency); setCreditUsed("") }} className={cn("rounded-xl px-3 py-2 text-xs font-semibold", accountCurrency === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>

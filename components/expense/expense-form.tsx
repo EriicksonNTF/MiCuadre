@@ -112,6 +112,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [accountId, setAccountId] = useState("cash")
   const [currency, setCurrency] = useState<Currency>("DOP")
   const [date, setDate] = useState<Date>(new Date())
+  const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [applyCommission, setApplyCommission] = useState(false)
   const [creditCardIncomeKind, setCreditCardIncomeKind] = useState<CreditCardIncomeKind>("card_payment")
   const [isSaving, setIsSaving] = useState(false)
@@ -233,10 +234,8 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
 
     if (transactionType === "expense" && totalWithCommission > availableAmount) {
       showToast({
-        title: isCredit ? "Credito insuficiente" : "Saldo insuficiente",
-        body: isCredit
-          ? `Disponible: ${formatCurrency(availableAmount)}`
-          : `Disponible: ${formatCurrency(availableAmount)}`,
+        title: isCredit ? "Crédito insuficiente" : "Saldo insuficiente",
+        body: `Disponible: ${formatCurrency(availableAmount)}`,
         type: "warning",
         duration: 3000,
       })
@@ -358,21 +357,21 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   }, [prefill, prefillApplied, categories])
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
       {/* Header */}
-      <header className="flex items-center gap-3 px-5 pb-2 pt-6 sm:px-6 sm:pt-8">
+      <header className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-[calc(1.5rem+env(safe-area-inset-top))] sm:px-6">
         {onBack && (
           <button
             onClick={onBack}
-            className="flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-muted"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-card ring-1 ring-border transition-colors hover:bg-muted"
           >
             <ChevronLeft className="h-5 w-5 text-foreground" />
           </button>
         )}
-        <h1 className="text-lg font-semibold text-foreground">Nueva transacción</h1>
+        <h1 className="text-xl font-extrabold tracking-tight text-foreground">Nueva transacción</h1>
       </header>
 
-      <div className="flex-1 space-y-5 px-5 pb-28 pt-3 sm:space-y-6 sm:px-6 sm:pt-4">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6 pt-3 sm:space-y-6 sm:px-6 sm:pt-4">
         <div className="flex h-12 overflow-hidden rounded-2xl bg-card/80 p-1 ring-1 ring-border/70">
           <button
             onClick={() => {
@@ -406,8 +405,8 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           </button>
         </div>
 
-        <div className="rounded-3xl bg-card/70 px-4 py-7 text-center ring-1 ring-border/60 sm:py-8">
-          <p className="mb-4 text-xs font-medium text-muted-foreground">
+        <div className="mobile-card px-4 py-7 text-center sm:py-8">
+          <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
             {transactionType === "income" ? "Monto recibido" : "Monto gastado"}
           </p>
           <div className="flex items-baseline justify-center gap-1">
@@ -418,7 +417,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               value={amount}
               onValueChange={handleAmountChange}
               placeholder="0"
-              className="w-full max-w-[220px] bg-transparent text-center text-[42px] font-bold leading-none text-foreground outline-none placeholder:text-muted-foreground/30 sm:text-5xl"
+              className="w-full max-w-[240px] bg-transparent text-center text-[clamp(2.75rem,15vw,4.5rem)] font-extrabold leading-none text-foreground outline-none placeholder:text-muted-foreground/30"
               autoFocus
             />
           </div>
@@ -464,7 +463,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Popover>
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
             <PopoverTrigger asChild>
               <button className="flex h-16 w-full flex-col items-start justify-center rounded-2xl bg-card px-4 ring-1 ring-border/60">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Fecha</span>
@@ -472,7 +471,16 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={(d) => {
+                  if (!d) return
+                  setDate(d)
+                  setDatePickerOpen(false)
+                }}
+                initialFocus
+              />
             </PopoverContent>
           </Popover>
 
@@ -507,20 +515,20 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
 
         {isRecurringEnabled && subscriptionMode === "recurring" && (
           <div className="rounded-2xl bg-card p-4 ring-1 ring-border/60">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Suscripcion recurrente</p>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Suscripción recurrente</p>
             <div className="grid grid-cols-2 gap-2">
               <select value={subscriptionProvider} onChange={(event) => setSubscriptionProvider(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
                   {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => (
                   <option key={provider.key} value={provider.key}>{provider.name}</option>
                 ))}
               </select>
-              <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} min={1} max={31} type="number" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Dia" />
+              <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} min={1} max={31} type="number" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Día" />
             </div>
           </div>
         )}
 
         <div>
-          <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">Cuenta</p>
+          <p className="mb-3 px-1 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Cuenta</p>
           <AccountCarouselSelector
             items={accounts
               .map((account) => ({
@@ -568,7 +576,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </div>
 
         <div>
-          <p className="mb-3 px-1 text-xs font-medium text-muted-foreground">Categoria</p>
+          <p className="mb-3 px-1 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Categoría</p>
           <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {categories.map((cat) => {
               const Icon = cat.icon
@@ -577,19 +585,19 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
                 <button
                   key={cat.id}
                   onClick={() => setCategory(cat.id)}
-                  className="w-[76px] shrink-0"
+                  className="w-20 shrink-0"
                 >
                   <div className={cn("mx-auto flex h-14 w-14 items-center justify-center rounded-full ring-1 transition-all", cat.color, selected ? "ring-primary scale-[1.03]" : "ring-border") }>
                     <Icon className="h-5 w-5" />
                   </div>
-                  <p className={cn("mt-2 truncate text-xs", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{cat.label}</p>
+                  <p className={cn("mt-2 line-clamp-2 min-h-8 text-xs leading-4", selected ? "font-semibold text-foreground" : "text-muted-foreground")}>{cat.label}</p>
                 </button>
               )
             })}
             <button
               type="button"
               onClick={() => router.push("/settings/categories")}
-              className="w-[76px] shrink-0"
+              className="w-20 shrink-0"
             >
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-muted/30 transition-colors hover:bg-muted">
                 <Plus className="h-5 w-5 text-muted-foreground" />
@@ -657,12 +665,12 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </div>
       </div>
 
-      <div className="sticky bottom-0 border-t border-border/60 bg-background/95 px-5 pb-nav-safe pt-3 backdrop-blur sm:px-6">
+      <div className="shrink-0 border-t border-border/60 bg-card px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:px-6">
         <Button
           onClick={handleSave}
           disabled={!isValid || isSaving}
           className={cn(
-            "h-14 w-full rounded-2xl text-base font-semibold transition-all",
+            "mobile-action-button w-full text-base transition-all",
             transactionType === "income"
               ? "bg-emerald-500 hover:bg-emerald-600 text-white"
               : "bg-primary text-primary-foreground"

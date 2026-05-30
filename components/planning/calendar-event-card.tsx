@@ -10,14 +10,14 @@ function relativeLabel(dueDate: string) {
   const due = new Date(`${dueDate}T12:00:00`)
   const days = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   if (days === 0) return "Hoy"
-  if (days === 1) return "Manana"
-  if (days > 1) return `En ${days} dias`
-  return `${Math.abs(days)} dias atras`
+  if (days === 1) return "Mañana"
+  if (days > 1) return `En ${days} días`
+  return `${Math.abs(days)} días atrás`
 }
 
 function typeLabel(event: FinancialCalendarEvent) {
   if (event.type === "credit_card_payment") return "Tarjeta"
-  if (event.type === "financial_subscription") return "Suscripcion"
+  if (event.type === "financial_subscription") return "Suscripción"
   if (event.type === "debt_payment") return "Deuda"
   return "Recordatorio"
 }

@@ -190,7 +190,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
 
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
-                <span className="mb-1 block text-muted-foreground">Dia de pago</span>
+                <span className="mb-1 block text-muted-foreground">Día de pago</span>
                 <input type="number" min={1} max={31} className="h-11 w-full rounded-xl border border-border bg-background px-3" value={paymentDay} onChange={(e) => setPaymentDay(e.target.value)} />
               </label>
               <label className="block text-sm">

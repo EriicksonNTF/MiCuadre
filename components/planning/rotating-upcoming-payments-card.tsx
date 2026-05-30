@@ -17,7 +17,7 @@ function formatDueLabel(event: FinancialCalendarEvent) {
 
 function formatDetail(event: FinancialCalendarEvent) {
   if (event.type === "credit_card_payment") return event.detail || "Pago minimo pendiente"
-  if (event.type === "financial_subscription") return "Suscripcion proxima"
+  if (event.type === "financial_subscription") return "Suscripción próxima"
   if (event.type === "debt_payment") return event.detail || "Cuota pendiente"
   return ""
 }
@@ -77,7 +77,7 @@ export function RotatingUpcomingPaymentsCard({
     return (
       <article className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
         <p className="text-sm font-semibold">Proximos pagos</p>
-        <p className="mt-2 text-sm text-muted-foreground">No tienes pagos proximos</p>
+        <p className="mt-2 text-sm text-muted-foreground">No tienes pagos próximos</p>
         <Link href="/planning?tab=calendar" className="mt-3 inline-flex h-9 items-center justify-center rounded-xl bg-accent px-3 text-xs font-bold text-accent-foreground">
           Ver calendario
         </Link>

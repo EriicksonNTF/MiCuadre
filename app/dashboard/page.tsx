@@ -100,8 +100,8 @@ export default function DashboardPage() {
           warnings.push({
             key: `${account.id}-credit_cutoff_warning-${today}`,
             kind: "credit_cutoff_warning",
-            title: `Corte proximo: ${account.name}`,
-            message: `Tu tarjeta ${account.name} corta en 3 dias. Revisa tus consumos antes del corte.`,
+            title: `Corte próximo: ${account.name}`,
+            message: `Tu tarjeta ${account.name} corta en 3 días. Revisa tus consumos antes del corte.`,
           })
         }
       }
@@ -114,8 +114,8 @@ export default function DashboardPage() {
           warnings.push({
             key: `${account.id}-credit_payment_warning-${today}`,
             kind: "credit_payment_warning",
-            title: `Pago proximo: ${account.name}`,
-            message: `Tu pago de tarjeta ${account.name} vence en 5 dias. Balance pendiente: ${formatCurrency(pending, account.currency)}.`,
+            title: `Pago próximo: ${account.name}`,
+            message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${formatCurrency(pending, account.currency)}.`,
           })
         }
       }
@@ -144,7 +144,7 @@ export default function DashboardPage() {
       const toastKey = `credit_toast_shown_${user.id}_${warning.key}`
       window.localStorage.setItem(toastKey, "true")
       if (warning.kind === "credit_cutoff_warning") {
-        showToast({ title: "Corte de tarjeta en 3 dias", body: `Revisa tus consumos en ${warning.title.replace("Corte proximo: ", "")} antes del corte.`, type: "warning", duration: 5000 })
+        showToast({ title: "Corte de tarjeta en 3 días", body: `Revisa tus consumos en ${warning.title.replace("Corte próximo: ", "")} antes del corte.`, type: "warning", duration: 5000 })
       } else if (warning.kind === "credit_payment_warning") {
         showToast({ title: "Pago de tarjeta pendiente", body: warning.message, type: "warning", duration: 5000 })
       }
@@ -174,12 +174,12 @@ export default function DashboardPage() {
 
     const unsubAcc = EventBus.on("account_created", (event) => {
       const { name } = event.payload ?? {}
-      showToast({ title: "Cuenta creada", body: `${name} esta lista para rastrear`, type: "success", duration: 2500 })
+      showToast({ title: "Cuenta creada", body: `${name} está lista para rastrear`, type: "success", duration: 2500 })
     })
 
     const unsubSub = EventBus.on("subscription_created", (event) => {
       const { name, amount } = event.payload ?? {}
-      showToast({ title: "Suscripcion agregada", body: `${name} · ${formatCurrency(amount)} al mes`, type: "success", duration: 2500 })
+      showToast({ title: "Suscripción agregada", body: `${name} · ${formatCurrency(amount)} al mes`, type: "success", duration: 2500 })
     })
 
     return () => {
@@ -230,14 +230,14 @@ export default function DashboardPage() {
 
   return (
     <main className="app-scroll min-h-[100dvh] overflow-y-auto bg-background">
-      <div className="mx-auto max-w-md px-6 pb-nav-safe pt-8">
+      <div className="mobile-page">
         <Header />
 
-        <div className="mt-10">
+        <div className="mt-8">
           <BalanceCard />
         </div>
 
-        <div className="mt-8">
+        <div className="mt-7">
           <QuickActions />
         </div>
 
@@ -245,17 +245,17 @@ export default function DashboardPage() {
           <ActivationPanel />
         )}
 
-        <div className="mt-10">
+        <div className="mt-8">
           {isPro ? (
             <PlanningSummaryCard />
           ) : (
-            <section className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
+            <section className="mobile-card p-5">
               <p className="text-sm font-semibold">Controla tu mes con Pro</p>
               <p className="mt-1 text-xs text-muted-foreground">Presupuestos, deudas y pagos próximos en un solo lugar.</p>
               <button
                 type="button"
                 onClick={() => setPlanningUpsellOpen(true)}
-                className="mt-3 inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground"
+                className="mt-4 inline-flex h-12 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground"
               >
                 Ver planes
               </button>
@@ -263,11 +263,11 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="mt-10">
+        <div className="mt-8">
           <AccountsList />
         </div>
 
-        <div className="mt-10">
+        <div className="mt-8">
           <TransactionsList />
         </div>
 
