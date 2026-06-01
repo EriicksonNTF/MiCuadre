@@ -71,7 +71,9 @@ export async function GET() {
     const billingReady = Boolean((profile as any)?.billing_ready)
     const billingStatus = (subscription?.status as BillingSubscriptionStatus | "active" | null) || planStatus
 
-    console.info("[billing-status] checked", { userId: user.id, planTier, planStatus, billingStatus })
+    if (process.env.NODE_ENV !== "production") {
+      console.info("[billing-status] checked", { userId: user.id, planTier, planStatus, billingStatus })
+    }
 
     return NextResponse.json(
       {

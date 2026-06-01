@@ -36,5 +36,10 @@ export function useBillingStatus() {
     }
 
     return response.json()
+  }, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+    dedupingInterval: 60_000,
+    focusThrottleInterval: 60_000,
   })
 }

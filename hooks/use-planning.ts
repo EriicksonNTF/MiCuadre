@@ -440,7 +440,7 @@ export async function createDebt(input: {
     }
   }
 
-  const { error } = await supabase.from("debts").insert({
+  const { data, error } = await supabase.from("debts").insert({
     user_id: userId,
     name: input.name,
     debt_type: input.debt_type,
@@ -455,11 +455,14 @@ export async function createDebt(input: {
     interest_rate: input.interest_rate || null,
     notes: input.notes || null,
     is_active: true,
-  })
+  }).select("*").single()
 
   if (error) throw error
   mutate("planning_debts")
   mutate("planning_calendar_events")
+  mutate("accounts")
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  return data as Debt
 }
 
 export async function payDebt(input: {
@@ -574,6 +577,7 @@ export async function payDebt(input: {
       mutate("planning_debt_payments_month"),
       mutate("planning_calendar_events"),
       mutate((key: any) => Array.isArray(key) && key[0] === "transactions"),
+      mutate("planning_budgets_with_usage"),
     ])
 
     return {

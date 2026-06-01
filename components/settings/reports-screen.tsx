@@ -6,6 +6,7 @@ import { AlertCircle, CheckCircle2, ChevronLeft, Info, TriangleAlert } from "luc
 import { format, subDays } from "date-fns"
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts"
 import { useAccounts, useCategories, useFinancialSubscriptions, useTransactions } from "@/hooks/use-data"
+import { useDebtsSummary, useFinancialCalendarSummary, usePlanningSummary } from "@/hooks/use-planning"
 import { formatCurrency } from "@/lib/data"
 import { useTranslations } from "@/lib/i18n/use-translations"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -32,6 +33,9 @@ export function ReportsScreen() {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const { canUseAdvancedReports, plan } = useEntitlements()
+  const { summary: debtsSummary } = useDebtsSummary()
+  const { next7Amount, monthCommitted, nextEvent } = useFinancialCalendarSummary()
+  const { summary: planningSummary } = usePlanningSummary()
   const advancedReportsCopy = getEntitlementCopy("advanced_reports")
 
   const dateFrom = useMemo(() => {
@@ -125,6 +129,17 @@ export function ReportsScreen() {
     })
   }, [accountFilter, categoryFilter, currencyFilter, dateFrom, range, transactions, typeFilter])
 
+  const previousTotals = useMemo(() => {
+    const income = previousFiltered.filter((tx) => tx.type === "income").reduce((acc, tx) => acc + Number(tx.amount), 0)
+    const expense = previousFiltered.filter((tx) => tx.type === "expense").reduce((acc, tx) => acc + Number(tx.amount), 0)
+    return { income, expense, net: income - expense }
+  }, [previousFiltered])
+
+  const savingsRate = totals.income > 0 ? ((totals.net / totals.income) * 100) : 0
+  const netVsPrevious = totals.net - previousTotals.net
+  const topCategory = byCategory.slice().sort((a, b) => b.value - a.value)[0] || null
+  const mostExpensiveSubscription = subscriptions.slice().sort((a, b) => Number(b.amount || 0) - Number(a.amount || 0))[0] || null
+
   const insights = useMemo(() => generateFinancialInsights({
     transactions: filtered,
     previousTransactions: previousFiltered,
@@ -217,6 +232,17 @@ export function ReportsScreen() {
           <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.subscriptions}</p><p className="text-lg font-semibold text-amber-600">{formatCurrency(subscriptionTotal)}</p></div>
         </div>
 
+        <section className="rounded-2xl border border-border bg-card p-4">
+          <p className="text-sm font-semibold text-foreground">Resumen del mes</p>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div><p className="text-xs text-muted-foreground">Ingreso total</p><p className="text-base font-semibold text-foreground">{formatCurrency(totals.income)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Gasto total</p><p className="text-base font-semibold text-foreground">{formatCurrency(totals.expense)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Balance neto</p><p className="text-base font-semibold text-foreground">{formatCurrency(totals.net)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Tasa de ahorro</p><p className="text-base font-semibold text-foreground">{Number.isFinite(savingsRate) ? `${savingsRate.toFixed(1)}%` : "0%"}</p></div>
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">{netVsPrevious >= 0 ? `Este mes vas ${formatCurrency(Math.abs(netVsPrevious))} por encima del mes anterior.` : `Este mes vas ${formatCurrency(Math.abs(netVsPrevious))} por debajo del mes anterior.`}</p>
+        </section>
+
         {filtered.length === 0 ? (
           <div className="rounded-2xl bg-card p-8 text-center text-sm text-muted-foreground">{t.reports.noData}</div>
         ) : (
@@ -282,6 +308,15 @@ export function ReportsScreen() {
               </div>
             </div>
 
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-semibold text-foreground">Compromisos próximos</p>
+              <div className="mt-3 space-y-2 text-sm">
+                <p className="flex items-center justify-between"><span className="text-muted-foreground">Próximos 7 días</span><span className="font-semibold">{formatCurrency(next7Amount)}</span></p>
+                <p className="flex items-center justify-between"><span className="text-muted-foreground">Comprometido del mes</span><span className="font-semibold">{formatCurrency(monthCommitted)}</span></p>
+                <p className="text-xs text-muted-foreground">Próximo evento: {nextEvent ? `${nextEvent.title} · ${nextEvent.due_date}` : "No hay pagos próximos"}</p>
+              </div>
+            </section>
+
             <FeatureGate
               allowed={canUseAdvancedReports}
               title={advancedReportsCopy.title}
@@ -315,6 +350,32 @@ export function ReportsScreen() {
                 ))}
               </div>
             </div>
+
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-semibold text-foreground">Prioridad de deudas</p>
+              <div className="mt-3 space-y-2 text-sm">
+                <p className="flex items-center justify-between"><span className="text-muted-foreground">Pendiente DOP</span><span className="font-semibold">{debtsSummary.totalPendingDopLabel}</span></p>
+                {debtsSummary.totalPendingUsd > 0 ? <p className="flex items-center justify-between"><span className="text-muted-foreground">Pendiente USD</span><span className="font-semibold">{debtsSummary.totalPendingUsdLabel}</span></p> : null}
+                <p className="text-xs text-muted-foreground">{debtsSummary.nextDebt ? `Primero paga ${debtsSummary.nextDebt.name} porque su próxima cuota está cerca.` : "No hay deudas con cuota próxima."}</p>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-semibold text-foreground">Impacto de suscripciones</p>
+              <div className="mt-3 space-y-2 text-sm">
+                <p className="flex items-center justify-between"><span className="text-muted-foreground">Total mensual</span><span className="font-semibold">{formatCurrency(subscriptionTotal)}</span></p>
+                <p className="text-xs text-muted-foreground">Más costosa: {mostExpensiveSubscription ? `${mostExpensiveSubscription.name} · ${formatCurrency(Number(mostExpensiveSubscription.amount || 0), mostExpensiveSubscription.currency as "DOP" | "USD")}` : "Sin suscripciones activas"}</p>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-semibold text-foreground">Planificación</p>
+              <div className="mt-3 space-y-2 text-sm">
+                <p className="flex items-center justify-between"><span className="text-muted-foreground">Uso presupuestos</span><span className="font-semibold">{planningSummary.budgetUsedLabel}</span></p>
+                <p className="text-xs text-muted-foreground">{planningSummary.closestToLimit ? `Categoría en aumento: ${planningSummary.closestToLimit.category_name}` : "No hay presupuestos cercanos al límite"}</p>
+                <p className="text-xs text-muted-foreground">Mayor gasto: {topCategory ? `${topCategory.name} · ${formatCurrency(topCategory.value)}` : "Sin datos"}</p>
+              </div>
+            </section>
             </FeatureGate>
           </>
         )}

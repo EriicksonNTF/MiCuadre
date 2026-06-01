@@ -1,11 +1,11 @@
 ﻿"use client"
 
 import { useMemo, useState } from "react"
-import Link from "next/link"
 import { Plus } from "lucide-react"
 import { DebtCard } from "@/components/planning/debt-card"
 import { DebtFormSheet } from "@/components/planning/debt-form-sheet"
 import { PayDebtSheet } from "@/components/planning/pay-debt-sheet"
+import { QuickPayCardSheet } from "@/components/planning/quick-pay-card-sheet"
 import { useDebtsSummary } from "@/hooks/use-planning"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { useAccounts } from "@/hooks/use-data"
@@ -34,6 +34,8 @@ export function DebtsTab() {
   const [createOpen, setCreateOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [selectedDebt, setSelectedDebt] = useState<DebtWithProgress | null>(null)
+  const [cardQuickOpen, setCardQuickOpen] = useState(false)
+  const [selectedCardQuick, setSelectedCardQuick] = useState<CreditDebtCard | null>(null)
 
   const creditDebts = useMemo<CreditDebtCard[]>(() => {
     return accounts
@@ -61,6 +63,11 @@ export function DebtsTab() {
   const onPay = (debt: DebtWithProgress) => {
     setSelectedDebt(debt)
     setPayOpen(true)
+  }
+
+  const onQuickPayCard = (card: CreditDebtCard) => {
+    setSelectedCardQuick(card)
+    setCardQuickOpen(true)
   }
 
   return (
@@ -92,9 +99,9 @@ export function DebtsTab() {
               {card.debtUsd > 0 ? <p className="text-xs text-muted-foreground">Deuda actual: {formatCurrency(card.debtUsd, "USD")}</p> : null}
               {card.minimumPayment > 0 ? <p className="text-xs text-muted-foreground">Pago minimo: {formatCurrency(card.minimumPayment, "DOP")}</p> : null}
               <p className="text-xs text-muted-foreground">Pagar antes del: {formatDueDate(card.dueDate)}</p>
-              <Link href={`/pay?card=${encodeURIComponent(card.id)}`} className="mt-2 inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground">
+              <button type="button" onClick={() => onQuickPayCard(card)} className="mt-2 inline-flex h-8 items-center justify-center rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground">
                 Pagar tarjeta
-              </Link>
+              </button>
             </div>
           ))
         )}
@@ -119,6 +126,20 @@ export function DebtsTab() {
 
       <DebtFormSheet open={createOpen} onOpenChange={setCreateOpen} />
       <PayDebtSheet open={payOpen} onOpenChange={setPayOpen} debt={selectedDebt} />
+      <QuickPayCardSheet
+        open={cardQuickOpen}
+        onOpenChange={setCardQuickOpen}
+        target={selectedCardQuick ? {
+          id: selectedCardQuick.id,
+          name: selectedCardQuick.name,
+          currency: selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? "USD" : "DOP",
+          currentDebt: selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop,
+          statementBalance: selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop,
+          minimumPayment: selectedCardQuick.minimumPayment,
+          dueDate: selectedCardQuick.dueDate,
+          suggestedAmount: selectedCardQuick.minimumPayment > 0 ? selectedCardQuick.minimumPayment : (selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop),
+        } : null}
+      />
     </section>
   )
 }

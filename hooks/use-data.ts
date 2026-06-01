@@ -69,6 +69,27 @@ const COMMISSION_CATEGORY_NAME = "Commission / Fees"
 const SUBSCRIPTION_CATEGORY_NAME = "Suscripciones"
 const COMMISSION_ERROR_MESSAGE = "El monto más comisión excede tu balance disponible."
 
+function generatePaymentGroupId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID()
+  }
+  return `paygrp-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function getTxMetadataValue(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
+  const value = metadata?.[key]
+  return typeof value === "string" && value.length > 0 ? value : null
+}
+
+function getPaymentLinkId(metadata: Record<string, unknown> | null | undefined): string | null {
+  return getTxMetadataValue(metadata, "payment_group_id") || getTxMetadataValue(metadata, "payment_id")
+}
+
+function isCreditCardPaymentTx(metadata: Record<string, unknown> | null | undefined) {
+  if (!metadata) return false
+  return metadata.kind === "credit_payment" || metadata.operation_type === "credit_card_payment"
+}
+
 function roundCurrencyAmount(value: number): number {
   return Math.round(value * 100) / 100
 }
@@ -1398,6 +1419,9 @@ export async function updateTransaction(
   id: string,
   updates: Pick<Transaction, "account_id" | "type" | "amount" | "description" | "date" | "category_id" | "notes" | "currency" | "amount_base" | "exchange_rate" | "is_recurring">
 ) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+
   const normalizedUpdates = {
     ...updates,
     date: normalizeTransactionDateInput(updates.date),
@@ -1410,6 +1434,29 @@ export async function updateTransaction(
     .single()
 
   if (existingError || !existing) throw existingError || new Error("Transacción no encontrada")
+
+  if (isCreditCardPaymentTx(existing.metadata)) {
+    const paymentGroupId = getPaymentLinkId(existing.metadata)
+    const creditCardId = getTxMetadataValue(existing.metadata, "credit_card_id") || (existing.type === "income" ? existing.account_id : null)
+    if (!paymentGroupId || !creditCardId) {
+      throw new Error("No se pudo editar este pago de tarjeta. Falta enlace de pago.")
+    }
+
+    await deleteCreditCardPaymentGroup({ userId: user.id, paymentLinkId: paymentGroupId, notifyDeletion: false })
+
+    const recreated = await payCreditCard({
+      credit_account_id: creditCardId,
+      source_account_id: updates.account_id,
+      amount: Number(updates.amount),
+      currency: (existing.metadata?.payment_currency as "DOP" | "USD") || existing.currency,
+      exchange_rate: Number(existing.exchange_rate || updates.exchange_rate || 1),
+      payment_kind: (existing.metadata?.payment_kind as "balance_to_date" | "statement_balance" | "minimum_payment" | "custom") || "custom",
+      notes: updates.notes || existing.notes || undefined,
+      apply_commission: false,
+    })
+
+    return recreated?.sourceTransaction || recreated?.cardTransaction
+  }
 
   await applyAccountImpact({
     accountId: existing.account_id,
@@ -1451,6 +1498,9 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(id: string) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("Not authenticated")
+
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
     .select("*")
@@ -1459,52 +1509,10 @@ export async function deleteTransaction(id: string) {
 
   if (existingError || !existing) throw existingError || new Error("Transacción no encontrada")
 
-  if (existing.metadata?.kind === "credit_payment") {
-    const paymentId = existing.metadata.payment_id
-    if (paymentId) {
-      // Find all transactions with this payment_id
-      const { data: siblingTxs } = await supabase
-        .from("transactions")
-        .select("*")
-        .eq("metadata->>payment_id", paymentId)
-      
-      if (siblingTxs && siblingTxs.length > 0) {
-        for (const tx of siblingTxs) {
-          await applyAccountImpact({
-            accountId: tx.account_id,
-            type: tx.type,
-            amount: Number(tx.amount),
-            direction: -1,
-            currency: tx.currency,
-          })
-          
-          // Revert child commission transactions if any
-          const { data: childCommissionTxs } = await supabase
-            .from("transactions")
-            .select("*")
-            .eq("parent_transaction_id", tx.id)
-            .eq("metadata->>kind", "commission")
-          
-          if (childCommissionTxs && childCommissionTxs.length > 0) {
-            for (const commTx of childCommissionTxs) {
-              await applyAccountImpact({
-                accountId: commTx.account_id,
-                type: "expense",
-                amount: Number(commTx.amount),
-                direction: -1,
-                currency: commTx.currency,
-              })
-              await supabase.from("transactions").delete().eq("id", commTx.id)
-            }
-          }
-          await supabase.from("transactions").delete().eq("id", tx.id)
-        }
-      }
-      // Also delete the credit payment log record
-      await supabase.from("credit_payments").delete().eq("id", paymentId)
-      
-      mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-      mutate("accounts")
+  if (isCreditCardPaymentTx(existing.metadata)) {
+    const paymentLinkId = getPaymentLinkId(existing.metadata)
+    if (paymentLinkId) {
+      await deleteCreditCardPaymentGroup({ userId: user.id, paymentLinkId, notifyDeletion: true })
       return
     }
   }
@@ -1526,6 +1534,81 @@ export async function deleteTransaction(id: string) {
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
+}
+
+async function deleteCreditCardPaymentGroup(params: {
+  userId: string
+  paymentLinkId: string
+  notifyDeletion: boolean
+}) {
+  const { userId, paymentLinkId, notifyDeletion } = params
+
+  const { data: groupedByNew } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("metadata->>payment_group_id", paymentLinkId)
+
+  const groupedTxs = groupedByNew && groupedByNew.length > 0
+    ? groupedByNew
+    : (await supabase
+        .from("transactions")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("metadata->>payment_id", paymentLinkId)).data || []
+
+  if (!groupedTxs || groupedTxs.length === 0) {
+    throw new Error("No se encontró el pago de tarjeta vinculado.")
+  }
+
+  for (const tx of groupedTxs) {
+    await applyAccountImpact({
+      accountId: tx.account_id,
+      type: tx.type,
+      amount: Number(tx.amount),
+      direction: -1,
+      currency: tx.currency,
+    })
+  }
+
+  const txIds = groupedTxs.map((tx) => tx.id)
+  if (txIds.length > 0) {
+    await supabase.from("transactions").delete().in("id", txIds)
+  }
+
+  await supabase.from("credit_payments").delete().eq("id", paymentLinkId)
+
+  const { data: creditNotifications } = await supabase
+    .from("notifications")
+    .select("id,metadata,title")
+    .eq("user_id", userId)
+    .eq("type", "credit")
+
+  const notificationsToDelete = (creditNotifications || [])
+    .filter((item) => {
+      const metadata = (item.metadata || {}) as Record<string, unknown>
+      return metadata.payment_group_id === paymentLinkId || metadata.payment_id === paymentLinkId
+    })
+    .map((item) => item.id)
+
+  if (notificationsToDelete.length > 0) {
+    await supabase.from("notifications").delete().in("id", notificationsToDelete)
+  }
+
+  if (notifyDeletion) {
+    await createNotification({
+      userId,
+      type: "credit",
+      title: "Pago de tarjeta eliminado",
+      message: "Se eliminó el pago y se restauraron los balances asociados.",
+      actionUrl: "/history",
+      metadata: { kind: "credit_payment_deleted", payment_group_id: paymentLinkId },
+    })
+  }
+
+  mutate("accounts")
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  mutate("notifications")
 }
 
 export async function updateProfile(updates: Partial<Profile> & { username?: string | null; phone?: string | null }) {
@@ -2008,6 +2091,7 @@ export async function payCreditCard(payment: {
   apply_commission?: boolean
 }) {
   const applyCommission = Boolean(payment.apply_commission)
+  const paymentGroupId = generatePaymentGroupId()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("Not authenticated")
 
@@ -2321,9 +2405,16 @@ export async function payCreditCard(payment: {
         is_recurring: false,
         metadata: {
           kind: "credit_payment",
+          operation_type: "credit_card_payment",
+          payment_group_id: paymentGroupId,
           credit_account_id: payment.credit_account_id,
+          source_account_id: payment.source_account_id,
           payment_kind: payment.payment_kind || "custom",
           payment_currency: payment.currency,
+          currency: payment.currency,
+          original_amount: payment.amount,
+          created_from: "pay_card_flow",
+          side: "source_account",
           conversion: conversionMetadata,
           payment_id: paymentRecordId,
         },
@@ -2355,9 +2446,16 @@ export async function payCreditCard(payment: {
         parent_transaction_id: sourceTxId,
         metadata: {
           kind: "credit_payment",
+          operation_type: "credit_card_payment",
+          payment_group_id: paymentGroupId,
           source_account_id: payment.source_account_id,
+          credit_card_id: payment.credit_account_id,
           payment_kind: payment.payment_kind || "custom",
           payment_currency: payment.currency,
+          currency: payment.currency,
+          original_amount: payment.amount,
+          created_from: "pay_card_flow",
+          side: "credit_card",
           conversion: conversionMetadata,
           payment_id: paymentRecordId,
         },
@@ -2412,11 +2510,22 @@ export async function payCreditCard(payment: {
       title: "Pago de tarjeta registrado",
       message: `Pagaste ${sourceCurrency} ${roundCurrencyAmount(totalPaid).toFixed(2)} de tu tarjeta${commissionText}.`,
       actionUrl: "/pay",
+      metadata: {
+        kind: "credit_payment",
+        payment_group_id: paymentGroupId,
+        payment_id: paymentRecordId,
+        source_account_id: payment.source_account_id,
+        credit_card_id: payment.credit_account_id,
+      },
     })
     mutate("notifications")
 
     mutate("accounts")
     mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    mutate("planning_calendar_events")
+    mutate("planning_debts")
+    mutate("planning_debt_payments_month")
+    mutate("planning_budgets_with_usage")
 
     return {
       payment: paymentRecord,
@@ -2462,6 +2571,10 @@ export async function payCreditCard(payment: {
 
     await mutate("accounts", undefined, { revalidate: true })
     await mutate((key: any) => Array.isArray(key) && key[0] === "transactions", undefined, { revalidate: true })
+    await mutate("planning_calendar_events", undefined, { revalidate: true })
+    await mutate("planning_debts", undefined, { revalidate: true })
+    await mutate("planning_debt_payments_month", undefined, { revalidate: true })
+    await mutate("planning_budgets_with_usage", undefined, { revalidate: true })
     throw error
   }
 }

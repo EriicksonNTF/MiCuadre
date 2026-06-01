@@ -18,6 +18,7 @@ import { generateFinancialInsights } from "@/lib/insights"
 import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-splash"
 import { ActivationPanel } from "@/components/dashboard/activation-panel"
 import { PlanningSummaryCard } from "@/components/dashboard/planning-summary-card"
+import { CalendarPreviewCard } from "@/components/dashboard/calendar-preview-card"
 import { showToast } from "@/components/toast/smart-toast"
 import { EventBus } from "@/lib/event-bus"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
@@ -266,6 +267,12 @@ export default function DashboardPage() {
         <div className="mt-8">
           <AccountsList />
         </div>
+
+        {isPro ? (
+          <div className="mt-8">
+            <CalendarPreviewCard />
+          </div>
+        ) : null}
 
         <div className="mt-8">
           <TransactionsList />

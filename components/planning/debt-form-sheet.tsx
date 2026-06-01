@@ -108,7 +108,9 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       onOpenChange(false)
       reset()
     } catch (error: any) {
-      notify({ title: "No pudimos guardar la informacion.", message: error?.message || "No pudimos guardar la informacion." })
+      const message = error?.message || "No pudimos guardar la información."
+      setFormError(message)
+      notify({ title: "No pudimos guardar la información", message })
     } finally {
       setSaving(false)
     }

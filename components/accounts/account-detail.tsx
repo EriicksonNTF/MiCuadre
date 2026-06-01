@@ -600,53 +600,26 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <p className="font-semibold tracking-tight text-white">Resumen de tarjeta</p>
                 <div className="mt-3 space-y-3">
                   <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                    <p className="text-[11px] text-white/70">Límite DOP</p>
-                    <p className="mt-1 text-lg font-bold text-white">{formatCurrency(Number(account.creditLimitDop || 0), "DOP")}</p>
-                    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                      <div>
-                        <p className="text-white/60">Disponible</p>
-                        <p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_dop || Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0)), "DOP")}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Balance actual</p>
-                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Balance al corte</p>
-                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Pago mínimo</p>
-                        <p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p>
-                      </div>
+                    <p className="mb-2 text-[11px] text-white/70">DOP</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p></div>
+                      <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p></div>
+                      <div><p className="text-white/60">Pago mínimo</p><p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p></div>
+                      <div><p className="text-white/60">Disponible</p><p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_dop || Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0)), "DOP")}</p></div>
                     </div>
                   </div>
-
-                  {hasUsdOnCard && <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
-                    <p className="text-[11px] text-white/70">Límite USD</p>
-                    <p className="mt-1 text-lg font-bold text-white">{formatCurrency(Number(account.creditLimitUsd || 0), "USD")}</p>
-                    <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-                      <div>
-                        <p className="text-white/60">Disponible</p>
-                        <p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_usd || Number(account.creditLimitUsd || 0) - Number(account.currentDebtUsd || 0)), "USD")}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Balance actual</p>
-                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Balance al corte</p>
-                        <p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p>
-                      </div>
-                      <div>
-                        <p className="text-white/60">Pago mínimo</p>
-                        <p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p>
-                      </div>
+                  {hasUsdOnCard ? <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                    <p className="mb-2 text-[11px] text-white/70">USD</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p></div>
+                      <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p></div>
+                      <div><p className="text-white/60">Pago mínimo</p><p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p></div>
+                      <div><p className="text-white/60">Disponible</p><p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_usd || Number(account.creditLimitUsd || 0) - Number(account.currentDebtUsd || 0)), "USD")}</p></div>
                     </div>
-                  </div>}
+                  </div> : null}
                 </div>
-                <p className="mt-3 text-xs text-white/65">Pagar antes de: {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
-            </div>
+                <p className="mt-3 text-xs text-white/65">Pagar antes del {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
+              </div>
             
             {/* Pay button */}
             <Button

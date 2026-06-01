@@ -6,8 +6,8 @@ import { useAccounts } from "@/hooks/use-data"
 import { payDebt } from "@/hooks/use-planning"
 import { formatCurrency } from "@/lib/data"
 import { notify } from "@/lib/notifications"
-import { PaymentSlider } from "@/components/payment-slider"
 import { MovementReceipt } from "@/components/receipts/movement-receipt"
+import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
 import type { DebtWithProgress } from "@/types/planning"
 
 type PaymentReceipt = {
@@ -38,6 +38,7 @@ export function PayDebtSheet({
   const [customAmount, setCustomAmount] = useState("")
   const [notes, setNotes] = useState("")
   const [loading, setLoading] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null)
 
   if (!debt) return null
@@ -154,18 +155,28 @@ export function PayDebtSheet({
               <textarea className="min-h-[82px] w-full rounded-xl border border-border bg-background px-3 py-2" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
 
-            <PaymentSlider
-              amount={amount || 0}
-              currency={debt.currency}
-              recipientName={debt.name}
-              onConfirm={onConfirm}
-              loading={loading}
-              disabled={!sourceAccountId || !amount || amount <= 0}
-              label="Desliza para pagar"
-            />
+            <button type="button" onClick={() => setShowConfirm(true)} disabled={!sourceAccountId || !amount || amount <= 0} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
+              Continuar
+            </button>
           </div>
         </DrawerContent>
       </Drawer>
+
+      {showConfirm && selectedAccount ? (
+        <ConfirmPaymentSheet
+          amount={amount || 0}
+          taxAmount={0}
+          totalDebit={amount || 0}
+          currencySymbol={debt.currency === "USD" ? "US$" : "RD$"}
+          sourceAccountName={selectedAccount.name}
+          sourceAvailable={formatCurrency(Number(selectedAccount.balance || 0), selectedAccount.currency)}
+          cardName={debt.name}
+          warning={amount > Number(selectedAccount.balance || 0) ? "Tu balance disponible es insuficiente." : null}
+          loading={loading}
+          onClose={() => setShowConfirm(false)}
+          onConfirm={onConfirm}
+        />
+      ) : null}
 
       <MovementReceipt
         open={!!receipt}
