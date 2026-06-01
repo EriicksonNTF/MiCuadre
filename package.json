@@ -13,6 +13,7 @@
     "dev:reset": "node scripts/predev.js && node -e \"const fs = require('fs'); fs.rmSync('.next', {recursive: true, force: true})\" && pnpm dev",
     "dev:fallback": "pnpm run dev || pnpm run dev:webpack",
     "dev:preview": "pnpm build && pnpm start",
+    "audit:card-payments": "node scripts/audit-card-payment-integrity.mjs",
     "build": "pnpm next build",
     "build:safe": "pnpm next build",
     "start": "pnpm next start",

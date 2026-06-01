@@ -50,6 +50,7 @@ export function BodyCleanup() {
 
     const PRIMARY_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/planning"])
     let edgeSwipeStart: { x: number; y: number; active: boolean } | null = null
+    let navInProgress = false
     const currentPageElement = () => document.querySelector("main.app-scroll, div.app-scroll") as HTMLElement | null
     const setPageOffset = (offset: number, animated: boolean) => {
       const page = currentPageElement()
@@ -84,7 +85,22 @@ export function BodyCleanup() {
       return false
     }
 
+    const resolveFallbackRoute = (pathname: string) => {
+      if (pathname.startsWith("/planning")) return "/dashboard"
+      if (pathname.startsWith("/accounts/") && pathname.split("/").length >= 3) return "/accounts"
+      if (pathname.startsWith("/settings")) return "/settings"
+      return "/dashboard"
+    }
+
+    const finishGesture = (animateBack: boolean) => {
+      if (animateBack) resetPageOffset(true)
+      else resetPageOffset(false)
+      edgeSwipeStart = null
+    }
+
     const onPointerDown = (event: PointerEvent) => {
+      if (navInProgress) return
+      if (event.pointerType && event.pointerType !== "touch") return
       const path = window.location.pathname
       if (PRIMARY_ROUTES.has(path)) return
       const target = event.target as HTMLElement | null
@@ -95,6 +111,7 @@ export function BodyCleanup() {
     }
 
     const onPointerMove = (event: PointerEvent) => {
+      if (navInProgress) return
       if (!edgeSwipeStart?.active) return
       const dx = event.clientX - edgeSwipeStart.x
       const dy = event.clientY - edgeSwipeStart.y
@@ -102,21 +119,27 @@ export function BodyCleanup() {
         setPageOffset(Math.min(dx * 0.88, window.innerWidth * 0.3), false)
       }
       if (dx > Math.min(96, window.innerWidth * 0.25) && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        if (navInProgress) return
+        navInProgress = true
         edgeSwipeStart = null
         setPageOffset(Math.min(window.innerWidth * 0.34, 140), true)
+        const fallback = resolveFallbackRoute(window.location.pathname)
         if (window.history.length > 1) {
           window.setTimeout(() => window.history.back(), 90)
         } else {
-          window.setTimeout(() => window.location.assign("/dashboard"), 90)
+          window.setTimeout(() => window.location.assign(fallback), 90)
         }
+
+        window.setTimeout(() => {
+          navInProgress = false
+          resetPageOffset(false)
+        }, 480)
       }
     }
 
     const onPointerEnd = () => {
-      if (edgeSwipeStart?.active) {
-        resetPageOffset(true)
-      }
-      edgeSwipeStart = null
+      if (navInProgress) return
+      finishGesture(Boolean(edgeSwipeStart?.active))
     }
 
     window.addEventListener("pointerdown", onPointerDown, { passive: true })
