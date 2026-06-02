@@ -53,7 +53,7 @@
 - Available routes: dashboard, accounts, pay, expense, history, goals, planning, coach-ia, notifications, profile, settings, settings-plan, settings-categories, settings-security, onboarding, login, signup
 - Screenshots save to `screenshots/` directory.
 - I can read the resulting PNG files to "see" the UI and diagnose visual bugs.
-- Credentials come from `scripts/capture-all-screens.mjs` hardcoded values (or env vars TEST_EMAIL/TEST_PASSWORD).
+- Credentials must be set via env vars `TEST_EMAIL` and `TEST_PASSWORD` (all scripts require them; no hardcoded fallbacks).
 - The script works against `http://localhost:3000` by default; override with `BASE_URL` env var.
 
 ## Visual QA Audit

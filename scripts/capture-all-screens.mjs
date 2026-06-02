@@ -2,9 +2,15 @@ import { chromium } from "playwright";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const baseUrl = "https://micuadre-five.vercel.app";
-const email = "Sitiosdns@tutamail.com";
-const password = "@Ma-Er.2720..";
+const baseUrl = process.env.BASE_URL || "http://localhost:3000";
+const email = process.env.TEST_EMAIL;
+const password = process.env.TEST_PASSWORD;
+
+if (!email || !password) {
+  console.error("ERROR: Debes definir TEST_EMAIL y TEST_PASSWORD como variables de entorno.");
+  console.error("Ejemplo: $env:TEST_EMAIL='tu@email.com'; $env:TEST_PASSWORD='tu-pass'; node scripts/capture-all-screens.mjs");
+  process.exit(1);
+}
 const outDir = path.resolve("screenshots/app-pages");
 
 const protectedRoutes = [

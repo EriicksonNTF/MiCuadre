@@ -3,8 +3,13 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
-const EMAIL = process.env.TEST_EMAIL || "Sitiosdns@tutamail.com";
-const PASSWORD = process.env.TEST_PASSWORD || "@Ma-Er.2720..";
+const EMAIL = process.env.TEST_EMAIL;
+const PASSWORD = process.env.TEST_PASSWORD;
+
+if (!EMAIL || !PASSWORD) {
+  console.error("ERROR: Debes definir TEST_EMAIL y TEST_PASSWORD como variables de entorno.");
+  process.exit(1);
+}
 const OUT_DIR = path.resolve("screenshots");
 
 const SUPPORTED_ROUTES = {
