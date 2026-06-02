@@ -2,7 +2,7 @@
 
 import { Banknote, Building2, CreditCard, Landmark, PiggyBank, Wallet } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { formatCurrency, getAccountBrandingDefaults, getAvailableCredit, getReadableTextColor } from "@/lib/data"
+import { formatCurrency, getAccountBrandingDefaults, getAvailableCreditByCurrency, getReadableTextColor } from "@/lib/data"
 import type { Account } from "@/lib/types/database"
 
 const iconMap = {
@@ -35,22 +35,12 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
   const isCredit = account.type === "credit"
   const debtDop = Math.abs(Number(account.current_debt_dop ?? account.current_debt ?? 0))
   const debtUsd = Math.abs(Number(account.current_debt_usd || 0))
-  const debtLines = isCredit
-    ? [
-        debtDop > 0 ? { currency: "DOP" as const, value: debtDop } : null,
-        debtUsd > 0 ? { currency: "USD" as const, value: debtUsd } : null,
-      ].filter(Boolean) as Array<{ currency: "DOP" | "USD"; value: number }>
-    : []
-  const primaryDebt = debtLines[0] || { currency: account.currency, value: Math.abs(Number(account.current_debt || 0)) }
-  const balanceValue = isCredit ? Math.max(debtDop, debtUsd, Math.abs(Number(account.current_debt || 0))) : Number(account.balance || 0)
-  const displayCreditCurrency = debtUsd > 0 && debtDop <= 0 ? "USD" : account.currency
-  const availableCredit = displayCreditCurrency === "USD"
-    ? Number(account.available_credit_usd ?? 0) || Math.max(0, Number(account.credit_limit_usd || 0) - debtUsd)
-    : Number(account.available_credit_dop ?? 0) || getAvailableCredit({
-        type: account.type,
-        creditLimit: account.credit_limit,
-        currentDebt: account.current_debt,
-      })
+  const hasDopLimit = Number(account.credit_limit_dop || 0) > 0
+  const hasUsdLimit = Number(account.credit_limit_usd || 0) > 0
+  const isMultiCurrency = isCredit && hasDopLimit && hasUsdLimit
+  const balanceValue = isCredit ? debtDop || debtUsd || Math.abs(Number(account.current_debt || 0)) : Number(account.balance || 0)
+  const dopAvailable = isCredit ? getAvailableCreditByCurrency(account as any, "DOP") : 0
+  const usdAvailable = isCredit ? getAvailableCreditByCurrency(account as any, "USD") : 0
   const dueDate = account.statement_due_date ? new Date(`${account.statement_due_date}T12:00:00`) : null
   const today = new Date()
   const daysUntilDue = dueDate
@@ -122,39 +112,49 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
       <div className="relative z-10 mt-3">
         {isCredit ? (
           <>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <p className="text-xs font-semibold opacity-80">Deuda actual</p>
-                {hasPending && (
-                  <span className="text-[9px] font-medium text-amber-200 animate-pulse">
-                    (Tiene pendientes)
-                  </span>
-                )}
-              </div>
-              <div className="mt-1 space-y-0.5">
-                {debtLines.length > 0 ? debtLines.map((line, index) => (
-                  <p key={line.currency} className={cn("font-black tabular-nums tracking-tight", compact ? "text-2xl" : index === 0 ? "text-[1.85rem]" : "text-[1.45rem]")}>
-                    {formatCurrency(line.value, line.currency)}
-                  </p>
-                )) : (
-                  <p className={cn("font-black tabular-nums tracking-tight", compact ? "text-2xl" : "text-[1.85rem]")}>
-                    {formatCurrency(primaryDebt.value, primaryDebt.currency)}
-                  </p>
-                )}
-              </div>
-              {(dueSoon || overdue) && (
-                <div className={cn(
-                  "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm",
-                  overdue ? "bg-red-500/20 text-white" : "bg-amber-400/20 text-white"
-                )}>
-                  {overdue ? "Pago vencido" : daysUntilDue === 0 ? "Pago vence hoy" : `Pago en ${daysUntilDue} días`}
-                </div>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-semibold opacity-80">Deuda actual</p>
+              {hasPending && (
+                <span className="text-[9px] font-medium text-amber-200 animate-pulse">
+                  (Tiene pendientes)
+                </span>
               )}
             </div>
+            <div className="mt-1 space-y-0.5">
+              {isMultiCurrency ? (
+                <div className="flex items-baseline gap-4">
+                  <span className={cn("font-black tabular-nums tracking-tight", compact ? "text-2xl" : "text-[1.85rem]")}>
+                    {formatCurrency(debtDop, "DOP")}
+                  </span>
+                  <span className={cn("font-black tabular-nums tracking-tight text-white/70", compact ? "text-lg" : "text-[1.45rem]")}>
+                    {formatCurrency(debtUsd, "USD")}
+                  </span>
+                </div>
+              ) : (
+                <p className={cn("font-black tabular-nums tracking-tight", compact ? "text-2xl" : "text-[1.85rem]")}>
+                  {formatCurrency(debtDop || debtUsd || Math.abs(Number(account.current_debt || 0)), hasDopLimit ? "DOP" : "USD")}
+                </p>
+              )}
+            </div>
+            {(dueSoon || overdue) && (
+              <div className={cn(
+                "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm",
+                overdue ? "bg-red-500/20 text-white" : "bg-amber-400/20 text-white"
+              )}>
+                {overdue ? "Pago vencido" : daysUntilDue === 0 ? "Pago vence hoy" : `Pago en ${daysUntilDue} días`}
+              </div>
+            )}
             <div className={cn("mt-3 grid grid-cols-3 gap-2 border-t border-white/20 pt-3", compact ? "text-[11px]" : "text-xs")}>
               <div>
                 <p className="opacity-70">Disponible</p>
-                <p className="mt-0.5 font-semibold text-emerald-200">{formatCurrency(availableCredit, displayCreditCurrency)}</p>
+                {isMultiCurrency ? (
+                  <div className="mt-0.5 space-y-0.5">
+                    <p className="font-semibold text-emerald-200">{formatCurrency(dopAvailable, "DOP")}</p>
+                    <p className="font-semibold text-emerald-200/70">{formatCurrency(usdAvailable, "USD")}</p>
+                  </div>
+                ) : (
+                  <p className="mt-0.5 font-semibold text-emerald-200">{formatCurrency(dopAvailable || usdAvailable, hasDopLimit ? "DOP" : "USD")}</p>
+                )}
               </div>
               <div className="border-l border-white/20 pl-2">
                 <p className="opacity-70">Corte</p>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { Bell, BellOff, CheckCircle2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { notify } from "@/lib/notifications"
@@ -8,37 +8,36 @@ import { notify } from "@/lib/notifications"
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
-  const rawData = window.atob(base64)
-  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)))
+  if (typeof atob !== "undefined") {
+    const rawData = atob(base64)
+    return Uint8Array.from(rawData.split("").map((c) => c.charCodeAt(0)))
+  }
+  return Uint8Array.from(Buffer.from(base64, "base64"))
 }
 
+let isIosResult: boolean | null = null
 function isIos() {
+  if (isIosResult !== null) return isIosResult
   if (typeof navigator === "undefined") return false
-  return /iphone|ipad|ipod/i.test(navigator.userAgent)
-}
-
-function isStandalonePwa() {
-  if (typeof window === "undefined") return false
-  return window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  isIosResult = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  return isIosResult
 }
 
 export function PushNotificationCard() {
   const [isLoading, setIsLoading] = useState(false)
-  const [status, setStatus] = useState<NotificationPermission | "unsupported">(
-    typeof Notification === "undefined" ? "unsupported" : Notification.permission
-  )
+  const [status, setStatus] = useState<NotificationPermission | "unsupported">("default")
+  const [supportMessage, setSupportMessage] = useState<string | null>(null)
   const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
-  const supportMessage = useMemo(() => {
-    if (typeof window === "undefined") return null
+  useEffect(() => {
+    setStatus(typeof Notification === "undefined" ? "unsupported" : Notification.permission)
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      return "Tu dispositivo no admite notificaciones push."
+      setSupportMessage("Tu dispositivo no admite notificaciones push.")
+    } else if (isIos() && !window.matchMedia("(display-mode: standalone)").matches && !(window.navigator as Navigator & { standalone?: boolean }).standalone) {
+      setSupportMessage("En iPhone, agrega MiCuadre a la pantalla de inicio para activar notificaciones.")
+    } else if (!vapidPublicKey) {
+      setSupportMessage("Falta configurar la clave pública VAPID.")
     }
-    if (isIos() && !isStandalonePwa()) {
-      return "En iPhone, agrega MiCuadre a la pantalla de inicio para activar notificaciones."
-    }
-    if (!vapidPublicKey) return "Falta configurar la clave pública VAPID."
-    return null
   }, [vapidPublicKey])
 
   const activate = async () => {

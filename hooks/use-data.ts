@@ -1082,7 +1082,7 @@ type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_
 
 export async function createAccount(account: NewAccountInput) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.max_accounts !== "unlimited") {
@@ -1153,7 +1153,7 @@ export async function createTransaction(
   options?: { applyCommission?: boolean; skipOutbox?: boolean; idempotencyKey?: string }
 ) {
   const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const idempotencyKey = options?.idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
   const localId = `local_tx_${Math.random().toString(36).substring(2, 15)}`
@@ -1311,7 +1311,7 @@ export async function createTransaction(
           currency: transactionToInsert.currency,
           amount_base: commissionAmount,
           exchange_rate: transactionToInsert.exchange_rate,
-          description: `0.15% commission of ${transactionToInsert.description || "transaction"}`,
+          description: `Comisión de 0.15% de ${transactionToInsert.description || "transacción"}`,
           date: transactionToInsert.date,
           notes: null,
           is_recurring: false,
@@ -1420,7 +1420,7 @@ export async function updateTransaction(
   updates: Pick<Transaction, "account_id" | "type" | "amount" | "description" | "date" | "category_id" | "notes" | "currency" | "amount_base" | "exchange_rate" | "is_recurring">
 ) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const normalizedUpdates = {
     ...updates,
@@ -1499,7 +1499,7 @@ export async function updateTransaction(
 
 export async function deleteTransaction(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
@@ -1613,7 +1613,7 @@ async function deleteCreditCardPaymentGroup(params: {
 
 export async function updateProfile(updates: Partial<Profile> & { username?: string | null; phone?: string | null }) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { data: existing } = await supabase
     .from("profiles")
@@ -1747,7 +1747,7 @@ async function updateSubscriptionProcessingMeta(subscriptionId: string, payload:
 
 export async function markNotificationAsRead(id: string) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   mutate("notifications", (prev?: Notification[]) =>
     (prev || []).map((n) => (n.id === id ? { ...n, read: true } : n)),
@@ -1770,7 +1770,7 @@ export async function markNotificationAsRead(id: string) {
 
 export async function markAllNotificationsAsRead() {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   mutate("notifications", (prev?: Notification[]) =>
     (prev || []).map((n) => ({ ...n, read: true })),
@@ -1794,7 +1794,7 @@ export async function markAllNotificationsAsRead() {
 // Goal mutations
 export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at" | "updated_at" | "is_completed" | "current_amount">) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.max_goals !== "unlimited") {
@@ -1836,7 +1836,7 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
 
 export async function updateGoal(id: string, updates: Partial<Goal>) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { data, error } = await supabase
     .from("goals")
@@ -1870,7 +1870,7 @@ export async function deleteGoal(id: string) {
 
 export async function addGoalContribution(contribution: Omit<GoalContribution, "id" | "created_at" | "user_id">) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   // Insert contribution
   const { data: newContribution, error: contribError } = await supabase
@@ -1940,7 +1940,7 @@ export async function createTransfer(transfer: {
   apply_commission?: boolean
 }) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   // Get current balances
   const { data: fromAccount } = await supabase
@@ -1949,7 +1949,7 @@ export async function createTransfer(transfer: {
     .eq("id", transfer.from_account_id)
     .single()
 
-  if (!fromAccount) throw new Error("Account not found")
+  if (!fromAccount) throw new Error("Cuenta no encontrada")
 
   if (transfer.amount <= 0) throw new Error("Monto inválido")
 
@@ -2054,7 +2054,7 @@ export async function createTransfer(transfer: {
       currency: transfer.currency,
       amount_base: commissionAmount,
       exchange_rate: 1,
-      description: `0.15% commission of ${transfer.description || "transfer"}`,
+      description: `Comisión de 0.15% de ${transfer.description || "transferencia"}`,
       date: getLocalDateString(),
       notes: null,
       is_recurring: false,
@@ -2093,7 +2093,7 @@ export async function payCreditCard(payment: {
   const applyCommission = Boolean(payment.apply_commission)
   const paymentGroupId = generatePaymentGroupId()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   if (payment.amount <= 0) {
     throw new Error("El monto del pago debe ser mayor a cero")
@@ -2105,7 +2105,7 @@ export async function payCreditCard(payment: {
     .eq("id", payment.credit_account_id)
     .single()
 
-  if (!creditCard) throw new Error("Credit card not found")
+  if (!creditCard) throw new Error("Tarjeta de crédito no encontrada")
 
   const { data: sourceAccount } = await supabase
     .from("accounts")
@@ -2113,7 +2113,7 @@ export async function payCreditCard(payment: {
     .eq("id", payment.source_account_id)
     .single()
 
-  if (!sourceAccount) throw new Error("Source account not found")
+  if (!sourceAccount) throw new Error("Cuenta origen no encontrada")
 
   const sourceCurrency = sourceAccount.currency as "DOP" | "USD"
   const conversionApplies = sourceCurrency !== payment.currency
@@ -2288,7 +2288,7 @@ export async function payCreditCard(payment: {
           currency: sourceCurrency,
           amount_base: commissionAmount,
           exchange_rate: 1,
-          description: `0.15% commission of payment to ${creditCard.name}`,
+          description: `Comisión de 0.15% por pago a ${creditCard.name}`,
           date: getLocalDateString(),
           notes: null,
           is_recurring: false,
@@ -2482,7 +2482,7 @@ export async function payCreditCard(payment: {
           currency: sourceCurrency,
           amount_base: commissionAmount,
           exchange_rate: 1,
-          description: `0.15% commission of payment to ${creditCard.name}`,
+          description: `Comisión de 0.15% por pago a ${creditCard.name}`,
           date: getLocalDateString(),
           notes: null,
           is_recurring: false,
@@ -2579,10 +2579,140 @@ export async function payCreditCard(payment: {
   }
 }
 
+export function getCardDebtByCurrency(card: Partial<Account> | null | undefined, currency: "DOP" | "USD") {
+  if (!card) return 0
+  return currency === "USD"
+    ? Number(card.current_debt_usd || 0)
+    : Number(card.current_debt_dop || card.current_debt || 0)
+}
+
+export function calculateCreditCardPaymentAmounts(input: {
+  paymentAmount: number
+  sourceCurrency: "DOP" | "USD"
+  targetCurrency: "DOP" | "USD"
+  exchangeRate?: number
+  applyDgiiTax?: boolean
+}) {
+  const paymentAmount = roundCurrencyAmount(Math.max(0, Number(input.paymentAmount || 0)))
+  const sourceCurrency = input.sourceCurrency
+  const targetCurrency = input.targetCurrency
+  const sameCurrency = sourceCurrency === targetCurrency
+  const exchangeRate = sameCurrency ? 1 : Number(input.exchangeRate || 0)
+
+  if (!sameCurrency && (!Number.isFinite(exchangeRate) || exchangeRate <= 0)) {
+    throw new Error("La tasa de cambio es obligatoria para este pago.")
+  }
+
+  const sourceAmount = roundCurrencyAmount(
+    sameCurrency
+      ? paymentAmount
+      : targetCurrency === "USD" && sourceCurrency === "DOP"
+        ? paymentAmount * exchangeRate
+        : paymentAmount / exchangeRate
+  )
+
+  const dgiiTaxAmount = input.applyDgiiTax ? getCommissionAmount(sourceAmount) : 0
+  const totalDebit = roundCurrencyAmount(sourceAmount + dgiiTaxAmount)
+
+  return {
+    sourceCurrency,
+    targetCurrency,
+    paymentAmount,
+    sourceAmount,
+    targetAmount: paymentAmount,
+    exchangeRate,
+    exchangeRateDirection: `${sourceCurrency}_TO_${targetCurrency}`,
+    dgiiTaxAmount,
+    totalDebit,
+  }
+}
+
+export function validateCreditCardPayment(input: {
+  card: Partial<Account> | null | undefined
+  sourceAccount: Partial<Account> | null | undefined
+  targetCurrency: "DOP" | "USD"
+  targetAmount: number
+  totalDebit: number
+  exchangeRate?: number
+}) {
+  if (!input.card) throw new Error("Tarjeta no encontrada")
+  if (!input.sourceAccount) throw new Error("Cuenta origen no encontrada")
+  if (!Number.isFinite(input.targetAmount) || input.targetAmount <= 0) {
+    throw new Error("El monto debe ser mayor que cero")
+  }
+
+  const currentDebt = getCardDebtByCurrency(input.card, input.targetCurrency)
+  if (input.targetAmount > currentDebt) {
+    throw new Error("El monto no puede ser mayor que la deuda de la tarjeta.")
+  }
+
+  const sourceBalance = Number(input.sourceAccount.balance || 0)
+  if (input.totalDebit > sourceBalance) {
+    throw new Error("La cuenta seleccionada no tiene balance suficiente.")
+  }
+
+  const sourceCurrency = input.sourceAccount.currency as "DOP" | "USD"
+  if (sourceCurrency !== input.targetCurrency) {
+    const rate = Number(input.exchangeRate || 0)
+    if (!Number.isFinite(rate) || rate <= 0) {
+      throw new Error("La tasa de cambio es obligatoria para este pago.")
+    }
+  }
+
+  return true
+}
+
+export function applyCreditCardPaymentRevalidation() {
+  mutate("accounts")
+  mutate("notifications")
+  mutate("planning_calendar_events")
+  mutate("planning_debts")
+  mutate("planning_debt_payments_month")
+  mutate("planning_budgets_with_usage")
+  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+}
+
+export async function createCreditCardPayment(input: Parameters<typeof payCreditCard>[0]) {
+  return payCreditCard(input)
+}
+
+export async function editCreditCardPayment(input: {
+  transactionId: string
+  account_id: string
+  type: "income" | "expense"
+  amount: number
+  description: string
+  date: string
+  category_id: string | null
+  notes: string | null
+  currency: "DOP" | "USD"
+  amount_base?: number | null
+  exchange_rate?: number
+  is_recurring?: boolean
+}) {
+  return updateTransaction(input.transactionId, {
+    account_id: input.account_id,
+    type: input.type,
+    amount: input.amount,
+    description: input.description,
+    date: input.date,
+    category_id: input.category_id,
+    notes: input.notes,
+    currency: input.currency,
+    amount_base: input.amount_base || input.amount,
+    exchange_rate: input.exchange_rate || 1,
+    is_recurring: Boolean(input.is_recurring),
+  })
+}
+
+export async function deleteCreditCardPayment(transactionId: string) {
+  return deleteTransaction(transactionId)
+}
+
 // Beneficiary mutations
 export async function createBeneficiary(beneficiary: Omit<Beneficiary, "id" | "user_id" | "created_at">) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { data, error } = await supabase
     .from("beneficiaries")
@@ -2642,7 +2772,7 @@ export async function createFinancialSubscription(input: {
   status?: "active" | "paused" | "cancelled"
 }) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.financial_subscriptions !== "unlimited") {
@@ -2669,12 +2799,15 @@ export async function createFinancialSubscription(input: {
   const { data, error } = await supabase
     .from("subscriptions")
     .insert({
-      ...input,
-      linked_account_id: input.linked_account_id || null,
-      linked_credit_card_id: input.linked_credit_card_id || null,
-      auto_record_enabled: input.auto_record_enabled ?? false,
-      pre_alert_enabled: input.pre_alert_enabled ?? true,
+      name: input.name,
+      logo_url: input.logo_url || null,
+      provider_key: input.provider_key || null,
+      amount: input.amount,
+      currency: input.currency,
+      account_id: input.account_id,
       category_id: categoryId,
+      billing_day: input.billing_day,
+      next_payment_date: input.next_payment_date,
       user_id: user.id,
       status: input.status || "active",
     })
@@ -2698,7 +2831,7 @@ export async function createFinancialSubscription(input: {
 
 export async function updateFinancialSubscription(id: string, updates: Partial<FinancialSubscription>) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   if (updates.auto_record_enabled || updates.pre_alert_enabled) {
     const { limits } = await getUserPlanAndLimits(user.id, user.email)
@@ -2888,7 +3021,7 @@ export async function updateAccountBalance(id: string, newBalance: number) {
 // Category mutations
 export async function createCategory(category: Omit<Category, "id" | "user_id" | "created_at">) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   const { data, error } = await supabase
     .from("categories")
@@ -3006,7 +3139,7 @@ export async function reorderAccounts(accountIdsInOrder: string[]) {
 
 export async function setFavoriteAccount(accountId: string) {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error("Not authenticated")
+  if (!user) throw new Error("No autenticado")
 
   await supabase.from("accounts").update({ is_favorite: false }).eq("user_id", user.id)
   await supabase.from("accounts").update({ is_favorite: true }).eq("id", accountId)

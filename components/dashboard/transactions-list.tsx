@@ -64,8 +64,8 @@ export function TransactionsList() {
     const yesterday = new Date()
     yesterday.setDate(today.getDate() - 1)
     const key = getLocalDateString(date)
-    if (key === getLocalDateString(today)) return "Today"
-    if (key === getLocalDateString(yesterday)) return "Yesterday"
+    if (key === getLocalDateString(today)) return "Hoy"
+    if (key === getLocalDateString(yesterday)) return "Ayer"
     return date.toLocaleDateString("es-DO", { day: "2-digit", month: "short", year: "numeric" })
   }
 

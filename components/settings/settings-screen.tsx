@@ -57,8 +57,8 @@ export function SettingsScreen() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
-      setAuthEmail(data.user?.email?.toLowerCase() ?? null)
+    supabase.auth.getUser().then((res) => {
+      setAuthEmail(res.data?.user?.email?.toLowerCase() ?? null)
     })
   }, [])
 
@@ -180,7 +180,7 @@ export function SettingsScreen() {
   const handleDeleteAccount = async () => {
     const keyword = deleteConfirmationText.trim().toUpperCase()
     if (keyword !== "DELETE" && keyword !== "ELIMINAR") {
-      setDeleteAccountError('Escribe "DELETE" o "ELIMINAR" para confirmar.')
+      setDeleteAccountError('Escribe "ELIMINAR" para confirmar.')
       return
     }
 
@@ -527,7 +527,7 @@ const isDevMode = process.env.NODE_ENV === "development"
           <div className="mt-6 rounded-2xl border border-dashed border-amber-200 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-900/10">
             <p className="text-xs font-medium text-amber-800 dark:text-amber-300">Modo Debug QA (solo desarrollo)</p>
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-              Email actual: <span className="font-mono">{displayEmail}</span>
+              Correo actual: <span className="font-mono">{displayEmail}</span>
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-400">
               QA esperado: <span className="font-mono">{QA_EMAIL}</span>
@@ -634,13 +634,13 @@ const isDevMode = process.env.NODE_ENV === "development"
             </p>
             <div className="text-left">
               <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                Escribe DELETE o ELIMINAR para confirmar
+                Escribe ELIMINAR para confirmar
               </label>
               <input
                 value={deleteConfirmationText}
                 onChange={(event) => setDeleteConfirmationText(event.target.value)}
                 className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"
-                placeholder="DELETE"
+                placeholder="ELIMINAR"
               />
             </div>
             {deleteAccountError && (

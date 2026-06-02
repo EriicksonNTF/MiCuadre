@@ -165,11 +165,11 @@ export default function DashboardPage() {
     if (!isReady) return
 
     const unsubTx = EventBus.on("transaction_created", (event) => {
-      const { type, amount } = event.payload ?? {}
+      const { type, amount, currency } = event.payload ?? {}
       if (type === "income") {
-        showToast({ title: "Ingreso registrado", body: `+${formatCurrency(amount)}`, type: "success", duration: 2500 })
+        showToast({ title: "Ingreso registrado", body: `+${formatCurrency(amount, currency)}`, type: "success", duration: 2500 })
       } else {
-        showToast({ title: "Gasto guardado", body: `-${formatCurrency(amount)}`, type: "success", duration: 2500 })
+        showToast({ title: "Gasto guardado", body: `-${formatCurrency(amount, currency)}`, type: "success", duration: 2500 })
       }
     })
 

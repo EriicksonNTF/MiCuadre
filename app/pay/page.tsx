@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
-import { payCreditCard, useAccounts } from "@/hooks/use-data"
+import { payCreditCard, useAccounts, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { cn } from "@/lib/utils"
@@ -69,6 +69,7 @@ export default function PayPage() {
       targetCurrency: Currency
       exchangeRate: number
     }
+    dgiiAmount?: number
     note?: string
     date: Date
   } | null>(null)
@@ -120,19 +121,34 @@ export default function PayPage() {
   const sourceCurrency = source?.currency as Currency | undefined
   const conversionApplies = Boolean(sourceCurrency && sourceCurrency !== currencyTab)
   const parsedRate = Number(exchangeRate)
-  const sourceDebitAmount = conversionApplies
-    ? currencyTab === "USD" && sourceCurrency === "DOP"
-      ? roundMoney(selectedAmount * parsedRate)
-      : roundMoney(selectedAmount / parsedRate)
-    : selectedAmount
+
+  const paymentCalculations = selectedAmount > 0 && sourceCurrency
+    ? (() => {
+        try {
+          return calculateCreditCardPaymentAmounts({
+            paymentAmount: selectedAmount,
+            sourceCurrency: sourceCurrency,
+            targetCurrency: currencyTab,
+            exchangeRate: conversionApplies ? parsedRate : undefined,
+            applyDgiiTax: true,
+          })
+        } catch {
+          return null
+        }
+      })()
+    : null
+
+  const sourceDebitAmount = paymentCalculations?.sourceAmount || selectedAmount
+  const dgiiAmount = paymentCalculations?.dgiiTaxAmount || 0
+  const totalDebit = paymentCalculations?.totalDebit || sourceDebitAmount
   const validRate = !conversionApplies || (Number.isFinite(parsedRate) && parsedRate > 0)
-  const valid = Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && validRate && sourceDebitAmount <= Number(source.balance || 0))
+  const valid = Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && validRate && totalDebit <= Number(source.balance || 0))
   const currencySymbol = currencyTab === "DOP" ? "RD$" : "US$"
   const warning = !selectedAmount
     ? "Selecciona un monto valido para continuar."
     : selectedAmount > balanceToDate
       ? "El monto no puede ser mayor que la deuda de la tarjeta."
-      : source && sourceDebitAmount > Number(source.balance || 0)
+      : source && totalDebit > Number(source.balance || 0)
         ? "Tu balance disponible es insuficiente."
         : null
 
@@ -161,7 +177,7 @@ export default function PayPage() {
         exchange_rate: conversionApplies ? parsedRate : undefined,
         payment_kind: paymentMode,
         notes: paymentComment.trim() || undefined,
-        apply_commission: false,
+        apply_commission: true,
       })
       if (conversionApplies && typeof window !== "undefined") {
         window.localStorage.setItem(LAST_RATE_KEY, String(parsedRate))
@@ -180,7 +196,7 @@ export default function PayPage() {
         sourceName: source.name,
         sourceCurrency: source.currency,
         previousSourceBalance,
-        newSourceBalance: previousSourceBalance - sourceDebitAmount,
+        newSourceBalance: previousSourceBalance - totalDebit,
         summary: {
           balanceToDate,
           pendingStatement,
@@ -190,13 +206,14 @@ export default function PayPage() {
         },
         conversion: conversionApplies
           ? {
-              sourceAmount: sourceDebitAmount,
+              sourceAmount: totalDebit,
               sourceCurrency: source.currency,
               targetAmount: selectedAmount,
               targetCurrency: currencyTab,
               exchangeRate: parsedRate,
             }
           : undefined,
+        dgiiAmount,
         note: paymentComment.trim() || undefined,
         date: new Date(),
       })
@@ -290,13 +307,15 @@ export default function PayPage() {
               <button type="button" className="text-sm font-semibold text-primary">¿Como pagar mi tarjeta?</button>
             </section>
 
-            {conversionApplies && (
+            {conversionApplies && source && (
               <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
                 <p className="text-sm font-bold">Tasa de cambio</p>
                 <p className="mt-1 text-xs text-muted-foreground">RD$ por US$1. Puedes ajustar esta tasa si tu banco usa otra.</p>
                 <input value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="59.50" className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold outline-none" />
                 <div className="mt-3 rounded-xl bg-background/70 p-3 text-sm">
-                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total estimado a descontar</span><span className="font-bold">{source ? formatCurrency(sourceDebitAmount, source.currency) : "-"}</span></div>
+                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total a descontar</span><span className="font-bold">{formatCurrency(sourceDebitAmount, source.currency)}</span></div>
+                  {selectedAmount > 0 ? <div className="mt-2 flex justify-between gap-4 text-xs"><span className="text-muted-foreground">Impuesto DGII 0.15%</span><span className="text-amber-500">{formatCurrency(dgiiAmount, source.currency)}</span></div> : null}
+                  {selectedAmount > 0 ? <div className="mt-1 flex justify-between gap-4 border-t border-amber-500/20 pt-2 text-sm font-semibold"><span className="text-muted-foreground">Total a debitar</span><span>{formatCurrency(totalDebit, source.currency)}</span></div> : null}
                   <p className="mt-1 text-xs text-muted-foreground">Tasa guardada para esta transacción.</p>
                 </div>
               </section>
@@ -328,14 +347,16 @@ export default function PayPage() {
       {showConfirmSheet && card && source ? (
         <ConfirmPaymentSheet
           amount={selectedAmount}
-          taxAmount={0}
-          totalDebit={sourceDebitAmount}
+          taxAmount={dgiiAmount}
+          totalDebit={totalDebit}
           currencySymbol={currencySymbol}
+          sourceCurrencySymbol={source.currency === "USD" ? "US$" : "RD$"}
           sourceAccountName={source.name}
           sourceAvailable={formatCurrency(Number(source.balance || 0), source.currency)}
           cardName={card.name}
           warning={warning}
           loading={isPaying}
+          conversionSummary={conversionApplies ? `Al pagar ${currencySymbol}${selectedAmount.toFixed(2)} se debitaran ${source.currency === "USD" ? "US$" : "RD$"}${sourceDebitAmount.toFixed(2)}` : undefined}
           onClose={() => setShowConfirmSheet(false)}
           onConfirm={async () => {
             await handlePay()
@@ -391,6 +412,12 @@ export default function PayPage() {
               { label: "Fuente", value: receipt?.conversion ? "Manual" : undefined },
             ],
           },
+          ...(receipt?.dgiiAmount ? [{
+            title: "Impuesto DGII",
+            lines: [
+              { label: "Impuesto DGII 0.15%", value: formatCurrency(receipt.dgiiAmount, receipt.sourceCurrency) },
+            ],
+          }] : []),
           {
             title: "Detalle",
             lines: [

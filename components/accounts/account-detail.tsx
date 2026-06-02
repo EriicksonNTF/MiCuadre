@@ -36,7 +36,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountDeletionImpact, payCreditCard, updateTransaction, deleteTransaction } from "@/hooks/use-data"
+import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountDeletionImpact, payCreditCard, updateTransaction, deleteTransaction, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getLocalDateString, getReadableTextColor } from "@/lib/data"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
@@ -114,6 +114,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const [paymentCurrency, setPaymentCurrency] = useState<"DOP" | "USD">("DOP")
   const [paymentSource, setPaymentSource] = useState<string>("")
   const [paymentAmount, setPaymentAmount] = useState("")
+  const [paymentRate, setPaymentRate] = useState("")
   const [paymentComment, setPaymentComment] = useState("")
   const [paymentKind, setPaymentKind] = useState<"balance_to_date" | "statement_balance" | "minimum_payment" | "custom">("custom")
   const [isPaying, setIsPaying] = useState(false)
@@ -374,14 +375,17 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         source_account_id: paymentSource,
         amount: parsedAmount,
         currency: paymentCurrency,
+        exchange_rate: conversionAppliesPay ? parsedRate : undefined,
         payment_kind: paymentKind,
         notes: paymentComment.trim() || undefined,
+        apply_commission: true,
       })
       notify({ title: "Pago completado", message: "El pago de tarjeta fue registrado." })
       EventBus.emit({ type: "card_payment_completed" })
       setShowPayment(false)
       setPaymentSource("")
       setPaymentAmount("")
+      setPaymentRate("")
       setPaymentComment("")
       setPaymentKind("custom")
     } catch {
@@ -512,6 +516,31 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const paidStatementByCurrency = paymentCurrency === "DOP" ? Number(account?.paidStatementDop || 0) : Number(account?.paidStatementUsd || 0)
   const pendingStatementByCurrency = Math.max(0, statementByCurrency - paidStatementByCurrency)
   const minPaymentByCurrency = pendingStatementByCurrency * Number(account?.minimumPaymentPercentage || 0.0278)
+
+  const sourceCurrency = sourceAccount?.currency as Currency | undefined
+  const conversionAppliesPay = Boolean(sourceCurrency && sourceCurrency !== paymentCurrency)
+  const parsedRate = Number(paymentRate)
+
+  const paymentCalcs = parsedAmount > 0 && sourceCurrency
+    ? (() => {
+        try {
+          return calculateCreditCardPaymentAmounts({
+            paymentAmount: parsedAmount,
+            sourceCurrency: sourceCurrency as "DOP" | "USD",
+            targetCurrency: paymentCurrency,
+            exchangeRate: conversionAppliesPay ? parsedRate : undefined,
+            applyDgiiTax: true,
+          })
+        } catch {
+          return null
+        }
+      })()
+    : null
+
+  const sourceDebitAmount = paymentCalcs?.sourceAmount || parsedAmount
+  const dgiiAmountPay = paymentCalcs?.dgiiTaxAmount || 0
+  const totalDebitPay = paymentCalcs?.totalDebit || sourceDebitAmount
+  const validRatePay = !conversionAppliesPay || (Number.isFinite(parsedRate) && parsedRate > 0)
 
   useEffect(() => {
     if (!hasUsdOnCard && paymentCurrency === "USD") {
@@ -941,9 +970,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 !paymentSource ||
                 parsedAmount <= 0 ||
                 parsedAmount > currentDebtByCurrency ||
-                (sourceAccount && parsedAmount > sourceAccount.balance) ||
-                (sourceAccount && sourceAccount.currency !== paymentCurrency) ||
-                isPaying
+                (sourceAccount && totalDebitPay > Number(sourceAccount.balance || 0)) ||
+                isPaying ||
+                !validRatePay
               }
               className="h-12 w-full rounded-2xl text-base font-semibold"
             >
@@ -961,7 +990,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
               {(["DOP", "USD"] as const).filter((curr) => curr === "DOP" || hasUsdOnCard).map((curr) => (
-                <button key={curr} onClick={() => { setPaymentCurrency(curr); setPaymentSource(""); setPaymentAmount(""); setPaymentComment(""); setPaymentKind("custom") }} className={cn("rounded-lg py-2 text-xs font-medium", paymentCurrency === curr ? "bg-card" : "text-muted-foreground")}>{curr}</button>
+                <button key={curr} onClick={() => { setPaymentCurrency(curr); setPaymentSource(""); setPaymentAmount(""); setPaymentRate(""); setPaymentComment(""); setPaymentKind("custom") }} className={cn("rounded-lg py-2 text-xs font-medium", paymentCurrency === curr ? "bg-card" : "text-muted-foreground")}>{curr}</button>
               ))}
             </div>
 
@@ -974,13 +1003,21 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <AccountCarouselSelector
                   compact
                   items={accounts
-                    .filter((a) => a.type !== "credit" && a.currency === paymentCurrency)
-                    .map((acc) => ({ id: acc.id, title: acc.name, subtitle: formatCurrency(Number(acc.balance || 0), acc.currency), detail: acc.type }))}
+                    .filter((a) => a.type !== "credit")
+                    .map((acc) => ({ id: acc.id, title: acc.name, subtitle: formatCurrency(Number(acc.balance || 0), acc.currency), detail: acc.currency }))}
                   selectedId={paymentSource}
-                  onSelect={setPaymentSource}
-                  emptyMessage={`No hay cuentas ${paymentCurrency}`}
+                  onSelect={(id) => { setPaymentSource(id); setPaymentRate("") }}
+                  emptyMessage="No hay cuentas disponibles"
                 />
               </div>
+
+              {/* Exchange Rate (cross-currency) */}
+              {conversionAppliesPay && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Tasa de cambio ({sourceCurrency} a {paymentCurrency})</p>
+                  <input value={paymentRate} onChange={(e) => setPaymentRate(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="59.50" className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm outline-none" />
+                </div>
+              )}
 
               {/* Amount */}
               <div>
@@ -1036,8 +1073,23 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 </div>
               </div>
 
+              {/* Summary with DGII */}
+              {parsedAmount > 0 && sourceAccount && (
+                <div className="rounded-xl border border-border bg-card p-3 text-sm">
+                  <p className="text-xs font-semibold text-muted-foreground mb-2">Resumen del pago</p>
+                  <div className="space-y-1">
+                    <p className="flex justify-between"><span>Monto a acreditar</span><span className="font-semibold">{formatCurrency(parsedAmount, paymentCurrency)}</span></p>
+                    {conversionAppliesPay && sourceCurrency ? (
+                      <p className="flex justify-between text-xs text-muted-foreground"><span>Total a descontar (sin DGII)</span><span>{formatCurrency(sourceDebitAmount, sourceCurrency)}</span></p>
+                    ) : null}
+                    <p className="flex justify-between text-xs"><span className="text-muted-foreground">Impuesto DGII 0.15%</span><span className="text-amber-500">{formatCurrency(dgiiAmountPay, sourceCurrency || paymentCurrency)}</span></p>
+                    <p className="flex justify-between border-t border-border pt-1 font-semibold"><span>Total a debitar</span><span>{formatCurrency(totalDebitPay, sourceCurrency || paymentCurrency)}</span></p>
+                  </div>
+                </div>
+              )}
+
               {/* Warning if insufficient funds */}
-              {sourceAccount && parsedAmount > sourceAccount.balance && (
+              {sourceAccount && totalDebitPay > Number(sourceAccount.balance || 0) && (
                 <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-red-600">
                   <AlertTriangle className="h-4 w-4" />
                   <span className="text-xs">Ese monto supera tu balance disponible.</span>
@@ -1046,13 +1098,13 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               {sourceAccount && (
                 <p className={cn(
                   "text-xs",
-                  parsedAmount > sourceAccount.balance
+                  totalDebitPay > Number(sourceAccount.balance || 0)
                     ? "text-red-500"
                     : Number(sourceAccount.balance) <= 1000
                       ? "text-amber-600"
                       : "text-muted-foreground"
                 )}>
-                  Disponible: {formatCurrency(Number(sourceAccount.balance || 0), paymentCurrency)}
+                  Disponible: {formatCurrency(Number(sourceAccount.balance || 0), sourceAccount.currency)}
                 </p>
               )}
             </div>
@@ -1243,7 +1295,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       onClick={() => setEditForm({ ...editForm, background_style: style })}
                       className={cn("rounded-lg px-2 py-1 text-xs", editForm.background_style === style ? "bg-primary text-primary-foreground" : "bg-muted")}
                     >
-                      {style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Soft"}
+                      {style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}
                     </button>
                   ))}
                 </div>

@@ -48,10 +48,12 @@ export function BodyCleanup() {
       }
     }
 
-    const PRIMARY_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/planning"])
     let edgeSwipeStart: { x: number; y: number; active: boolean } | null = null
     let navInProgress = false
-    const currentPageElement = () => document.querySelector("main.app-scroll, div.app-scroll") as HTMLElement | null
+    const currentPageElement = () =>
+      (document.querySelector("main.app-scroll, div.app-scroll") as HTMLElement | null) ||
+      (document.querySelector("#__next main, [data-root='true']") as HTMLElement | null) ||
+      document.body
     const setPageOffset = (offset: number, animated: boolean) => {
       const page = currentPageElement()
       if (!page) return
@@ -86,8 +88,6 @@ export function BodyCleanup() {
     }
 
     const resolveFallbackRoute = (pathname: string) => {
-      if (pathname.startsWith("/planning")) return "/dashboard"
-      if (pathname.startsWith("/accounts/") && pathname.split("/").length >= 3) return "/accounts"
       if (pathname.startsWith("/settings")) return "/settings"
       return "/dashboard"
     }
@@ -102,10 +102,10 @@ export function BodyCleanup() {
       if (navInProgress) return
       if (event.pointerType && event.pointerType !== "touch") return
       const path = window.location.pathname
-      if (PRIMARY_ROUTES.has(path)) return
       const target = event.target as HTMLElement | null
       if (shouldIgnoreGestureTarget(target)) return
       if (event.clientX > 24) return
+      if (path === "/" || path === "/dashboard") return
       edgeSwipeStart = { x: event.clientX, y: event.clientY, active: true }
       setPageOffset(0, false)
     }
@@ -123,12 +123,7 @@ export function BodyCleanup() {
         navInProgress = true
         edgeSwipeStart = null
         setPageOffset(Math.min(window.innerWidth * 0.34, 140), true)
-        const fallback = resolveFallbackRoute(window.location.pathname)
-        if (window.history.length > 1) {
-          window.setTimeout(() => window.history.back(), 90)
-        } else {
-          window.setTimeout(() => window.location.assign(fallback), 90)
-        }
+        window.setTimeout(() => window.location.assign(resolveFallbackRoute(window.location.pathname)), 90)
 
         window.setTimeout(() => {
           navInProgress = false

@@ -17,7 +17,7 @@ function ExpensePageContent() {
     categoryName: searchParams.get("category") || "",
   }
 
-  return <ExpenseForm onBack={() => router.push("/history")} prefill={prefill} />
+  return <ExpenseForm onBack={() => router.back()} prefill={prefill} />
 }
 
 export default function ExpensePage() {

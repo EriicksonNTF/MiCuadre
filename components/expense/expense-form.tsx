@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -35,9 +34,9 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
-import { useAccounts, useCategories, createFinancialSubscription, createTransaction, useTransactions } from "@/hooks/use-data"
+import { useAccounts, useCategories, createFinancialSubscription, createTransaction, createCategory, useTransactions } from "@/hooks/use-data"
 
-import { formatCurrency, getAvailableCredit } from "@/lib/data"
+import { formatCurrency, getAvailableCredit, getAvailableCreditByCurrency } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
 import { EventBus } from "@/lib/event-bus"
 import { FINANCIAL_SUBSCRIPTION_PROVIDERS, getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
@@ -83,7 +82,6 @@ type ExpensePrefill = {
 }
 
 export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?: ExpensePrefill }) {
-  const router = useRouter()
   const { data: rawAccounts = [] } = useAccounts()
   const { data: dbCategories = [] } = useCategories()
   const { data: rawTransactions = [] } = useTransactions(150)
@@ -120,6 +118,9 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [subscriptionProvider, setSubscriptionProvider] = useState("netflix")
   const [subscriptionMode, setSubscriptionMode] = useState<"once" | "recurring">("once")
   const [billingDay, setBillingDay] = useState(String(new Date().getDate()))
+  const [showCategoryModal, setShowCategoryModal] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [newCategoryType, setNewCategoryType] = useState<"expense" | "income" | "both">("expense")
 
   // Load last used account and currency for quick prefill next time
   useEffect(() => {
@@ -200,10 +201,10 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   }, [selectedRawAccount])
   const isCreditCardIncome = transactionType === "income" && isCredit
   const selectedCreditCardIncomeOption = creditCardIncomeOptions.find((option) => option.value === creditCardIncomeKind) || creditCardIncomeOptions[0]
-  const availableAmount = selectedAccount
+  const availableAmount = selectedRawAccount
     ? isCredit
-      ? getAvailableCredit(selectedAccount)
-      : Number(selectedAccount.balance)
+      ? getAvailableCreditByCurrency(selectedRawAccount as any, currency)
+      : Number(selectedRawAccount.balance)
     : 0
 
   const parsedAmount = useMemo(() => {
@@ -235,7 +236,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
     if (transactionType === "expense" && totalWithCommission > availableAmount) {
       showToast({
         title: isCredit ? "Crédito insuficiente" : "Saldo insuficiente",
-        body: `Disponible: ${formatCurrency(availableAmount)}`,
+        body: `Disponible: ${formatCurrency(availableAmount, currency)}`,
         type: "warning",
         duration: 3000,
       })
@@ -301,12 +302,12 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       showToast({
         title: isCreditCardIncome ? selectedCreditCardIncomeOption.label : transactionType === "income" ? "Ingreso registrado" : "Gasto guardado",
         body: isDeviceOnline
-          ? `${formatCurrency(parsedAmount)} · ${description}`
+          ? `${formatCurrency(parsedAmount, currency)} · ${description}`
           : "Gasto guardado sin conexión. Se sincronizará cuando vuelva internet.",
         type: "success",
         duration: isDeviceOnline ? 2500 : 3500,
       })
-      EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount } })
+      EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount, currency } })
       
       setIsSaving(false)
       setAmount("")
@@ -357,7 +358,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   }, [prefill, prefillApplied, categories])
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
+    <div className="app-scroll flex h-[100dvh] flex-col overflow-hidden bg-background">
       {/* Header */}
       <header className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-[calc(1.5rem+env(safe-area-inset-top))] sm:px-6">
         {onBack && (
@@ -530,11 +531,11 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         <div>
           <p className="mb-3 px-1 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Cuenta</p>
           <AccountCarouselSelector
-            items={accounts
+            items={rawAccounts
               .map((account) => ({
                 id: account.id,
                 title: account.name,
-                subtitle: account.type === "credit" ? `Disponible: ${formatCurrency(getAvailableCredit(account), account.currency)}` : `Balance: ${formatCurrency(Number(account.balance || 0), account.currency)}`,
+                subtitle: account.type === "credit" ? `Disponible: ${formatCurrency(getAvailableCredit(account))}` : `Balance: ${formatCurrency(Number(account.balance || 0), account.currency as Currency)}`,
                 detail: account.type,
               }))}
             selectedId={accountId}
@@ -550,7 +551,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             </div>
           )}
           
-          {selectedAccount && (
+          {selectedRawAccount && (
             <p className={cn(
               "mt-2 px-1 text-xs",
               exceedsAvailable
@@ -560,9 +561,9 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
                   : "text-muted-foreground"
             )}>
               {isCredit ? (
-                <>Disponible: {formatCurrency(getAvailableCredit(selectedAccount))}</>
+                <>Disponible: {formatCurrency(getAvailableCreditByCurrency(selectedRawAccount as any, currency), currency)}</>
               ) : (
-                <>Balance: {formatCurrency(selectedAccount.balance)}</>
+                <>Balance: {formatCurrency(selectedRawAccount.balance, selectedRawAccount.currency as Currency)}</>
               )}
             </p>
           )}
@@ -596,7 +597,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             })}
             <button
               type="button"
-              onClick={() => router.push("/settings/categories")}
+              onClick={() => setShowCategoryModal(true)}
               className="w-20 shrink-0"
             >
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-muted/30 transition-colors hover:bg-muted">
@@ -686,6 +687,74 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </Button>
       </div>
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
+
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl ring-1 ring-border">
+            <h2 className="mb-4 text-lg font-extrabold text-foreground">Nueva categoría</h2>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>
+            <input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Ej: Supermercado"
+              autoFocus
+              className="mb-4 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
+            />
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">Tipo</label>
+            <div className="mb-6 flex gap-2">
+              {(["expense", "income", "both"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setNewCategoryType(t)}
+                  className={cn(
+                    "flex-1 rounded-xl py-2.5 text-xs font-semibold transition-colors ring-1",
+                    newCategoryType === t
+                      ? "bg-primary text-primary-foreground ring-primary"
+                      : "bg-background text-muted-foreground ring-border"
+                  )}
+                >
+                  {t === "expense" ? "Gasto" : t === "income" ? "Ingreso" : "Ambos"}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCategoryModal(false)
+                  setNewCategoryName("")
+                }}
+                className="flex-1 rounded-xl bg-muted py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted/70"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  const trimmed = newCategoryName.trim()
+                  if (!trimmed) return
+                  try {
+                    const created = await createCategory({
+                      name: trimmed,
+                      type: newCategoryType,
+                      icon: "circle",
+                      color: "#6366f1",
+                      is_default: false,
+                      is_subscription: false,
+                    })
+                    setCategory(created.id)
+                    setNewCategoryName("")
+                    setShowCategoryModal(false)
+                  } catch {
+                    showToast({ title: "Error", body: "No se pudo crear la categoría", type: "error", duration: 2500 })
+                  }
+                }}
+                className="flex-1 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Guardar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

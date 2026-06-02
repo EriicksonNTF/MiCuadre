@@ -128,6 +128,9 @@ async function main() {
     const cardSide = groupTxs.filter((tx) => tx.type === "income")
     const source = sourceSide[0] || null
     const card = cardSide[0] || null
+    const sourceCurrency = source?.currency || source?.metadata?.source_currency || null
+    const targetCurrency = card?.currency || source?.metadata?.payment_currency || null
+    const exchangeRate = source?.metadata?.exchange_rate || card?.metadata?.exchange_rate || null
 
     if (!source && card) {
       issues.push({
@@ -179,6 +182,19 @@ async function main() {
           card_transaction_id: card.id,
           amount: Number(source.amount || 0),
           currency: `${source.currency}/${card.currency}`,
+        })
+      }
+
+      if (sourceCurrency && targetCurrency && sourceCurrency !== targetCurrency && (!exchangeRate || Number(exchangeRate) <= 0)) {
+        issues.push({
+          user_id: source.user_id,
+          card_id: card.metadata?.credit_card_id || card.metadata?.credit_account_id || card.account_id,
+          payment_group_id: groupId,
+          issue_type: "missing_exchange_rate",
+          source_account_transaction_id: source.id,
+          card_transaction_id: card.id,
+          amount: Number(source.amount || 0),
+          currency: `${sourceCurrency}/${targetCurrency}`,
         })
       }
 
