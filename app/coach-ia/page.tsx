@@ -18,12 +18,18 @@ type Message = {
   disclaimer?: string
 }
 
-const SUGGESTED_PROMPTS = [
+const GENERAL_PROMPTS = [
   "¿Cuánto me queda del presupuesto de comida?",
   "¿Qué pagos tengo esta semana?",
-  "¿Cuánto debo en préstamos?",
-  "¿Qué deuda vence primero?",
   "¿Estoy cerca de pasarme del presupuesto?",
+  "¿En qué estoy gastando más este mes?",
+]
+
+const CARD_PROMPTS = [
+  "¿Cuál es el saldo actual de mi tarjeta?",
+  "¿Cuánto crédito disponible tengo?",
+  "¿Cuánto debo en total de mis tarjetas?",
+  "¿Cuántos días me quedan para pagar?",
 ]
 
 function BlockCard({ block }: { block: CoachUIBlock }) {
@@ -359,17 +365,35 @@ export default function CoachIAPage() {
               <p className="text-xs text-muted-foreground">Respuestas cortas con acción directa.</p>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {SUGGESTED_PROMPTS.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => askCoach(prompt)}
-                disabled={sending}
-                className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-              >
-                {prompt}
-              </button>
-            ))}
+          <div className="mt-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Finanzas generales</p>
+            <div className="flex flex-wrap gap-2">
+              {GENERAL_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => askCoach(prompt)}
+                  disabled={sending}
+                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tarjetas de credito</p>
+            <div className="flex flex-wrap gap-2">
+              {CARD_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => askCoach(prompt)}
+                  disabled={sending}
+                  className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

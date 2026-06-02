@@ -4,6 +4,9 @@ import { coachRequestSchema } from "@/lib/mia/schemas"
 import { formatCurrency } from "@/lib/data"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
 import { buildFinancialContext } from "@/lib/mia/context-builder"
+import { detectCardQuestion, resolveCardQuestion } from "@/lib/mia/card-questions"
+import { buildCardSnapshot } from "@/lib/mia/card-snapshot"
+import { buildCoachReply } from "@/lib/coach-ia"
 
 type MiaActionType =
   | "create_transaction"
@@ -704,6 +707,31 @@ export async function POST(request: Request) {
 
     // Build context
     const { rawContext } = await buildFinancialContext(supabase, user.id)
+
+    // --- CARD QUESTION DETECTION (controlled engine, no LLM) ---
+    const cardIntent = detectCardQuestion(message)
+    if (cardIntent && cardIntent.confidence >= 0.7) {
+      const cardSnapshot = await buildCardSnapshot(supabase, user.id)
+      if (cardSnapshot.hasCards) {
+        const cardResponse = resolveCardQuestion(cardIntent, cardSnapshot, message)
+        await supabase.from("mia_messages").insert({
+          conversation_id: convId,
+          user_id: user.id,
+          role: "assistant",
+          content: cardResponse.answer,
+          metadata: {
+            uiBlocks: cardResponse.uiBlocks,
+            actions: cardResponse.actions,
+            disclaimer: cardResponse.disclaimer,
+          },
+        })
+        await supabase
+          .from("mia_conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", convId)
+        return NextResponse.json({ ...cardResponse, conversationId: convId })
+      }
+    }
 
     // Retrieve conversation history
     const { data: historyRows } = await supabase

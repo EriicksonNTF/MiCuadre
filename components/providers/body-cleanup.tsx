@@ -122,13 +122,14 @@ export function BodyCleanup() {
         if (navInProgress) return
         navInProgress = true
         edgeSwipeStart = null
-        setPageOffset(Math.min(window.innerWidth * 0.34, 140), true)
-        window.setTimeout(() => window.location.assign(resolveFallbackRoute(window.location.pathname)), 90)
+        setPageOffset(Math.min(window.innerWidth * 0.5, 260), true)
+        window.setTimeout(() => {
+          window.location.assign(resolveFallbackRoute(window.location.pathname))
+        }, 220)
 
         window.setTimeout(() => {
           navInProgress = false
-          resetPageOffset(false)
-        }, 480)
+        }, 500)
       }
     }
 

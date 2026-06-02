@@ -96,7 +96,7 @@ export function BudgetFormSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
-      <DrawerContent className="mx-auto max-w-md rounded-t-3xl border-border bg-card px-4 pb-6">
+      <DrawerContent className="mx-auto max-w-md rounded-t-2xl border-border bg-card px-4 pb-6 shadow-2xl ring-1 ring-border">
         <DrawerHeader className="px-0">
           <DrawerTitle>{budget ? "Editar presupuesto" : "Nuevo presupuesto"}</DrawerTitle>
         </DrawerHeader>

@@ -32,6 +32,39 @@
 - There are both `package-lock.json` and `pnpm-lock.yaml`; prefer the package manager already used in the session and avoid lockfile churn unless asked.
 - SQL scripts live in `scripts/*.sql` (schema/seed/manual sync); no migration runner is wired in npm scripts.
 
+## Visual Screenshot Debugging (Agent UI Access)
+- I can take Playwright screenshots of any page to visualize the app:
+  ```bash
+  # Single page (default desktop viewport)
+  npm run screenshot -- --route=dashboard
+  
+  # Mobile viewport (430x932, iPhone-like)
+  npm run screenshot -- --route=dashboard --mobile
+  
+  # Full page screenshot (scroll capture)
+  npm run screenshot -- --route=dashboard --fullpage
+  
+  # All protected pages (takes a while)
+  npm run screenshot:all
+  
+  # Combine mobile + all
+  npm run screenshot:all -- --mobile
+  ```
+- Available routes: dashboard, accounts, pay, expense, history, goals, planning, coach-ia, notifications, profile, settings, settings-plan, settings-categories, settings-security, onboarding, login, signup
+- Screenshots save to `screenshots/` directory.
+- I can read the resulting PNG files to "see" the UI and diagnose visual bugs.
+- Credentials come from `scripts/capture-all-screens.mjs` hardcoded values (or env vars TEST_EMAIL/TEST_PASSWORD).
+- The script works against `http://localhost:3000` by default; override with `BASE_URL` env var.
+
+## Visual QA Audit
+- Full mobile audit: `npm run audit:visual` (runs `scripts/audit-visual.mjs`)
+- Deep form audit (opens modals/sheets/drawers): `npm run audit:visual-deep` (runs `scripts/audit-visual-deep.mjs`)
+- Captures 50+ screenshots across 17 modules in `screenshots/audit/`
+- Captures console errors, HTTP errors, page errors per module
+- Saves audit logs to `screenshots/audit/logs/audit-log.json` and `audit-log-deep.json`
+- Generates report in `docs/mobile-visual-qa-audit.md`
+- Known limitation: I cannot view images. Screenshots must be reviewed manually by the user.
+
 ## UI/Project Conventions Observed
 - Path alias `@/*` is enabled in `tsconfig.json`.
 - UI uses shadcn-style structure (`components/ui`) with Tailwind v4 (`@tailwindcss/postcss`).

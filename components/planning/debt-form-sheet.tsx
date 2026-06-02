@@ -118,7 +118,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
-      <DrawerContent className="mx-auto flex max-h-[85vh] max-w-md flex-col rounded-t-3xl border-border bg-card p-0">
+      <DrawerContent className="mx-auto flex max-h-[85vh] max-w-md flex-col rounded-t-2xl border-border bg-card p-0 shadow-2xl ring-1 ring-border">
         <DrawerHeader className="shrink-0 border-b border-border px-4 pb-3 pt-4">
           <DrawerTitle>Nueva deuda</DrawerTitle>
         </DrawerHeader>

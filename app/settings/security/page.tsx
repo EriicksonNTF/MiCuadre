@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ChevronLeft, ChevronRight, Fingerprint, Shield, Smartphone } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -10,8 +10,15 @@ import { disablePasskey, isPasskeyEnabled, isPasskeySupported, registerPasskey }
 export default function SecurityPage() {
   const { user } = useAuth()
   const { toast } = useToast()
-  const [isBiometricEnabled, setIsBiometricEnabled] = useState(isPasskeyEnabled())
-  const supported = useMemo(() => isPasskeySupported(), [])
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false)
+  const [supported, setSupported] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
+
+  useEffect(() => {
+    setSupported(isPasskeySupported())
+    setIsBiometricEnabled(isPasskeyEnabled())
+    setHydrated(true)
+  }, [])
   const [isEnabling, setIsEnabling] = useState(false)
 
   const toggleBiometrics = async () => {

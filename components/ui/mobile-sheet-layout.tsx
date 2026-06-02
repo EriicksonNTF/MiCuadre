@@ -11,8 +11,8 @@ type MobileSheetLayoutProps = {
 
 export function MobileSheetLayout({ title, children, footer, onClose }: MobileSheetLayoutProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/45">
-      <section className="flex max-h-[88vh] w-full flex-col rounded-t-[32px] border border-border bg-card text-card-foreground shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-end bg-black/40">
+      <section className="flex max-h-[88vh] w-full flex-col rounded-t-2xl border border-border bg-card text-card-foreground shadow-2xl ring-1 ring-border">
         <div className="flex shrink-0 justify-center pt-3">
           <div className="h-1.5 w-14 rounded-full bg-muted" />
         </div>

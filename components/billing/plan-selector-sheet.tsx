@@ -94,7 +94,7 @@ export function PlanSelectorSheet({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
-      <DrawerContent className="mx-auto max-h-[92dvh] max-w-md rounded-t-[1.75rem] border-border bg-background">
+      <DrawerContent className="mx-auto max-h-[92dvh] max-w-md rounded-t-2xl border-border bg-background shadow-2xl ring-1 ring-border">
         <div className="app-scroll overflow-y-auto px-5 pb-safe">
           <DrawerHeader className="px-0 pb-2 pt-4 text-left">
             <div className="flex items-start justify-between gap-4">

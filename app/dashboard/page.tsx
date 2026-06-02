@@ -107,7 +107,9 @@ export default function DashboardPage() {
         }
       }
 
-      const pending = Number(account.pending_amount ?? 0)
+      const dopPending = Math.max(0, Number(account.statement_balance_dop ?? 0) - Number(account.paid_statement_amount_dop ?? 0))
+      const usdPending = Math.max(0, Number(account.statement_balance_usd ?? 0) - Number(account.paid_statement_amount_usd ?? 0))
+      const pending = dopPending + usdPending
       if (account.statement_due_date && pending > 0) {
         const due = new Date(`${account.statement_due_date}T12:00:00`)
         const dueDays = Math.ceil((new Date(due.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / (1000 * 60 * 60 * 24))
@@ -156,9 +158,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user || !isReady) return
-    processDueFinancialSubscriptions().catch(() => {
+    let cancelled = false
+    processDueFinancialSubscriptions().then(() => {
+      if (cancelled) return
+    }).catch(() => {
       // noop
     })
+    return () => { cancelled = true }
   }, [isReady, user])
 
   useEffect(() => {

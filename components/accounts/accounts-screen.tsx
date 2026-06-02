@@ -687,8 +687,8 @@ if (!draggedId) return
 
       {confirmDeleteId && (
         <>
-          <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
-          <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-card p-5 shadow-2xl">
+          <div className="fixed inset-0 z-[90] bg-black/40" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
+          <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
               <AlertTriangle className="h-7 w-7" />
             </div>

@@ -14,7 +14,7 @@ import { MovementReceipt } from "@/components/receipts/movement-receipt"
 import { PaymentOptionCard } from "@/components/credit-cards/pay-card/payment-option-card"
 import { CustomAmountSheet } from "@/components/credit-cards/pay-card/custom-amount-sheet"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
-import { CardSummaryGrid } from "@/components/credit-cards/pay-card/card-summary-grid"
+
 
 type PaymentMode = "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
 
@@ -290,16 +290,15 @@ export default function PayPage() {
               />
             </section>
 
-            <CardSummaryGrid
-              currentBalance={formatCurrency(balanceToDate, currencyTab)}
-              statementBalance={formatCurrency(pendingStatement, currencyTab)}
-              minimumPayment={formatCurrency(minimumPayment, currencyTab)}
-              availableBalance={formatCurrency(availableCredit, currencyTab)}
-              dueDate={card.statement_due_date ? formatDate(card.statement_due_date) : "-"}
-            />
-
             <section className="space-y-3">
-              <p className="text-xl font-bold text-foreground">Elige el monto que quieres pagar</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xl font-bold text-foreground">Elige el monto que quieres pagar</p>
+                {card.statement_due_date && (
+                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                    Pagar antes del {formatDate(card.statement_due_date)}
+                  </span>
+                )}
+              </div>
               <PaymentOptionCard title="Minimo pendiente" description="Evita afectar tu historial crediticio" amount={formatCurrency(minimumPayment, currencyTab)} selected={paymentMode === "minimum_payment"} onClick={() => selectAmount("minimum_payment", minimumPayment)} />
               <PaymentOptionCard title="Pendiente al corte" description="Evita cargos por interes" amount={formatCurrency(pendingStatement, currencyTab)} selected={paymentMode === "statement_balance"} onClick={() => selectAmount("statement_balance", pendingStatement)} />
               <PaymentOptionCard title="Balance a la fecha" description="Pagaras todo lo consumido." amount={formatCurrency(balanceToDate, currencyTab)} selected={paymentMode === "balance_to_date"} onClick={() => selectAmount("balance_to_date", balanceToDate)} />

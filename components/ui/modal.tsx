@@ -42,7 +42,7 @@ export function Modal({
       {/* Modal Content */}
       <div
         className={cn(
-          "relative w-full max-h-[85dvh] sm:max-h-[80vh] rounded-t-3xl sm:rounded-2xl bg-card overflow-hidden flex flex-col",
+          "relative w-full max-h-[85dvh] sm:max-h-[80vh] rounded-t-2xl sm:rounded-2xl bg-card shadow-2xl ring-1 ring-border overflow-hidden flex flex-col",
           "animate-in slide-in-from-bottom-4 fade-in duration-300",
           className
         )}
@@ -108,7 +108,7 @@ export function QuickModal({
       <div className="absolute inset-0 bg-black/50 animate-in fade-in duration-200" />
       <div
         className={cn(
-          "relative w-full max-w-md rounded-t-3xl bg-card p-6 pb-safe-areas",
+          "relative w-full max-w-md rounded-t-2xl bg-card p-6 pb-safe-areas shadow-2xl ring-1 ring-border",
           "animate-in slide-in-from-bottom-4 fade-in duration-300",
           className
         )}

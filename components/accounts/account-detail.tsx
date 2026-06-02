@@ -292,6 +292,36 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
   }
 
+  const groupedTransactions = useMemo(() => {
+    const groups: Record<string, { label: string; date: Date; items: typeof visibleTransactions }> = {}
+    const today = new Date()
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    for (const tx of visibleTransactions) {
+      const d = parseTxDate(tx.rawDate ?? tx.createdAt)
+      const key = d.toDateString()
+      if (!groups[key]) {
+        let label
+        if (key === today.toDateString()) label = "Hoy"
+        else if (key === yesterday.toDateString()) label = "Ayer"
+        else label = d.toLocaleDateString("es-DO", { day: "numeric", month: "long", year: "numeric" })
+        groups[key] = { label, date: d, items: [] }
+      }
+      groups[key].items.push(tx)
+    }
+
+    const sorted = Object.values(groups).sort((a, b) => b.date.getTime() - a.date.getTime())
+    for (const group of sorted) {
+      group.items.sort((a, b) => {
+        const da = new Date(a.rawDate ?? a.createdAt).getTime()
+        const db = new Date(b.rawDate ?? b.createdAt).getTime()
+        return db - da
+      })
+    }
+    return sorted
+  }, [visibleTransactions])
+
   const openEditTx = (txId: string) => {
     const tx = accountTransactions.find((item) => item.id === txId)
     if (!tx) return
@@ -806,15 +836,19 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         </div>
 
         {/* Transaction List */}
-        <div className="mt-4 space-y-2">
-          {visibleTransactions.length === 0 ? (
+        <div className="mt-4 space-y-4">
+          {groupedTransactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
                 {txQuery.trim() ? "No hay resultados para tu búsqueda" : "No hay movimientos en esta cuenta"}
               </p>
             </div>
           ) : (
-            visibleTransactions.map((tx) => {
+            groupedTransactions.map((group) => (
+              <div key={group.date.toISOString()}>
+                <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
+                <div className="space-y-2">
+                  {group.items.map((tx) => {
               const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
               const isOpen = openSwipeId === tx.id
               const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
@@ -916,9 +950,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   </div>
                 </div>
               )
-            })
-          )}
+            })}
+          </div>
         </div>
+      ))
+    )}
+</div>
       </div>
 
       {editingTxId && (
@@ -1328,8 +1365,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         {/* Delete Modal */}
         {showDeleteModal && (
           <>
-            <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
-            <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-card p-5 shadow-2xl">
+            <div className="fixed inset-0 z-[90] bg-black/40" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
+            <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
                 <AlertTriangle className="h-7 w-7" />
               </div>
