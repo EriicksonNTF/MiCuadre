@@ -87,12 +87,12 @@ export function TransactionsList() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
+          <p className="section-kicker">Movimientos</p>
           <Link href="/history" className="text-xs font-medium text-accent">Ver todos</Link>
         </div>
         <div className="space-y-2">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-card" />
+            <div key={i} className="h-16 animate-pulse rounded-2xl bg-card/80 shadow-sm" />
           ))}
         </div>
       </div>
@@ -103,14 +103,14 @@ export function TransactionsList() {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
+          <p className="section-kicker">Movimientos</p>
         </div>
-        <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50/40 p-5 text-center dark:border-green-900/30 dark:bg-green-900/10">
+        <div className="mobile-card p-5 text-center">
           <p className="text-sm font-semibold text-foreground">Sin movimientos aún</p>
           <p className="mt-1 text-xs text-muted-foreground">Registra tu primer gasto o ingreso para ver tu actividad.</p>
           <Link
             href="/expense"
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition active:scale-[0.97]"
+            className="tap-lift mt-4 inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)]"
           >
             <Plus className="h-4 w-4" />
             Agregar mi primer movimiento
@@ -123,8 +123,8 @@ export function TransactionsList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-muted-foreground">Movimientos</p>
-        <Link href="/history" className="text-xs font-medium text-accent">Ver todos</Link>
+        <p className="section-kicker">Movimientos</p>
+        <Link href="/history" className="tap-lift rounded-full px-2 text-xs font-bold text-accent">Ver todos</Link>
       </div>
 
       <div className="space-y-3">
@@ -143,7 +143,7 @@ export function TransactionsList() {
           return (
             <div
               key={transaction.id}
-              className="flex items-center gap-4 rounded-2xl bg-card p-4"
+              className="tap-lift flex items-center gap-4 rounded-[1.35rem] border border-border/55 bg-card/78 p-4 shadow-sm backdrop-blur transition-colors hover:bg-card"
             >
               <div
                 className="flex h-10 w-10 items-center justify-center rounded-full"

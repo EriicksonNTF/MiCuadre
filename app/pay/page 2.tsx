@@ -110,7 +110,7 @@ export default function PayPage() {
         <>
           <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1">
             {(["DOP", "USD"] as const).filter((tab) => tab === "DOP" || hasUsdOnCard).map((tab) => (
-              <button key={tab} onClick={() => { setCurrencyTab(tab); setSourceAccount(""); setCustomAmount(""); setPaymentMode("custom") }} className={`rounded-xl py-2 text-sm font-medium ${currencyTab === tab ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{tab}</button>
+              <button type="button" key={tab} onClick={() => { setCurrencyTab(tab); setSourceAccount(""); setCustomAmount(""); setPaymentMode("custom") }} className={`rounded-xl py-2 text-sm font-medium ${currencyTab === tab ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{tab}</button>
             ))}
           </div>
 
@@ -126,10 +126,10 @@ export default function PayPage() {
           </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <button onClick={() => { setPaymentMode("balance_to_date"); setCustomAmount(String(balanceToDate)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "balance_to_date" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pagar balance actual</button>
-            <button onClick={() => { setPaymentMode("statement_balance"); setCustomAmount(String(pendingStatement)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "statement_balance" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pagar corte</button>
-            <button onClick={() => { setPaymentMode("minimum_payment"); setCustomAmount(String(minimumPayment)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "minimum_payment" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pago mínimo</button>
-            <button onClick={() => { setPaymentMode("custom"); setCustomAmount("") }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "custom" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Otro monto</button>
+            <button type="button" onClick={() => { setPaymentMode("balance_to_date"); setCustomAmount(String(balanceToDate)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "balance_to_date" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pagar balance actual</button>
+            <button type="button" onClick={() => { setPaymentMode("statement_balance"); setCustomAmount(String(pendingStatement)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "statement_balance" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pagar corte</button>
+            <button type="button" onClick={() => { setPaymentMode("minimum_payment"); setCustomAmount(String(minimumPayment)) }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "minimum_payment" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Pago mínimo</button>
+            <button type="button" onClick={() => { setPaymentMode("custom"); setCustomAmount("") }} className={`rounded-xl border p-2 text-xs font-medium ${paymentMode === "custom" ? "border-primary bg-primary/10" : "border-border bg-card"}`}>Otro monto</button>
           </div>
 
           <div className="mt-3 rounded-xl bg-card p-3">
@@ -163,7 +163,7 @@ export default function PayPage() {
                       : "Sin comisión"}
                   </span>
                 </div>
-                <button
+                <button type="button"
                   onClick={() => setApplyCommission(!applyCommission)}
                   className={`relative h-6 w-11 rounded-full transition-colors ${applyCommission ? "bg-primary" : "bg-muted"}`}
                 >

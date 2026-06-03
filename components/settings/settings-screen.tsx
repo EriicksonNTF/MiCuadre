@@ -246,24 +246,27 @@ const isDevMode = process.env.NODE_ENV === "development"
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 border-b border-border/55 bg-background/88 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center gap-4">
             <Link
               href="/"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
+              className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted/85"
             >
               <ChevronLeft className="h-5 w-5 text-foreground" />
             </Link>
-            <h1 className="text-lg font-semibold text-foreground">Ajustes</h1>
+            <div>
+              <p className="section-kicker">Preferencias</p>
+              <h1 className="text-lg font-black tracking-tight text-foreground">Ajustes</h1>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto max-w-md px-6 pt-6">
+      <div className="motion-list mx-auto max-w-md px-6 pt-6">
         {/* Profile Section */}
         <Link href="/profile" className="block">
-          <div className="rounded-2xl bg-card p-4">
+          <div className="mobile-card p-4">
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14">
                 <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || "Usuario"} />
@@ -282,14 +285,14 @@ const isDevMode = process.env.NODE_ENV === "development"
 
         {/* Appearance Section */}
         <div className="mt-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="section-kicker mb-3">
             Apariencia
           </h2>
-          <div className="overflow-hidden rounded-2xl bg-card">
+          <div className="premium-panel overflow-hidden rounded-[1.45rem]">
             {/* Theme */}
-            <button
+            <button type="button"
               onClick={() => setShowThemePicker(true)}
-              className="flex w-full items-center justify-between p-4"
+              className="tap-lift flex w-full items-center justify-between p-4"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -312,7 +315,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             <div className="mx-4 h-px bg-border" />
 
             {/* Currency */}
-            <button
+            <button type="button"
               onClick={() => setShowCurrencyPicker(true)}
               className="flex w-full items-center justify-between p-4"
             >
@@ -337,10 +340,10 @@ const isDevMode = process.env.NODE_ENV === "development"
 
         {/* Notifications Section */}
         <div className="mt-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="section-kicker mb-3">
             Notificaciones
           </h2>
-          <div className="overflow-hidden rounded-2xl bg-card">
+          <div className="premium-panel overflow-hidden rounded-[1.45rem]">
             {[
               {
                 key: "transactions",
@@ -397,8 +400,8 @@ const isDevMode = process.env.NODE_ENV === "development"
         </div>
 
         <div className="mt-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Mi plan</h2>
-          <div className="rounded-2xl border border-border bg-card p-4">
+          <h2 className="section-kicker mb-3">Mi plan</h2>
+          <div className="mobile-card p-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-foreground">Plan actual</p>
@@ -415,7 +418,7 @@ const isDevMode = process.env.NODE_ENV === "development"
               <button
                 type="button"
                 onClick={() => setShowPlanSelector(true)}
-                className="h-11 rounded-xl bg-primary text-sm font-bold text-primary-foreground transition active:scale-[0.99]"
+                className="tap-lift h-11 rounded-xl bg-primary text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)] transition"
               >
                 Ver planes
               </button>
@@ -446,8 +449,8 @@ const isDevMode = process.env.NODE_ENV === "development"
         </div>
 
         <div className="mt-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Control financiero</h2>
-          <div className="overflow-hidden rounded-2xl bg-card">
+          <h2 className="section-kicker mb-3">Control financiero</h2>
+          <div className="premium-panel overflow-hidden rounded-[1.45rem]">
             {[
               { icon: BarChart3, label: "Reportes", href: "/settings/reports" },
               { icon: Repeat, label: "Suscripciones", href: "/settings/subscriptions" },
@@ -455,7 +458,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             ].map((item, index) => (
               <div key={item.label}>
                 {index > 0 && <div className="mx-4 h-px bg-border" />}
-                <Link href={item.href} className="flex items-center justify-between p-4">
+                <Link href={item.href} className="tap-lift flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                       <item.icon className="h-5 w-5 text-foreground" />
@@ -471,16 +474,16 @@ const isDevMode = process.env.NODE_ENV === "development"
 
         {/* Other Section */}
         <div className="mt-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="section-kicker mb-3">
             Otros
           </h2>
-          <div className="overflow-hidden rounded-2xl bg-card">
+          <div className="premium-panel overflow-hidden rounded-[1.45rem]">
             {otherItems.map((item, index) => (
               <div key={item.label}>
                 {index > 0 && <div className="mx-4 h-px bg-border" />}
                 <Link
                   href={item.href}
-                  className="flex items-center justify-between p-4"
+                  className="tap-lift flex items-center justify-between p-4"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -496,9 +499,9 @@ const isDevMode = process.env.NODE_ENV === "development"
         </div>
 
         {/* Logout Button */}
-        <button
+        <button type="button"
           onClick={() => setShowLogoutConfirm(true)}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 p-4 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+          className="tap-lift mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 p-4 text-red-600 shadow-sm dark:bg-red-900/20 dark:text-red-400"
         >
           <LogOut className="h-5 w-5" />
           <span className="font-medium">Cerrar sesión</span>
@@ -510,7 +513,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             Zona peligrosa
           </h2>
           <div className="overflow-hidden rounded-2xl bg-red-50/50">
-            <button onClick={() => setShowDeleteAccount(true)} className="flex w-full items-center justify-between p-4">
+            <button type="button" onClick={() => setShowDeleteAccount(true)} className="flex w-full items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
                   <Trash2 className="h-5 w-5 text-red-600" />
@@ -532,7 +535,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             <p className="text-xs text-amber-700 dark:text-amber-400">
               QA esperado: <span className="font-mono">{QA_EMAIL}</span>
             </p>
-            <button
+            <button type="button"
               onClick={() => setShowDebugQa(true)}
               className="mt-3 rounded-lg bg-amber-200 px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-300 dark:bg-amber-900/40 dark:text-amber-300"
             >
@@ -554,7 +557,7 @@ const isDevMode = process.env.NODE_ENV === "development"
             {themeOptions.map((option) => {
               const Icon = option.icon
               return (
-                <button key={option.value} onClick={() => { handleThemeChange(option.value); setShowThemePicker(false); }}
+                <button type="button" key={option.value} onClick={() => { handleThemeChange(option.value); setShowThemePicker(false); }}
                   className={cn("flex w-full items-center gap-4 rounded-2xl p-4 transition-colors", currentTheme === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
                   <Icon className="h-5 w-5" />
                   <span className="font-medium">{option.label}</span>
@@ -570,7 +573,7 @@ const isDevMode = process.env.NODE_ENV === "development"
         <BaseModalForm title="Moneda principal" onClose={() => setShowCurrencyPicker(false)}>
           <div className="space-y-2 pb-2">
             {[{ value: "DOP", label: "Peso Dominicano", symbol: "RD$" }, { value: "USD", label: "Dólar Estadounidense", symbol: "US$" }].map((option) => (
-              <button key={option.value} onClick={() => { handleCurrencyChange(option.value as Currency); setShowCurrencyPicker(false); }}
+              <button type="button" key={option.value} onClick={() => { handleCurrencyChange(option.value as Currency); setShowCurrencyPicker(false); }}
                 className={cn("flex w-full items-center justify-between rounded-2xl p-4 transition-colors", primaryCurrency === option.value ? "bg-accent text-accent-foreground" : "bg-muted")}>
                 <span className="font-medium">{option.label}</span>
                 <span className="text-sm opacity-70">{option.symbol}</span>
@@ -586,11 +589,11 @@ const isDevMode = process.env.NODE_ENV === "development"
           onClose={() => setShowLogoutConfirm(false)}
           footer={
             <div className="space-y-3">
-              <button onClick={handleLogout} disabled={isLoggingOut}
+              <button type="button" onClick={handleLogout} disabled={isLoggingOut}
                 className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
                 {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
               </button>
-              <button onClick={() => setShowLogoutConfirm(false)}
+              <button type="button" onClick={() => setShowLogoutConfirm(false)}
                 className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
                 Cancelar
               </button>
@@ -614,11 +617,11 @@ const isDevMode = process.env.NODE_ENV === "development"
           onClose={() => setShowDeleteAccount(false)}
           footer={
             <div className="space-y-3">
-              <button onClick={handleDeleteAccount} disabled={isDeletingAccount}
+              <button type="button" onClick={handleDeleteAccount} disabled={isDeletingAccount}
                 className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
                 {isDeletingAccount ? "Procesando..." : "Eliminar cuenta"}
               </button>
-              <button onClick={() => setShowDeleteAccount(false)}
+              <button type="button" onClick={() => setShowDeleteAccount(false)}
                 className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
                 Cancelar
               </button>
@@ -633,10 +636,11 @@ const isDevMode = process.env.NODE_ENV === "development"
               Esta acción es permanente. Todos tus datos, transacciones, planificación y cuentas serán eliminados para siempre y no podrán ser recuperados.
             </p>
             <div className="text-left">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <label htmlFor="delete-confirmation" className="mb-1 block text-xs font-medium text-muted-foreground">
                 Escribe ELIMINAR para confirmar
               </label>
               <input
+                id="delete-confirmation"
                 value={deleteConfirmationText}
                 onChange={(event) => setDeleteConfirmationText(event.target.value)}
                 className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"

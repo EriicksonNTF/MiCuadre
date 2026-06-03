@@ -224,7 +224,7 @@ export function CoachIAWidget() {
   return (
     <div className="fixed bottom-24 right-4 z-50 sm:right-6">
       {!open && (
-        <button
+        <button type="button"
           onClick={() => setOpen(true)}
           className="group flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 shadow-xl backdrop-blur"
         >
@@ -246,7 +246,7 @@ export function CoachIAWidget() {
                 <p className="text-[11px] text-muted-foreground">Copiloto financiero</p>
               </div>
             </div>
-            <button onClick={() => setOpen(false)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted">
+            <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -254,7 +254,7 @@ export function CoachIAWidget() {
           <div className="max-h-[52vh] space-y-2 overflow-y-auto px-3 py-3">
             <div className="flex flex-wrap gap-1.5">
               {quickPrompts.map((prompt) => (
-                <button
+                <button type="button"
                   key={prompt}
                   onClick={() => sendMessage(prompt)}
                   className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted"
@@ -278,7 +278,7 @@ export function CoachIAWidget() {
                   {!!message.actions?.length && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {message.actions.map((action) => (
-                        <button
+                        <button type="button"
                           key={`${message.id}-${action.label}`}
                           onClick={() => {
                             if (action.actionType === "confirm_draft") {

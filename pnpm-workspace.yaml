@@ -2,3 +2,8 @@ allowBuilds:
   sharp: true
   tesseract.js: true
   unrs-resolver: true
+
+trustPolicy: no-downgrade
+
+# Security: delay installs until releases have been vetted for 7 days
+minimumReleaseAge: 10080

@@ -45,18 +45,18 @@ export function BaseModalForm({
     <>
       <div 
         data-app-modal="true"
-        className="fixed inset-0 z-[90] bg-black/40"
+        className="fixed inset-0 z-[90] bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45"
         onClick={onClose}
       />
-      <div data-app-modal="true" className="fixed inset-x-0 bottom-0 z-[100] mt-auto flex max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl bg-card shadow-2xl ring-1 ring-border sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[80dvh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl">
+      <div data-app-modal="true" className="fixed inset-x-0 bottom-0 z-[100] mt-auto flex max-h-[85dvh] animate-in slide-in-from-bottom-8 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden rounded-t-[2rem] border border-border/70 bg-card/96 shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[80dvh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]">
         {/* HEADER */}
         {title && (
-          <div className="sticky top-0 z-10 flex flex-none items-center justify-between border-b border-border bg-card p-5">
-            <h2 className="text-lg font-semibold">{title}</h2>
+          <div className="sticky top-0 z-10 flex flex-none items-center justify-between border-b border-border/55 bg-card/92 p-5 backdrop-blur">
+            <h2 className="text-lg font-bold tracking-tight">{title}</h2>
             {onClose && (
-              <button 
+              <button type="button" 
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+                className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted/85 text-muted-foreground hover:bg-muted hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -71,7 +71,7 @@ export function BaseModalForm({
 
         {/* FOOTER (BOTÓN SIEMPRE VISIBLE) */}
         {footer && (
-          <div className="sticky bottom-0 flex-none border-t border-border bg-card p-4 pb-[calc(16px+env(safe-area-inset-bottom))] sm:rounded-b-2xl">
+          <div className="sticky bottom-0 flex-none border-t border-border/55 bg-card/92 p-4 pb-[calc(16px+env(safe-area-inset-bottom))] backdrop-blur sm:rounded-b-2xl">
             {footer}
           </div>
         )}

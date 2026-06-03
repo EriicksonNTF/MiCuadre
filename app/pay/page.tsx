@@ -271,7 +271,7 @@ export default function PayPage() {
                 <p className="mb-3 text-sm font-semibold">¿Qué balance quieres pagar?</p>
                 <div className="grid grid-cols-2 gap-2">
                   {activeCurrencies.map((currency) => (
-                    <button key={currency} onClick={() => { setCurrencyTab(currency); setSourceAccount(""); setCustomAmount("") }} className={cn("h-10 rounded-xl text-sm font-bold transition", currencyTab === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                    <button type="button" key={currency} onClick={() => { setCurrencyTab(currency); setSourceAccount(""); setCustomAmount("") }} className={cn("h-10 rounded-xl text-sm font-bold transition", currencyTab === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
                       {currency === "DOP" ? "RD$" : "US$"}
                     </button>
                   ))}

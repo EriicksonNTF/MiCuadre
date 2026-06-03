@@ -369,7 +369,7 @@ export default function CoachIAPage() {
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Finanzas generales</p>
             <div className="flex flex-wrap gap-2">
               {GENERAL_PROMPTS.map((prompt) => (
-                <button
+                <button type="button"
                   key={prompt}
                   onClick={() => askCoach(prompt)}
                   disabled={sending}
@@ -384,7 +384,7 @@ export default function CoachIAPage() {
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tarjetas de credito</p>
             <div className="flex flex-wrap gap-2">
               {CARD_PROMPTS.map((prompt) => (
-                <button
+                <button type="button"
                   key={prompt}
                   onClick={() => askCoach(prompt)}
                   disabled={sending}
@@ -410,7 +410,7 @@ export default function CoachIAPage() {
                 {!!message.actions?.length && message.role === "assistant" && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {message.actions.map((action) => (
-                      <button
+                      <button type="button"
                         key={`${message.id}-${action.label}`}
                         disabled={sending}
                         onClick={() => {

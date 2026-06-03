@@ -134,11 +134,11 @@ export function BudgetFormSheet({
             <span className="mb-1 block text-muted-foreground">Alertarme cuando llegue a</span>
             <input type="number" inputMode="numeric" min={1} max={100} className="h-11 w-full rounded-xl border border-border bg-background px-3" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
           </label>
-          <button disabled={saving} onClick={onSave} className="mt-2 h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
+          <button type="button" disabled={saving} onClick={onSave} className="mt-2 h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
             {saving ? "Guardando..." : "Guardar presupuesto"}
           </button>
           {budget && (
-            <button disabled={saving} onClick={onDelete} className="h-11 w-full rounded-xl bg-destructive text-sm font-bold text-primary-foreground disabled:opacity-60">
+            <button type="button" disabled={saving} onClick={onDelete} className="h-11 w-full rounded-xl bg-destructive text-sm font-bold text-primary-foreground disabled:opacity-60">
               Eliminar presupuesto
             </button>
           )}

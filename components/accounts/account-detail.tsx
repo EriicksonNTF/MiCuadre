@@ -613,7 +613,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             <ChevronLeft className="h-5 w-5" />
           </Link>
           <div className="flex gap-2">
-            <button
+            <button type="button"
               onClick={() => {
                 setEditForm({
                   name: account.name,
@@ -642,7 +642,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             >
               <Settings className="h-5 w-5" />
             </button>
-            <button
+            <button type="button"
               onClick={() => setShowDeleteModal(true)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 transition-colors hover:bg-black/20"
             >
@@ -714,7 +714,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 { value: "month", label: "Este mes" },
                 { value: "all", label: "Todo" },
               ].map((option) => (
-                <button
+                <button type="button"
                   key={option.value}
                   onClick={() => {
                     setDateFilter(option.value as DateRange)
@@ -809,7 +809,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               { value: "month", label: "Mes" },
               { value: "all", label: "Todo" },
             ].map((option) => (
-              <button
+              <button type="button"
                 key={option.value}
                 onClick={() => setDateFilter(option.value as DateRange)}
                 className={cn(
@@ -856,14 +856,14 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               return (
                 <div key={tx.id} data-account-tx-row="true" className="relative overflow-hidden rounded-2xl">
                   <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
-                    <button
+                    <button type="button"
                       aria-label="Editar transacción"
                       onClick={() => openEditTx(tx.id)}
                       className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
-                    <button
+                    <button type="button"
                       aria-label="Eliminar transacción"
                       onClick={() => setDeletingTxId(tx.id)}
                       className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white"
@@ -1027,7 +1027,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
               {(["DOP", "USD"] as const).filter((curr) => curr === "DOP" || hasUsdOnCard).map((curr) => (
-                <button key={curr} onClick={() => { setPaymentCurrency(curr); setPaymentSource(""); setPaymentAmount(""); setPaymentRate(""); setPaymentComment(""); setPaymentKind("custom") }} className={cn("rounded-lg py-2 text-xs font-medium", paymentCurrency === curr ? "bg-card" : "text-muted-foreground")}>{curr}</button>
+                <button type="button" key={curr} onClick={() => { setPaymentCurrency(curr); setPaymentSource(""); setPaymentAmount(""); setPaymentRate(""); setPaymentComment(""); setPaymentKind("custom") }} className={cn("rounded-lg py-2 text-xs font-medium", paymentCurrency === curr ? "bg-card" : "text-muted-foreground")}>{curr}</button>
               ))}
             </div>
 
@@ -1074,25 +1074,25 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   />
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
-                  <button
+                  <button type="button"
                     onClick={() => { setPaymentAmount(String(currentDebtByCurrency)); setPaymentKind("balance_to_date") }}
                     className="rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
                   >
                     Deuda actual
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => { setPaymentAmount(String(pendingStatementByCurrency)); setPaymentKind("statement_balance") }}
                     className="rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
                   >
                     Balance al corte
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => { setPaymentAmount(String(Math.round(minPaymentByCurrency))); setPaymentKind("minimum_payment") }}
                     className="rounded-xl bg-muted px-3 py-2 text-xs font-medium text-foreground"
                   >
                     Mínimo
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => setPaymentKind("custom")}
                     className={cn("rounded-xl px-3 py-2 text-xs font-medium", paymentKind === "custom" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}
                   >
@@ -1165,8 +1165,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         >
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Nombre</label>
+              <label htmlFor="account-name" className="text-xs font-medium text-muted-foreground">Nombre</label>
                 <input
+                  id="account-name"
                   type="text"
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
@@ -1175,7 +1176,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Tipo</label>
+                <label htmlFor="account-type" className="text-xs font-medium text-muted-foreground">Tipo</label>
                 <div className="mt-1 grid grid-cols-3 gap-2">
                   {[
                     { id: "cash", label: "Efectivo", icon: Banknote },
@@ -1185,8 +1186,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     const TypeIcon = type.icon
                     const isSelected = editForm.type === type.id
                     return (
-                      <button
+                      <button type="button"
                         key={type.id}
+                        id={type.id === "cash" ? "account-type" : undefined}
                         onClick={() => setEditForm({ ...editForm, type: type.id as AccountType })}
                         className={cn(
                           "flex flex-col items-center gap-2 rounded-xl p-3 transition-all",
@@ -1203,11 +1205,12 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Moneda</label>
+                <label htmlFor="account-currency" className="text-xs font-medium text-muted-foreground">Moneda</label>
                 <div className="mt-1 flex gap-2">
                   {(["DOP", "USD"] as Currency[]).map((currency) => (
-                    <button
+                    <button type="button"
                       key={currency}
+                      id={currency === "DOP" ? "account-currency" : undefined}
                       onClick={() => setEditForm({ ...editForm, currency })}
                       className={cn(
                         "flex-1 rounded-xl p-3 text-sm font-medium transition-all",
@@ -1222,8 +1225,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Balance inicial</label>
+                <label htmlFor="account-balance" className="text-xs font-medium text-muted-foreground">Balance inicial</label>
                 <MoneyInput
+                  id="account-balance"
                   value={editForm.balance}
                   onValueChange={(value) => setEditForm({ ...editForm, balance: value })}
                   className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
@@ -1233,16 +1237,18 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {editForm.currency !== "USD" && <div>
-                      <label className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
+                      <label htmlFor="account-credit-limit" className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
                       <MoneyInput
+                        id="account-credit-limit"
                         value={editForm.credit_limit}
                         onValueChange={(value) => setEditForm({ ...editForm, credit_limit: value, credit_limit_dop: value })}
                         className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
                       />
                     </div>}
                     {editForm.currency !== "DOP" && <div>
-                      <label className="text-xs font-medium text-muted-foreground">Límite de crédito USD</label>
+                      <label htmlFor="account-credit-limit-usd" className="text-xs font-medium text-muted-foreground">Límite de crédito USD</label>
                       <MoneyInput
+                        id="account-credit-limit-usd"
                         value={editForm.credit_limit_usd}
                         onValueChange={(value) => setEditForm({ ...editForm, credit_limit_usd: value })}
                         className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
@@ -1250,8 +1256,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     </div>}
                   </div>
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground">Día de corte</label>
+                    <label htmlFor="account-closing-date" className="text-xs font-medium text-muted-foreground">Día de corte</label>
                     <input
+                      id="account-closing-date"
                       type="text"
                       inputMode="numeric"
                       value={editForm.closing_date}
@@ -1314,7 +1321,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
                 <div className="flex flex-wrap gap-2">
                   {DETAIL_COLOR_PRESETS.map((preset) => (
-                    <button
+                    <button type="button"
                       key={preset.key}
                       onClick={() => setEditForm({ ...editForm, primary_color: preset.primary, secondary_color: preset.secondary })}
                       className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", editForm.primary_color === preset.primary && editForm.secondary_color === preset.secondary ? "ring-primary" : "ring-transparent")}
@@ -1327,7 +1334,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
                 <div className="grid grid-cols-3 gap-2">
                   {(["gradient", "solid", "glass"] as const).map((style) => (
-                    <button
+                    <button type="button"
                       key={style}
                       onClick={() => setEditForm({ ...editForm, background_style: style })}
                       className={cn("rounded-lg px-2 py-1 text-xs", editForm.background_style === style ? "bg-primary text-primary-foreground" : "bg-muted")}

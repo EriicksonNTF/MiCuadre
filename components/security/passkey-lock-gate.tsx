@@ -55,7 +55,7 @@ export function PasskeyLockGate() {
         </div>
         <h2 className="mt-4 text-lg font-semibold text-foreground">Desbloquear MiCuadre</h2>
         <p className="mt-1 text-sm text-muted-foreground">Usa Face ID, huella o tu método biométrico disponible.</p>
-        <button
+        <button type="button"
           onClick={handleUnlock}
           disabled={unlocking}
           className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-primary-foreground disabled:opacity-70"

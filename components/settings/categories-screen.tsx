@@ -74,7 +74,7 @@ export function CategoriesScreen() {
             </Link>
             <h1 className="text-lg font-semibold text-foreground">Categorías</h1>
           </div>
-          <button onClick={openCreate} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Nueva</button>
+          <button type="button" onClick={openCreate} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Nueva</button>
         </div>
       </div>
 
@@ -132,8 +132,8 @@ export function CategoriesScreen() {
                       </div>
                     </div>
                     <div className="flex gap-1.5">
-                      <button onClick={() => openEdit(category.id)} className="rounded-lg bg-muted p-2"><Pencil className="h-4 w-4" /></button>
-                      <button onClick={() => deleteCategory(category.id)} className="rounded-lg bg-red-50 p-2 text-red-600 dark:bg-red-900/30"><Trash2 className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => openEdit(category.id)} className="rounded-lg bg-muted p-2"><Pencil className="h-4 w-4" /></button>
+                      <button type="button" onClick={() => deleteCategory(category.id)} className="rounded-lg bg-red-50 p-2 text-red-600 dark:bg-red-900/30"><Trash2 className="h-4 w-4" /></button>
                     </div>
                   </div>
                 </div>
@@ -147,7 +147,7 @@ export function CategoriesScreen() {
         <BaseModalForm
           title={editingId ? "Editar categoría" : "Nueva categoría"}
           onClose={() => setShowModal(false)}
-          footer={<button onClick={save} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
+          footer={<button type="button" onClick={save} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
         >
           <div className="space-y-4 pb-safe-areas">
             <div className="rounded-2xl border border-border/70 bg-muted/40 p-4">
@@ -164,7 +164,7 @@ export function CategoriesScreen() {
               <p className="text-xs font-medium text-muted-foreground">Tipo</p>
               <div className="mt-2 grid grid-cols-3 gap-2">
                 {(["expense", "income", "both"] as const).map((item) => (
-                  <button
+                  <button type="button"
                     key={item}
                     onClick={() => setType(item)}
                     className={cn(
@@ -201,7 +201,7 @@ export function CategoriesScreen() {
               </div>
             </div>
 
-            <button
+            <button type="button"
               onClick={() => setIsSubscription((prev) => !prev)}
               className={cn(
                 "h-11 w-full rounded-xl text-sm font-medium",

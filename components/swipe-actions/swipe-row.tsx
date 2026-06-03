@@ -93,8 +93,8 @@ export function SwipeRow({
         {leftActions.length > 0 && (
           <div className="flex h-full" data-swipe="left">
             {leftActions.map((action, i) => (
-              <button
-                key={i}
+              <button type="button"
+                key={action.label}
                 onClick={() => { action.onClick(); close() }}
                 className={cn(
                   "flex h-full flex-1 flex-col items-center justify-center gap-1 transition-colors",
@@ -113,8 +113,8 @@ export function SwipeRow({
         {rightActions.length > 0 && (
           <div className="flex h-full" data-swipe="right">
             {rightActions.map((action, i) => (
-              <button
-                key={i}
+              <button type="button"
+                key={action.label}
                 onClick={() => { action.onClick(); close() }}
                 className={cn(
                   "flex h-full flex-1 flex-col items-center justify-center gap-1 transition-colors",

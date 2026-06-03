@@ -16,12 +16,14 @@ export function MoneyInput({
   className,
   placeholder,
   autoFocus,
+  id,
 }: {
   value: string
   onValueChange: (value: string) => void
   className?: string
   placeholder?: string
   autoFocus?: boolean
+  id?: string
 }) {
   const displayValue = useMemo(() => {
     const normalized = sanitize(value)
@@ -40,6 +42,7 @@ export function MoneyInput({
       placeholder={placeholder}
       className={className}
       autoFocus={autoFocus}
+      id={id}
     />
   )
 }

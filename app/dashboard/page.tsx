@@ -38,12 +38,31 @@ export default function DashboardPage() {
   const [showWelcomePlanPrompt, setShowWelcomePlanPrompt] = useState(false)
   const [activeWarningIndex, setActiveWarningIndex] = useState(0)
   const { loading, user } = useAuth()
-  const { data: profile, isLoading: profileLoading } = useProfile()
+  const { data: profile, isLoading: profileLoading, mutate: mutateProfile } = useProfile()
   const { data: accounts = [] } = useAccounts()
   const { data: subscriptions = [] } = useFinancialSubscriptions()
   const { data: recentTransactions = [] } = useTransactions(120)
   const { isPro } = useEntitlements()
   const [planningUpsellOpen, setPlanningUpsellOpen] = useState(false)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+
+    fetch("/api/auth/sync-profile", { method: "POST", credentials: "same-origin" })
+      .then((response) => {
+        if (!cancelled && response.ok) {
+          mutateProfile()
+        }
+      })
+      .catch(() => {
+        // Profile sync is best-effort; the dashboard can still render from the signup trigger row.
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [mutateProfile, user])
 
   useEffect(() => {
     if (loading || profileLoading) return
@@ -240,6 +259,7 @@ export default function DashboardPage() {
       <div className="mobile-page">
         <Header />
 
+        <div className="motion-list">
         <div className="mt-8">
           <BalanceCard />
         </div>
@@ -257,12 +277,13 @@ export default function DashboardPage() {
             <PlanningSummaryCard />
           ) : (
             <section className="mobile-card p-5">
-              <p className="text-sm font-semibold">Controla tu mes con Pro</p>
+              <p className="section-kicker">Planificación</p>
+              <p className="mt-2 text-sm font-bold">Controla tu mes con Pro</p>
               <p className="mt-1 text-xs text-muted-foreground">Presupuestos, deudas y pagos próximos en un solo lugar.</p>
               <button
                 type="button"
                 onClick={() => setPlanningUpsellOpen(true)}
-                className="mt-4 inline-flex h-12 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground"
+                className="tap-lift mt-4 inline-flex h-12 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)]"
               >
                 Ver planes
               </button>
@@ -302,13 +323,14 @@ export default function DashboardPage() {
             })}
           </div>
         )}
+        </div>
       </div>
 
       {isCoachIAEnabledForEmail(user?.email) && <CoachIAWidget />}
 
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/60 px-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/18 px-6 backdrop-blur-[6px] dark:bg-black/45">
+          <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-300 ease-[var(--ease-sheet-ios)] rounded-[1.6rem] border border-border/70 bg-card/96 p-5 shadow-[var(--shadow-float)] backdrop-blur-2xl">
             <p className="text-sm font-semibold text-foreground">{creditWarnings[activeWarningIndex].title}</p>
             <p className="mt-2 text-sm text-muted-foreground">{creditWarnings[activeWarningIndex].message}</p>
             <Button className="mt-4 h-11 w-full" onClick={closeCreditReminder}>Entendido</Button>

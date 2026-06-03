@@ -32,7 +32,7 @@ export function BudgetCard({ budget, onEdit }: { budget: BudgetWithUsage; onEdit
           <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", statusStyle[budget.status])}>
             {statusCopy[budget.status]}
           </span>
-          <button onClick={onEdit} className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground" aria-label="Editar presupuesto">
+          <button type="button" onClick={onEdit} className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground" aria-label="Editar presupuesto">
             <Pencil className="h-3.5 w-3.5" />
           </button>
         </div>

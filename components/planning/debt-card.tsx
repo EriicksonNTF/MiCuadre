@@ -19,7 +19,7 @@ export function DebtCard({ debt, onPay }: { debt: DebtWithProgress; onPay: (debt
           <p className="text-sm font-semibold">{debt.name}</p>
           <p className="text-xs text-muted-foreground">{typeLabel[debt.debt_type] || "Deuda"}</p>
         </div>
-        <button onClick={() => onPay(debt)} className="h-9 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground">
+        <button type="button" onClick={() => onPay(debt)} className="h-9 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground">
           Pagar cuota
         </button>
       </div>

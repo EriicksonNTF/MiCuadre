@@ -198,7 +198,7 @@ export default function ProfilePage() {
                   <User className="h-12 w-12 text-white" />
                 </div>
               )}
-              <button
+              <button type="button"
                 onClick={handlePhotoClick}
                 disabled={isUploading}
                 className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary shadow-lg disabled:opacity-50"
@@ -216,9 +216,10 @@ export default function ProfilePage() {
           </div>
 
           <div className="mb-4">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>
+            <label htmlFor="profile-name" className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>
             {isEditing ? (
               <input
+                id="profile-name"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -232,17 +233,17 @@ export default function ProfilePage() {
 
           <div className="mb-4 grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Usuario</label>
+              <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-muted-foreground">Usuario</label>
               {isEditing ? (
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="nombre de usuario" />
+                <input id="profile-username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="nombre de usuario" />
               ) : (
                 <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{username || "-"}</p>
               )}
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Teléfono</label>
+              <label htmlFor="profile-phone" className="mb-1 block text-xs font-medium text-muted-foreground">Teléfono</label>
               {isEditing ? (
-                <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="809..." />
+                <input id="profile-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="809..." />
               ) : (
                 <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{phone || "-"}</p>
               )}
@@ -251,9 +252,9 @@ export default function ProfilePage() {
 
           <div className="mb-4 grid grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Moneda</label>
+              <label htmlFor="profile-currency" className="mb-1 block text-xs font-medium text-muted-foreground">Moneda</label>
               {isEditing ? (
-                <select value={preferredCurrency} onChange={(e) => setPreferredCurrency(e.target.value as "DOP" | "USD")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                <select id="profile-currency" value={preferredCurrency} onChange={(e) => setPreferredCurrency(e.target.value as "DOP" | "USD")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
                   <option value="DOP">DOP</option>
                   <option value="USD">USD</option>
                 </select>
@@ -262,9 +263,9 @@ export default function ProfilePage() {
               )}
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Tema</label>
+              <label htmlFor="profile-theme" className="mb-1 block text-xs font-medium text-muted-foreground">Tema</label>
               {isEditing ? (
-                <select value={theme} onChange={(e) => setTheme(e.target.value as "light" | "dark" | "system")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                <select id="profile-theme" value={theme} onChange={(e) => setTheme(e.target.value as "light" | "dark" | "system")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
                   <option value="system">Sistema</option>
                   <option value="light">Claro</option>
                   <option value="dark">Oscuro</option>
@@ -274,9 +275,9 @@ export default function ProfilePage() {
               )}
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Idioma</label>
+              <label htmlFor="profile-language" className="mb-1 block text-xs font-medium text-muted-foreground">Idioma</label>
               {isEditing ? (
-                <select value={language} onChange={(e) => setLanguage(e.target.value as "es" | "en")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                <select id="profile-language" value={language} onChange={(e) => setLanguage(e.target.value as "es" | "en")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
                   <option value="es">Español</option>
                   <option value="en">English</option>
                 </select>

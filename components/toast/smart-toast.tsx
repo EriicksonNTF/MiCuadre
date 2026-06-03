@@ -176,7 +176,7 @@ export function ToastContainer() {
                     </p>
                   )}
                 </div>
-                <button
+                <button type="button"
                   onClick={() => remove(item.id)}
                   className="shrink-0 rounded-lg p-1.5 transition-colors hover:bg-muted/80 active:scale-95"
                   aria-label="Cerrar"

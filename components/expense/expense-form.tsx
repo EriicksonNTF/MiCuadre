@@ -362,7 +362,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       {/* Header */}
       <header className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-[calc(1.5rem+env(safe-area-inset-top))] sm:px-6">
         {onBack && (
-          <button
+          <button type="button"
             onClick={onBack}
             className="flex h-11 w-11 items-center justify-center rounded-full bg-card ring-1 ring-border transition-colors hover:bg-muted"
           >
@@ -374,7 +374,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-6 pt-3 sm:space-y-6 sm:px-6 sm:pt-4">
         <div className="flex h-12 overflow-hidden rounded-2xl bg-card/80 p-1 ring-1 ring-border/70">
-          <button
+          <button type="button"
             onClick={() => {
               setTransactionType("expense")
               setCategory("")
@@ -389,7 +389,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             <TrendingDown className="h-4 w-4" />
             Gasto
           </button>
-          <button
+          <button type="button"
             onClick={() => {
               setTransactionType("income")
               setCategory("")
@@ -426,7 +426,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           {supportedCurrencies.length > 1 ? (
             <div className="mt-5 inline-flex h-10 overflow-hidden rounded-full bg-muted/70 p-1">
               {(["DOP", "USD"] as Currency[]).filter((item) => supportedCurrencies.includes(item)).map((item) => (
-                <button
+                <button type="button"
                   key={item}
                   onClick={() => setCurrency(item)}
                   className={cn(
@@ -445,7 +445,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           )}
 
           {transactionType === "expense" && (
-            <button
+            <button type="button"
               onClick={() => setApplyCommission((prev) => !prev)}
               className={cn(
                 "mt-3 rounded-full px-4 py-2 text-xs font-medium transition-colors",
@@ -466,7 +466,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         <div className="grid grid-cols-2 gap-3">
           <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
             <PopoverTrigger asChild>
-              <button className="flex h-16 w-full flex-col items-start justify-center rounded-2xl bg-card px-4 ring-1 ring-border/60">
+              <button type="button" className="flex h-16 w-full flex-col items-start justify-center rounded-2xl bg-card px-4 ring-1 ring-border/60">
                 <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Fecha</span>
                 <span className="mt-1 text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
               </button>
@@ -583,7 +583,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               const Icon = cat.icon
               const selected = (category || categories[0]?.id) === cat.id
               return (
-                <button
+                <button type="button"
                   key={cat.id}
                   onClick={() => setCategory(cat.id)}
                   className="w-20 shrink-0"
@@ -609,8 +609,9 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </div>
 
         <div>
-          <label className="mb-2 block px-1 text-xs font-medium text-muted-foreground">Nota (opcional)</label>
+          <label htmlFor="expense-note" className="mb-2 block px-1 text-xs font-medium text-muted-foreground">Nota (opcional)</label>
           <textarea
+            id="expense-note"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Añade una descripción..."
@@ -692,19 +693,21 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
           <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl ring-1 ring-border">
             <h2 className="mb-4 text-lg font-extrabold text-foreground">Nueva categoría</h2>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>
+            <label htmlFor="new-category-name" className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>
             <input
+              id="new-category-name"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Ej: Supermercado"
               autoFocus
               className="mb-4 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
             />
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Tipo</label>
+            <label htmlFor="new-category-type" className="mb-1 block text-xs font-medium text-muted-foreground">Tipo</label>
             <div className="mb-6 flex gap-2">
               {(["expense", "income", "both"] as const).map((t) => (
-                <button
+                <button type="button"
                   key={t}
+                  id={t === "expense" ? "new-category-type" : undefined}
                   onClick={() => setNewCategoryType(t)}
                   className={cn(
                     "flex-1 rounded-xl py-2.5 text-xs font-semibold transition-colors ring-1",
@@ -718,7 +721,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               ))}
             </div>
             <div className="flex gap-3">
-              <button
+              <button type="button"
                 onClick={() => {
                   setShowCategoryModal(false)
                   setNewCategoryName("")
@@ -727,7 +730,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               >
                 Cancelar
               </button>
-              <button
+              <button type="button"
                 onClick={async () => {
                   const trimmed = newCategoryName.trim()
                   if (!trimmed) return

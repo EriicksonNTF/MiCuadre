@@ -50,10 +50,10 @@ export function PlanningMiniCalendar({ events, selectedDate, onSelectDate }: Pro
   const startOffset = (firstDay.getDay() + 6) % 7
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const todayKey = toDateKey(now)
+  const currentYear = now.getFullYear()
   const years = useMemo(() => {
-    const base = now.getFullYear()
-    return Array.from({ length: 7 }, (_, index) => base - 2 + index)
-  }, [now])
+    return Array.from({ length: 7 }, (_, index) => currentYear - 2 + index)
+  }, [currentYear])
 
   const goToMonth = (offset: number) => {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1))
@@ -159,7 +159,7 @@ export function PlanningMiniCalendar({ events, selectedDate, onSelectDate }: Pro
           const primaryMarker = markerList.includes("debt") ? "debt" : markerList.includes("sub") ? "sub" : markerList[0]
 
           return (
-            <button
+            <button type="button"
               key={cell.key}
               onClick={() => onSelectDate(isSelected ? null : key)}
               className={`relative h-9 rounded-xl border text-xs font-medium transition ${
@@ -193,7 +193,7 @@ export function PlanningMiniCalendar({ events, selectedDate, onSelectDate }: Pro
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Suscripción</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive" />Deuda</span>
         {selectedDate ? (
-          <button onClick={() => onSelectDate(null)} className="ml-auto text-xs font-semibold text-primary">Limpiar</button>
+          <button type="button" onClick={() => onSelectDate(null)} className="ml-auto text-xs font-semibold text-primary">Limpiar</button>
         ) : null}
       </div>
     </article>

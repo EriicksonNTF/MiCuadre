@@ -2,7 +2,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { formatCurrency } from "@/lib/data"
 import {
   getFinancialHealthScore,
-  getSpendingByCategory,
   getRecurringExpenseSummary,
   getCreditCardDebtSummary,
   getGoalProgressSummary,
@@ -28,11 +27,12 @@ export async function buildFinancialContext(supabase: SupabaseClient, userId: st
   const accounts = accountsRaw || []
   const cashAccounts = accounts.filter((a) => a.type === "cash" || a.type === "debit")
 
-  const health = await getFinancialHealthScore(supabase, userId)
-  await getSpendingByCategory(supabase, userId)
-  const recurring = await getRecurringExpenseSummary(supabase, userId)
-  const ccSummary = await getCreditCardDebtSummary(supabase, userId)
-  const goals = await getGoalProgressSummary(supabase, userId)
+  const [health, recurring, ccSummary, goals] = await Promise.all([
+    getFinancialHealthScore(supabase, userId),
+    getRecurringExpenseSummary(supabase, userId),
+    getCreditCardDebtSummary(supabase, userId),
+    getGoalProgressSummary(supabase, userId),
+  ])
 
   const { data: recentTxsRaw } = await supabase
     .from("transactions")

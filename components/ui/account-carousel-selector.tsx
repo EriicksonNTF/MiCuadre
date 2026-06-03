@@ -52,7 +52,7 @@ export const AccountCarouselSelector = memo(function AccountCarouselSelector({
         {items.map((item) => {
           const selected = selectedId === item.id
           return (
-            <button
+            <button type="button"
               key={item.id}
               ref={(node) => {
                 itemRefs.current[item.id] = node

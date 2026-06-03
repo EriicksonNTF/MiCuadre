@@ -71,22 +71,22 @@ export default function ChangePasswordPage() {
           </div>
           <div className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium">Contraseña actual</label>
+              <label htmlFor="current-password" className="mb-2 block text-sm font-medium">Contraseña actual</label>
               <div className="relative">
-                <input type={showCurrent ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10" />
-                <button onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2">{showCurrent ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}</button>
+                <input id="current-password" type={showCurrent ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10" />
+                <button type="button" onClick={() => setShowCurrent(!showCurrent)} className="absolute right-3 top-1/2 -translate-y-1/2">{showCurrent ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}</button>
               </div>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium">Nueva contraseña</label>
+              <label htmlFor="new-password" className="mb-2 block text-sm font-medium">Nueva contraseña</label>
               <div className="relative">
-                <input type={showNew ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10" />
-                <button onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2">{showNew ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}</button>
+                <input id="new-password" type={showNew ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-3 pr-10" />
+                <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2">{showNew ? <EyeOff className="h-5 w-5 text-muted-foreground" /> : <Eye className="h-5 w-5 text-muted-foreground" />}</button>
               </div>
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium">Confirmar contraseña</label>
-              <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-3" />
+              <label htmlFor="confirm-password" className="mb-2 block text-sm font-medium">Confirmar contraseña</label>
+              <input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full rounded-xl border border-border bg-background px-4 py-3" />
             </div>
             <Button onClick={handleChangePassword} disabled={!isValid || isChanging} className="h-12 w-full rounded-xl font-semibold">{isChanging ? "Cambiando..." : "Actualizar contraseña"}</Button>
           </div>

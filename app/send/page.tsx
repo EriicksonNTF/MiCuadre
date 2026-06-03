@@ -203,7 +203,7 @@ export default function SendPage() {
           <div className="space-y-6">
             {/* Recipient Type Toggle */}
             <div className="flex h-12 overflow-hidden rounded-2xl bg-card p-1">
-              <button
+              <button type="button"
                 onClick={() => { setRecipientType("account"); setSelectedRecipient("") }}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-all",
@@ -213,7 +213,7 @@ export default function SendPage() {
                 <Building2 className="h-4 w-4" />
                 Cuenta
               </button>
-              <button
+              <button type="button"
                 onClick={() => { setRecipientType("beneficiary"); setSelectedRecipient("") }}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-all",
@@ -240,7 +240,7 @@ export default function SendPage() {
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <p className="text-sm font-medium text-muted-foreground">Beneficiario</p>
-                  <button
+                  <button type="button"
                     onClick={() => setShowAddBeneficiary(true)}
                     className="flex items-center gap-1 text-sm font-medium text-primary"
                   >
@@ -320,7 +320,7 @@ export default function SendPage() {
                   </p>
                 </div>
               </div>
-              <button onClick={() => setStep("select")} className="text-sm text-primary">
+              <button type="button" onClick={() => setStep("select")} className="text-sm text-primary">
                 Cambiar
               </button>
             </div>
@@ -343,7 +343,7 @@ export default function SendPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Disponible: {formatCurrency(availableBalance)}
               </p>
-              <button
+              <button type="button"
                 onClick={() => setApplyCommission((prev) => !prev)}
                 className={cn(
                   "mt-2 rounded-full px-3 py-1 text-xs font-medium",
@@ -367,7 +367,7 @@ export default function SendPage() {
             {/* Quick amounts */}
             <div className="flex flex-wrap justify-center gap-2">
               {[500, 1000, 2000, 5000].map(val => (
-                <button
+                <button type="button"
                   key={val}
                   onClick={() => {
                     originalBalanceRef.current = null
@@ -455,7 +455,7 @@ export default function SendPage() {
                 loading={isSending}
                 label="Desliza para enviar"
               />
-              <button
+              <button type="button"
                 onClick={() => setStep("amount")}
                 className="mt-3 h-12 w-full text-sm text-muted-foreground"
               >
@@ -483,8 +483,9 @@ export default function SendPage() {
         >
           <div className="space-y-4 pt-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">Nombre</label>
+              <label htmlFor="beneficiary-name" className="mb-2 block text-sm font-medium text-muted-foreground">Nombre</label>
               <Input
+                id="beneficiary-name"
                 value={newBeneficiaryName}
                 onChange={e => setNewBeneficiaryName(e.target.value)}
                 placeholder="Ej. Juan Pérez"
@@ -492,8 +493,9 @@ export default function SendPage() {
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-medium text-muted-foreground">Número de cuenta</label>
+              <label htmlFor="beneficiary-account" className="mb-2 block text-sm font-medium text-muted-foreground">Número de cuenta</label>
               <Input
+                id="beneficiary-account"
                 value={newBeneficiaryAccount}
                 onChange={e => setNewBeneficiaryAccount(e.target.value)}
                 placeholder="000000000"

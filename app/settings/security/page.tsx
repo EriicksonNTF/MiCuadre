@@ -74,7 +74,7 @@ export default function SecurityPage() {
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </Link>
           <div className="mx-4 h-px bg-border" />
-          <button onClick={toggleBiometrics} disabled={isEnabling} className="flex w-full items-center justify-between p-4 disabled:opacity-70">
+          <button type="button" onClick={toggleBiometrics} disabled={isEnabling} className="flex w-full items-center justify-between p-4 disabled:opacity-70">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><Fingerprint className="h-5 w-5" /></div>
               <div className="text-left">

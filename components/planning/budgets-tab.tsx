@@ -32,7 +32,7 @@ export function BudgetsTab() {
         <p className="text-xs text-muted-foreground">{summary.totalSpentLabel} de {summary.totalBudgetLabel}</p>
       </article>
 
-      <button onClick={createPressed} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground">
+      <button type="button" onClick={createPressed} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground">
         <Plus className="h-4 w-4" />
         Crear presupuesto
       </button>
@@ -45,7 +45,7 @@ export function BudgetsTab() {
         <article className="rounded-2xl border border-border bg-card p-5 text-center">
           <p className="text-sm font-semibold">Aun no tienes presupuestos</p>
           <p className="mt-1 text-xs text-muted-foreground">Crea tu primer presupuesto para saber cuanto puedes gastar por categoria este mes.</p>
-          <button onClick={createPressed} className="mt-3 h-10 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground">Crear presupuesto</button>
+          <button type="button" onClick={createPressed} className="mt-3 h-10 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground">Crear presupuesto</button>
         </article>
       ) : (
         <div className="space-y-3">

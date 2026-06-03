@@ -138,10 +138,10 @@ export function PayDebtSheet({
             <div>
               <p className="mb-2 text-sm text-muted-foreground">Monto a pagar</p>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setMode("installment")} className={`h-10 rounded-xl text-sm font-bold ${mode === "installment" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                <button type="button" onClick={() => setMode("installment")} className={`h-10 rounded-xl text-sm font-bold ${mode === "installment" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                   Cuota
                 </button>
-                <button onClick={() => setMode("custom")} className={`h-10 rounded-xl text-sm font-bold ${mode === "custom" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                <button type="button" onClick={() => setMode("custom")} className={`h-10 rounded-xl text-sm font-bold ${mode === "custom" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                   Otro monto
                 </button>
               </div>

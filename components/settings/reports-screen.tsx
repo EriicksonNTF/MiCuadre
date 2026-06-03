@@ -177,13 +177,13 @@ export function ReportsScreen() {
       <div className="mx-auto max-w-md space-y-4 px-6 pt-6">
         <div className="flex gap-2 rounded-2xl bg-card p-1">
           {(["daily", "weekly", "monthly"] as const).map((item) => (
-            <button key={item} onClick={() => setRange(item)} className={`flex-1 rounded-xl py-2 text-sm ${range === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.common[item]}</button>
+            <button type="button" key={item} onClick={() => setRange(item)} className={`flex-1 rounded-xl py-2 text-sm ${range === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.common[item]}</button>
           ))}
         </div>
 
         <div className="flex gap-2 rounded-2xl bg-card p-1">
           {(["all", "income", "expense"] as const).map((item) => (
-            <button key={item} onClick={() => setTypeFilter(item)} className={`flex-1 rounded-xl py-2 text-xs ${typeFilter === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.common[item]}</button>
+            <button type="button" key={item} onClick={() => setTypeFilter(item)} className={`flex-1 rounded-xl py-2 text-xs ${typeFilter === item ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>{t.common[item]}</button>
           ))}
         </div>
 

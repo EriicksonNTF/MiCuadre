@@ -37,23 +37,23 @@ export function Modal({
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 animate-in fade-in duration-200" />
+      <div className="absolute inset-0 animate-in fade-in bg-foreground/18 backdrop-blur-[6px] duration-200 dark:bg-black/45" />
       
       {/* Modal Content */}
       <div
         className={cn(
-          "relative w-full max-h-[85dvh] sm:max-h-[80vh] rounded-t-2xl sm:rounded-2xl bg-card shadow-2xl ring-1 ring-border overflow-hidden flex flex-col",
-          "animate-in slide-in-from-bottom-4 fade-in duration-300",
+          "relative flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-[2rem] border border-border/70 bg-card/96 shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl sm:max-h-[80vh] sm:rounded-[1.6rem]",
+          "animate-in slide-in-from-bottom-6 fade-in duration-500 ease-[var(--ease-sheet-ios)]",
           className
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex-none flex items-center justify-between px-5 py-4 border-b border-border bg-card">
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
-          <button
+        <div className="flex-none flex items-center justify-between border-b border-border/55 bg-card/92 px-5 py-4 backdrop-blur">
+          <h2 className="text-lg font-bold tracking-tight text-foreground">{title}</h2>
+          <button type="button"
             onClick={onClose}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted hover:bg-muted/80 transition-colors"
+            className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted/85 text-muted-foreground hover:bg-muted hover:text-foreground"
             aria-label="Cerrar"
           >
             <X className="h-4 w-4" />
@@ -69,11 +69,11 @@ export function Modal({
 
         {/* Sticky Footer Button */}
         {!hideFooter && onConfirm && (
-          <div className="flex-none px-5 py-4 pb-safe-areas border-t border-border bg-card safe-area-bottom">
+          <div className="flex-none border-t border-border/55 bg-card/92 px-5 py-4 pb-safe-areas backdrop-blur safe-area-bottom">
             <Button
               onClick={onConfirm}
               disabled={confirmDisabled || isLoading}
-              className="h-12 w-full rounded-xl text-base font-semibold"
+              className="h-12 w-full rounded-2xl text-base font-bold"
             >
               {isLoading ? "Cargando..." : confirmLabel}
             </Button>
@@ -105,11 +105,11 @@ export function QuickModal({
       className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center"
       onClick={onClose}
     >
-      <div className="absolute inset-0 bg-black/50 animate-in fade-in duration-200" />
+      <div className="absolute inset-0 animate-in fade-in bg-foreground/18 backdrop-blur-[6px] duration-200 dark:bg-black/45" />
       <div
         className={cn(
-          "relative w-full max-w-md rounded-t-2xl bg-card p-6 pb-safe-areas shadow-2xl ring-1 ring-border",
-          "animate-in slide-in-from-bottom-4 fade-in duration-300",
+          "relative w-full max-w-md rounded-t-[2rem] border border-border/70 bg-card/96 p-6 pb-safe-areas shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl",
+          "animate-in slide-in-from-bottom-6 fade-in duration-500 ease-[var(--ease-sheet-ios)]",
           className
         )}
         onClick={(e) => e.stopPropagation()}

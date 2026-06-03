@@ -82,7 +82,7 @@ export function DebtsTab() {
         </p>
       </article>
 
-      <button onClick={onCreate} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground">
+      <button type="button" onClick={onCreate} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-bold text-primary-foreground">
         <Plus className="h-4 w-4" />
         Agregar deuda
       </button>
@@ -115,7 +115,7 @@ export function DebtsTab() {
         <article className="rounded-2xl border border-border bg-card p-5 text-center">
           <p className="text-sm font-semibold">No tienes deudas registradas</p>
           <p className="mt-1 text-xs text-muted-foreground">Agrega prestamos, cuotas o deudas personales para darles seguimiento.</p>
-          <button onClick={onCreate} className="mt-3 h-10 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground">Agregar deuda</button>
+          <button type="button" onClick={onCreate} className="mt-3 h-10 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground">Agregar deuda</button>
         </article>
       ) : (
         <article className="space-y-3">

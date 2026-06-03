@@ -58,7 +58,7 @@ export function PlanningShell() {
 
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
-      <div className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl">
+      <div className="sticky top-0 z-20 border-b border-border/55 bg-background/88 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
           <button
             type="button"
@@ -69,26 +69,27 @@ export function PlanningShell() {
               }
               router.push("/dashboard")
             }}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"
+            className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted/85"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-base font-bold text-foreground">Planificación</h1>
+            <p className="section-kicker">Tu mes</p>
+            <h1 className="text-base font-black tracking-tight text-foreground">Planificación</h1>
             <p className="text-xs text-muted-foreground">Controla tus presupuestos, pagos y deudas.</p>
           </div>
         </div>
       </div>
 
-      <main className="mx-auto max-w-md space-y-4 px-5 py-4">
+      <main className="motion-list mx-auto max-w-md space-y-4 px-5 py-4">
         {!canAccessPlanningFull ? (
           <PlanningProLockScreen />
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2 rounded-2xl border border-border bg-card p-1">
-              <button onClick={() => onChangeTab("budgets")} className={`h-10 rounded-xl text-xs font-bold ${tab === "budgets" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Presupuestos</button>
-              <button onClick={() => onChangeTab("calendar")} className={`h-10 rounded-xl text-xs font-bold ${tab === "calendar" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Calendario</button>
-              <button onClick={() => onChangeTab("debts")} className={`h-10 rounded-xl text-xs font-bold ${tab === "debts" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>Deudas</button>
+            <div className="grid grid-cols-3 gap-2 rounded-[1.35rem] border border-border/70 bg-card/78 p-1 shadow-sm backdrop-blur">
+              <button type="button" onClick={() => onChangeTab("budgets")} className={`tap-lift h-10 rounded-2xl text-xs font-bold ${tab === "budgets" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Presupuestos</button>
+              <button type="button" onClick={() => onChangeTab("calendar")} className={`tap-lift h-10 rounded-2xl text-xs font-bold ${tab === "calendar" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Calendario</button>
+              <button type="button" onClick={() => onChangeTab("debts")} className={`tap-lift h-10 rounded-2xl text-xs font-bold ${tab === "debts" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}>Deudas</button>
             </div>
             <PlanningProContent tab={tab} onChangeTab={onChangeTab} />
           </>

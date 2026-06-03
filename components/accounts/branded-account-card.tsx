@@ -62,11 +62,11 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
 
   return (
     <div
-      className={cn("relative overflow-hidden rounded-[1.6rem] p-4 shadow-[0_14px_30px_-22px_rgba(0,0,0,0.55)] transition-all duration-300", className)}
+      className={cn("tap-lift relative overflow-hidden rounded-[1.6rem] p-4 shadow-[0_18px_42px_-24px_rgba(0,0,0,0.55)] ring-1 ring-white/12 transition-[transform,box-shadow,filter] duration-300 ease-[var(--ease-out-ios)]", className)}
       style={{ background, color: textColor }}
     >
-      <div className="absolute right-[-24px] top-[-28px] h-28 w-28 rounded-full bg-white/10" />
-      <div className="absolute bottom-[-40px] right-8 h-32 w-32 rounded-full bg-black/10" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),transparent_38%,rgba(0,0,0,0.12))]" />
+      <div className="absolute left-0 right-0 top-0 h-px bg-white/30" />
 
       <div className="relative z-10 flex items-start gap-3">
         <div

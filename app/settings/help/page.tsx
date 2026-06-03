@@ -40,7 +40,7 @@ export default function HelpPage() {
               <p className="text-sm text-muted-foreground">Respuesta en minutos</p>
             </div>
           </div>
-          <button onClick={() => alert("Próximamente")} className="h-12 w-full rounded-xl bg-accent font-semibold text-accent-foreground">
+          <button type="button" onClick={() => alert("Próximamente")} className="h-12 w-full rounded-xl bg-accent font-semibold text-accent-foreground">
             Abrir chat
           </button>
         </div>
@@ -69,8 +69,8 @@ export default function HelpPage() {
           </div>
           <div className="space-y-2">
             {faqs.map((faq, i) => (
-              <div key={i} className="overflow-hidden rounded-2xl bg-card">
-                <button onClick={() => setOpenFaq(openFaq === i ? null : i)} className="flex w-full items-center justify-between p-5 text-left">
+              <div key={faq.q} className="overflow-hidden rounded-2xl bg-card">
+                <button type="button" onClick={() => setOpenFaq(openFaq === i ? null : i)} className="flex w-full items-center justify-between p-5 text-left">
                   <span className="pr-4 font-medium">{faq.q}</span>
                   {openFaq === i ? <Minus className="h-4 w-4 text-muted-foreground" /> : <Plus className="h-4 w-4 text-muted-foreground" />}
                 </button>
@@ -92,7 +92,7 @@ export default function HelpPage() {
               <p className="text-sm text-muted-foreground">Aprende a usar MiCuadre</p>
             </div>
           </div>
-          <button onClick={() => alert("Próximamente")} className="mt-4 h-12 w-full rounded-xl border border-border bg-muted font-semibold text-foreground">
+          <button type="button" onClick={() => alert("Próximamente")} className="mt-4 h-12 w-full rounded-xl border border-border bg-muted font-semibold text-foreground">
             Ver guía
           </button>
         </div>

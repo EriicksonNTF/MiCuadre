@@ -61,42 +61,42 @@ export function BottomNav() {
   return (
     <>
       {showQuickMenu && (
-        <button
+        <button type="button"
           aria-label="Cerrar menú rápido"
           onClick={() => setShowQuickMenu(false)}
-          className="fixed inset-0 z-40 bg-background/35 backdrop-blur-[2px]"
+          className="fixed inset-0 z-40 bg-foreground/12 backdrop-blur-[6px] dark:bg-black/35"
         />
       )}
 
       {showQuickMenu && (
-        <div className="pointer-events-none fixed bottom-24 left-0 right-0 z-50">
-          <div className="pointer-events-auto mx-auto w-[min(92vw,20rem)] rounded-2xl border border-border/60 bg-card/95 p-2 shadow-2xl backdrop-blur-xl">
-            <button
+        <div className="pointer-events-none fixed bottom-24 left-0 right-0 z-50 animate-in fade-in-0 slide-in-from-bottom-3 duration-300 ease-[var(--ease-out-ios)]">
+          <div className="pointer-events-auto mx-auto w-[min(92vw,20rem)] rounded-[1.45rem] border border-border/70 bg-card/96 p-2 shadow-[var(--shadow-float)] backdrop-blur-2xl">
+            <button type="button"
               onClick={() => {
                 setShowQuickMenu(false)
                 router.push("/expense")
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted"
+              className="tap-lift flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-muted/70"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary"><ReceiptText className="h-4 w-4" /></span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/14 text-accent"><ReceiptText className="h-4 w-4" /></span>
               <span className="text-sm font-medium text-foreground">Añadir transacción</span>
             </button>
-            <button
+            <button type="button"
               onClick={() => {
                 setShowQuickMenu(false)
                 router.push("/settings/subscriptions?create=1")
               }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-muted"
+              className="tap-lift flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-muted/70"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"><Repeat className="h-4 w-4" /></span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/18 text-gold"><Repeat className="h-4 w-4" /></span>
               <span className="text-sm font-medium text-foreground">Añadir suscripción</span>
             </button>
           </div>
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-lg">
-      <div className="mx-auto flex h-20 max-w-md items-center justify-around px-3 pb-3">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex h-[4.7rem] max-w-md items-center justify-around rounded-[1.8rem] border border-border/65 bg-card/88 px-3 shadow-[var(--shadow-float)] backdrop-blur-2xl">
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
             (item.href !== "/" && pathname.startsWith(item.href))
@@ -104,7 +104,7 @@ export function BottomNav() {
 
           if (item.isAction) {
             return (
-              <button
+              <button type="button"
                 key={item.href}
                 onPointerDown={(event) => {
                   setPressingAction(true)
@@ -139,7 +139,10 @@ export function BottomNav() {
                     clearLongPress()
                   }
                 }}
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95"
+                className={cn(
+                  "flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_42px_-24px_rgba(0,0,0,0.55)] transition-[transform,box-shadow] duration-200 ease-[var(--ease-out-ios)] active:scale-95",
+                  pressingAction && "scale-95"
+                )}
               >
                 <Icon className="h-5 w-5" />
                 <span className="sr-only">{item.label}</span>
@@ -152,12 +155,13 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex min-w-0 flex-1 flex-col items-center gap-1 px-1 transition-colors",
+                "tap-lift relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 transition-colors",
                 isActive ? "text-foreground" : "text-muted-foreground"
               )}
             >
-              <Icon className={cn("h-5 w-5", isActive && "text-accent")} />
-              <span className="max-w-full truncate text-[10px] font-medium">{item.label}</span>
+              {isActive && <span className="absolute inset-x-4 top-1 h-7 rounded-full bg-accent/10" />}
+              <Icon className={cn("relative h-5 w-5 transition-transform duration-200 ease-[var(--ease-out-ios)]", isActive && "-translate-y-0.5 text-accent")} />
+              <span className={cn("relative max-w-full truncate text-[10px] font-semibold", isActive && "text-foreground")}>{item.label}</span>
             </Link>
           )
         })}

@@ -100,7 +100,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
             <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted"><ChevronLeft className="h-5 w-5 text-foreground" /></Link>
             <h1 className="text-lg font-semibold text-foreground">Suscripciones</h1>
           </div>
-          <button onClick={openCreateSubscription} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Nueva</button>
+          <button type="button" onClick={openCreateSubscription} className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground">Nueva</button>
         </div>
       </div>
 
@@ -133,9 +133,9 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
                   <p className="text-xs text-muted-foreground">Próximo pago: {item.next_payment_date} · Cuenta: {item.account?.name || "-"}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => updateFinancialSubscription(item.id, { status: "paused" })} className="rounded-lg bg-muted p-2"><Pause className="h-4 w-4" /></button>
-                  <button onClick={() => updateFinancialSubscription(item.id, { status: "cancelled" })} className="rounded-lg bg-red-50 p-2 text-red-600 dark:bg-red-900/30"><XCircle className="h-4 w-4" /></button>
-                  <button onClick={() => deleteFinancialSubscription(item.id)} className="rounded-lg bg-muted p-2"><Trash2 className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => updateFinancialSubscription(item.id, { status: "paused" })} className="rounded-lg bg-muted p-2"><Pause className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => updateFinancialSubscription(item.id, { status: "cancelled" })} className="rounded-lg bg-red-50 p-2 text-red-600 dark:bg-red-900/30"><XCircle className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => deleteFinancialSubscription(item.id)} className="rounded-lg bg-muted p-2"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
             </div>
@@ -149,7 +149,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
               {pausedOrCancelled.map((item) => (
                 <div key={item.id} className="flex items-center justify-between text-sm">
                   <span>{item.name}</span>
-                  <button onClick={() => updateFinancialSubscription(item.id, { status: "active" })} className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs"><Play className="h-3 w-3" />Reactivar</button>
+                  <button type="button" onClick={() => updateFinancialSubscription(item.id, { status: "active" })} className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs"><Play className="h-3 w-3" />Reactivar</button>
                 </div>
               ))}
             </div>
@@ -161,7 +161,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
         <BaseModalForm
           title="Nueva suscripción"
           onClose={() => setShowCreate(false)}
-          footer={<button onClick={save} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
+          footer={<button type="button" onClick={save} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
         >
           <div className="space-y-3 pb-safe-areas">
             <select value={providerKey} onChange={(event) => setProviderKey(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">

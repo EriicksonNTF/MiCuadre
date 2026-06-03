@@ -204,7 +204,7 @@ export function PlanSelectorSheet({
 
                   <div className="relative mt-3">
                     {current ? (
-                      <button disabled className="h-10 w-full rounded-xl bg-muted/50 text-xs font-black text-muted-foreground">
+                      <button type="button" disabled className="h-10 w-full rounded-xl bg-muted/50 text-xs font-black text-muted-foreground">
                         Plan actual
                       </button>
                     ) : !paid ? (

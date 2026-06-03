@@ -398,7 +398,8 @@ if (!draggedId) return
       <header className="mx-auto max-w-md px-5 pb-4 pt-[calc(1.5rem+env(safe-area-inset-top))]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Cuentas</h1>
+            <p className="section-kicker">Centro financiero</p>
+            <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">Cuentas</h1>
             <p className="mt-1 text-sm leading-6 text-muted-foreground">Administra tu dinero, tarjetas y movimientos.</p>
           </div>
           <div className="flex shrink-0 items-center gap-2 pt-0.5">
@@ -406,7 +407,7 @@ if (!draggedId) return
               type="button"
               onClick={() => setShowTransfer(true)}
               aria-label="Mover dinero"
-              className="group flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-card shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+              className="tap-lift group flex h-12 w-12 items-center justify-center rounded-2xl border border-border/70 bg-card/76 shadow-sm backdrop-blur transition hover:shadow-[var(--shadow-lift)]"
             >
               <ArrowRightLeft className="h-4 w-4 text-foreground transition group-hover:text-accent" />
             </button>
@@ -426,7 +427,7 @@ if (!draggedId) return
                 setShowCreateAccount(true)
               }}
               aria-label="Crear cuenta"
-              className="group flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:scale-95"
+              className="tap-lift group flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-[var(--shadow-lift)] transition"
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -446,18 +447,18 @@ if (!draggedId) return
 {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 animate-pulse rounded-3xl bg-card" />
+            <div key={i} className="h-32 animate-pulse rounded-3xl bg-card/80 shadow-sm" />
           ))}
         </div>
       ) : displayAccounts.length === 0 ? (
-        <div className="mx-auto max-w-md rounded-[28px] border-2 border-dashed border-border bg-card p-6 text-center">
+        <div className="mobile-card mx-auto max-w-md p-6 text-center">
           <p className="text-sm font-semibold text-foreground">No tienes cuentas todavía</p>
           <p className="mt-1 text-xs text-muted-foreground">Agrega tu primera cuenta y empieza a rastrear tu dinero.</p>
         </div>
       ) : (
         <>
           <div className="mx-auto max-w-md px-5 pt-3">
-            <p className="mb-3 text-xs text-muted-foreground">Mantén presionado para ordenar</p>
+            <p className="section-kicker mb-3">Mantén presionado para ordenar</p>
           </div>
 
           <div className="mx-auto max-w-md space-y-4 px-5 pt-1">
@@ -476,16 +477,16 @@ if (!draggedId) return
               className="relative overflow-hidden rounded-3xl"
             >
               <div className="absolute inset-y-0 right-0 z-0 flex w-28 items-center justify-end gap-1 rounded-3xl pr-2">
-                <button
+                <button type="button"
                   onClick={() => router.push(`/accounts/${account.id}?edit=1`)}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-muted text-foreground"
+                  className="tap-lift flex h-11 w-11 items-center justify-center rounded-2xl bg-muted text-foreground"
                   aria-label="Editar cuenta"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
-                <button
+                <button type="button"
                   onClick={() => openDeleteConfirm(account.id)}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500 text-white"
+                  className="tap-lift flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500 text-white"
                   aria-label="Eliminar cuenta"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -494,7 +495,7 @@ if (!draggedId) return
 
               <div
                 className={cn(
-                  "relative z-10 transition-transform duration-200",
+                  "relative z-10 transition-transform duration-200 ease-[var(--ease-out-ios)]",
                   isDragging && "scale-[1.02] shadow-xl"
                 )}
                 style={{ transform: `translateX(${currentOffset}px)` }}
@@ -580,7 +581,7 @@ if (!draggedId) return
                       suppressClickRef.current = false
                     }
                   }}
-                  className="group block transition-transform active:scale-[0.98]"
+                  className="group block transition-transform duration-200 ease-[var(--ease-out-ios)] active:scale-[0.98]"
                 >
                   <BrandedAccountCard account={account} />
                 </Link>
@@ -624,7 +625,7 @@ if (!draggedId) return
             <div className="mobile-card p-4">
               <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
               <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="w-full rounded-2xl bg-muted p-4 text-2xl font-bold" />
-              <button onClick={() => setApplyCommission((prev) => !prev)} className={cn("mt-2 rounded-full px-3 py-1 text-xs font-medium", applyCommission ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Comisión 0.15%</button>
+              <button type="button" onClick={() => setApplyCommission((prev) => !prev)} className={cn("mt-2 rounded-full px-3 py-1 text-xs font-medium", applyCommission ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Comisión 0.15%</button>
               {applyCommission && parsedTransferAmount > 0 && <p className="mt-1 text-xs text-muted-foreground">Comisión: {formatCurrency(transferCommissionAmount)} · Total: {formatCurrency(totalTransferAmount)}</p>}
             </div>
           </div>
@@ -641,10 +642,10 @@ if (!draggedId) return
             {accountType !== "cash" && (
               <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de cuenta" className="h-14 w-full rounded-2xl border border-border bg-background px-4" />
             )}
-            <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button key={t} onClick={() => setAccountType(t)} className={cn("h-12 rounded-2xl px-2 text-xs font-bold", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
+            <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button type="button" key={t} onClick={() => setAccountType(t)} className={cn("h-12 rounded-2xl px-2 text-xs font-bold", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
             <div className="grid grid-cols-2 gap-2">
               {(["DOP", "USD"] as const).map((currency) => (
-                <button key={currency} onClick={() => { setAccountCurrency(currency); setCreditUsed("") }} className={cn("rounded-xl px-3 py-2 text-xs font-semibold", accountCurrency === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                <button type="button" key={currency} onClick={() => { setAccountCurrency(currency); setCreditUsed("") }} className={cn("rounded-xl px-3 py-2 text-xs font-semibold", accountCurrency === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
                   {currency === "DOP" ? "RD$" : "US$"}
                 </button>
               ))}
@@ -667,7 +668,7 @@ if (!draggedId) return
 
             <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
               <p className="text-sm font-semibold">Personalización visual</p>
-              <div className="grid grid-cols-2 gap-2">{(["icon", "image"] as const).map((value) => <button key={value} onClick={() => setBrandingIconType(value)} className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", brandingIconType === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{value === "icon" ? "Ícono" : "Logo/Banco"}</button>)}</div>
+              <div className="grid grid-cols-2 gap-2">{(["icon", "image"] as const).map((value) => <button type="button" key={value} onClick={() => setBrandingIconType(value)} className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", brandingIconType === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{value === "icon" ? "Ícono" : "Logo/Banco"}</button>)}</div>
               {brandingIconType === "image" ? (
                 <div>
                   <p className="mb-1 text-xs text-muted-foreground">Banco / Logo</p>
@@ -675,9 +676,9 @@ if (!draggedId) return
                     {BANK_LOGO_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.name}</option>)}
                   </select>
                 </div>
-              ) : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[10px]">{preset.label}</span></button>)}</div>}
-              <div className="flex flex-wrap gap-2">{COLOR_PRESETS.map((preset) => <button key={preset.key} onClick={() => { setBrandingPrimaryColor(preset.primary); setBrandingSecondaryColor(preset.secondary) }} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", brandingPrimaryColor === preset.primary && brandingSecondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}><span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} /></button>)}</div>
-              <div className="grid grid-cols-3 gap-2">{(["gradient", "solid", "glass"] as const).map((style) => <button key={style} onClick={() => setBrandingBackgroundStyle(style)} className={cn("rounded-xl px-3 py-2 text-xs", brandingBackgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>{style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}</button>)}</div>
+              ) : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button type="button" key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[10px]">{preset.label}</span></button>)}</div>}
+              <div className="flex flex-wrap gap-2">{COLOR_PRESETS.map((preset) => <button type="button" key={preset.key} onClick={() => { setBrandingPrimaryColor(preset.primary); setBrandingSecondaryColor(preset.secondary) }} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", brandingPrimaryColor === preset.primary && brandingSecondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}><span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} /></button>)}</div>
+              <div className="grid grid-cols-3 gap-2">{(["gradient", "solid", "glass"] as const).map((style) => <button type="button" key={style} onClick={() => setBrandingBackgroundStyle(style)} className={cn("rounded-xl px-3 py-2 text-xs", brandingBackgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>{style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}</button>)}</div>
               <BrandedAccountCard account={previewAccount as any} compact />
             </div>
 

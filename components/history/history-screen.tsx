@@ -351,7 +351,8 @@ export function HistoryScreen() {
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       <header className="px-6 pb-4 pt-8">
-        <h1 className="text-2xl font-bold text-foreground">Historial</h1>
+        <p className="section-kicker">Actividad</p>
+        <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground">Historial</h1>
         <p className="mt-1 text-sm text-muted-foreground">Todas tus transacciones</p>
       </header>
 
@@ -364,17 +365,17 @@ export function HistoryScreen() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar transacciones..."
-              className="h-12 w-full rounded-2xl bg-card pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-accent/20"
+              className="h-12 w-full rounded-2xl border border-border/60 bg-card/78 pl-11 pr-4 text-sm text-foreground shadow-sm outline-none backdrop-blur placeholder:text-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/25"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2">
+              <button type="button" onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2">
                 <X className="h-4 w-4 text-muted-foreground" />
               </button>
             )}
           </div>
-          <button
+          <button type="button"
             onClick={() => setShowFilters(!showFilters)}
-            className={cn("flex h-12 w-12 items-center justify-center rounded-2xl transition-colors", showFilters ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}
+            className={cn("tap-lift flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-colors", showFilters ? "bg-primary text-primary-foreground shadow-[var(--shadow-lift)]" : "bg-card/78 text-foreground ring-1 ring-border/60")}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
@@ -382,7 +383,7 @@ export function HistoryScreen() {
       </div>
 
       {showFilters && (
-        <div className="mt-4 space-y-4 px-6">
+        <div className="mx-6 mt-4 space-y-4 rounded-[1.45rem] border border-border/60 bg-card/76 p-4 shadow-sm backdrop-blur">
           <div>
             <p className="mb-2 text-xs font-medium text-muted-foreground">Fecha</p>
             <div className="grid grid-cols-4 gap-2">
@@ -392,10 +393,10 @@ export function HistoryScreen() {
                 { value: "month", label: "Este mes" },
                 { value: "custom", label: "Personalizado" },
               ].map((option) => (
-                <button
+                <button type="button"
                   key={option.value}
                   onClick={() => setDatePreset(option.value as DatePreset)}
-                  className={cn("rounded-xl px-2 py-2 text-[11px] font-medium transition-colors", datePreset === option.value ? "bg-primary text-primary-foreground" : "bg-card text-foreground")}
+                  className={cn("tap-lift rounded-xl px-2 py-2 text-[11px] font-bold transition-colors", datePreset === option.value ? "bg-primary text-primary-foreground" : "bg-background/70 text-foreground")}
                 >
                   {option.label}
                 </button>
@@ -409,7 +410,7 @@ export function HistoryScreen() {
 
           <div className="relative" data-account-menu="true">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Cuenta</p>
-            <button
+            <button type="button"
               onClick={() => setAccountMenuOpen((prev) => !prev)}
               className="flex h-11 w-full items-center justify-between rounded-xl border border-input bg-card px-3 text-sm"
             >
@@ -429,7 +430,7 @@ export function HistoryScreen() {
                   />
                 </div>
                 <div className="max-h-44 space-y-1 overflow-y-auto">
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setAccountFilter("all")
                       setAccountMenuOpen(false)
@@ -439,7 +440,7 @@ export function HistoryScreen() {
                     Todas
                   </button>
                   {filteredAccounts.map((account) => (
-                    <button
+                    <button type="button"
                       key={account.id}
                       onClick={() => {
                         setAccountFilter(account.id)
@@ -457,8 +458,8 @@ export function HistoryScreen() {
         </div>
       )}
 
-      <div className="mt-6 flex gap-3 px-6">
-        <div className="flex-1 rounded-2xl bg-card p-4">
+      <div className="motion-list mt-6 flex gap-3 px-6">
+        <div className="mobile-card flex-1 p-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
               <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -467,7 +468,7 @@ export function HistoryScreen() {
           </div>
           <p className="mt-2 text-lg font-bold text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
         </div>
-        <div className="flex-1 rounded-2xl bg-card p-4">
+        <div className="mobile-card flex-1 p-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
               <TrendingDown className="h-4 w-4 text-red-600" />
@@ -484,7 +485,7 @@ export function HistoryScreen() {
           <span className="text-xs text-muted-foreground">{filteredTransactions.length} resultados</span>
         </div>
 
-        <div className="mt-4 space-y-4">
+        <div className="motion-list mt-4 space-y-4">
           {groupedTransactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">No se encontraron transacciones</p>
@@ -502,26 +503,26 @@ export function HistoryScreen() {
                   const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
 
                   return (
-                    <div key={tx.id} data-history-row="true" className="relative overflow-hidden rounded-2xl">
+                    <div key={tx.id} data-history-row="true" className="relative overflow-hidden rounded-[1.35rem]">
                       <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
-                        <button
+                        <button type="button"
                           aria-label="Editar transacción"
                           onClick={() => openEdit(tx.id)}
-                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
+                          className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
-                        <button
+                        <button type="button"
                           aria-label="Eliminar transacción"
                           onClick={() => setDeletingId(tx.id)}
-                          className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white"
+                          className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
 
                       <div
-                        className="relative z-10 rounded-2xl bg-card p-4 transition-transform duration-200"
+                        className="relative z-10 rounded-[1.35rem] border border-border/55 bg-card/78 p-4 shadow-sm backdrop-blur transition-transform duration-200 ease-[var(--ease-out-ios)]"
                         style={{ transform: `translateX(${currentOffset}px)` }}
                         onPointerDown={(event) => {
                           const target = event.target as HTMLElement

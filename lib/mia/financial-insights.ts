@@ -139,26 +139,22 @@ export async function getFinancialHealthScore(supabase: SupabaseClient, userId: 
   // 1. Gather monthly summary
   const { income, expense } = await getMonthlySpendingSummary(supabase, userId)
   
-  // 2. Gather accounts
-  const { data: accountsRaw } = await supabase
-    .from("accounts")
-    .select("type, balance, is_active")
-    .eq("user_id", userId)
-    .eq("is_active", true)
+  // 2-5. Gather accounts, card debt, subscriptions, categories in parallel
+  const [{ data: accountsRaw }, { totalDebt: creditCardDebt }, { total: recurringExpenses }, categorySpend] = await Promise.all([
+    supabase
+      .from("accounts")
+      .select("type, balance, is_active")
+      .eq("user_id", userId)
+      .eq("is_active", true),
+    getCreditCardDebtSummary(supabase, userId),
+    getRecurringExpenseSummary(supabase, userId),
+    getSpendingByCategory(supabase, userId),
+  ])
 
   const accounts = (accountsRaw || []) as Account[]
   const cashAndDebit = accounts
     .filter((a) => a.type === "cash" || a.type === "debit")
     .reduce((sum, a) => sum + Number(a.balance || 0), 0)
-
-  // 3. Card debt
-  const { totalDebt: creditCardDebt } = await getCreditCardDebtSummary(supabase, userId)
-  
-  // 4. Recurring subscriptions
-  const { total: recurringExpenses } = await getRecurringExpenseSummary(supabase, userId)
-
-  // 5. Category spend
-  const categorySpend = await getSpendingByCategory(supabase, userId)
   const topSpendingCategory = categorySpend.length > 0 ? categorySpend[0].name : "Ninguna"
 
   // Math

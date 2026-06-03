@@ -375,7 +375,7 @@ export default function QaPage() {
                     <p className="font-semibold">{n.title}</p>
                     <p className="mt-0.5 text-muted-foreground">{n.body}</p>
                     <div className="mt-2 flex gap-2">
-                      <button
+                      <button type="button"
                         onClick={() => showToast({ title: n.title, body: n.body, type: n.priority === "high" ? "warning" : n.priority === "medium" ? "info" : "default", duration: 3000 })}
                         className="rounded-lg bg-primary px-2 py-1 text-xs font-medium text-primary-foreground"
                       >
