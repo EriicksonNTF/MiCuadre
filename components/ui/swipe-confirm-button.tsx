@@ -110,13 +110,17 @@ export function SwipeConfirmButton({
     pointerIdRef.current = null
   }
 
-  useEffect(() => {
+  const prevLoading = useRef(loading)
+  if (prevLoading.current !== loading) {
+    prevLoading.current = loading
     if (!loading && !isConfirmed) paint(0)
-  }, [loading, isConfirmed])
+  }
 
-  useEffect(() => {
+  const prevResetKey = useRef(resetKey)
+  if (resetKey !== prevResetKey.current) {
+    prevResetKey.current = resetKey
     reset()
-  }, [resetKey])
+  }
 
   useEffect(() => {
     return () => {

@@ -66,16 +66,16 @@ const categoryIcons: Record<string, typeof Utensils> = {
 }
 
 const categoryColors: Record<string, string> = {
-  food: "bg-orange-100 text-orange-600",
-  transport: "bg-blue-100 text-blue-600",
-  utilities: "bg-yellow-100 text-yellow-600",
-  entertainment: "bg-purple-100 text-purple-600",
-  shopping: "bg-pink-100 text-pink-600",
-  health: "bg-red-100 text-red-600",
-  education: "bg-indigo-100 text-indigo-600",
-  travel: "bg-cyan-100 text-cyan-600",
-  income: "bg-emerald-100 text-emerald-600",
-  other: "bg-gray-100 text-gray-600",
+  food: "bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400",
+  transport: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+  utilities: "bg-yellow-100/30 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
+  entertainment: "bg-purple-100/30 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+  shopping: "bg-pink-100/30 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
+  health: "bg-red-100/30 dark:bg-red-900/30 text-red-600 dark:text-red-400",
+  education: "bg-indigo-100/30 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
+  travel: "bg-cyan-100/30 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400",
+  income: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
+  other: "bg-muted/50 text-muted-foreground",
 }
 
 const DETAIL_ICON_PRESETS = [
@@ -536,8 +536,14 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       secondary_color: String(rawAccounts.find((a) => a.id === accountId)?.secondary_color || "#38bdf8"),
       background_style: String(rawAccounts.find((a) => a.id === accountId)?.background_style || "gradient"),
     })
-    setShowEditModal(true)
   }, [account, accountId, rawAccounts, searchParams])
+
+  const [prevEditDeps, setPrevEditDeps] = useState("")
+  const currentEditDeps = `${account?.id}-${accountId}-${searchParams}`
+  if (currentEditDeps !== prevEditDeps) {
+    setPrevEditDeps(currentEditDeps)
+    setShowEditModal(true)
+  }
 
   const parsedAmount = parseFloat(paymentAmount.replace(/[^0-9.]/g, "")) || 0
   const sourceAccount = accounts.find((a) => a.id === paymentSource)
@@ -572,13 +578,15 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const totalDebitPay = paymentCalcs?.totalDebit || sourceDebitAmount
   const validRatePay = !conversionAppliesPay || (Number.isFinite(parsedRate) && parsedRate > 0)
 
-  useEffect(() => {
+  const prevHasUsdOnCard = useRef(hasUsdOnCard)
+  if (prevHasUsdOnCard.current !== hasUsdOnCard) {
+    prevHasUsdOnCard.current = hasUsdOnCard
     if (!hasUsdOnCard && paymentCurrency === "USD") {
       setPaymentCurrency("DOP")
       setPaymentSource("")
       setPaymentAmount("")
     }
-  }, [hasUsdOnCard, paymentCurrency])
+  }
 
   if (!account) {
     return (
@@ -603,12 +611,15 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
   return (
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
-      <div className="px-6 pb-8 pt-8" style={{ background: headerBackground, color: headerTextColor }}>
+      <div className="relative overflow-hidden px-6 pb-8 pt-8" style={{ background: headerBackground, color: headerTextColor }}>
+        <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-white/14 blur-sm" />
+        <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-full border border-white/18" />
+        <div className="pointer-events-none absolute bottom-14 right-4 h-24 w-36 rounded-full bg-black/15 blur-3xl" />
         {/* Header Actions */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="relative z-10 mb-6 flex items-center justify-between">
           <Link
             href="/accounts"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur transition active:scale-95"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -638,27 +649,34 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 })
                 setShowEditModal(true)
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 transition-colors hover:bg-black/20"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur transition hover:bg-white/20 active:scale-95"
             >
               <Settings className="h-5 w-5" />
             </button>
             <button type="button"
               onClick={() => setShowDeleteModal(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-black/10 transition-colors hover:bg-black/20"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur transition hover:bg-white/20 active:scale-95"
             >
               <Trash2 className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        <BrandedAccountCard account={rawAccount || rawAccounts[0]} />
+        <div className="relative z-10">
+          <BrandedAccountCard account={rawAccount || rawAccounts[0]} />
+        </div>
 
         {isCredit && account.creditLimit && (
-          <div className="mt-6 space-y-4">
-              <div className="rounded-2xl border border-white/15 bg-slate-950/55 p-4 text-sm text-white backdrop-blur-md">
-                <p className="font-semibold tracking-tight text-white">Resumen de tarjeta</p>
+          <div className="relative z-10 mt-6 space-y-4">
+              <div className="rounded-[1.45rem] border border-white/15 bg-slate-950/60 p-4 text-sm text-white shadow-[0_22px_60px_-32px_rgba(0,0,0,0.85)] backdrop-blur-md">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold tracking-tight text-white">Resumen de tarjeta</p>
+                  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white/70">
+                    Corte y pago
+                  </span>
+                </div>
                 <div className="mt-3 space-y-3">
-                  <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3">
                     <p className="mb-2 text-[11px] text-white/70">DOP</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p></div>
@@ -667,7 +685,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       <div><p className="text-white/60">Disponible</p><p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_dop || Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0)), "DOP")}</p></div>
                     </div>
                   </div>
-                  {hasUsdOnCard ? <div className="rounded-xl border border-white/10 bg-white/[0.06] p-3">
+                  {hasUsdOnCard ? <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3">
                     <p className="mb-2 text-[11px] text-white/70">USD</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p></div>
@@ -677,7 +695,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     </div>
                   </div> : null}
                 </div>
-                <p className="mt-3 text-xs text-white/65">Pagar antes del {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
+                <p className="mt-3 rounded-full bg-white/10 px-3 py-2 text-xs text-white/70">Pagar antes del {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
               </div>
             
             {/* Pay button */}
@@ -732,8 +750,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </div>
         )}
 
-        <div className="mt-3 grid max-h-[116px] grid-cols-3 overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="min-w-0 border-r border-border px-3 py-3.5">
+        <div className="mt-3 grid max-h-[128px] grid-cols-3 overflow-hidden rounded-[1.45rem] border border-border/60 bg-card/82 shadow-sm backdrop-blur">
+          <div className="min-w-0 border-r border-border/60 px-3 py-3.5">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -745,7 +763,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             </p>
           </div>
 
-          <div className="min-w-0 border-r border-border px-3 py-3.5">
+          <div className="min-w-0 border-r border-border/60 px-3 py-3.5">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                 <TrendingDown className="h-3.5 w-3.5 text-red-600" />
@@ -824,8 +842,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             ))}
           </div>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">Desliza a la izquierda para editar o eliminar.</p>
-        <div className="mt-3 flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2">
+        <div className="mt-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+          Desliza a la izquierda para editar o eliminar movimientos.
+        </div>
+        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-border/60 bg-card/82 px-3 py-2.5 shadow-sm backdrop-blur">
           <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={txQuery}
@@ -854,7 +874,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
 
               return (
-                <div key={tx.id} data-account-tx-row="true" className="relative overflow-hidden rounded-2xl">
+                <div key={tx.id} data-account-tx-row="true" className="relative overflow-hidden rounded-[1.35rem]">
                   <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
                     <button type="button"
                       aria-label="Editar transacción"
@@ -873,7 +893,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   </div>
 
                   <div
-                    className="relative z-10 flex items-center gap-4 rounded-2xl bg-card p-4 transition-transform duration-200"
+                    className="relative z-10 flex items-center gap-3 rounded-[1.35rem] border border-border/55 bg-card/82 p-4 shadow-sm backdrop-blur transition-transform duration-200"
                     style={{ transform: `translateX(${currentOffset}px)` }}
                     onPointerDown={(event) => {
                       const target = event.target as HTMLElement
@@ -910,7 +930,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       pointerRef.current = null
                     }}
                   >
-                    <div className={cn("flex h-11 w-11 items-center justify-center rounded-full", categoryColors[tx.category] || categoryColors.other)}>
+                    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl", categoryColors[tx.category] || categoryColors.other)}>
                       <CategoryIcon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -938,7 +958,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     </div>
                     <p
                       className={cn(
-                        "font-semibold tabular-nums",
+                        "shrink-0 text-sm font-bold tabular-nums",
                         tx.type === "income"
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-foreground"
@@ -1372,7 +1392,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         {/* Delete Modal */}
         {showDeleteModal && (
           <>
-            <div className="fixed inset-0 z-[90] bg-black/40" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
+            <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-foreground/20 backdrop-blur-sm" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
             <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
                 <AlertTriangle className="h-7 w-7" />

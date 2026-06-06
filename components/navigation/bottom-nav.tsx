@@ -8,14 +8,12 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
-  { href: "/", icon: Home, label: "Inicio" },
+  { href: "/dashboard", icon: Home, label: "Inicio" },
   { href: "/accounts", icon: Wallet, label: "Cuentas" },
   { href: "/expense", icon: Plus, label: "Agregar", isAction: true },
   { href: "/history", icon: Clock, label: "Historial" },
   { href: "/planning", icon: CalendarCog, label: "Planificación" },
 ]
-
-const MAIN_ROUTES = new Set(["/", "/dashboard", "/accounts", "/history", "/planning"])
 
 export function BottomNav() {
   const pathname = usePathname()
@@ -54,9 +52,8 @@ export function BottomNav() {
 
   const isAuthPage = pathname.startsWith('/auth')
   const isOnboardingPage = pathname.startsWith('/onboarding')
-  const showBottomNav = MAIN_ROUTES.has(pathname)
 
-  if (isAuthPage || isOnboardingPage || !user || isMobileFormOpen || !showBottomNav) return null
+  if (isAuthPage || isOnboardingPage || !user || isMobileFormOpen) return null
 
   return (
     <>

@@ -8,7 +8,7 @@ import { notify } from "@/lib/notifications"
 import type { Debt } from "@/types/planning"
 
 const debtTypes: Array<{ value: Debt["debt_type"]; label: string }> = [
-  { value: "loan", label: "Prestamo" },
+  { value: "loan", label: "Préstamo" },
   { value: "person", label: "Persona" },
   { value: "financing", label: "Financiamiento" },
   { value: "other", label: "Otro" },
@@ -78,7 +78,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
       return
     }
     if (parsedPaymentDay !== null && (!Number.isInteger(parsedPaymentDay) || parsedPaymentDay < 1 || parsedPaymentDay > 31)) {
-      setFormError("El dia de pago debe estar entre 1 y 31.")
+      setFormError("El día de pago debe estar entre 1 y 31.")
       return
     }
     if (parsedFixedPayment !== null && (!Number.isFinite(parsedFixedPayment) || parsedFixedPayment <= 0)) {
@@ -118,8 +118,8 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
-      <DrawerContent className="mx-auto flex max-h-[85vh] max-w-md flex-col rounded-t-2xl border-border bg-card p-0 shadow-2xl ring-1 ring-border">
-        <DrawerHeader className="shrink-0 border-b border-border px-4 pb-3 pt-4">
+      <DrawerContent className="mx-auto flex max-h-[90dvh] max-w-md flex-col rounded-t-[2rem] border-border bg-card p-0 shadow-2xl ring-1 ring-border">
+        <DrawerHeader className="shrink-0 border-b border-border px-5 pb-4 pt-5">
           <DrawerTitle>Nueva deuda</DrawerTitle>
         </DrawerHeader>
 
@@ -130,15 +130,15 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
           }}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-4 pt-3">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 pb-5 pt-4">
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Nombre</span>
-              <input className="h-11 w-full rounded-xl border border-border bg-background px-3" value={name} onChange={(e) => setName(e.target.value)} />
+              <input className="h-12 w-full rounded-xl border border-border bg-background px-3" value={name} onChange={(e) => setName(e.target.value)} />
             </label>
 
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Tipo</span>
-              <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={debtType} onChange={(e) => setDebtType(e.target.value as Debt["debt_type"])}>
+              <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={debtType} onChange={(e) => setDebtType(e.target.value as Debt["debt_type"])}>
                 {debtTypes.map((item) => (
                   <option key={item.value} value={item.value}>{item.label}</option>
                 ))}
@@ -148,25 +148,25 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Monto original</span>
-                <input type="number" inputMode="decimal" className="h-11 w-full rounded-xl border border-border bg-background px-3" value={originalAmount} onChange={(e) => setOriginalAmount(e.target.value)} />
+                <input type="number" inputMode="decimal" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={originalAmount} onChange={(e) => setOriginalAmount(e.target.value)} />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Monto pendiente</span>
-                <input type="number" inputMode="decimal" className="h-11 w-full rounded-xl border border-border bg-background px-3" value={currentBalance} onChange={(e) => setCurrentBalance(e.target.value)} />
+                <input type="number" inputMode="decimal" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={currentBalance} onChange={(e) => setCurrentBalance(e.target.value)} />
               </label>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Moneda</span>
-                <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={currency} onChange={(e) => setCurrency(e.target.value as "DOP" | "USD")}> 
+                <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={currency} onChange={(e) => setCurrency(e.target.value as "DOP" | "USD")}> 
                   <option value="DOP">DOP</option>
                   <option value="USD">USD</option>
                 </select>
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Cuenta asociada</span>
-                <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={linkedAccount} onChange={(e) => setLinkedAccount(e.target.value)}>
+                <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={linkedAccount} onChange={(e) => setLinkedAccount(e.target.value)}>
                   <option value="">Opcional</option>
                   {sourceAccounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>{acc.name}</option>
@@ -178,11 +178,11 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Cuota fija</span>
-                <input type="number" inputMode="decimal" className="h-11 w-full rounded-xl border border-border bg-background px-3" value={fixedPayment} onChange={(e) => setFixedPayment(e.target.value)} />
+                <input type="number" inputMode="decimal" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={fixedPayment} onChange={(e) => setFixedPayment(e.target.value)} />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Frecuencia</span>
-                <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={frequency} onChange={(e) => setFrequency(e.target.value as Debt["payment_frequency"])}>
+                <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={frequency} onChange={(e) => setFrequency(e.target.value as Debt["payment_frequency"])}>
                   {frequencies.map((f) => (
                     <option key={f.value} value={f.value}>{f.label}</option>
                   ))}
@@ -193,17 +193,17 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Día de pago</span>
-                <input type="number" min={1} max={31} className="h-11 w-full rounded-xl border border-border bg-background px-3" value={paymentDay} onChange={(e) => setPaymentDay(e.target.value)} />
+                <input type="number" min={1} max={31} className="h-12 w-full rounded-xl border border-border bg-background px-3" value={paymentDay} onChange={(e) => setPaymentDay(e.target.value)} />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Fecha de inicio</span>
-                <input type="date" className="h-11 w-full rounded-xl border border-border bg-background px-3" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <input type="date" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </label>
             </div>
 
             <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Interes opcional (%)</span>
-              <input type="number" inputMode="decimal" className="h-11 w-full rounded-xl border border-border bg-background px-3" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} />
+              <span className="mb-1 block text-muted-foreground">Interés opcional (%)</span>
+              <input type="number" inputMode="decimal" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} />
             </label>
 
             <label className="block text-sm">
@@ -218,16 +218,16 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             ) : null}
           </div>
 
-          <footer className="shrink-0 border-t border-border bg-card p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          <footer className="shrink-0 border-t border-border bg-card px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="h-11 rounded-xl bg-muted text-sm font-bold text-foreground"
+                className="h-12 rounded-xl bg-muted text-sm font-bold text-foreground"
               >
                 Cancelar
               </button>
-              <button type="submit" disabled={saving} className="h-11 rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
+              <button type="submit" disabled={saving} className="h-12 rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
                 {saving ? "Guardando..." : "Guardar deuda"}
               </button>
             </div>

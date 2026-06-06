@@ -16,6 +16,8 @@ export function MobileFullscreenForm({
   onClose?: () => void
   contentClassName?: string
 }) {
+  const titleId = React.useId()
+
   React.useEffect(() => {
     document.body.classList.add("modal-open", "mobile-form-open")
     return () => {
@@ -24,10 +26,16 @@ export function MobileFullscreenForm({
   }, [])
 
   return (
-    <div data-app-modal="true" className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden bg-background">
+    <div
+      data-app-modal="true"
+      className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden bg-background"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={title ? titleId : undefined}
+    >
       <div className="shrink-0 border-b border-border/55 bg-background/92 px-5 py-4 pt-[calc(1rem+env(safe-area-inset-top))] backdrop-blur-xl">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="min-w-0 truncate text-lg font-bold text-foreground">{title}</h2>
+          <h2 id={titleId} className="min-w-0 truncate text-lg font-bold text-foreground">{title}</h2>
           {onClose && (
             <button type="button"
               onClick={onClose}

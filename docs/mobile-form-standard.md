@@ -11,6 +11,8 @@
 
 - `components/ui/mobile-fullscreen-form.tsx`.
 - `components/ui/mobile-sheet-layout.tsx` para bottom sheets.
+- `components/ui/base-modal-form.tsx` para formularios que deben ser fullscreen en mobile y sheet/modal en desktop.
+- `components/ui/mobile-foundation.tsx` para wrappers, cards, footers sticky y estados reutilizables.
 
 ## Reglas
 
@@ -22,3 +24,4 @@
 
 - Flujo de pago de tarjeta ya usa el patron (footer fijo + sheets).
 - Formularios restantes deben migrar gradualmente al mismo patron para consistencia completa.
+- Batch 2 agrego roles accesibles de dialogo, labels para cierres y margen de foco para evitar que el footer sticky tape controles enfocados.

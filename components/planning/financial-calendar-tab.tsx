@@ -108,7 +108,7 @@ export function FinancialCalendarTab() {
       )}
 
       {selectedDate ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40" data-no-edge-back="true">
+        <div className="fixed inset-0 z-[60] flex items-end bg-black/40" data-no-edge-back="true">
           <section className="flex max-h-[82vh] w-full flex-col rounded-t-[28px] border border-border bg-card text-card-foreground">
             <header className="shrink-0 border-b border-border px-5 py-4">
               <div className="flex items-center justify-between gap-3">

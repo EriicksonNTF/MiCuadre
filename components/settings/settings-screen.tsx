@@ -590,7 +590,7 @@ const isDevMode = process.env.NODE_ENV === "development"
           footer={
             <div className="space-y-3">
               <button type="button" onClick={handleLogout} disabled={isLoggingOut}
-                className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
+                className="h-12 w-full rounded-xl bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
                 {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
               </button>
               <button type="button" onClick={() => setShowLogoutConfirm(false)}
@@ -601,8 +601,8 @@ const isDevMode = process.env.NODE_ENV === "development"
           }
         >
           <div className="space-y-2 py-2 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-              <LogOut className="h-7 w-7 text-red-600" />
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+              <LogOut className="h-7 w-7 text-destructive" />
             </div>
             <h2 className="text-xl font-bold">¿Cerrar sesión?</h2>
             <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
@@ -618,7 +618,7 @@ const isDevMode = process.env.NODE_ENV === "development"
           footer={
             <div className="space-y-3">
               <button type="button" onClick={handleDeleteAccount} disabled={isDeletingAccount}
-                className="h-12 w-full rounded-xl bg-red-500 text-base font-semibold text-white hover:bg-red-600 disabled:opacity-50">
+                className="h-12 w-full rounded-xl bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
                 {isDeletingAccount ? "Procesando..." : "Eliminar cuenta"}
               </button>
               <button type="button" onClick={() => setShowDeleteAccount(false)}

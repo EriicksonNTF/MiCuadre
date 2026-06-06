@@ -1,25 +1,25 @@
 "use client"
 
 import {
-  ShoppingBag,
-  Utensils,
-  Car,
-  Zap,
   ArrowDownLeft,
-  Film,
   Banknote,
-  Building2,
-  CreditCard,
-  Heart,
   Book,
-  Home,
   Briefcase,
+  Building2,
+  Car,
+  Circle,
+  CreditCard,
+  Film,
+  Heart,
+  Home,
   Laptop,
-  TrendingUp,
+  MinusCircle,
   Plus,
   PlusCircle,
-  MinusCircle,
-  Circle,
+  ShoppingBag,
+  TrendingUp,
+  Utensils,
+  Zap,
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -70,10 +70,10 @@ export function TransactionsList() {
   }
 
   const grouped = (transactions || []).reduce((acc, tx) => {
-    const d = parseTxDate(tx.date)
-    const key = getLocalDateString(d)
+    const date = parseTxDate(tx.date)
+    const key = getLocalDateString(date)
     if (!acc[key]) {
-      acc[key] = { label: formatGroupLabel(d), date: d, items: [] as Transaction[] }
+      acc[key] = { label: formatGroupLabel(date), date, items: [] as Transaction[] }
     }
     acc[key].items.push(tx)
     return acc
@@ -85,107 +85,124 @@ export function TransactionsList() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="section-kicker">Movimientos</p>
-          <Link href="/history" className="text-xs font-medium text-accent">Ver todos</Link>
-        </div>
+      <section className="space-y-4">
+        <SectionHeader />
         <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-2xl bg-card/80 shadow-sm" />
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="h-16 animate-pulse rounded-2xl bg-card/80 shadow-sm" />
           ))}
         </div>
-      </div>
+      </section>
     )
   }
 
   if (!transactions || transactions.length === 0) {
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="section-kicker">Movimientos</p>
-        </div>
+      <section className="space-y-4">
+        <SectionHeader hideAction />
         <div className="mobile-card p-5 text-center">
-          <p className="text-sm font-semibold text-foreground">Sin movimientos aún</p>
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 text-accent">
+            <ArrowDownLeft className="h-5 w-5" />
+          </div>
+          <p className="mt-3 text-sm font-semibold text-foreground">Sin movimientos aún</p>
           <p className="mt-1 text-xs text-muted-foreground">Registra tu primer gasto o ingreso para ver tu actividad.</p>
           <Link
             href="/expense"
             className="tap-lift mt-4 inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)]"
           >
             <Plus className="h-4 w-4" />
-            Agregar mi primer movimiento
+            Agregar movimiento
           </Link>
         </div>
-      </div>
+      </section>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="section-kicker">Movimientos</p>
-        <Link href="/history" className="tap-lift rounded-full px-2 text-xs font-bold text-accent">Ver todos</Link>
-      </div>
+    <section className="space-y-4">
+      <SectionHeader />
 
-      <div className="space-y-3">
-        {groups.map((group) => (
-          <div key={group.key} className="space-y-2">
-            <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
-            {group.items.map((transaction) => {
-          const categoryIcon = transaction.category?.icon || "circle"
-          const Icon = categoryIcons[categoryIcon] || Circle
-          const categoryColor = transaction.category?.color || "#64748b"
-          const accountType = transaction.account?.type || "cash"
-          const AccountIcon = accountIconsSmall[accountType]
-          const txDate = transaction.created_at ? new Date(transaction.created_at) : parseTxDate(transaction.date)
-          const txTime = txDate.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
-
-          return (
-            <div
-              key={transaction.id}
-              className="tap-lift flex items-center gap-4 rounded-[1.35rem] border border-border/55 bg-card/78 p-4 shadow-sm backdrop-blur transition-colors hover:bg-card"
-            >
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-full"
-                style={{
-                  backgroundColor: `${categoryColor}15`,
-                  color: categoryColor,
-                }}
-              >
-                <Icon className="h-4 w-4" />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {transaction.description || transaction.category?.name || "Transacción"}
-                </p>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <AccountIcon className="h-3 w-3" />
-                  <span>{transaction.account?.name || "Cuenta"}</span>
-                  <span>·</span>
-                  <span>{txTime}</span>
-                </div>
-              </div>
-
-              <p
-                className={cn(
-                  "text-sm font-semibold",
-                  transaction.type === "income"
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : accountType === "credit"
-                    ? "text-orange-600"
-                    : "text-foreground"
-                )}
-              >
-                {transaction.type === "income" ? "+" : "-"}
-                {formatCurrency(transaction.amount, transaction.currency)}
-              </p>
+      <div className="overflow-hidden rounded-[1.65rem] border border-border/65 bg-card shadow-sm">
+        {groups.map((group, groupIndex) => (
+          <div key={group.key} className={cn(groupIndex > 0 && "border-t border-border/60")}>
+            <div className="flex items-center justify-between bg-muted/45 px-4 py-2.5">
+              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">{group.label}</p>
+              <p className="text-[11px] font-semibold text-muted-foreground">{group.items.length} mov.</p>
             </div>
-          )
-        })}
+            <div>
+              {group.items.map((transaction, index) => {
+                const categoryIcon = transaction.category?.icon || "circle"
+                const Icon = categoryIcons[categoryIcon] || Circle
+                const categoryColor = transaction.category?.color || "#64748b"
+                const accountType = transaction.account?.type || "cash"
+                const AccountIcon = accountIconsSmall[accountType]
+                const txDate = transaction.created_at ? new Date(transaction.created_at) : parseTxDate(transaction.date)
+                const txTime = txDate.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
+                const isIncome = transaction.type === "income"
+
+                return (
+                  <div
+                    key={transaction.id}
+                    className={cn("flex items-center gap-3 px-4 py-3", index > 0 && "border-t border-border/50")}
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
+                      style={{
+                        backgroundColor: `${categoryColor}16`,
+                        color: categoryColor,
+                      }}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-foreground">
+                        {transaction.description || transaction.category?.name || "Transacción"}
+                      </p>
+                      <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                        <AccountIcon className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{transaction.account?.name || "Cuenta"}</span>
+                        <span className="shrink-0">·</span>
+                        <span className="shrink-0">{txTime}</span>
+                      </div>
+                    </div>
+
+                    <p
+                      className={cn(
+                        "shrink-0 text-right text-sm font-black",
+                        isIncome
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : accountType === "credit"
+                            ? "text-orange-600"
+                            : "text-foreground",
+                      )}
+                    >
+                      {isIncome ? "+" : "-"}
+                      {formatCurrency(transaction.amount, transaction.currency)}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+function SectionHeader({ hideAction = false }: { hideAction?: boolean }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="section-kicker">Movimientos</p>
+        <p className="mt-1 text-sm font-bold text-foreground">Actividad reciente</p>
+      </div>
+      {!hideAction && (
+        <Link href="/history" className="tap-lift rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground">
+          Ver todos
+        </Link>
+      )}
     </div>
   )
 }

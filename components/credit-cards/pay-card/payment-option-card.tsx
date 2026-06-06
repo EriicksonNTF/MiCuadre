@@ -1,5 +1,7 @@
 "use client"
 
+import { Check } from "lucide-react"
+
 type PaymentOptionCardProps = {
   title: string
   description?: string
@@ -17,7 +19,7 @@ export function PaymentOptionCard({ title, description, amount, selected, onClic
     >
       <div className="flex items-center gap-4">
         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 ${selected ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/50 bg-transparent"}`}>
-          {selected ? "OK" : ""}
+          {selected ? <Check className="h-4 w-4" aria-hidden="true" /> : ""}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-base font-semibold leading-tight text-foreground">{title}</p>

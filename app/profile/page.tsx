@@ -288,12 +288,12 @@ export default function ProfilePage() {
           </div>
 
           <div className="mb-4">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Correo electrónico</label>
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Correo electrónico</span>
             <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{user?.email || profile?.email || "Sin correo"}</p>
           </div>
 
           <div className="mb-6">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Cuenta creada</label>
+            <span className="mb-1 block text-xs font-medium text-muted-foreground">Cuenta creada</span>
             <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{joinedDate}</p>
           </div>
 

@@ -57,24 +57,28 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
     styleMode === "solid"
       ? primaryColor
       : styleMode === "glass"
-      ? `linear-gradient(145deg, color-mix(in oklab, ${primaryColor} 72%, white), color-mix(in oklab, ${secondaryColor} 68%, white))`
-      : `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`
+        ? `linear-gradient(145deg, color-mix(in oklab, ${primaryColor} 72%, white), color-mix(in oklab, ${secondaryColor} 68%, white))`
+        : `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`
 
   return (
     <div
-      className={cn("tap-lift relative overflow-hidden rounded-[1.6rem] p-4 shadow-[0_18px_42px_-24px_rgba(0,0,0,0.55)] ring-1 ring-white/12 transition-[transform,box-shadow,filter] duration-300 ease-[var(--ease-out-ios)]", className)}
+      className={cn(
+        "tap-lift relative overflow-hidden rounded-[1.8rem] p-4 shadow-[0_22px_54px_-26px_rgba(0,0,0,0.62)] ring-1 ring-white/15 transition-[transform,box-shadow,filter] duration-300 ease-[var(--ease-out-ios)]",
+        className
+      )}
       style={{ background, color: textColor }}
     >
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.22),transparent_38%,rgba(0,0,0,0.12))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.24),transparent_38%,rgba(0,0,0,0.16))]" />
+      <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/15 blur-sm" />
+      <div className="absolute -bottom-16 left-8 h-36 w-36 rounded-full border border-white/20" />
+      <div className="absolute bottom-6 right-5 h-16 w-24 rounded-full bg-black/10 blur-2xl" />
       <div className="absolute left-0 right-0 top-0 h-px bg-white/30" />
 
       <div className="relative z-10 flex items-start gap-3">
         <div
           className={cn(
             "flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden backdrop-blur-sm",
-            iconType === "image" && account.icon_url
-              ? "rounded-full bg-transparent"
-              : "rounded-2xl bg-white/20"
+            iconType === "image" && account.icon_url ? "rounded-full bg-transparent" : "rounded-2xl bg-white/20"
           )}
         >
           {iconType === "image" && account.icon_url ? (
@@ -82,8 +86,8 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
               src={account.icon_url}
               alt={account.name}
               className="h-full w-full object-contain p-1.5 drop-shadow-[0_1px_1px_rgba(0,0,0,0.12)]"
-              onError={(e) => {
-                e.currentTarget.style.display = "none"
+              onError={(event) => {
+                event.currentTarget.style.display = "none"
               }}
             />
           ) : iconType === "emoji" ? (
@@ -97,7 +101,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           <div className="flex items-center gap-1.5">
             <p className="text-xs font-semibold opacity-75">{isCredit ? "Tarjeta de crédito" : accountTypeLabel}</p>
             {hasPending && (
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" title="Tiene movimientos pendientes sin sincronizar" />
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" title="Tiene movimientos pendientes sin sincronizar" />
             )}
           </div>
           <h3 className="truncate text-[1.04rem] font-bold leading-tight">{account.name}</h3>
@@ -114,11 +118,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           <>
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-semibold opacity-80">Deuda actual</p>
-              {hasPending && (
-                <span className="text-[9px] font-medium text-amber-200 animate-pulse">
-                  (Tiene pendientes)
-                </span>
-              )}
+              {hasPending && <span className="animate-pulse text-[9px] font-medium text-amber-200">(Tiene pendientes)</span>}
             </div>
             <div className="mt-1 space-y-0.5">
               {isMultiCurrency ? (
@@ -137,10 +137,12 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
               )}
             </div>
             {(dueSoon || overdue) && (
-              <div className={cn(
-                "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm",
-                overdue ? "bg-red-500/20 text-white" : "bg-amber-400/20 text-white"
-              )}>
+              <div
+                className={cn(
+                  "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm",
+                  overdue ? "bg-red-500/20 text-white" : "bg-amber-400/20 text-white"
+                )}
+              >
                 {overdue ? "Pago vencido" : daysUntilDue === 0 ? "Pago vence hoy" : `Pago en ${daysUntilDue} días`}
               </div>
             )}
@@ -158,7 +160,9 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
               </div>
               <div className="border-l border-white/20 pl-2">
                 <p className="opacity-70">Corte</p>
-                <p className="mt-0.5 font-semibold">{account.last_statement_cutoff_date ? new Date(`${account.last_statement_cutoff_date}T12:00:00`).toLocaleDateString("es-DO", { day: "2-digit", month: "short" }) : "-"}</p>
+                <p className="mt-0.5 font-semibold">
+                  {account.last_statement_cutoff_date ? new Date(`${account.last_statement_cutoff_date}T12:00:00`).toLocaleDateString("es-DO", { day: "2-digit", month: "short" }) : "-"}
+                </p>
               </div>
               <div className="border-l border-white/20 pl-2">
                 <p className="opacity-70">Pago</p>
@@ -172,11 +176,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           <>
             <div className="flex items-center gap-1.5">
               <p className="text-xs opacity-80">Balance disponible</p>
-              {hasPending && (
-                <span className="text-[9px] font-medium text-amber-200 animate-pulse">
-                  (Tiene pendientes)
-                </span>
-              )}
+              {hasPending && <span className="animate-pulse text-[9px] font-medium text-amber-200">(Tiene pendientes)</span>}
             </div>
             <p className="mt-1 text-2xl font-black tabular-nums tracking-tight">{formatCurrency(Number(account.balance || 0), account.currency)}</p>
           </>

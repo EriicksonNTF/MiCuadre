@@ -9,7 +9,7 @@ export function AppSplash() {
         <div className="relative mx-auto h-24 w-24">
           <div className="absolute inset-0 rounded-[28px] bg-gradient-to-br from-[#14B8A6]/30 to-[#10B981]/20 blur-xl animate-pulse" />
           <div className="relative overflow-hidden rounded-[28px] border border-white/35 shadow-[0_24px_60px_-20px_rgba(16,185,129,0.45)]">
-            <Image src="/icono-favicon.png" alt="MiCuadre" width={96} height={96} className="h-24 w-24 object-cover" priority />
+            <Image src="/icono-favicon.png" alt="MiCuadre" width={96} height={96} className="h-24 w-24 object-cover" />
           </div>
         </div>
         <h1 className="mt-5 text-3xl font-bold tracking-tight text-foreground">MiCuadre</h1>

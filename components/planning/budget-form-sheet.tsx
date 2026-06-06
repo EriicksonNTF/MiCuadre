@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { useCategories } from "@/hooks/use-data"
 import { createBudget, deactivateBudget, updateBudget } from "@/hooks/use-planning"
@@ -25,22 +25,30 @@ export function BudgetFormSheet({
   const [threshold, setThreshold] = useState("80")
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    if (!open) return
-    if (budget) {
+  const prevBudgetKey = useRef("")
+  const currentBudgetKey = open ? `open-${budget?.id ?? "new"}` : "closed"
+  if (currentBudgetKey !== prevBudgetKey.current) {
+    prevBudgetKey.current = currentBudgetKey
+    if (!open) {
+      setCategoryId("")
+      setName("")
+      setAmount("")
+      setCurrency("DOP")
+      setThreshold("80")
+    } else if (budget) {
       setCategoryId(budget.category_id || "")
       setName(budget.name)
       setAmount(String(budget.amount || ""))
       setCurrency((budget.currency as "DOP" | "USD") || "DOP")
       setThreshold(String(budget.alert_threshold || 80))
-      return
+    } else {
+      setCategoryId("")
+      setName("")
+      setAmount("")
+      setCurrency("DOP")
+      setThreshold("80")
     }
-    setCategoryId("")
-    setName("")
-    setAmount("")
-    setCurrency("DOP")
-    setThreshold("80")
-  }, [budget, open])
+  }
 
   const onSave = async () => {
     const selected = expenseCategories.find((c) => c.id === categoryId) || null

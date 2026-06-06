@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, CalendarDays, CreditCard } from "lucide-react"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { payCreditCard, useAccounts, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
 import { formatCurrency, formatDate } from "@/lib/data"
@@ -14,6 +14,7 @@ import { MovementReceipt } from "@/components/receipts/movement-receipt"
 import { PaymentOptionCard } from "@/components/credit-cards/pay-card/payment-option-card"
 import { CustomAmountSheet } from "@/components/credit-cards/pay-card/custom-amount-sheet"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
+import { FinancialAmount, IconBadge, MobileCard, MobilePageShell, MobileSectionHeader, StickyFormFooter } from "@/components/ui/mobile-foundation"
 
 
 type PaymentMode = "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
@@ -75,7 +76,8 @@ export default function PayPage() {
   } | null>(null)
 
   const creditCards = useMemo(() => accounts.filter((a) => a.type === "credit"), [accounts])
-  const card = creditCards.find((a) => a.id === selectedCard)
+  const selectedCardId = selectedCard || creditCards[0]?.id || ""
+  const card = creditCards.find((a) => a.id === selectedCardId)
   const sources = useMemo(() => accounts.filter((a) => a.type !== "credit"), [accounts])
   const source = sources.find((a) => a.id === sourceAccount)
 
@@ -233,7 +235,7 @@ export default function PayPage() {
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background px-6 pb-nav-safe pt-8">
+    <MobilePageShell className="pb-nav-safe">
       <div className="mb-5 flex items-center gap-3">
         <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
           <ArrowLeft className="h-5 w-5" />
@@ -254,7 +256,7 @@ export default function PayPage() {
               ].filter(Boolean).join(" · ") || formatCurrency(Number(c.current_debt || 0), c.currency),
               detail: "Tarjeta",
             }))}
-            selectedId={selectedCard}
+            selectedId={selectedCardId}
             onSelect={(id) => {
               setSelectedCard(id)
               setSourceAccount("")
@@ -266,6 +268,40 @@ export default function PayPage() {
 
         {card && (
           <>
+            <MobileCard className="space-y-4">
+              <div className="flex items-start gap-3">
+                <IconBadge icon={CreditCard} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-base font-bold text-foreground">{card.name}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {currencyTab === "DOP" ? "Balance en pesos dominicanos" : "Balance en dólares"}
+                  </p>
+                </div>
+                {card.statement_due_date ? (
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
+                    <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
+                    {formatDate(card.statement_due_date)}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FinancialAmount value={formatCurrency(balanceToDate, currencyTab)} label="Balance a la fecha" className="rounded-2xl bg-muted/55 p-3" />
+                <FinancialAmount value={formatCurrency(pendingStatement, currencyTab)} label="Balance al corte" className="rounded-2xl bg-muted/55 p-3" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-2xl border border-border/70 p-3">
+                  <p className="text-muted-foreground">Pago mínimo</p>
+                  <p className="mt-1 font-bold text-foreground">{formatCurrency(minimumPayment, currencyTab)}</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 p-3">
+                  <p className="text-muted-foreground">Crédito disponible</p>
+                  <p className="mt-1 font-bold text-foreground">{formatCurrency(availableCredit, currencyTab)}</p>
+                </div>
+              </div>
+            </MobileCard>
+
             {activeCurrencies.length > 1 && (
               <section className="rounded-2xl border border-border bg-card p-4">
                 <p className="mb-3 text-sm font-semibold">¿Qué balance quieres pagar?</p>
@@ -291,19 +327,18 @@ export default function PayPage() {
             </section>
 
             <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xl font-bold text-foreground">Elige el monto que quieres pagar</p>
-                {card.statement_due_date && (
+              <MobileSectionHeader title="Elige el monto" description="Selecciona una opción segura antes de confirmar el pago." action={
+                card.statement_due_date ? (
                   <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
                     Pagar antes del {formatDate(card.statement_due_date)}
                   </span>
-                )}
-              </div>
-              <PaymentOptionCard title="Minimo pendiente" description="Evita afectar tu historial crediticio" amount={formatCurrency(minimumPayment, currencyTab)} selected={paymentMode === "minimum_payment"} onClick={() => selectAmount("minimum_payment", minimumPayment)} />
-              <PaymentOptionCard title="Pendiente al corte" description="Evita cargos por interes" amount={formatCurrency(pendingStatement, currencyTab)} selected={paymentMode === "statement_balance"} onClick={() => selectAmount("statement_balance", pendingStatement)} />
-              <PaymentOptionCard title="Balance a la fecha" description="Pagaras todo lo consumido." amount={formatCurrency(balanceToDate, currencyTab)} selected={paymentMode === "balance_to_date"} onClick={() => selectAmount("balance_to_date", balanceToDate)} />
+                ) : null
+              } />
+              <PaymentOptionCard title="Mínimo pendiente" description="Evita afectar tu historial crediticio" amount={formatCurrency(minimumPayment, currencyTab)} selected={paymentMode === "minimum_payment"} onClick={() => selectAmount("minimum_payment", minimumPayment)} />
+              <PaymentOptionCard title="Pendiente al corte" description="Evita cargos por interés" amount={formatCurrency(pendingStatement, currencyTab)} selected={paymentMode === "statement_balance"} onClick={() => selectAmount("statement_balance", pendingStatement)} />
+              <PaymentOptionCard title="Balance a la fecha" description="Pagarás todo lo consumido." amount={formatCurrency(balanceToDate, currencyTab)} selected={paymentMode === "balance_to_date"} onClick={() => selectAmount("balance_to_date", balanceToDate)} />
               <PaymentOptionCard title="Otro monto" amount={selectedAmount > 0 && paymentMode === "custom" ? formatCurrency(selectedAmount, currencyTab) : ""} selected={paymentMode === "custom"} onClick={() => { setPaymentMode("custom"); setCustomAmount(""); setShowCustomSheet(true) }} />
-              <button type="button" className="text-sm font-semibold text-primary">¿Como pagar mi tarjeta?</button>
+              <button type="button" className="text-sm font-semibold text-primary">¿Cómo pagar mi tarjeta?</button>
             </section>
 
             {conversionApplies && source && (
@@ -325,9 +360,9 @@ export default function PayPage() {
               <input value={paymentComment} onChange={(e) => setPaymentComment(e.target.value)} placeholder="Pago de mayo" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none" />
             </section>
 
-            <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-background px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+            <StickyFormFooter className="fixed left-0 right-0">
               <button type="button" disabled={!valid || isPaying} onClick={() => setShowConfirmSheet(true)} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Continuar</button>
-            </div>
+            </StickyFormFooter>
           </>
         )}
       </div>
@@ -427,6 +462,6 @@ export default function PayPage() {
           },
         ]}
       />
-    </div>
+    </MobilePageShell>
   )
 }

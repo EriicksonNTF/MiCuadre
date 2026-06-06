@@ -154,6 +154,15 @@ export function AccountsScreen() {
 
   // Use orderedAccounts if available, otherwise fall back to accounts
   const displayAccounts = orderedAccounts ?? accounts
+  const accountSummary = useMemo(() => {
+    const cards = displayAccounts.filter((account) => account.type === "credit").length
+    const liquidAccounts = displayAccounts.length - cards
+    const dopBalance = displayAccounts
+      .filter((account) => account.type !== "credit" && account.currency === "DOP")
+      .reduce((total, account) => total + Number(account.balance || 0), 0)
+
+    return { cards, liquidAccounts, dopBalance }
+  }, [displayAccounts])
 
   useEffect(() => {
     const onOutside = (event: PointerEvent) => {
@@ -442,10 +451,26 @@ if (!draggedId) return
             />
           </div>
         )}
+        {displayAccounts.length > 0 && (
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm backdrop-blur">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Disponible</p>
+              <p className="mt-1 truncate text-sm font-black tabular-nums text-foreground">{formatCurrency(accountSummary.dopBalance)}</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm backdrop-blur">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Cuentas</p>
+              <p className="mt-1 text-sm font-black text-foreground">{accountSummary.liquidAccounts}</p>
+            </div>
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm backdrop-blur">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Tarjetas</p>
+              <p className="mt-1 text-sm font-black text-foreground">{accountSummary.cards}</p>
+            </div>
+          </div>
+        )}
       </header>
 
-{isLoading ? (
-        <div className="space-y-4">
+      {isLoading ? (
+        <div className="mx-auto max-w-md space-y-4 px-5">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-32 animate-pulse rounded-3xl bg-card/80 shadow-sm" />
           ))}
@@ -458,7 +483,9 @@ if (!draggedId) return
       ) : (
         <>
           <div className="mx-auto max-w-md px-5 pt-3">
-            <p className="section-kicker mb-3">Mantén presionado para ordenar</p>
+            <div className="rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+              Mantén presionado una tarjeta para ordenar. Desliza hacia la izquierda para editar o eliminar.
+            </div>
           </div>
 
           <div className="mx-auto max-w-md space-y-4 px-5 pt-1">
@@ -486,7 +513,7 @@ if (!draggedId) return
                 </button>
                 <button type="button"
                   onClick={() => openDeleteConfirm(account.id)}
-                  className="tap-lift flex h-11 w-11 items-center justify-center rounded-2xl bg-red-500 text-white"
+                  className="tap-lift flex h-11 w-11 items-center justify-center rounded-2xl bg-destructive text-destructive-foreground"
                   aria-label="Eliminar cuenta"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -688,7 +715,7 @@ if (!draggedId) return
 
       {confirmDeleteId && (
         <>
-          <div className="fixed inset-0 z-[90] bg-black/40" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
+          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-black/40" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
           <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
               <AlertTriangle className="h-7 w-7" />

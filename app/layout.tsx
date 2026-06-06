@@ -62,18 +62,8 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
       {
-        url: '/icon-512x512.png',
-        sizes: '512x512',
-        type: 'image/png',
-      },
-      {
         url: '/apple-touch-icon.png',
         sizes: '180x180',
-        type: 'image/png',
-      },
-      {
-        url: '/favicon-16x16.png',
-        sizes: '16x16',
         type: 'image/png',
       },
     ],
@@ -94,13 +84,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#000000" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
-        <AppProviders>
-          <BodyCleanup />
+        <AppProviders bodyCleanup={<BodyCleanup />} offlineBanner={<OfflineStatusBanner />} toastContainer={<ToastContainer />}>
           {children}
-          <BottomNav />
-          <OfflineStatusBanner />
-          <ToastContainer />
         </AppProviders>
+        <BottomNav />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

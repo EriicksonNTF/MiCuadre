@@ -57,6 +57,7 @@ export function BaseModalForm({
               <button type="button" 
                 onClick={onClose}
                 className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted/85 text-muted-foreground hover:bg-muted hover:text-foreground"
+                aria-label="Cerrar"
               >
                 <X className="h-4 w-4" />
               </button>

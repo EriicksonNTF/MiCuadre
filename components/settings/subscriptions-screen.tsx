@@ -36,7 +36,6 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
   useEffect(() => {
     if (initialOpenCreate && !canUseFinancialSubscriptions) {
       handleEntitlementBlocked(createBlockedResponse("financial_subscriptions", { requiredPlan: "pro" }))
-      setShowCreate(false)
     }
   }, [canUseFinancialSubscriptions, handleEntitlementBlocked, initialOpenCreate])
 
@@ -52,24 +51,33 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
   const pausedOrCancelled = subscriptions.filter((item) => item.status !== "active")
   const monthlyTotal = active.reduce((sum, item) => sum + Number(item.amount || 0), 0)
   const upcoming = active.slice(0, 3)
+  const parsedAmount = Number(amount)
+  const parsedBillingDay = Number(billingDay)
+  const canSaveSubscription = Boolean(
+    sourceAccountId &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    Number.isInteger(parsedBillingDay) &&
+    parsedBillingDay >= 1 &&
+    parsedBillingDay <= 31
+  )
 
   const subscriptionCategoryId = useMemo(() => {
     return categories.find((item) => item.is_subscription)?.id || categories.find((item) => item.name.toLowerCase().includes("suscrip"))?.id || null
   }, [categories])
 
   const save = async () => {
-    const parsed = Number(amount)
-    if (!sourceAccountId || !parsed || !billingDay) return
+    if (!canSaveSubscription) return
 
     const linkedAccount = accounts.find((account) => account.id === sourceAccountId) || null
     const provider = getFinancialSubscriptionProvider(providerKey)
-    const nextDate = getNextFinancialBillingDateFrom(new Date(), Number(billingDay))
+    const nextDate = getNextFinancialBillingDateFrom(new Date(), parsedBillingDay)
 
     try {
       await createFinancialSubscription({
         name: provider.name,
         provider_key: provider.key,
-        amount: parsed,
+        amount: parsedAmount,
         currency,
         account_id: sourceAccountId,
         linked_account_id: linkedAccount?.type === "credit" ? null : sourceAccountId,
@@ -77,11 +85,12 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
         auto_record_enabled: autoRecordEnabled,
         pre_alert_enabled: preAlertEnabled,
         category_id: subscriptionCategoryId,
-        billing_day: Number(billingDay),
+        billing_day: parsedBillingDay,
         next_payment_date: getLocalDateString(nextDate),
       })
       setShowCreate(false)
       setAmount("")
+      setSourceAccountId("")
       setAutoRecordEnabled(false)
       setPreAlertEnabled(true)
       notify({ title: "Creado correctamente", message: "La suscripción fue guardada." })
@@ -157,26 +166,41 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
         )}
       </div>
 
-      {showCreate && (
+      {showCreate && canUseFinancialSubscriptions && (
         <BaseModalForm
           title="Nueva suscripción"
           onClose={() => setShowCreate(false)}
-          footer={<button type="button" onClick={save} className="h-12 w-full rounded-xl bg-primary font-semibold text-primary-foreground">Guardar</button>}
+          footer={<button type="button" onClick={save} disabled={!canSaveSubscription} className="h-14 w-full rounded-2xl bg-primary font-semibold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Guardar suscripción</button>}
         >
-          <div className="space-y-3 pb-safe-areas">
-            <select value={providerKey} onChange={(event) => setProviderKey(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-              {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => <option key={provider.key} value={provider.key}>{provider.name}</option>)}
-            </select>
-            <MoneyInput value={amount} onValueChange={setAmount} placeholder="Monto mensual" className="h-12 w-full rounded-xl border border-border bg-background px-4" />
-            <select value={currency} onChange={(event) => setCurrency(event.target.value as "DOP" | "USD")} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-              <option value="DOP">DOP</option>
-              <option value="USD">USD</option>
-            </select>
-            <select value={sourceAccountId} onChange={(event) => setSourceAccountId(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-              <option value="">Cuenta o tarjeta vinculada</option>
-              {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.type === "credit" ? "Tarjeta" : "Cuenta"}</option>)}
-            </select>
-            <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} type="number" min={1} max={31} className="h-12 w-full rounded-xl border border-border bg-background px-4" placeholder="Día de cobro" />
+          <div className="space-y-4 pb-safe-areas">
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Servicio</span>
+              <select value={providerKey} onChange={(event) => setProviderKey(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
+                {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => <option key={provider.key} value={provider.key}>{provider.name}</option>)}
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Monto mensual</span>
+              <MoneyInput value={amount} onValueChange={setAmount} placeholder="0.00" className="h-12 w-full rounded-xl border border-border bg-background px-4" />
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Moneda</span>
+              <select value={currency} onChange={(event) => setCurrency(event.target.value as "DOP" | "USD")} className="h-12 w-full rounded-xl border border-border bg-background px-4">
+                <option value="DOP">DOP</option>
+                <option value="USD">USD</option>
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Cuenta o tarjeta vinculada</span>
+              <select value={sourceAccountId} onChange={(event) => setSourceAccountId(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
+                <option value="">Selecciona una cuenta o tarjeta</option>
+                {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.type === "credit" ? "Tarjeta" : "Cuenta"}</option>)}
+              </select>
+            </label>
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Día de cobro</span>
+              <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} type="number" min={1} max={31} className="h-12 w-full rounded-xl border border-border bg-background px-4" placeholder="Ej. 15" />
+            </label>
 
             <label className="flex items-center justify-between rounded-xl border border-border bg-background px-4 py-3 text-sm">
               <span>Registrar automáticamente</span>
@@ -187,8 +211,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
               <input type="checkbox" checked={preAlertEnabled} onChange={(event) => setPreAlertEnabled(event.target.checked)} />
             </label>
 
-            <p className="text-xs text-muted-foreground">Se registrará automáticamente en MiCuadre cuando llegue la fecha.</p>
-            <p className="text-xs text-muted-foreground">Esto no realiza cargos reales en tu banco.</p>
+            <p className="rounded-2xl bg-muted/65 px-4 py-3 text-xs leading-relaxed text-muted-foreground">Se registrará automáticamente en MiCuadre cuando llegue la fecha si activas el registro automático. Esto no realiza cargos reales en tu banco.</p>
           </div>
         </BaseModalForm>
       )}

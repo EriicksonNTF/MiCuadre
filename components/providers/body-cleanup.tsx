@@ -61,18 +61,19 @@ export function BodyCleanup() {
       page.style.transition = animated ? "transform 200ms cubic-bezier(0.22, 0.61, 0.36, 1)" : "none"
       page.style.transform = `translate3d(${Math.max(0, offset)}px, 0, 0)`
     }
+    const clearPageTransform = (page: HTMLElement) => {
+      page.style.transition = ""
+      page.style.willChange = ""
+      page.style.transform = ""
+    }
     const resetPageOffset = (animated: boolean) => {
       const page = currentPageElement()
       if (!page) return
       setPageOffset(0, animated)
       if (animated) {
-        window.setTimeout(() => {
-          const latest = currentPageElement()
-          if (!latest) return
-          latest.style.transition = ""
-          latest.style.willChange = ""
-          latest.style.transform = ""
-        }, 220)
+        window.setTimeout(() => clearPageTransform(page), 220)
+      } else {
+        clearPageTransform(page)
       }
     }
 

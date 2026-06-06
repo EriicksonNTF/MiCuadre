@@ -437,7 +437,7 @@ export default function CoachIAPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background/95 px-4 pb-safe pt-3 backdrop-blur-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-[60] border-t border-border bg-background/95 px-4 pb-safe pt-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-2">
           <input
             value={input}

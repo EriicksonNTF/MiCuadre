@@ -69,10 +69,6 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -95,7 +91,6 @@ export async function updateSession(request: NextRequest) {
     onboardingCompleted = Boolean(profile?.onboarding_completed)
   }
 
-  // Redirect to login if user is not logged in and accessing root route from Capacitor/iOS wrapper
   if (pathname === '/' && !user && isCapacitor) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -108,25 +103,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (user && !isEmailVerified && pathname !== '/verify-email') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/verify-email'
-    return NextResponse.redirect(url)
-  }
-
-  if (user && isEmailVerified && !onboardingCompleted && pathname !== '/onboarding') {
+  if (user && !onboardingCompleted && pathname !== '/onboarding') {
     const url = request.nextUrl.clone()
     url.pathname = '/onboarding'
     return NextResponse.redirect(url)
   }
 
-  if (user && isEmailVerified && onboardingCompleted && pathname === '/onboarding') {
+  if (user && onboardingCompleted && pathname === '/onboarding') {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  if (user && isEmailVerified && (isPublicRoute || pathname === '/verify-email')) {
+  if (user && (isPublicRoute || pathname === '/verify-email')) {
     const url = request.nextUrl.clone()
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)

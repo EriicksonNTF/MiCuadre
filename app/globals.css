@@ -154,6 +154,10 @@
     text-rendering: optimizeLegibility;
     -webkit-tap-highlight-color: transparent;
   }
+  :focus-visible {
+    scroll-margin-top: calc(5rem + env(safe-area-inset-top));
+    scroll-margin-bottom: calc(7rem + env(safe-area-inset-bottom));
+  }
 }
 
 body:not(.modal-open) {

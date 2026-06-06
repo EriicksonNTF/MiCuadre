@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import type { FinancialCalendarEvent } from "@/lib/planning/calendar"
@@ -58,9 +58,11 @@ export function RotatingUpcomingPaymentsCard({
     [events]
   )
 
-  useEffect(() => {
+  const prevEventsLen = useRef(sortedEvents.length)
+  if (sortedEvents.length !== prevEventsLen.current) {
+    prevEventsLen.current = sortedEvents.length
     setActiveIndex(0)
-  }, [sortedEvents.length])
+  }
 
   useEffect(() => {
     if (sortedEvents.length <= 1) return

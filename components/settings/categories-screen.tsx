@@ -205,7 +205,7 @@ export function CategoriesScreen() {
               onClick={() => setIsSubscription((prev) => !prev)}
               className={cn(
                 "h-11 w-full rounded-xl text-sm font-medium",
-                isSubscription ? "bg-amber-500 text-white" : "bg-muted text-foreground"
+                isSubscription ? "bg-amber-600 text-amber-50" : "bg-muted text-foreground"
               )}
             >
               {isSubscription ? "Categoría de suscripción: activa" : "Categoría de suscripción: inactiva"}

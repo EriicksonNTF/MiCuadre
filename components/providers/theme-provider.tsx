@@ -31,12 +31,14 @@ export function ThemeProvider({ children, initialTheme, onThemeChange }: ThemePr
     onThemeChange?.(newTheme)
   }, [onThemeChange])
 
-  useEffect(() => {
+  const [prevInitialTheme, setPrevInitialTheme] = useState(initialTheme)
+  if (!mounted) {
     setMounted(true)
-    if (initialTheme) {
-      setThemeState(initialTheme)
-    }
-  }, [initialTheme])
+  }
+  if (initialTheme && initialTheme !== prevInitialTheme) {
+    setPrevInitialTheme(initialTheme)
+    setThemeState(initialTheme)
+  }
 
   useEffect(() => {
     if (!mounted) return

@@ -260,11 +260,11 @@ export default function DashboardPage() {
         <Header />
 
         <div className="motion-list">
-        <div className="mt-8">
+        <div className="mt-6">
           <BalanceCard />
         </div>
 
-        <div className="mt-7">
+        <div className="mt-5">
           <QuickActions />
         </div>
 
@@ -272,18 +272,19 @@ export default function DashboardPage() {
           <ActivationPanel />
         )}
 
-        <div className="mt-8">
+        <div className="mt-6">
           {isPro ? (
             <PlanningSummaryCard />
           ) : (
-            <section className="mobile-card p-5">
+            <section className="relative overflow-hidden rounded-[1.65rem] border border-accent/20 bg-accent/8 p-5 shadow-sm">
+              <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-accent/12" />
               <p className="section-kicker">Planificación</p>
-              <p className="mt-2 text-sm font-bold">Controla tu mes con Pro</p>
+              <p className="mt-2 text-sm font-black text-foreground">Controla tu mes con Pro</p>
               <p className="mt-1 text-xs text-muted-foreground">Presupuestos, deudas y pagos próximos en un solo lugar.</p>
               <button
                 type="button"
                 onClick={() => setPlanningUpsellOpen(true)}
-                className="tap-lift mt-4 inline-flex h-12 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)]"
+                className="tap-lift mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)]"
               >
                 Ver planes
               </button>
@@ -291,22 +292,22 @@ export default function DashboardPage() {
           )}
         </div>
 
-        <div className="mt-8">
+        <div className="mt-6">
           <AccountsList />
         </div>
 
         {isPro ? (
-          <div className="mt-8">
+          <div className="mt-6">
             <CalendarPreviewCard />
           </div>
         ) : null}
 
-        <div className="mt-8">
+        <div className="mt-6">
           <TransactionsList />
         </div>
 
         {dashboardInsights.length > 0 && (
-          <div className="mt-8 space-y-2">
+          <div className="mt-6 space-y-2">
             {dashboardInsights.map((insight, index) => {
               const Icon = insightIcon[insight.type]
               return (

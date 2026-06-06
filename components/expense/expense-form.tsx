@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -47,19 +47,19 @@ import { useEntitlements } from "@/hooks/use-entitlements"
 import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 
 const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: string }> = {
-  comida: { icon: Utensils, color: "bg-orange-50 text-orange-500" },
-  transporte: { icon: Car, color: "bg-blue-50 text-blue-500" },
-  compras: { icon: ShoppingBag, color: "bg-pink-50 text-pink-500" },
-  servicios: { icon: Zap, color: "bg-amber-50 text-amber-500" },
-  celular: { icon: Smartphone, color: "bg-violet-50 text-violet-500" },
-  vivienda: { icon: Home, color: "bg-emerald-50 text-emerald-500" },
-  entretenimiento: { icon: Film, color: "bg-red-50 text-red-500" },
-  salud: { icon: Heart, color: "bg-rose-50 text-rose-500" },
-  educacion: { icon: GraduationCap, color: "bg-indigo-50 text-indigo-500" },
-  ejercicio: { icon: Dumbbell, color: "bg-teal-50 text-teal-500" },
-  regalos: { icon: Gift, color: "bg-amber-50 text-amber-600" },
-  salario: { icon: Briefcase, color: "bg-emerald-50 text-emerald-600" },
-  freelance: { icon: TrendingUp, color: "bg-blue-50 text-blue-600" },
+  comida: { icon: Utensils, color: "bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" },
+  transporte: { icon: Car, color: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" },
+  compras: { icon: ShoppingBag, color: "bg-pink-100/30 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400" },
+  servicios: { icon: Zap, color: "bg-amber-100/30 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" },
+  celular: { icon: Smartphone, color: "bg-violet-100/30 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400" },
+  vivienda: { icon: Home, color: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" },
+  entretenimiento: { icon: Film, color: "bg-red-100/30 dark:bg-red-900/30 text-red-600 dark:text-red-400" },
+  salud: { icon: Heart, color: "bg-rose-100/30 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400" },
+  educacion: { icon: GraduationCap, color: "bg-indigo-100/30 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400" },
+  ejercicio: { icon: Dumbbell, color: "bg-teal-100/30 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400" },
+  regalos: { icon: Gift, color: "bg-amber-100/30 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" },
+  salario: { icon: Briefcase, color: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" },
+  freelance: { icon: TrendingUp, color: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" },
 }
 
 type Currency = "DOP" | "USD"
@@ -114,7 +114,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [applyCommission, setApplyCommission] = useState(false)
   const [creditCardIncomeKind, setCreditCardIncomeKind] = useState<CreditCardIncomeKind>("card_payment")
   const [isSaving, setIsSaving] = useState(false)
-  const [prefillApplied, setPrefillApplied] = useState(false)
+
   const [subscriptionProvider, setSubscriptionProvider] = useState("netflix")
   const [subscriptionMode, setSubscriptionMode] = useState<"once" | "recurring">("once")
   const [billingDay, setBillingDay] = useState(String(new Date().getDate()))
@@ -176,7 +176,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
     return dbCategories
       .filter((cat) => allowedTypes.includes(cat.type))
       .map((cat) => {
-        const ui = categoryUiByName[cat.name.toLowerCase()] || { icon: MoreHorizontal, color: "bg-gray-50 text-gray-500" }
+        const ui = categoryUiByName[cat.name.toLowerCase()] || { icon: MoreHorizontal, color: "bg-muted/50 text-muted-foreground" }
         return { id: cat.id, label: cat.name, icon: ui.icon, color: ui.color }
       })
   }, [dbCategories, transactionType])
@@ -337,8 +337,12 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
 
   const isRecurringEnabled = transactionType === "expense"
 
+  const appliedPrefillRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (!prefill || prefillApplied) return
+    const prefillKey = prefill?.description ?? ""
+    if (!prefill || appliedPrefillRef.current === prefillKey) return
+    appliedPrefillRef.current = prefillKey
 
     if (prefill.amount) setAmount(prefill.amount)
     if (prefill.description) setDescription(prefill.description)
@@ -353,9 +357,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       const matched = categories.find((cat) => cat.label.toLowerCase() === prefill.categoryName?.toLowerCase())
       if (matched) setCategory(matched.id)
     }
-
-    setPrefillApplied(true)
-  }, [prefill, prefillApplied, categories])
+  }, [prefill, categories])
 
   return (
     <div className="app-scroll flex h-[100dvh] flex-col overflow-hidden bg-background">
@@ -397,7 +399,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             className={cn(
               "flex flex-1 items-center justify-center gap-2 rounded-xl text-[13px] transition-all",
               transactionType === "income"
-                 ? "bg-emerald-600 text-white font-bold"
+                 ? "bg-emerald-600 text-emerald-50 font-bold"
                 : "text-muted-foreground"
             )}
           >
@@ -406,10 +408,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           </button>
         </div>
 
-        <div className="mobile-card px-4 py-7 text-center sm:py-8">
-          <p className="mb-4 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            {transactionType === "income" ? "Monto recibido" : "Monto gastado"}
-          </p>
+        <div className="text-center">
           <div className="flex items-baseline justify-center gap-1">
             <span className="text-2xl font-medium text-muted-foreground">
               {currency === "DOP" ? "RD$" : "US$"}
@@ -423,41 +422,43 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             />
           </div>
 
-          {supportedCurrencies.length > 1 ? (
-            <div className="mt-5 inline-flex h-10 overflow-hidden rounded-full bg-muted/70 p-1">
-              {(["DOP", "USD"] as Currency[]).filter((item) => supportedCurrencies.includes(item)).map((item) => (
-                <button type="button"
-                  key={item}
-                  onClick={() => setCurrency(item)}
-                  className={cn(
-                    "flex items-center justify-center rounded-full px-4 text-xs font-medium transition-colors",
-                    currency === item
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-4 text-xs font-medium text-muted-foreground">{supportedCurrencies[0] === "USD" ? "Dólares" : "Pesos dominicanos"}</p>
-          )}
+          <div className="mt-3 flex items-center justify-center gap-2">
+            {supportedCurrencies.length > 1 ? (
+              <div className="inline-flex h-9 overflow-hidden rounded-full bg-muted/70 p-0.5">
+                {(["DOP", "USD"] as Currency[]).filter((item) => supportedCurrencies.includes(item)).map((item) => (
+                  <button type="button"
+                    key={item}
+                    onClick={() => setCurrency(item)}
+                    className={cn(
+                      "flex items-center justify-center rounded-full px-3.5 text-xs font-medium transition-colors",
+                      currency === item
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs font-medium text-muted-foreground">{supportedCurrencies[0] === "USD" ? "Dólares" : "Pesos dominicanos"}</span>
+            )}
 
-          {transactionType === "expense" && (
-            <button type="button"
-              onClick={() => setApplyCommission((prev) => !prev)}
-              className={cn(
-                "mt-3 rounded-full px-4 py-2 text-xs font-medium transition-colors",
-                applyCommission ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground"
-              )}
-            >
-              Comisión 0.15%
-            </button>
-          )}
+            {transactionType === "expense" && (
+              <button type="button"
+                onClick={() => setApplyCommission((prev) => !prev)}
+                className={cn(
+                  "inline-flex h-9 items-center justify-center rounded-full px-3.5 text-xs font-medium transition-colors",
+                  applyCommission ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground"
+                )}
+              >
+                +0.15%
+              </button>
+            )}
+          </div>
 
           {transactionType === "expense" && applyCommission && parsedAmount !== null && (
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-1.5 text-xs text-muted-foreground">
               Comisión: {formatCurrency(commissionAmount)} · Total: {formatCurrency(totalWithCommission)}
             </p>
           )}
@@ -579,6 +580,16 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         <div>
           <p className="mb-3 px-1 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">Categoría</p>
           <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button
+              type="button"
+              onClick={() => setShowCategoryModal(true)}
+              className="w-20 shrink-0"
+            >
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-muted/30 transition-colors hover:bg-muted">
+                <Plus className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="mt-2 truncate text-xs text-muted-foreground">Nueva</p>
+            </button>
             {categories.map((cat) => {
               const Icon = cat.icon
               const selected = (category || categories[0]?.id) === cat.id
@@ -595,16 +606,6 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
                 </button>
               )
             })}
-            <button
-              type="button"
-              onClick={() => setShowCategoryModal(true)}
-              className="w-20 shrink-0"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-muted/30 transition-colors hover:bg-muted">
-                <Plus className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="mt-2 truncate text-xs text-muted-foreground">Nueva</p>
-            </button>
           </div>
         </div>
 
@@ -674,7 +675,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           className={cn(
             "mobile-action-button w-full text-base transition-all",
             transactionType === "income"
-              ? "bg-emerald-500 hover:bg-emerald-600 text-white"
+              ? "bg-emerald-600 hover:bg-emerald-700 text-emerald-50"
               : "bg-primary text-primary-foreground"
           )}
         >
@@ -690,7 +691,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
 
       {showCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/20 backdrop-blur-sm px-6">
           <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl ring-1 ring-border">
             <h2 className="mb-4 text-lg font-extrabold text-foreground">Nueva categoría</h2>
             <label htmlFor="new-category-name" className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>

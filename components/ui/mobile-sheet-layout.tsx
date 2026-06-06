@@ -1,6 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { useEffect, useId } from "react"
 import { X } from "lucide-react"
 
 type MobileSheetLayoutProps = {
@@ -11,15 +12,29 @@ type MobileSheetLayoutProps = {
 }
 
 export function MobileSheetLayout({ title, children, footer, onClose }: MobileSheetLayoutProps) {
+  const titleId = useId()
+
+  useEffect(() => {
+    document.body.classList.add("modal-open", "mobile-form-open")
+    return () => {
+      document.body.classList.remove("modal-open", "mobile-form-open")
+    }
+  }, [])
+
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45">
-      <section className="flex max-h-[88vh] w-full animate-in slide-in-from-bottom-8 duration-500 ease-[var(--ease-sheet-ios)] flex-col rounded-t-[2rem] border border-border/70 bg-card/96 text-card-foreground shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl">
+    <div data-app-modal="true" className="fixed inset-0 z-50 flex items-end bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45">
+      <section
+        className="flex max-h-[88vh] w-full animate-in slide-in-from-bottom-8 duration-500 ease-[var(--ease-sheet-ios)] flex-col rounded-t-[2rem] border border-border/70 bg-card/96 text-card-foreground shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <div className="flex shrink-0 justify-center pt-3">
           <div className="h-1.5 w-14 rounded-full bg-muted-foreground/20" />
         </div>
 
         <header className="relative shrink-0 border-b border-border/55 px-5 py-5 text-center">
-          <h2 className="text-xl font-bold tracking-tight text-foreground">{title}</h2>
+          <h2 id={titleId} className="text-xl font-bold tracking-tight text-foreground">{title}</h2>
           {onClose ? (
             <button
               type="button"

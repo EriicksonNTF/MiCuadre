@@ -70,6 +70,21 @@
 - UI uses shadcn-style structure (`components/ui`) with Tailwind v4 (`@tailwindcss/postcss`).
 - Bottom nav visibility is centralized in `components/navigation/bottom-nav.tsx` and already hides on `/auth*` and `/onboarding*`.
 
+## Dark Mode Rules (CRITICAL — no regressions)
+- **NEVER** use hardcoded colors like `bg-white`, `bg-black`, `bg-gray-*`, `text-white`, `text-gray-*`, `bg-*-50` for UI containers, backgrounds, or text that should adapt to theme.
+- **ALWAYS** use semantic CSS variables: `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `bg-muted`, `border-border`, `bg-destructive`, `text-destructive-foreground`, etc.
+- Category/identity colors (food=orange, transport=blue, etc.) MUST use dark-mode-aware variants: `bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400`
+- Modal overlays MUST use `bg-foreground/20 backdrop-blur-sm` (not `bg-black/*`)
+- Destructive buttons MUST use `bg-destructive text-destructive-foreground` (not `bg-red-500 text-white`)
+- Exception: Branded card gradient headers (account-detail.tsx) use custom `primaryColor`/`secondaryColor` — those are intentional and exempt.
+
+## Expense Form (add transaction) Design Rules
+- The "Nueva" (add category) `+` button MUST appear **first** (leftmost) in the category list, before all category icons.
+- The amount section has **no card wrapper** (`mobile-card` removed) — it sits directly in the scroll flow to save vertical space.
+- Currency selector and commission toggle are **inline** on the same row, not stacked vertically.
+- The bottom navbar MUST remain visible when the form is open (`bottom-nav.tsx` hides only on `/auth*` and `/onboarding*`).
+- Header shows "Nueva transacción" with back chevron button on the left.
+
 ## Troubleshooting
 
 ### Next.js Dev Server Fails with "ENOENT: no such file or directory"

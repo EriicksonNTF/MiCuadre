@@ -73,8 +73,16 @@ export function NotificationCard({ notification, onRead }: NotificationCardProps
   return (
     <article
       className="relative rounded-[28px] border border-border bg-card p-5 shadow-sm"
+      role="button"
+      tabIndex={isUnread ? 0 : undefined}
       onClick={() => {
         if (isUnread) onRead(notification.id)
+      }}
+      onKeyDown={(e) => {
+        if ((e.key === 'Enter' || e.key === ' ') && isUnread) {
+          e.preventDefault()
+          onRead(notification.id)
+        }
       }}
     >
       <div className="grid grid-cols-[56px_1fr] gap-4">

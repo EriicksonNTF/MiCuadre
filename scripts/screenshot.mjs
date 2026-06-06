@@ -37,6 +37,7 @@ const targetRoute = args.find(a => a.startsWith("--route="))?.split("=")[1];
 const viewport = args.includes("--mobile") ? { width: 430, height: 932 } : { width: 1440, height: 900 };
 const fullPage = args.includes("--fullpage");
 const takeAll = args.includes("--all") || args.includes("--all-protected");
+const waitUntil = args.find(a => a.startsWith("--wait="))?.split("=")[1] || process.env.SCREENSHOT_WAIT_UNTIL || "networkidle";
 
 const needsAuth = (route) => {
   const publicRoutes = ["/auth/login", "/auth/sign-up", "/auth/forgot-password"];
@@ -45,7 +46,7 @@ const needsAuth = (route) => {
 
 async function login(page) {
   console.log(`Logging in as ${EMAIL}...`);
-  await page.goto(`${BASE_URL}/auth/login`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${BASE_URL}/auth/login`, { waitUntil, timeout: 60000 });
   await page.waitForTimeout(1000);
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASSWORD);
@@ -59,7 +60,7 @@ async function takeScreenshot(page, routeName, routePath) {
   const filename = `${routeName}.png`;
   const filepath = path.join(OUT_DIR, filename);
   console.log(`Capturing ${routePath} -> ${filepath}`);
-  await page.goto(`${BASE_URL}${routePath}`, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(`${BASE_URL}${routePath}`, { waitUntil, timeout: 60000 });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: filepath, fullPage });
   return filepath;

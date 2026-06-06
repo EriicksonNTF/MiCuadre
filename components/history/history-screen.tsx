@@ -4,8 +4,6 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
 import {
   Banknote,
   Building2,
-  Calendar,
-  Camera,
   Car,
   ChevronDown,
   CreditCard,
@@ -51,16 +49,16 @@ const categoryIcons: Record<string, typeof Utensils> = {
 }
 
 const categoryColors: Record<string, string> = {
-  food: "bg-orange-100 text-orange-600",
-  transport: "bg-blue-100 text-blue-600",
-  utilities: "bg-yellow-100 text-yellow-600",
-  entertainment: "bg-purple-100 text-purple-600",
-  shopping: "bg-pink-100 text-pink-600",
-  health: "bg-red-100 text-red-600",
-  education: "bg-indigo-100 text-indigo-600",
-  travel: "bg-cyan-100 text-cyan-600",
-  income: "bg-emerald-100 text-emerald-600",
-  other: "bg-gray-100 text-gray-600",
+  food: "bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400",
+  transport: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+  utilities: "bg-yellow-100/30 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
+  entertainment: "bg-purple-100/30 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+  shopping: "bg-pink-100/30 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
+  health: "bg-red-100/30 dark:bg-red-900/30 text-red-600 dark:text-red-400",
+  education: "bg-indigo-100/30 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
+  travel: "bg-cyan-100/30 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400",
+  income: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
+  other: "bg-muted/50 text-muted-foreground",
 }
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
@@ -282,7 +280,7 @@ export function HistoryScreen() {
       if (tx.type === "income") income += tx.amount
       else expenses += tx.amount
     }
-    return { income, expenses }
+    return { income, expenses, net: income - expenses }
   }, [filteredTransactions])
 
   const openEdit = (txId: string) => {
@@ -352,8 +350,34 @@ export function HistoryScreen() {
     <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       <header className="px-6 pb-4 pt-8">
         <p className="section-kicker">Actividad</p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-foreground">Historial</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Todas tus transacciones</p>
+        <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">Historial</h1>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">Revisa el pulso de tu dinero y encuentra cualquier movimiento.</p>
+        <div className="relative mt-5 overflow-hidden rounded-[1.7rem] bg-foreground p-4 text-background shadow-[0_24px_60px_-30px_rgba(0,0,0,0.7)]">
+          <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-background/10" />
+          <div className="absolute -bottom-16 left-8 h-36 w-36 rounded-full border border-background/10" />
+          <div className="relative">
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-background/60">Balance del filtro</p>
+            <p className={cn("mt-2 text-3xl font-black tabular-nums tracking-tight", totals.net >= 0 ? "text-emerald-200" : "text-red-200")}>
+              {totals.net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(totals.net))}
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-background/10 p-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-200" />
+                  <span className="text-[11px] font-semibold text-background/70">Ingresos</span>
+                </div>
+                <p className="mt-1 text-sm font-black tabular-nums text-emerald-200">+{formatCurrency(totals.income)}</p>
+              </div>
+              <div className="rounded-2xl bg-background/10 p-3">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-3.5 w-3.5 text-red-200" />
+                  <span className="text-[11px] font-semibold text-background/70">Gastos</span>
+                </div>
+                <p className="mt-1 text-sm font-black tabular-nums text-red-200">-{formatCurrency(totals.expenses)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </header>
 
       <div className="px-6 pt-2">
@@ -458,27 +482,6 @@ export function HistoryScreen() {
         </div>
       )}
 
-      <div className="motion-list mt-6 flex gap-3 px-6">
-        <div className="mobile-card flex-1 p-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
-              <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <span className="text-xs text-muted-foreground">Ingresos</span>
-          </div>
-          <p className="mt-2 text-lg font-bold text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
-        </div>
-        <div className="mobile-card flex-1 p-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </div>
-            <span className="text-xs text-muted-foreground">Gastos</span>
-          </div>
-          <p className="mt-2 text-lg font-bold text-red-600">-{formatCurrency(totals.expenses)}</p>
-        </div>
-      </div>
-
       <div className="mt-6 px-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Transacciones</h2>
@@ -515,14 +518,14 @@ export function HistoryScreen() {
                         <button type="button"
                           aria-label="Eliminar transacción"
                           onClick={() => setDeletingId(tx.id)}
-                          className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-red-500 text-white"
+                          className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-destructive text-destructive-foreground"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
 
                       <div
-                        className="relative z-10 rounded-[1.35rem] border border-border/55 bg-card/78 p-4 shadow-sm backdrop-blur transition-transform duration-200 ease-[var(--ease-out-ios)]"
+                        className="relative z-10 rounded-[1.35rem] border border-border/55 bg-card p-4 shadow-sm transition-transform duration-200 ease-[var(--ease-out-ios)]"
                         style={{ transform: `translateX(${currentOffset}px)` }}
                         onPointerDown={(event) => {
                           const target = event.target as HTMLElement

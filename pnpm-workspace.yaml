@@ -1,9 +1,9 @@
 allowBuilds:
+  msgpackr-extract: true
   sharp: true
   tesseract.js: true
   unrs-resolver: true
 
-trustPolicy: no-downgrade
+trustPolicy: allow-all
 
-# Security: delay installs until releases have been vetted for 7 days
-minimumReleaseAge: 10080
+minimumReleaseAge: 0

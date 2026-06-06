@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -39,6 +39,7 @@ export default function SendPage() {
   const [description, setDescription] = useState("")
   const [applyCommission, setApplyCommission] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [confirmSourceBalance, setConfirmSourceBalance] = useState<number | null>(null)
   const [receipt, setReceipt] = useState<{
     id?: string
     amount: number
@@ -52,7 +53,6 @@ export default function SendPage() {
     note?: string
     date: Date
   } | null>(null)
-  const originalBalanceRef = useRef<number | null>(null)
 
   const [showAddBeneficiary, setShowAddBeneficiary] = useState(false)
   const [newBeneficiaryName, setNewBeneficiaryName] = useState("")
@@ -107,7 +107,7 @@ export default function SendPage() {
   const exceedsBalance = totalAmount > availableBalance
 
   const isValid = parsedAmount > 0 && !exceedsBalance && selectedRecipient
-  const previewOriginalBalance = originalBalanceRef.current ?? availableBalance
+  const previewOriginalBalance = confirmSourceBalance ?? availableBalance
   const newBalancePreview = previewOriginalBalance - totalAmount
 
   const handleSend = async () => {
@@ -163,7 +163,7 @@ export default function SendPage() {
     setAmount("")
     setDescription("")
     setApplyCommission(false)
-    originalBalanceRef.current = null
+    setConfirmSourceBalance(null)
   }
 
   const closeReceiptToDashboard = () => {
@@ -332,7 +332,6 @@ export default function SendPage() {
                 <MoneyInput
                   value={amount}
                   onValueChange={(value) => {
-                    originalBalanceRef.current = null
                     setAmount(value)
                   }}
                   placeholder="0"
@@ -370,7 +369,6 @@ export default function SendPage() {
                 <button type="button"
                   key={val}
                   onClick={() => {
-                    originalBalanceRef.current = null
                     setAmount(val.toString())
                   }}
                   className="rounded-full bg-muted px-4 py-2 text-sm font-medium"
@@ -395,7 +393,7 @@ export default function SendPage() {
             <div className="pb-6 pt-4">
                 <Button
                   onClick={() => {
-                    originalBalanceRef.current = availableBalance
+                    setConfirmSourceBalance(availableBalance)
                     setStep("confirm")
                   }}
                   disabled={parsedAmount <= 0 || exceedsBalance}
@@ -412,7 +410,7 @@ export default function SendPage() {
           <div className="space-y-6">
             <div className="rounded-3xl bg-card p-6">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Recipient</span>
+                <span className="text-sm text-muted-foreground">Destino</span>
                 <span className="font-medium">
                   {recipientType === "beneficiary"
                     ? selectedBeneficiary?.name

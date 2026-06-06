@@ -13,7 +13,13 @@ export function AccountsList() {
   const [showAllCashDebit, setShowAllCashDebit] = useState(false)
 
   if (isLoading) {
-    return <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-32 animate-pulse rounded-[1.6rem] bg-card/80 shadow-sm" />)}</div>
+    return (
+      <div className="space-y-3">
+        {[1, 2].map((item) => (
+          <div key={item} className="h-32 animate-pulse rounded-[1.6rem] bg-card/80 shadow-sm" />
+        ))}
+      </div>
+    )
   }
 
   if (!accounts || accounts.length === 0) {
@@ -35,45 +41,78 @@ export function AccountsList() {
     )
   }
 
-  const creditAccounts = accounts.filter((a) => a.type === "credit")
-  const cashDebitAccounts = accounts.filter((a) => a.type !== "credit")
+  const creditAccounts = accounts.filter((account) => account.type === "credit")
+  const cashDebitAccounts = accounts.filter((account) => account.type !== "credit")
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="section-kicker">Tarjetas</p>
-          {creditAccounts.length > 1 && (
-            <button type="button" onClick={() => setShowAllCredit((v) => !v)} className="tap-lift flex items-center gap-1 rounded-full px-2 text-xs font-semibold text-muted-foreground">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", showAllCredit && "rotate-180")} />
-              {showAllCredit ? "Ocultar" : "Ver más"}
-            </button>
-          )}
-        </div>
-        <div className="space-y-3">
-          {(showAllCredit ? creditAccounts : creditAccounts.slice(0, 1)).map((account) => (
-            <Link key={account.id} href={`/accounts/${account.id}`} className="group block"><BrandedAccountCard account={account} compact /></Link>
-          ))}
-          {creditAccounts.length === 0 && <div className="rounded-2xl bg-card/70 p-4 text-xs text-muted-foreground ring-1 ring-border/55">No hay tarjetas de credito.</div>}
-        </div>
+      <AccountSectionHeader
+        eyebrow="Tarjetas"
+        title="Crédito y cortes"
+        count={creditAccounts.length}
+        expanded={showAllCredit}
+        onToggle={creditAccounts.length > 1 ? () => setShowAllCredit((value) => !value) : undefined}
+      />
+      <div className="space-y-3">
+        {(showAllCredit ? creditAccounts : creditAccounts.slice(0, 1)).map((account) => (
+          <Link key={account.id} href={`/accounts/${account.id}`} className="group block">
+            <BrandedAccountCard account={account} compact />
+          </Link>
+        ))}
+        {creditAccounts.length === 0 && (
+          <div className="rounded-2xl bg-card/70 p-4 text-xs text-muted-foreground ring-1 ring-border/55">
+            No hay tarjetas de crédito.
+          </div>
+        )}
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="section-kicker">Efectivo + Débito</p>
-          {cashDebitAccounts.length > 1 && (
-            <button type="button" onClick={() => setShowAllCashDebit((v) => !v)} className="tap-lift flex items-center gap-1 rounded-full px-2 text-xs font-semibold text-muted-foreground">
-              <ChevronDown className={cn("h-4 w-4 transition-transform", showAllCashDebit && "rotate-180")} />
-              {showAllCashDebit ? "Ocultar" : "Ver más"}
-            </button>
-          )}
-        </div>
-        <div className="space-y-3">
-          {(showAllCashDebit ? cashDebitAccounts : cashDebitAccounts.slice(0, 1)).map((account) => (
-            <Link key={account.id} href={`/accounts/${account.id}`} className="group block"><BrandedAccountCard account={account} compact /></Link>
-          ))}
-        </div>
+      <AccountSectionHeader
+        eyebrow="Cuentas"
+        title="Efectivo y débito"
+        count={cashDebitAccounts.length}
+        expanded={showAllCashDebit}
+        onToggle={cashDebitAccounts.length > 1 ? () => setShowAllCashDebit((value) => !value) : undefined}
+      />
+      <div className="space-y-3">
+        {(showAllCashDebit ? cashDebitAccounts : cashDebitAccounts.slice(0, 1)).map((account) => (
+          <Link key={account.id} href={`/accounts/${account.id}`} className="group block">
+            <BrandedAccountCard account={account} compact />
+          </Link>
+        ))}
       </div>
+    </div>
+  )
+}
+
+function AccountSectionHeader({
+  eyebrow,
+  title,
+  count,
+  expanded,
+  onToggle,
+}: {
+  eyebrow: string
+  title: string
+  count: number
+  expanded: boolean
+  onToggle?: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="section-kicker">{eyebrow}</p>
+        <p className="mt-1 text-sm font-bold text-foreground">{title}</p>
+      </div>
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          className="tap-lift flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-xs font-bold text-muted-foreground"
+        >
+          <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
+          {expanded ? "Ocultar" : `Ver ${count}`}
+        </button>
+      ) : null}
     </div>
   )
 }
