@@ -62,7 +62,7 @@ export function PushNotificationCard() {
         return
       }
 
-      const registration = await navigator.serviceWorker.register("/service-worker.js")
+      const registration = await navigator.serviceWorker.register("/sw.js")
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),

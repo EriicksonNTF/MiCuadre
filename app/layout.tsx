@@ -6,6 +6,7 @@ import { AppProviders } from '@/components/providers/app-providers'
 import { ToastContainer } from '@/components/toast/smart-toast'
 import { BodyCleanup } from '@/components/providers/body-cleanup'
 import { OfflineStatusBanner } from '@/components/ui/offline-status-banner'
+import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
 import './globals.css'
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -88,6 +89,7 @@ export default function RootLayout({
           {children}
         </AppProviders>
         <BottomNav />
+        {process.env.NODE_ENV === 'production' && <ServiceWorkerRegister />}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

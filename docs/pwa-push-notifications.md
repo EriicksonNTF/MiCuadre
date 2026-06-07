@@ -1,6 +1,6 @@
 # PWA Push Notifications
 
-MiCuadre has a service worker at `public/service-worker.js` and a client permission flow in Settings.
+MiCuadre has a service worker at `public/sw.js` and a client permission flow in Settings.
 
 Required env vars:
 
@@ -26,7 +26,7 @@ Platform notes:
 
 Current implementation:
 
-- Registers `/service-worker.js`.
+- Registers `/sw.js`.
 - Requests permission only after the user taps “Activar notificaciones”.
 - Saves `endpoint`, `p256dh`, `auth`, user agent and platform to Supabase.
 - Does not send push notifications yet because server sending needs `VAPID_PRIVATE_KEY` and a secure sending job/route.

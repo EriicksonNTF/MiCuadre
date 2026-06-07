@@ -13,6 +13,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon/manifest/service worker/static files
      */
-    '/((?!_next/static|_next/image|favicon.ico|manifest.json|service-worker.js|.*\\.(?:js|css|mjs|map|json|woff2?|svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|sw.js|.*\\.(?:js|css|mjs|map|json|woff2?|svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 }
