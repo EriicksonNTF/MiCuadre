@@ -1,4 +1,25 @@
-﻿import { NextResponse } from "next/server"
+﻿import "server-only"
+
+/*
+ * MIA chat route.
+ *
+ * LLM provider is OpenAI-compatible. Defaults to Groq (free tier).
+ * To switch provider set ONLY these env vars (no code changes):
+ *   - LLM_API_BASE  e.g. https://api.groq.com/openai/v1
+ *                    https://openrouter.ai/api/v1
+ *                    https://integrate.api.nvidia.com/v1
+ *   - LLM_MODEL     e.g. llama-3.3-70b-versatile  (Groq)
+ *                    meta-llama/llama-3.3-70b-instruct (OpenRouter)
+ *                    meta/llama-3.3-70b-instruct       (NVIDIA)
+ *   - LLM_API_KEY   server-only, never NEXT_PUBLIC_*
+ *
+ * If LLM_API_KEY is missing OR the call fails OR the response is not
+ * valid JSON, the route falls back to buildCoachReply (lib/coach-ia.ts)
+ * using the existing buildFinancialContext. The user is never left
+ * without an answer.
+ */
+
+import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { coachRequestSchema } from "@/lib/mia/schemas"
 import { formatCurrency } from "@/lib/data"
@@ -6,7 +27,11 @@ import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
 import { buildFinancialContext } from "@/lib/mia/context-builder"
 import { detectCardQuestion, resolveCardQuestion } from "@/lib/mia/card-questions"
 import { buildCardSnapshot } from "@/lib/mia/card-snapshot"
-import { buildCoachReply } from "@/lib/coach-ia"
+import { buildCoachReply, type CoachContext } from "@/lib/coach-ia"
+
+const LLM_API_BASE = process.env.LLM_API_BASE || "https://api.groq.com/openai/v1"
+const LLM_MODEL = process.env.LLM_MODEL || "llama-3.3-70b-versatile"
+const LLM_API_KEY = process.env.LLM_API_KEY || ""
 
 type MiaActionType =
   | "create_transaction"
@@ -89,6 +114,97 @@ function safeJsonParse<T>(value: string): T | null {
   } catch {
     return null
   }
+}
+
+function stripJsonFences(value: string): string {
+  const trimmed = value.trim()
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+  if (fenced) return fenced[1].trim()
+  return trimmed
+}
+
+function toCoachContext(ctx: Awaited<ReturnType<typeof buildFinancialContext>>): CoachContext {
+  const now = new Date()
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const daysRemaining = Math.max(0, daysInMonth - now.getDate())
+  const finScore = Math.max(0, Math.min(100, ctx.health.savingsRate))
+  const runway =
+    ctx.health.monthlyExpenses > 0
+      ? Math.max(0, Math.floor((ctx.health.monthlyIncome / ctx.health.monthlyExpenses) * daysInMonth))
+      : 0
+
+  return {
+    totalIncomeMonth: ctx.health.monthlyIncome,
+    totalExpenseMonth: ctx.health.monthlyExpenses,
+    totalExpenseLastMonth: 0,
+    topCategories: [],
+    finScore,
+    finScoreDrivers: [
+      { key: "budget", score: ctx.health.savingsRate },
+      { key: "debt", score: Math.max(0, 100 - ctx.health.debtToIncomeRatio) },
+      { key: "savings", score: Math.max(0, Math.min(100, Math.round(ctx.health.emergencyFundMonths * 25))) },
+      { key: "consistency", score: 50 },
+    ],
+    activeGoals: ctx.goals.map((g) => ({
+      name: g.name,
+      current: g.current,
+      target: g.target,
+    })),
+    daysRemainingInMonth: daysRemaining,
+    estimatedRunwayDays: runway,
+  }
+}
+
+async function callOpenAIChatCompletion(params: {
+  systemPrompt: string
+  history: Array<{ role: "user" | "assistant"; content: string }>
+}): Promise<string | null> {
+  if (!LLM_API_KEY) return null
+
+  const url = `${LLM_API_BASE.replace(/\/$/, "")}/chat/completions`
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${LLM_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      messages: [
+        { role: "system", content: params.systemPrompt },
+        ...params.history,
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.2,
+      max_tokens: 1000,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "")
+    console.error("[mia/llm] provider error", response.status, errorText)
+    return null
+  }
+
+  const data = (await response.json().catch(() => null)) as
+    | {
+        choices?: Array<{ message?: { content?: string }; finish_reason?: string }>
+        error?: { message?: string }
+      }
+    | null
+
+  if (data?.error?.message) {
+    console.error("[mia/llm] provider error in body", data.error.message)
+    return null
+  }
+
+  const content = data?.choices?.[0]?.message?.content
+  if (!content) {
+    console.error("[mia/llm] empty response, finish_reason=", data?.choices?.[0]?.finish_reason)
+    return null
+  }
+
+  return content
 }
 
 async function getOrCreateActiveConversation(supabase: any, userId: string) {
@@ -706,7 +822,8 @@ export async function POST(request: Request) {
     })
 
     // Build context
-    const { rawContext } = await buildFinancialContext(supabase, user.id)
+    const ctx = await buildFinancialContext(supabase, user.id)
+    const { rawContext } = ctx
 
     // --- CARD QUESTION DETECTION (controlled engine, no LLM) ---
     const cardIntent = detectCardQuestion(message)
@@ -741,100 +858,79 @@ export async function POST(request: Request) {
       .order("created_at", { ascending: true })
       .limit(10)
 
-    const historyList = (historyRows || []).map((row: any) => ({
-      role: row.role === "user" ? "user" : "model",
-      parts: [{ text: row.content }]
-    }))
+    const historyList = (historyRows || [])
+      .map((row: any) => ({
+        role: (row.role === "user" ? "user" : "assistant") as "user" | "assistant",
+        content: typeof row.content === "string" ? row.content : "",
+      }))
+      .filter((m: { content: string }) => m.content.length > 0)
 
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
-    if (!apiKey) {
-      return NextResponse.json({
-        answer: "MIA no está configurada en el servidor todavía. Falta GEMINI_API_KEY.",
-        uiBlocks: [{ type: "kpi_card", title: "Configuración", value: "GEMINI_API_KEY no definida", tone: "warning" }],
-        actions: [{ label: "Continuar", href: "/coach-ia", actionType: "navigate" }],
-      })
-    }
-
-    const model = process.env.GEMINI_MODEL || "gemini-1.5-flash"
     const systemPromptCombined = `${SYSTEM_PROMPT}
 
 CONTEXTO FINANCIERO ACTUAL DEL USUARIO:
 ${rawContext}
 `
 
-    // Call Gemini
-    const aiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: historyList,
-        systemInstruction: {
-          parts: [{ text: systemPromptCombined }],
-        },
-        generationConfig: {
-          maxOutputTokens: 1000,
-          temperature: 0.2,
-          responseMimeType: "application/json",
-        },
-      }),
+    const rawResponse = await callOpenAIChatCompletion({
+      systemPrompt: systemPromptCombined,
+      history: historyList,
     })
 
-    if (!aiRes.ok) {
-      const errorText = await aiRes.text()
-      console.error("Gemini API error:", aiRes.status, errorText)
-      return NextResponse.json({ answer: "MIA no pudo responder ahora mismo. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 502 })
+    if (rawResponse) {
+      const cleaned = stripJsonFences(rawResponse)
+      const parsedAi = safeJsonParse<MiaAIResponse>(cleaned)
+
+      if (parsedAi?.message) {
+        const clientResponse = mapAiToClientResponse(parsedAi)
+        await supabase.from("mia_messages").insert({
+          conversation_id: convId,
+          user_id: user.id,
+          role: "assistant",
+          content: clientResponse.answer,
+          metadata: {
+            uiBlocks: clientResponse.uiBlocks,
+            actions: clientResponse.actions,
+            disclaimer: clientResponse.disclaimer,
+          },
+        })
+        await supabase
+          .from("mia_conversations")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", convId)
+        return NextResponse.json({
+          ...clientResponse,
+          conversationId: convId,
+        })
+      }
+
+      console.error("[mia/llm] response did not parse to a valid message", cleaned.slice(0, 200))
     }
 
-    const aiJson = await aiRes.json() as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-      error?: { message?: string }
-    }
+    const coachContext = toCoachContext(ctx)
+    const fallback = buildCoachReply(message, coachContext)
 
-    if (aiJson.error) {
-      console.error("Gemini error:", aiJson.error)
-      return NextResponse.json({ answer: "MIA no pudo responder ahora mismo. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
-    }
-
-    const responseText = aiJson.candidates?.[0]?.content?.parts?.[0]?.text || ""
-
-    if (!responseText) {
-      console.error("Gemini empty response")
-      return NextResponse.json({ answer: "MIA no pudo responder ahora mismo. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
-    }
-
-    const parsedAi = safeJsonParse<MiaAIResponse>(responseText.trim())
-
-    if (!parsedAi?.message) {
-      console.error("Failed to parse Gemini response or message is empty", responseText)
-      return NextResponse.json({ answer: "MIA no pudo procesar la respuesta. Intenta nuevamente.", uiBlocks: [], actions: [{ label: "Reintentar", href: "/coach-ia", actionType: "navigate" }] }, { status: 500 })
-    }
-
-    const clientResponse = mapAiToClientResponse(parsedAi)
-
-    // Save assistant response to DB
     await supabase.from("mia_messages").insert({
       conversation_id: convId,
       user_id: user.id,
       role: "assistant",
-      content: clientResponse.answer,
+      content: fallback.answer,
       metadata: {
-        uiBlocks: clientResponse.uiBlocks,
-        actions: clientResponse.actions,
-        disclaimer: clientResponse.disclaimer,
+        uiBlocks: fallback.uiBlocks,
+        actions: fallback.actions,
+        disclaimer: fallback.disclaimer,
       },
     })
-
-    // Update conversation timestamp
     await supabase
       .from("mia_conversations")
       .update({ updated_at: new Date().toISOString() })
       .eq("id", convId)
 
     return NextResponse.json({
-      ...clientResponse,
-      conversationId: convId
+      answer: fallback.answer,
+      uiBlocks: fallback.uiBlocks,
+      actions: fallback.actions,
+      disclaimer: fallback.disclaimer,
+      conversationId: convId,
     })
   } catch (error) {
     console.error("MIA chat error:", error)
