@@ -1,11 +1,12 @@
-﻿import { NextResponse } from "next/server"
+﻿import "server-only"
+import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 
-const CRON_SECRET = process.env.CRON_SECRET
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-
 export async function GET(request: Request) {
+  const CRON_SECRET = process.env.CRON_SECRET
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+
   const authHeader = request.headers.get("authorization")
   if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })

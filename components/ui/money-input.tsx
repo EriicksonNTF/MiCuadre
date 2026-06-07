@@ -17,6 +17,7 @@ export function MoneyInput({
   placeholder,
   autoFocus,
   id,
+  "aria-label": ariaLabel = "Monto",
 }: {
   value: string
   onValueChange: (value: string) => void
@@ -24,6 +25,7 @@ export function MoneyInput({
   placeholder?: string
   autoFocus?: boolean
   id?: string
+  "aria-label"?: string
 }) {
   const displayValue = useMemo(() => {
     const normalized = sanitize(value)
@@ -43,6 +45,7 @@ export function MoneyInput({
       className={className}
       autoFocus={autoFocus}
       id={id}
+      aria-label={ariaLabel}
     />
   )
 }

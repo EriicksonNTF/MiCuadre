@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { MessageCircle, Send, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -8,7 +8,7 @@ import type { CoachResponse, CoachUIBlock, CoachAction } from "@/lib/coach-ia"
 import { COACH_NAME } from "@/lib/coach-ia"
 import { useAuth } from "@/hooks/use-auth"
 import { useEntitlements } from "@/hooks/use-entitlements"
-import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
+// Coach IA email whitelist checked server-side via /api/user/coach-ia-check
 
 type ChatMessage = {
   id: string
@@ -87,6 +87,16 @@ function Block({ block }: { block: CoachUIBlock }) {
 export function CoachIAWidget() {
   const { user, loading: authLoading } = useAuth()
   const { canUseMIAAdvanced } = useEntitlements()
+  const [emailWhitelisted, setEmailWhitelisted] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (authLoading || !user) return
+    setEmailWhitelisted(null)
+    fetch("/api/user/coach-ia-check")
+      .then((r) => r.json())
+      .then((d) => setEmailWhitelisted(d.allowed))
+      .catch(() => setEmailWhitelisted(false))
+  }, [authLoading, user])
   
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
@@ -102,8 +112,9 @@ export function CoachIAWidget() {
 
   const hasAccess = useMemo(() => {
     if (authLoading) return false
-    return canUseMIAAdvanced || isCoachIAEnabledForEmail(user?.email)
-  }, [canUseMIAAdvanced, user, authLoading])
+    if (emailWhitelisted === null && !canUseMIAAdvanced) return false
+    return canUseMIAAdvanced || emailWhitelisted === true
+  }, [canUseMIAAdvanced, emailWhitelisted, authLoading])
 
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading])
 

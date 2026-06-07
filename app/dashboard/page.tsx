@@ -21,7 +21,6 @@ import { PlanningSummaryCard } from "@/components/dashboard/planning-summary-car
 import { CalendarPreviewCard } from "@/components/dashboard/calendar-preview-card"
 import { showToast } from "@/components/toast/smart-toast"
 import { EventBus } from "@/lib/event-bus"
-import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
 import { useEntitlements } from "@/hooks/use-entitlements"
 
@@ -327,7 +326,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {isCoachIAEnabledForEmail(user?.email) && <CoachIAWidget />}
+      <CoachIAWidget />
 
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/18 px-6 backdrop-blur-[6px] dark:bg-black/45">

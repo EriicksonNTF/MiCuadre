@@ -7,6 +7,7 @@ import { showToast } from "@/components/toast/smart-toast"
 
 const supabase = createClient()
 let isSyncing = false
+const MAX_RETRIES = 5
 
 export async function syncPendingOperations() {
   if (isSyncing) return
@@ -18,7 +19,23 @@ export async function syncPendingOperations() {
     if (!user) return
 
     const outbox = await offlineDB.getAll<OutboxItem>("offline_outbox")
-    const pendingItems = outbox.filter(item => (item.status === "pending" || item.status === "failed") && (!item.user_id || item.user_id === user.id))
+    const pendingItems = outbox.filter(item => (item.status === "pending" || item.status === "failed") && item.user_id === user.id)
+    const orphanItems = outbox.filter(item => !item.user_id && (item.status === "pending" || item.status === "failed"))
+
+    if (orphanItems.length > 0) {
+      console.warn(`Found ${orphanItems.length} outbox items without user_id. Moving to sync_errors.`)
+      for (const orphan of orphanItems) {
+        await offlineDB.put("sync_errors", {
+          id: orphan.id,
+          operation: orphan.operation,
+          payload: orphan.payload,
+          error: "Outbox item has no user_id — cannot determine ownership. Skipped.",
+          failed_at: new Date().toISOString(),
+          permanent: true,
+        })
+        await offlineDB.delete("offline_outbox", orphan.id)
+      }
+    }
 
     if (pendingItems.length === 0) return
 
@@ -59,10 +76,25 @@ export async function syncPendingOperations() {
         successCount++
       } catch (err: any) {
         console.error(`Failed to sync operation ${item.id}:`, err)
-        failCount++
         item.status = "failed"
         item.retry_count += 1
         item.last_error = err.message || "Unknown error"
+
+        if (item.retry_count >= MAX_RETRIES) {
+          console.warn(`Operation ${item.id} permanently failed after ${MAX_RETRIES} retries. Moving to sync_errors.`)
+          await offlineDB.put("sync_errors", {
+            id: item.id,
+            operation: item.operation,
+            payload: item.payload,
+            error: `${item.last_error} (permanent after ${MAX_RETRIES} retries)`,
+            failed_at: new Date().toISOString(),
+            permanent: true,
+          })
+          await offlineDB.delete("offline_outbox", item.id)
+          continue
+        }
+
+        failCount++
         await offlineDB.put("offline_outbox", item)
         await offlineDB.put("sync_errors", {
           id: item.id,

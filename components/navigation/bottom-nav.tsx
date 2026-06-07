@@ -151,6 +151,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "tap-lift relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 transition-colors",
                 isActive ? "text-foreground" : "text-muted-foreground"

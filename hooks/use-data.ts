@@ -977,6 +977,10 @@ export function useAccounts() {
     revalidateOnFocus: false,
     revalidateOnMount: true,
     dedupingInterval: 2000,
+    errorRetryCount: 2,
+    onError: (err) => {
+      console.error("useAccounts error:", err)
+    },
   })
 }
 
@@ -987,6 +991,10 @@ export function useTransactions(limit = 10) {
     {
       revalidateOnFocus: false,
       dedupingInterval: 5000,
+      errorRetryCount: 2,
+      onError: (err) => {
+        console.error("useTransactions error:", err)
+      },
     }
   )
 }
@@ -995,6 +1003,10 @@ export function useCategories() {
   return useSWR<Category[]>("categories", fetchCategories, {
     revalidateOnFocus: false,
     dedupingInterval: 60000, // Categories don't change often
+    errorRetryCount: 2,
+    onError: (err) => {
+      console.error("useCategories error:", err)
+    },
   })
 }
 
@@ -1002,6 +1014,10 @@ export function useGoals() {
   return useSWR<Goal[]>("goals", fetchGoals, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
+    errorRetryCount: 2,
+    onError: (err) => {
+      console.error("useGoals error:", err)
+    },
   })
 }
 
@@ -1012,12 +1028,20 @@ export function useNotifications() {
     refreshWhenHidden: false,
     refreshWhenOffline: false,
     dedupingInterval: 30000,
+    errorRetryCount: 2,
+    onError: (err) => {
+      console.error("useNotifications error:", err)
+    },
   })
 }
 
 export function useProfile() {
   return useSWR<Profile | null>("profile", fetchProfile, {
     revalidateOnFocus: false,
+    errorRetryCount: 2,
+    onError: (err) => {
+      console.error("useProfile error:", err)
+    },
   })
 }
 
@@ -1025,6 +1049,10 @@ export function useFinancialSubscriptions() {
   return useSWR<FinancialSubscription[]>("financial_subscriptions", fetchFinancialSubscriptions, {
     revalidateOnFocus: true,
     dedupingInterval: 10000,
+    errorRetryCount: 2,
+    onError: (err) => {
+      console.error("useFinancialSubscriptions error:", err)
+    },
   })
 }
 
@@ -1037,6 +1065,10 @@ export function useBeneficiaries() {
   return useSWR<Beneficiary[]>("beneficiaries", fetchBeneficiaries, {
     revalidateOnFocus: false,
     dedupingInterval: 5000,
+    errorRetryCount: 2,
+    onError: (err) => {
+      console.error("useBeneficiaries error:", err)
+    },
   })
 }
 

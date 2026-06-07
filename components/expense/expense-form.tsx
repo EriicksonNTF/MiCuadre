@@ -583,6 +583,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             <button
               type="button"
               onClick={() => setShowCategoryModal(true)}
+              aria-label="Crear nueva categoría"
               className="w-20 shrink-0"
             >
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-dashed border-border/60 bg-muted/30 transition-colors hover:bg-muted">
@@ -596,6 +597,8 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               return (
                 <button type="button"
                   key={cat.id}
+                  aria-label={cat.label}
+                  aria-pressed={selected}
                   onClick={() => setCategory(cat.id)}
                   className="w-20 shrink-0"
                 >
@@ -703,12 +706,18 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               autoFocus
               className="mb-4 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-primary"
             />
-            <label htmlFor="new-category-type" className="mb-1 block text-xs font-medium text-muted-foreground">Tipo</label>
-            <div className="mb-6 flex gap-2">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="block text-xs font-medium text-muted-foreground">Tipo</span>
+              <span id="new-category-type-label" className="text-[11px] text-muted-foreground">
+                {newCategoryType === "expense" ? "Gasto" : newCategoryType === "income" ? "Ingreso" : "Ambos"}
+              </span>
+            </div>
+            <div role="radiogroup" aria-labelledby="new-category-type-label" className="mb-6 flex gap-2">
               {(["expense", "income", "both"] as const).map((t) => (
                 <button type="button"
                   key={t}
-                  id={t === "expense" ? "new-category-type" : undefined}
+                  role="radio"
+                  aria-checked={newCategoryType === t}
                   onClick={() => setNewCategoryType(t)}
                   className={cn(
                     "flex-1 rounded-xl py-2.5 text-xs font-semibold transition-colors ring-1",

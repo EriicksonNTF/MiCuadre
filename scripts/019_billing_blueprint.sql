@@ -63,6 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_billing_subscriptions_user_status
 CREATE OR REPLACE FUNCTION public.set_updated_at_timestamp()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
   NEW.updated_at = NOW();

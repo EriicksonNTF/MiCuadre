@@ -131,6 +131,7 @@ export function ToastContainer() {
 
   return (
     <div
+      role="status"
       aria-live="polite"
       className="pointer-events-none fixed left-0 right-0 top-0 z-[9999] flex flex-col items-center gap-3 px-4 pt-safe-areas"
     >

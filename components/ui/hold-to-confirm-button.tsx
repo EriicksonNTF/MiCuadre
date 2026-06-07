@@ -41,6 +41,14 @@ export function HoldToConfirmButton({
     }, 1200)
   }
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (disabled || loading) return
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      void onConfirm()
+    }
+  }
+
   return (
     <button
       type="button"
@@ -48,6 +56,7 @@ export function HoldToConfirmButton({
       onPointerUp={clearHold}
       onPointerCancel={clearHold}
       onPointerLeave={clearHold}
+      onKeyDown={handleKeyDown}
       disabled={disabled || loading}
       className={cn(
         "relative h-12 overflow-hidden rounded-2xl bg-red-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:opacity-60",
