@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { loginSchema, signupSchema, type LoginInput, type SignupInput } from "@/lib/validations/auth"
+import { requestPrecacheAfterLogin } from "@/lib/pwa/precache-routes"
 import Image from "next/image"
 
 type AuthMode = "choice" | "login" | "signup"
@@ -99,6 +100,8 @@ export function AuthEntry({ initialMode = "choice" }: { initialMode?: AuthMode }
         window.localStorage.setItem("onboarding_completed", onboardingCompleted ? "true" : "false")
       }
 
+      requestPrecacheAfterLogin()
+
       router.push(onboardingCompleted ? "/dashboard" : "/onboarding")
       router.refresh()
     } catch (loginError: unknown) {
@@ -135,6 +138,8 @@ export function AuthEntry({ initialMode = "choice" }: { initialMode?: AuthMode }
       if (typeof window !== "undefined") {
         window.localStorage.setItem("onboarding_completed", "false")
       }
+
+      requestPrecacheAfterLogin()
 
       router.push("/onboarding")
       router.refresh()

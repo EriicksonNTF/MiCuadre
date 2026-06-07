@@ -132,14 +132,20 @@ async function cacheFirst(request) {
 }
 
 async function handleNavigate(request) {
+  const NAV_TIMEOUT_MS = 3000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), NAV_TIMEOUT_MS);
+
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (response && response.ok) {
       const cache = await caches.open(RUNTIME_CACHE);
       cache.put(request, response.clone());
     }
     return response;
   } catch (err) {
+    clearTimeout(timeoutId);
     const cached = await caches.match(request);
     if (cached) return cached;
     const offline = await caches.match(OFFLINE_URL);
@@ -166,10 +172,36 @@ async function staleWhileRevalidate(request) {
 }
 
 self.addEventListener("message", (event) => {
+  if (!event.data) return;
+
   if (event.data === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+
+  if (event.data.type === "PRECACHE_ROUTES" && Array.isArray(event.data.routes)) {
+    event.waitUntil(precacheRoutes(event.data.routes));
   }
 });
+
+async function precacheRoutes(routes) {
+  const cache = await caches.open(RUNTIME_CACHE);
+  await Promise.allSettled(
+    routes.map(async (route) => {
+      try {
+        const response = await fetch(route, {
+          credentials: "same-origin",
+          redirect: "follow",
+        });
+        if (response && response.ok) {
+          await cache.put(route, response.clone());
+        }
+      } catch (err) {
+        // Ignorar: si no hay red, simplemente no pre-cacheamos
+      }
+    })
+  );
+}
 
 // Push notifications (existente)
 self.addEventListener("push", (event) => {
