@@ -34,7 +34,7 @@ export function formatAmount(value: number): string {
 // Utility functions
 export function formatCurrency(amount: number, currency?: Currency) {
   const displayCurrency = currency ?? preferredDisplayCurrency
-  const symbol = displayCurrency === "DOP" ? "RD$" : "US$"
+  const symbol = displayCurrency === "DOP" ? "DOP" : "US$"
   return `${symbol}${formatAmount(amount)}`
 }
 

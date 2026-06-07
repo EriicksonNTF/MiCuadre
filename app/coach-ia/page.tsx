@@ -397,7 +397,7 @@ export default function CoachIAPage() {
           </div>
         </div>
 
-        <div className="mt-4 space-y-3 pb-28">
+        <div className="mt-4 space-y-3 pb-40">
           {messages.map((message) => (
             <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
               <div className={message.role === "user" ? "max-w-[86%] rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm text-primary-foreground" : "max-w-[94%] rounded-2xl rounded-bl-md border border-border bg-card px-4 py-3 text-sm text-foreground"}>
@@ -437,7 +437,7 @@ export default function CoachIAPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[60] border-t border-border bg-background/95 px-4 pb-safe pt-3 backdrop-blur-xl">
+      <div className="fixed bottom-[5.5rem] left-0 right-0 z-[60] border-t border-border bg-background/95 px-4 pb-safe pt-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-2">
           <input
             value={input}

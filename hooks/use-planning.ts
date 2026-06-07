@@ -12,6 +12,7 @@ import { getFinancialCalendarEvents, type FinancialCalendarEvent, type CalendarE
 import { DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN, blockedEntitlement } from "@/lib/entitlements/entitlements"
 import { normalizePlanTier } from "@/lib/billing/plans"
 import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
+import { applyAccountImpact } from "./use-data"
 
 const supabase = createClient()
 
@@ -486,27 +487,27 @@ export async function payDebt(input: {
   if (debtError || !debt) throw debtError || new Error("No se encontro la deuda")
   if (sourceError || !sourceAccount) throw sourceError || new Error("No se encontro la cuenta de origen")
 
+  const sourceCurrency = (sourceAccount.currency || "DOP") as "DOP" | "USD"
+
   const previousDebtBalance = normalizeAmount((debt as any).current_balance || 0)
   if (amount > previousDebtBalance) throw new Error("El monto no puede superar el pendiente de la deuda")
 
-  const previousSourceBalance = normalizeAmount((sourceAccount as any).balance || 0)
-  if (amount > previousSourceBalance) throw new Error("Balance insuficiente en la cuenta de origen")
-
   const newDebtBalance = normalizeAmount(Math.max(0, previousDebtBalance - amount))
-  const newSourceBalance = normalizeAmount(previousSourceBalance - amount)
 
   let debtPaymentId: string | null = null
   let transactionId: string | null = null
 
   try {
-    const { error: updateAccountError } = await supabase
-      .from("accounts")
-      .update({ balance: newSourceBalance })
-      .eq("id", input.source_account_id)
-      .eq("user_id", userId)
+    // Step 1: Debit source account via applyAccountImpact (validates currency + funds).
+    await applyAccountImpact({
+      accountId: input.source_account_id,
+      type: "expense",
+      amount,
+      direction: 1,
+      currency: sourceCurrency,
+    })
 
-    if (updateAccountError) throw updateAccountError
-
+    // Step 2: Update debt balance.
     const { error: updateDebtError } = await supabase
       .from("debts")
       .update({
@@ -518,6 +519,7 @@ export async function payDebt(input: {
 
     if (updateDebtError) throw updateDebtError
 
+    // Step 3: Insert debt_payment record.
     const { data: insertedPayment, error: paymentError } = await supabase
       .from("debt_payments")
       .insert({
@@ -525,7 +527,7 @@ export async function payDebt(input: {
         debt_id: input.debt_id,
         source_account_id: input.source_account_id,
         amount,
-        currency: (debt as any).currency || "DOP",
+        currency: sourceCurrency,
         previous_debt_balance: previousDebtBalance,
         new_debt_balance: newDebtBalance,
         notes: input.notes || null,
@@ -536,6 +538,7 @@ export async function payDebt(input: {
     if (paymentError || !insertedPayment) throw paymentError || new Error("No se pudo registrar el pago")
     debtPaymentId = insertedPayment.id
 
+    // Step 4: Insert transaction with source account's currency.
     const { data: insertedTx, error: txError } = await supabase
       .from("transactions")
       .insert({
@@ -544,7 +547,7 @@ export async function payDebt(input: {
         category_id: null,
         type: "expense",
         amount,
-        currency: (debt as any).currency || "DOP",
+        currency: sourceCurrency,
         amount_base: amount,
         exchange_rate: 1,
         description: `Pago de deuda: ${(debt as any).name}`,
@@ -564,6 +567,7 @@ export async function payDebt(input: {
     if (txError || !insertedTx) throw txError || new Error("No se pudo registrar el movimiento")
     transactionId = insertedTx.id
 
+    // Step 5: Link transaction_id back to debt_payment.
     const { error: linkError } = await supabase
       .from("debt_payments")
       .update({ transaction_id: transactionId })
@@ -586,12 +590,25 @@ export async function payDebt(input: {
       previousDebtBalance,
       newDebtBalance,
       sourceAccount: sourceAccount as any,
-      previousSourceBalance,
-      newSourceBalance,
+      previousSourceBalance: normalizeAmount((sourceAccount as any).balance || 0),
+      newSourceBalance: normalizeAmount((sourceAccount as any).balance - amount),
       paymentDate: insertedPayment.payment_date,
       notes: input.notes || "",
     }
   } catch (error) {
+    // Rollback: reverse the account impact first.
+    try {
+      await applyAccountImpact({
+        accountId: input.source_account_id,
+        type: "expense",
+        amount,
+        direction: -1,
+        currency: sourceCurrency,
+      })
+    } catch (rollbackError) {
+      console.error("Rollback of account impact failed:", rollbackError)
+    }
+
     if (transactionId) {
       await supabase.from("transactions").delete().eq("id", transactionId)
     }
@@ -599,7 +616,6 @@ export async function payDebt(input: {
       await supabase.from("debt_payments").delete().eq("id", debtPaymentId)
     }
     await supabase.from("debts").update({ current_balance: previousDebtBalance, is_active: true }).eq("id", input.debt_id)
-    await supabase.from("accounts").update({ balance: previousSourceBalance }).eq("id", input.source_account_id)
 
     await Promise.all([
       mutate("accounts"),
