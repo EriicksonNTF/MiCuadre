@@ -689,7 +689,7 @@ async function applyAccountImpact(params: {
   const { accountId, type, amount, direction, currency = "DOP" } = params
   const { data: account } = await supabase
     .from("accounts")
-    .select("id, type, balance, current_debt, current_debt_dop, current_debt_usd")
+    .select("id, type, balance, currency, current_debt, current_debt_dop, current_debt_usd")
     .eq("id", accountId)
     .single()
 
@@ -707,6 +707,12 @@ async function applyAccountImpact(params: {
     await supabase.from("accounts").update(updates).eq("id", accountId)
     await syncCreditAccountCycle(accountId)
     return
+  }
+
+  // Estrategia A: non-credit accounts have a single currency; tx currency must match.
+  const accountCurrency = (account.currency || "DOP") as "DOP" | "USD"
+  if (currency !== accountCurrency) {
+    throw new Error("La moneda de la transacción no coincide con la de la cuenta.")
   }
 
   const signed = type === "income" ? amount * direction : -amount * direction
@@ -1358,9 +1364,17 @@ export async function createTransaction(
 
     const { data: accountForCycle } = await supabase
       .from("accounts")
-      .select("id, user_id, type, closing_day, due_days_after_cutoff")
+      .select("id, user_id, type, currency, closing_day, due_days_after_cutoff")
       .eq("id", transactionToInsert.account_id)
       .single()
+
+    // Estrategia A: non-credit accounts have a single currency; tx currency must match.
+    if (accountForCycle && accountForCycle.type !== "credit") {
+      const accountCurrency = (accountForCycle.currency || "DOP") as "DOP" | "USD"
+      if (transactionToInsert.currency !== accountCurrency) {
+        throw new Error("La moneda de la transacción no coincide con la de la cuenta.")
+      }
+    }
 
     if (accountForCycle?.type === "credit" && accountForCycle.closing_day) {
       const txDate = /^\d{4}-\d{2}-\d{2}$/.test(transactionToInsert.date)
@@ -1566,6 +1580,20 @@ export async function updateTransaction(
     return recreated?.sourceTransaction || recreated?.cardTransaction
   }
 
+  // Estrategia A: validate new currency matches new account (if non-credit).
+  const { data: newAccount } = await supabase
+    .from("accounts")
+    .select("id, type, currency")
+    .eq("id", updates.account_id)
+    .single()
+
+  if (newAccount && newAccount.type !== "credit") {
+    const newAccountCurrency = (newAccount.currency || "DOP") as "DOP" | "USD"
+    if (updates.currency !== newAccountCurrency) {
+      throw new Error("La moneda de la transacción no coincide con la de la cuenta.")
+    }
+  }
+
   await applyAccountImpact({
     accountId: existing.account_id,
     type: existing.type,
@@ -1573,6 +1601,32 @@ export async function updateTransaction(
     direction: -1,
     currency: existing.currency,
   })
+
+  // BUG 5: find child commission, revert its impact before parent update.
+  const { data: commissionChild } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("parent_transaction_id", existing.id)
+    .eq("metadata->>kind", "commission")
+    .maybeSingle()
+
+  let hadCommission = false
+  let oldCommissionCurrency: "DOP" | "USD" = "DOP"
+  let oldCommissionAccountId = ""
+  let oldCommissionAmount = 0
+  if (commissionChild) {
+    hadCommission = true
+    oldCommissionCurrency = commissionChild.currency
+    oldCommissionAccountId = commissionChild.account_id
+    oldCommissionAmount = Number(commissionChild.amount)
+    await applyAccountImpact({
+      accountId: commissionChild.account_id,
+      type: commissionChild.type,
+      amount: Number(commissionChild.amount),
+      direction: -1,
+      currency: commissionChild.currency,
+    })
+  }
 
   const { data, error } = await supabase
     .from("transactions")
@@ -1589,6 +1643,15 @@ export async function updateTransaction(
     direction: 1,
     currency: existing.currency,
   })
+    if (hadCommission) {
+      await applyAccountImpact({
+        accountId: oldCommissionAccountId,
+        type: "expense",
+        amount: oldCommissionAmount,
+        direction: 1,
+        currency: oldCommissionCurrency,
+      })
+    }
     throw error
   }
 
@@ -1599,6 +1662,26 @@ export async function updateTransaction(
     direction: 1,
     currency: updates.currency,
   })
+
+  // BUG 5: recalculate and re-apply commission for the new amount.
+  if (hadCommission) {
+    const newCommissionAmount = getCommissionAmount(Number(updates.amount))
+    if (newCommissionAmount > 0) {
+      await supabase
+        .from("transactions")
+        .update({ amount: newCommissionAmount })
+        .eq("id", commissionChild!.id)
+      await applyAccountImpact({
+        accountId: oldCommissionAccountId,
+        type: "expense",
+        amount: newCommissionAmount,
+        direction: 1,
+        currency: oldCommissionCurrency,
+      })
+    } else {
+      await supabase.from("transactions").delete().eq("id", commissionChild!.id)
+    }
+  }
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
@@ -1616,6 +1699,25 @@ export async function deleteTransaction(id: string) {
     .single()
 
   if (existingError || !existing) throw existingError || new Error("Transacción no encontrada")
+
+  // BUG 5: find and handle child commission before the parent revert/delete.
+  const { data: commissionChild } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("parent_transaction_id", existing.id)
+    .eq("metadata->>kind", "commission")
+    .maybeSingle()
+
+  if (commissionChild) {
+    await applyAccountImpact({
+      accountId: commissionChild.account_id,
+      type: commissionChild.type,
+      amount: Number(commissionChild.amount),
+      direction: -1,
+      currency: commissionChild.currency,
+    })
+    await supabase.from("transactions").delete().eq("id", commissionChild.id)
+  }
 
   if (isCreditCardPaymentTx(existing.metadata)) {
     const paymentLinkId = getPaymentLinkId(existing.metadata)
@@ -2119,56 +2221,75 @@ export async function createTransfer(transfer: {
   currency: string
   description?: string
   apply_commission?: boolean
+  exchange_rate?: number
 }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("No autenticado")
 
-  // Get current balances
+  if (transfer.amount <= 0) throw new Error("Monto inválido")
+
+  // Load source account (full row so we can validate type/currency).
   const { data: fromAccount } = await supabase
     .from("accounts")
-    .select("balance, type, currency")
+    .select("id, balance, type, currency, credit_limit, current_debt, credit_limit_dop, credit_limit_usd, current_debt_dop, current_debt_usd")
     .eq("id", transfer.from_account_id)
     .single()
 
   if (!fromAccount) throw new Error("Cuenta no encontrada")
 
-  if (transfer.amount <= 0) throw new Error("Monto inválido")
+  const sourceCurrency = (fromAccount.currency || "DOP") as "DOP" | "USD"
 
-  const commissionAmount = transfer.apply_commission ? getCommissionAmount(transfer.amount) : 0
-  const totalAmount = roundCurrencyAmount(transfer.amount + commissionAmount)
-  if (Number(fromAccount.balance) < totalAmount) {
-    throw new Error(COMMISSION_ERROR_MESSAGE)
+  if (fromAccount.type !== "credit" && transfer.currency !== sourceCurrency) {
+    throw new Error("La moneda de la transferencia no coincide con la de la cuenta origen.")
   }
 
-  // Deduct from source account
-  const newFromBalance = Number(fromAccount.balance) - totalAmount
-  await supabase
-    .from("accounts")
-    .update({ balance: newFromBalance })
-    .eq("id", transfer.from_account_id)
+  const commissionAmount = transfer.apply_commission ? getCommissionAmount(transfer.amount) : 0
+  const totalSourceDebit = roundCurrencyAmount(transfer.amount + commissionAmount)
 
-  // Add to destination if internal account
-  let internalDestinationName: string | null = null
+  // Validate funds (throws on insufficient).
+  await ensureSufficientFundsForExpense(transfer.from_account_id, totalSourceDebit, sourceCurrency)
 
+  // Load destination if internal.
+  let toAccount: { id: string; balance: number; type: string; currency: string; credit_limit: number; current_debt: number; credit_limit_dop: number; credit_limit_usd: number; current_debt_dop: number; current_debt_usd: number; name: string } | null = null
   if (transfer.to_account_id) {
-    const { data: toAccount } = await supabase
+    const { data } = await supabase
       .from("accounts")
-      .select("balance, name")
+      .select("id, balance, type, currency, credit_limit, current_debt, credit_limit_dop, credit_limit_usd, current_debt_dop, current_debt_usd, name")
       .eq("id", transfer.to_account_id)
       .single()
+    toAccount = data
+  }
 
-    if (toAccount) {
-      internalDestinationName = toAccount.name || null
-      const newToBalance = Number(toAccount.balance) + transfer.amount
-      await supabase
-        .from("accounts")
-        .update({ balance: newToBalance })
-        .eq("id", transfer.to_account_id)
+  let destCurrency: "DOP" | "USD" | null = null
+  let destAmount = transfer.amount
+  let conversionRate: number | null = null
+  if (toAccount) {
+    destCurrency = (toAccount.currency || "DOP") as "DOP" | "USD"
+    if (destCurrency !== sourceCurrency) {
+      const rate = Number(transfer.exchange_rate || 0)
+      if (!Number.isFinite(rate) || rate <= 0) {
+        throw new Error("Ingresa una tasa de cambio válida para transferir entre cuentas de distinta moneda.")
+      }
+      conversionRate = rate
+      destAmount = roundCurrencyAmount(transfer.amount * rate)
     }
   }
 
-  // Create transfer record
-  const { data, error } = await supabase
+  // Rollback queue: each successful step pushes a reversal here.
+  // If any later step throws, we run all queued rollbacks in reverse to restore consistency.
+  const rollbacks: Array<() => Promise<void>> = []
+  const runRollbacks = async () => {
+    for (let i = rollbacks.length - 1; i >= 0; i--) {
+      try {
+        await rollbacks[i]()
+      } catch (rollbackError) {
+        console.error("Rollback step failed:", rollbackError)
+      }
+    }
+  }
+
+  // Step 1: create transfers row to obtain a stable transfer_id.
+  const { data: transferRecord, error: transferError } = await supabase
     .from("transfers")
     .insert({
       user_id: user.id,
@@ -2176,74 +2297,190 @@ export async function createTransfer(transfer: {
       to_account_id: transfer.to_account_id || null,
       to_beneficiary_id: transfer.to_beneficiary_id || null,
       amount: transfer.amount,
-      currency: transfer.currency,
+      currency: sourceCurrency,
       description: transfer.description || null,
     })
     .select()
     .single()
 
-  if (error) {
-    console.error("Transfer error:", error)
-    throw error
+  if (transferError || !transferRecord) {
+    console.error("Transfer error:", transferError)
+    throw transferError || new Error("No se pudo crear la transferencia.")
   }
-
-  const destinationLabel = transfer.to_beneficiary_id
-    ? "beneficiario"
-    : internalDestinationName || "cuenta destino"
-  await supabase.from("transactions").insert({
-    user_id: user.id,
-    account_id: transfer.from_account_id,
-    category_id: null,
-    type: "expense",
-    amount: transfer.amount,
-    currency: transfer.currency,
-    amount_base: transfer.amount,
-    exchange_rate: 1,
-    description: transfer.description || `Transferencia enviada a ${destinationLabel}`,
-    date: getLocalDateString(),
-    notes: transfer.description || null,
-    is_recurring: false,
-    metadata: transfer.to_account_id ? { kind: "transfer", transfer_id: data.id, transfer_type: "internal" } : null,
+  rollbacks.push(async () => {
+    await supabase.from("transfers").delete().eq("id", transferRecord.id)
   })
 
-  if (transfer.to_account_id) {
-    await supabase.from("transactions").insert({
-      user_id: user.id,
-      account_id: transfer.to_account_id,
-      category_id: null,
-      type: "income",
-      amount: transfer.amount,
-      currency: transfer.currency,
-      amount_base: transfer.amount,
-      exchange_rate: 1,
-      description: transfer.description || "Transferencia recibida",
-      date: getLocalDateString(),
-      notes: null,
-      is_recurring: false,
-      metadata: { kind: "transfer", transfer_id: data.id, transfer_type: "internal" },
-    })
-  }
+  // Step 2: insert source tx (expense).
+  const destinationLabel = transfer.to_beneficiary_id
+    ? "beneficiario"
+    : toAccount?.name || "cuenta destino"
+  const sourceMetadata = transfer.to_account_id
+    ? { kind: "transfer", transfer_id: transferRecord.id, transfer_type: "internal" }
+    : { kind: "transfer", transfer_id: transferRecord.id, transfer_type: "external" }
 
-  if (commissionAmount > 0) {
-    const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
-    await supabase.from("transactions").insert({
+  const { data: sourceTx, error: sourceTxError } = await supabase
+    .from("transactions")
+    .insert({
       user_id: user.id,
       account_id: transfer.from_account_id,
-      category_id: commissionCategoryId,
+      category_id: null,
       type: "expense",
-      amount: commissionAmount,
-      currency: transfer.currency,
-      amount_base: commissionAmount,
-      exchange_rate: 1,
-      description: `Comisión de 0.15% de ${transfer.description || "transferencia"}`,
+      amount: transfer.amount,
+      currency: sourceCurrency,
+      amount_base: transfer.amount,
+      exchange_rate: conversionRate ?? 1,
+      description: transfer.description || `Transferencia enviada a ${destinationLabel}`,
       date: getLocalDateString(),
-      notes: null,
+      notes: transfer.description || null,
       is_recurring: false,
-      metadata: { kind: "commission", rate: COMMISSION_RATE },
+      parent_transaction_id: null,
+      metadata: sourceMetadata,
     })
+    .select()
+    .single()
+
+  if (sourceTxError || !sourceTx) {
+    await runRollbacks()
+    throw sourceTxError || new Error("No se pudo registrar la transacción de origen.")
   }
-  
-  // Mutate cache to refresh data
+  rollbacks.push(async () => {
+    await supabase.from("transactions").delete().eq("id", sourceTx.id)
+  })
+
+  // Step 3: apply source debit.
+  try {
+    await applyAccountImpact({
+      accountId: transfer.from_account_id,
+      type: "expense",
+      amount: transfer.amount,
+      direction: 1,
+      currency: sourceCurrency,
+    })
+    rollbacks.push(async () => {
+      await applyAccountImpact({
+        accountId: transfer.from_account_id,
+        type: "expense",
+        amount: transfer.amount,
+        direction: -1,
+        currency: sourceCurrency,
+      })
+    })
+  } catch (sourceImpactError) {
+    await runRollbacks()
+    throw sourceImpactError
+  }
+
+  // Step 4: insert dest tx + apply credit (only if internal destination).
+  if (toAccount && transfer.to_account_id && destCurrency) {
+    const destAccountId = transfer.to_account_id
+    const { data: destTx, error: destTxError } = await supabase
+      .from("transactions")
+      .insert({
+        user_id: user.id,
+        account_id: destAccountId,
+        category_id: null,
+        type: "income",
+        amount: destAmount,
+        currency: destCurrency,
+        amount_base: transfer.amount,
+        exchange_rate: conversionRate ?? 1,
+        description: transfer.description || "Transferencia recibida",
+        date: getLocalDateString(),
+        notes: null,
+        is_recurring: false,
+        parent_transaction_id: sourceTx.id,
+        metadata: { kind: "transfer", transfer_id: transferRecord.id, transfer_type: "internal" },
+      })
+      .select()
+      .single()
+
+    if (destTxError || !destTx) {
+      await runRollbacks()
+      throw destTxError || new Error("No se pudo registrar la transacción de destino.")
+    }
+    rollbacks.push(async () => {
+      await supabase.from("transactions").delete().eq("id", destTx.id)
+    })
+
+    try {
+      await applyAccountImpact({
+        accountId: destAccountId,
+        type: "income",
+        amount: destAmount,
+        direction: 1,
+        currency: destCurrency,
+      })
+      rollbacks.push(async () => {
+        await applyAccountImpact({
+          accountId: destAccountId,
+          type: "income",
+          amount: destAmount,
+          direction: -1,
+          currency: destCurrency,
+        })
+      })
+    } catch (destImpactError) {
+      await runRollbacks()
+      throw destImpactError
+    }
+  }
+
+  // Step 5: insert commission tx (linked to source) + apply debit.
+  if (commissionAmount > 0) {
+    const commissionCategoryId = await getOrCreateCommissionCategoryId(user.id)
+    const { data: commissionTx, error: commissionTxError } = await supabase
+      .from("transactions")
+      .insert({
+        user_id: user.id,
+        account_id: transfer.from_account_id,
+        category_id: commissionCategoryId,
+        type: "expense",
+        amount: commissionAmount,
+        currency: sourceCurrency,
+        amount_base: commissionAmount,
+        exchange_rate: 1,
+        description: `Comisión de 0.15% de ${transfer.description || "transferencia"}`,
+        date: getLocalDateString(),
+        notes: null,
+        is_recurring: false,
+        parent_transaction_id: sourceTx.id,
+        metadata: { kind: "commission", rate: COMMISSION_RATE, transfer_id: transferRecord.id },
+      })
+      .select()
+      .single()
+
+    if (commissionTxError || !commissionTx) {
+      await runRollbacks()
+      throw commissionTxError || new Error("No se pudo registrar la comisión.")
+    }
+    rollbacks.push(async () => {
+      await supabase.from("transactions").delete().eq("id", commissionTx.id)
+    })
+
+    try {
+      await applyAccountImpact({
+        accountId: transfer.from_account_id,
+        type: "expense",
+        amount: commissionAmount,
+        direction: 1,
+        currency: sourceCurrency,
+      })
+      rollbacks.push(async () => {
+        await applyAccountImpact({
+          accountId: transfer.from_account_id,
+          type: "expense",
+          amount: commissionAmount,
+          direction: -1,
+          currency: sourceCurrency,
+        })
+      })
+    } catch (commissionImpactError) {
+      await runRollbacks()
+      throw commissionImpactError
+    }
+  }
+
   mutate("accounts")
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate(["transfers", 100])
@@ -2252,12 +2489,12 @@ export async function createTransfer(transfer: {
     userId: user.id,
     type: "transfer",
     title: "Transferencia realizada",
-    message: `Enviaste ${transfer.currency} ${roundCurrencyAmount(transfer.amount).toFixed(2)}.`,
+    message: `Enviaste ${sourceCurrency} ${roundCurrencyAmount(transfer.amount).toFixed(2)}.`,
     actionUrl: "/history",
   })
   mutate("notifications")
   
-  return data
+  return transferRecord
 }
 
 // Credit card payment
