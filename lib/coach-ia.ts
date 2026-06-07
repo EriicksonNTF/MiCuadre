@@ -40,6 +40,25 @@ export type CoachContext = {
   activeGoals: Array<{ name: string; current: number; target: number }>
   daysRemainingInMonth: number
   estimatedRunwayDays: number
+  categoryBudgets: Array<{
+    name: string
+    categoryName: string
+    limit: number
+    spent: number
+    currency: "DOP" | "USD"
+  }>
+  upcomingPayments: Array<{
+    name: string
+    amount: number
+    currency: "DOP" | "USD"
+    dueDate: string
+    type: "subscription" | "debt" | "credit"
+  }>
+  monthlyBudget: {
+    limit: number
+    spent: number
+    currency: "DOP" | "USD"
+  } | null
 }
 
 export const COACH_NAME = "MIA"
@@ -137,6 +156,125 @@ export function buildCoachReply(message: string, context: CoachContext): CoachRe
       ],
       actions: [{ label: "Confirmar en Agregar", href: "/expense", actionType: "navigate" }],
       disclaimer: "Revisa el monto y la categoria antes de guardar.",
+    }
+  }
+
+  if (/(pago|pagos|cobro|cobros|vencimiento|vencimientos|cuota|cuotas|factura|facturas)/.test(q) &&
+      /(esta\s+semana|estos\s+dias|proximos?|pr[oó]ximos?|7\s*dias|en\s+7)/.test(q)) {
+    if (context.upcomingPayments.length === 0) {
+      return {
+        answer: "No tienes pagos programados para los proximos 7 dias. Buen momento para revisar suscripciones y cancelar las que no uses.",
+        uiBlocks: [
+          { type: "kpi_card", title: "Pagos esta semana", value: "0 vencimientos", tone: "info" },
+        ],
+        actions: [
+          { label: "Ver suscripciones", href: "/settings/subscriptions", actionType: "navigate" },
+        ],
+      }
+    }
+    const totalByCurrency = context.upcomingPayments.reduce<Record<string, number>>((acc, p) => {
+      acc[p.currency] = (acc[p.currency] || 0) + p.amount
+      return acc
+    }, {})
+    const totalSummary = Object.entries(totalByCurrency)
+      .map(([cur, amt]) => formatCurrency(amt, cur as "DOP" | "USD"))
+      .join(" + ")
+    return {
+      answer: `Tienes ${context.upcomingPayments.length} pago(s) en los proximos 7 dias, total ${totalSummary}.`,
+      uiBlocks: [
+        {
+          type: "category_list",
+          title: "Proximos pagos",
+          items: context.upcomingPayments.map((p) => ({
+            label: `${p.name} - ${p.dueDate} (${p.type === "subscription" ? "suscripcion" : "deuda"})`,
+            value: formatCurrency(p.amount, p.currency),
+          })),
+        },
+      ],
+      actions: [
+        { label: "Ver suscripciones", href: "/settings/subscriptions", actionType: "navigate" },
+        { label: "Ver deudas", href: "/planning", actionType: "navigate" },
+      ],
+    }
+  }
+
+  const budgetMatch = q.match(/presupuesto\s+(?:de|del|de\s+la)\s+([a-záéíóúñ][a-záéíóúñ\s]*?)(?:\?|$|\.|,)/)
+  if (budgetMatch) {
+    const query = budgetMatch[1].trim().toLowerCase()
+    const budget = context.categoryBudgets.find((b) =>
+      b.categoryName.toLowerCase().includes(query) || query.includes(b.categoryName.toLowerCase())
+    )
+    if (budget) {
+      const remaining = Math.max(0, budget.limit - budget.spent)
+      const pct = budget.limit > 0 ? Math.round((budget.spent / budget.limit) * 100) : 0
+      const tone: "info" | "warning" | "success" =
+        pct >= 100 ? "warning" : pct >= 80 ? "info" : "success"
+      return {
+        answer: `De tu presupuesto de ${budget.categoryName} te quedan ${formatCurrency(remaining, budget.currency)} este mes (has gastado ${formatCurrency(budget.spent, budget.currency)} de ${formatCurrency(budget.limit, budget.currency)}, ${pct}%).`,
+        uiBlocks: [
+          {
+            type: "kpi_card",
+            title: `Presupuesto ${budget.categoryName}`,
+            value: `${formatCurrency(remaining, budget.currency)} restantes (${pct}%)`,
+            tone,
+          },
+        ],
+        actions: [
+          { label: "Ver gastos", href: "/history", actionType: "navigate" },
+          { label: "Ajustar presupuesto", href: "/planning", actionType: "navigate" },
+        ],
+      }
+    }
+    return {
+      answer: `No veo un presupuesto activo para "${query}" este mes. Si quieres, creamos uno ahora y le pongo seguimiento semanal.`,
+      uiBlocks: [
+        { type: "kpi_card", title: "Sin presupuesto", value: `Crea uno para "${query}"`, tone: "info" },
+      ],
+      actions: [{ label: "Crear presupuesto", href: "/planning", actionType: "navigate" }],
+    }
+  }
+
+  if (/(pasar(me)?|exceder|sobrepasar|rebasar|cerca\s+de\s+pasar|l[ií]mite\s+(?:del\s+)?presupuesto)/.test(q)) {
+    if (!context.monthlyBudget || context.monthlyBudget.limit <= 0) {
+      return {
+        answer: "No tienes presupuestos activos definidos este mes. Crea al menos uno y te aviso en tiempo real si te acercas al limite.",
+        uiBlocks: [
+          { type: "kpi_card", title: "Sin presupuestos", value: "Crea uno para empezar", tone: "info" },
+        ],
+        actions: [{ label: "Crear presupuesto", href: "/planning", actionType: "navigate" }],
+      }
+    }
+    const { limit, spent, currency } = context.monthlyBudget
+    const pct = Math.round((spent / limit) * 100)
+    const remaining = Math.max(0, limit - spent)
+    const overBudget = pct >= 100
+    const close = pct >= 80
+    return {
+      answer: overBudget
+        ? `Ya te pasaste del presupuesto del mes: llevas ${formatCurrency(spent, currency)} de ${formatCurrency(limit, currency)} (${pct}%). Recorta una categoria variable hoy mismo.`
+        : close
+          ? `Ojo: llevas ${pct}% del presupuesto del mes (${formatCurrency(spent, currency)} de ${formatCurrency(limit, currency)}), con ${context.daysRemainingInMonth} dias por delante. A este ritmo te pasas.`
+          : `Vas bien: ${pct}% del presupuesto del mes (${formatCurrency(spent, currency)} de ${formatCurrency(limit, currency)}), con ${formatCurrency(remaining, currency)} para los proximos ${context.daysRemainingInMonth} dias.`,
+      uiBlocks: overBudget
+        ? [
+            {
+              type: "warning_bar",
+              title: "Presupuesto del mes",
+              value: `${pct}% usado - ya excediste el limite`,
+            },
+          ]
+        : [
+            {
+              type: "kpi_card",
+              title: "Presupuesto del mes",
+              value: `${pct}% usado`,
+              tone: close ? "warning" : "success",
+            },
+          ],
+      actions: [
+        { label: "Ver gastos", href: "/history", actionType: "navigate" },
+        { label: "Ajustar presupuesto", href: "/planning", actionType: "navigate" },
+      ],
     }
   }
 

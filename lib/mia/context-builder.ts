@@ -5,6 +5,8 @@ import {
   getRecurringExpenseSummary,
   getCreditCardDebtSummary,
   getGoalProgressSummary,
+  getCategoryBudgetsSummary,
+  getUpcomingPaymentsSummary,
 } from "./financial-insights"
 
 export async function buildFinancialContext(supabase: SupabaseClient, userId: string) {
@@ -27,11 +29,13 @@ export async function buildFinancialContext(supabase: SupabaseClient, userId: st
   const accounts = accountsRaw || []
   const cashAccounts = accounts.filter((a) => a.type === "cash" || a.type === "debit")
 
-  const [health, recurring, ccSummary, goals] = await Promise.all([
+  const [health, recurring, ccSummary, goals, categoryBudgets, upcomingPayments] = await Promise.all([
     getFinancialHealthScore(supabase, userId),
     getRecurringExpenseSummary(supabase, userId),
     getCreditCardDebtSummary(supabase, userId),
     getGoalProgressSummary(supabase, userId),
+    getCategoryBudgetsSummary(supabase, userId),
+    getUpcomingPaymentsSummary(supabase, userId),
   ])
 
   const { data: recentTxsRaw } = await supabase
@@ -95,6 +99,12 @@ DEUDAS ACTIVAS:
 - Total pendiente en deudas: ${formatCurrency(totalDebtPending, currency)}
 ${debts.length > 0 ? debts.map((d) => `  - ${d.name}: Pendiente ${formatCurrency(Number(d.current_balance || 0), d.currency || currency)}${d.fixed_payment_amount ? ` | Cuota ${formatCurrency(Number(d.fixed_payment_amount), d.currency || currency)}` : ""}${d.payment_day ? ` | Dia de pago: ${d.payment_day}` : ""}`).join("\n") : "  - Ninguna"}
 
+PRESUPUESTOS POR CATEGORIA (limite vs gastado en el mes):
+${categoryBudgets.length > 0 ? categoryBudgets.map((b) => `  - ${b.name} (${b.categoryName}): Limite ${formatCurrency(b.limit, b.currency)} | Gastado ${formatCurrency(b.spent, b.currency)} | Restante ${formatCurrency(Math.max(0, b.limit - b.spent), b.currency)}`).join("\n") : "  - Ninguno"}
+
+PROXIMOS PAGOS (7 dias):
+${upcomingPayments.length > 0 ? upcomingPayments.map((p) => `  - ${p.name} (${p.type === "subscription" ? "suscripcion" : "deuda"}): ${formatCurrency(p.amount, p.currency)} el ${p.dueDate}`).join("\n") : "  - Ninguno"}
+
 SENALES DE SALUD FINANCIERA:
 ${health.positiveSignals.length > 0 ? health.positiveSignals.map((s) => `  [POSITIVO] ${s}`).join("\n") : "  No se detectan senales positivas destacadas todavia."}
 ${health.riskFlags.length > 0 ? health.riskFlags.map((f) => `  [Riesgo/Alerta] ${f}`).join("\n") : "  No se detectan banderas de riesgo en este momento."}
@@ -108,6 +118,18 @@ ${recentTxs.length > 0 ? recentTxs.map((t) => {
 }).join("\n") : "  - Ninguno"}
 `
 
+  const monthlyBudget =
+    categoryBudgets.length > 0
+      ? categoryBudgets.reduce(
+          (acc, b) => {
+            acc.limit += b.limit
+            acc.spent += b.spent
+            return acc
+          },
+          { limit: 0, spent: 0, currency: categoryBudgets[0].currency }
+        )
+      : null
+
   return {
     rawContext: ctxStr,
     health,
@@ -118,5 +140,8 @@ ${recentTxs.length > 0 ? recentTxs.map((t) => {
     userName,
     plan,
     memory,
+    categoryBudgets,
+    upcomingPayments,
+    monthlyBudget,
   }
 }

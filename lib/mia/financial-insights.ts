@@ -201,3 +201,157 @@ export async function getFinancialHealthScore(supabase: SupabaseClient, userId: 
     positiveSignals,
   }
 }
+
+export type CategoryBudgetSummary = {
+  budgetId: string
+  name: string
+  categoryName: string
+  limit: number
+  spent: number
+  currency: "DOP" | "USD"
+}
+
+export async function getCategoryBudgetsSummary(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<CategoryBudgetSummary[]> {
+  const { data: budgetsRaw } = await supabase
+    .from("budgets")
+    .select("id, name, category_id, category_name, amount, currency")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+
+  const budgets = (budgetsRaw || []) as Array<{
+    id: string
+    name: string
+    category_id: string | null
+    category_name: string
+    amount: number
+    currency: "DOP" | "USD"
+  }>
+
+  if (budgets.length === 0) return []
+
+  const { start, next } = getMonthBounds()
+  const startStr = start.toISOString().slice(0, 10)
+  const endStr = next.toISOString().slice(0, 10)
+
+  const { data: txs } = await supabase
+    .from("transactions")
+    .select("amount, category_id, category:categories(id, name)")
+    .eq("user_id", userId)
+    .eq("type", "expense")
+    .gte("date", startStr)
+    .lt("date", endStr)
+
+  const transactions = (txs || []) as Array<{
+    amount: number
+    category_id: string | null
+    category: { id: string; name: string } | { id: string; name: string }[] | null
+  }>
+
+  return budgets.map((budget) => {
+    const cat = budget.category_name.trim().toLowerCase()
+    const spent = transactions.reduce((sum, tx) => {
+      const txCat = Array.isArray(tx.category) ? tx.category[0] : tx.category
+      const txCatName = txCat?.name?.trim().toLowerCase()
+      const matchesById =
+        budget.category_id && tx.category_id && budget.category_id === tx.category_id
+      const matchesByName = cat && txCatName && txCatName.includes(cat)
+      if (matchesById || matchesByName) {
+        return sum + Number(tx.amount || 0)
+      }
+      return sum
+    }, 0)
+
+    return {
+      budgetId: budget.id,
+      name: budget.name,
+      categoryName: budget.category_name,
+      limit: Number(budget.amount || 0),
+      spent: Math.round(spent * 100) / 100,
+      currency: budget.currency,
+    }
+  })
+}
+
+export type UpcomingPayment = {
+  name: string
+  amount: number
+  currency: "DOP" | "USD"
+  dueDate: string
+  type: "subscription" | "debt"
+}
+
+function isoDate(value: Date): string {
+  return value.toISOString().slice(0, 10)
+}
+
+function nextOccurrenceInDays(paymentDay: number, daysAhead: number): Date | null {
+  if (!paymentDay || paymentDay < 1 || paymentDay > 31) return null
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const candidate = new Date(now.getFullYear(), now.getMonth(), paymentDay)
+  if (candidate < today) {
+    candidate.setMonth(candidate.getMonth() + 1)
+  }
+  const diffDays = Math.floor((candidate.getTime() - today.getTime()) / 86_400_000)
+  if (diffDays < 0 || diffDays > daysAhead) return null
+  return candidate
+}
+
+export async function getUpcomingPaymentsSummary(
+  supabase: SupabaseClient,
+  userId: string,
+  daysAhead = 7
+): Promise<UpcomingPayment[]> {
+  const today = new Date()
+  const todayStr = isoDate(today)
+  const future = new Date(today)
+  future.setDate(future.getDate() + daysAhead)
+  const futureStr = isoDate(future)
+
+  const [{ data: subsRaw }, { data: debtsRaw }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("name, amount, currency, next_payment_date, status")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .gte("next_payment_date", todayStr)
+      .lte("next_payment_date", futureStr)
+      .order("next_payment_date", { ascending: true }),
+    supabase
+      .from("debts")
+      .select("name, fixed_payment_amount, currency, payment_day, is_active")
+      .eq("user_id", userId)
+      .eq("is_active", true),
+  ])
+
+  const payments: UpcomingPayment[] = []
+
+  for (const s of subsRaw || []) {
+    payments.push({
+      name: s.name,
+      amount: Number(s.amount || 0),
+      currency: s.currency as "DOP" | "USD",
+      dueDate: s.next_payment_date,
+      type: "subscription",
+    })
+  }
+
+  for (const d of debtsRaw || []) {
+    const due = nextOccurrenceInDays(Number(d.payment_day || 0), daysAhead)
+    if (!due) continue
+    const amount = Number(d.fixed_payment_amount || 0)
+    if (amount <= 0) continue
+    payments.push({
+      name: d.name,
+      amount,
+      currency: d.currency as "DOP" | "USD",
+      dueDate: isoDate(due),
+      type: "debt",
+    })
+  }
+
+  return payments.sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+}

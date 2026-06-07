@@ -3,34 +3,43 @@
 /*
  * MIA chat route.
  *
- * LLM provider is OpenAI-compatible. Defaults to Groq (free tier).
- * To switch provider set ONLY these env vars (no code changes):
- *   - LLM_API_BASE  e.g. https://api.groq.com/openai/v1
- *                    https://openrouter.ai/api/v1
+ * LLM provider is OpenAI-compatible. Defaults to OpenRouter (free tier).
+ * The :free suffix on the model keeps the call on OpenRouter's free tier
+ * and avoids pay-as-you-go quota. To switch provider set ONLY these
+ * env vars (no code changes):
+ *   - LLM_API_BASE  e.g. https://openrouter.ai/api/v1   (default)
  *                    https://integrate.api.nvidia.com/v1
- *   - LLM_MODEL     e.g. llama-3.3-70b-versatile  (Groq)
- *                    meta-llama/llama-3.3-70b-instruct (OpenRouter)
- *                    meta/llama-3.3-70b-instruct       (NVIDIA)
+ *                    https://api.groq.com/openai/v1
+ *   - LLM_MODEL     e.g. z-ai/glm-4.5-air:free              (default, tested OK)
+ *                    meta-llama/llama-3.3-70b-instruct:free  (often rate-limited)
+ *                    qwen/qwen3-next-80b-a3b-instruct:free
+ *                    llama-3.3-70b-versatile
  *   - LLM_API_KEY   server-only, never NEXT_PUBLIC_*
  *
  * If LLM_API_KEY is missing OR the call fails OR the response is not
  * valid JSON, the route falls back to buildCoachReply (lib/coach-ia.ts)
  * using the existing buildFinancialContext. The user is never left
  * without an answer.
+ *
+ * Pro access gate uses lib/mia/access.ts (assertMiaAccess) so MIA
+ * shares the same source of truth as the rest of the app:
+ * syncUserPlanFromBilling -> profiles.plan_tier -> normalizePlanTier
+ * -> ENTITLEMENTS_BY_PLAN[plan].mia_advanced. The COACH_IA_ALLOWED_EMAILS
+ * whitelist is an extra OR override, never the only path.
  */
 
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { coachRequestSchema } from "@/lib/mia/schemas"
 import { formatCurrency } from "@/lib/data"
-import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
+import { assertMiaAccess, MIA_FORBIDDEN_RESPONSE } from "@/lib/mia/access"
 import { buildFinancialContext } from "@/lib/mia/context-builder"
 import { detectCardQuestion, resolveCardQuestion } from "@/lib/mia/card-questions"
 import { buildCardSnapshot } from "@/lib/mia/card-snapshot"
 import { buildCoachReply, type CoachContext } from "@/lib/coach-ia"
 
-const LLM_API_BASE = process.env.LLM_API_BASE || "https://api.groq.com/openai/v1"
-const LLM_MODEL = process.env.LLM_MODEL || "llama-3.3-70b-versatile"
+const LLM_API_BASE = process.env.LLM_API_BASE || "https://openrouter.ai/api/v1"
+const LLM_MODEL = process.env.LLM_MODEL || "z-ai/glm-4.5-air:free"
 const LLM_API_KEY = process.env.LLM_API_KEY || ""
 
 type MiaActionType =
@@ -152,6 +161,9 @@ function toCoachContext(ctx: Awaited<ReturnType<typeof buildFinancialContext>>):
     })),
     daysRemainingInMonth: daysRemaining,
     estimatedRunwayDays: runway,
+    categoryBudgets: ctx.categoryBudgets,
+    upcomingPayments: ctx.upcomingPayments,
+    monthlyBudget: ctx.monthlyBudget,
   }
 }
 
@@ -588,24 +600,9 @@ export async function GET() {
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 })
 
-    // Entitlement check
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("plan_tier, email")
-      .eq("id", user.id)
-      .single()
-
-    const planTier = profile?.plan_tier || "free"
-    const userEmail = profile?.email || user.email
-    const isWhitelisted = isCoachIAEnabledForEmail(userEmail)
-    const isPro = planTier === "pro"
-
-    if (!isPro && !isWhitelisted) {
-      return NextResponse.json({
-        error: "Forbidden",
-        message: "MIA advanced requires Pro plan.",
-        requiresUpgrade: true
-      }, { status: 403 })
+    const access = await assertMiaAccess(supabase, user)
+    if (!access.allowed) {
+      return NextResponse.json(MIA_FORBIDDEN_RESPONSE, { status: 403 })
     }
 
     // Get active conversation
@@ -665,24 +662,9 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 })
 
-    // Entitlement check
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("plan_tier, email")
-      .eq("id", user.id)
-      .single()
-
-    const planTier = profile?.plan_tier || "free"
-    const userEmail = profile?.email || user.email
-    const isWhitelisted = isCoachIAEnabledForEmail(userEmail)
-    const isPro = planTier === "pro"
-
-    if (!isPro && !isWhitelisted) {
-      return NextResponse.json({
-        error: "Forbidden",
-        message: "MIA advanced is a Pro-only feature.",
-        requiresUpgrade: true
-      }, { status: 403 })
+    const access = await assertMiaAccess(supabase, user)
+    if (!access.allowed) {
+      return NextResponse.json(MIA_FORBIDDEN_RESPONSE, { status: 403 })
     }
 
     // 1. Handle clear history
