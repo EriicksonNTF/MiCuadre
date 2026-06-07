@@ -2,6 +2,7 @@
 
 import React from "react"
 import { X } from "lucide-react"
+import { useModalA11y } from "@/lib/a11y/use-modal-a11y"
 
 export function MobileFullscreenForm({
   title,
@@ -17,6 +18,8 @@ export function MobileFullscreenForm({
   contentClassName?: string
 }) {
   const titleId = React.useId()
+  const containerRef = React.useRef<HTMLDivElement | null>(null)
+  useModalA11y({ containerRef, onClose, enabled: true, trapFocus: false })
 
   React.useEffect(() => {
     document.body.classList.add("modal-open", "mobile-form-open")
@@ -27,6 +30,7 @@ export function MobileFullscreenForm({
 
   return (
     <div
+      ref={containerRef}
       data-app-modal="true"
       className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden bg-background"
       role="dialog"

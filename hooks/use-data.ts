@@ -1072,6 +1072,78 @@ export function useBeneficiaries() {
   })
 }
 
+export type NotificationPreferenceKey = "transactions" | "budgets" | "creditAlerts" | "marketing"
+
+export type NotificationPreferences = Record<NotificationPreferenceKey, boolean>
+
+const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  transactions: true,
+  budgets: true,
+  creditAlerts: true,
+  marketing: false,
+}
+
+async function fetchNotificationPreferences(): Promise<NotificationPreferences> {
+  const response = await fetch("/api/profile/notification-preferences", {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  })
+  if (!response.ok) {
+    throw new Error("No se pudieron leer las preferencias de notificaciones")
+  }
+  const data = (await response.json().catch(() => null)) as Partial<NotificationPreferences> | null
+  return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(data || {}) }
+}
+
+async function persistNotificationPreferences(
+  next: NotificationPreferences
+): Promise<NotificationPreferences> {
+  const response = await fetch("/api/profile/notification-preferences", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(next),
+  })
+  if (!response.ok) {
+    throw new Error("No se pudieron guardar las preferencias de notificaciones")
+  }
+  const data = (await response.json().catch(() => null)) as Partial<NotificationPreferences> | null
+  return { ...DEFAULT_NOTIFICATION_PREFERENCES, ...(data || {}) }
+}
+
+export function useNotificationPreferences() {
+  const swr = useSWR<NotificationPreferences>(
+    "notification_preferences",
+    fetchNotificationPreferences,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 30_000,
+      errorRetryCount: 2,
+      onError: (err) => {
+        console.error("useNotificationPreferences error:", err)
+      },
+    }
+  )
+
+  async function setPreference(key: NotificationPreferenceKey, value: boolean) {
+    const current = swr.data || DEFAULT_NOTIFICATION_PREFERENCES
+    const optimistic: NotificationPreferences = { ...current, [key]: value }
+    mutate("notification_preferences", optimistic, { revalidate: false })
+    try {
+      const saved = await persistNotificationPreferences(optimistic)
+      mutate("notification_preferences", saved, { revalidate: false })
+    } catch (error) {
+      mutate("notification_preferences", current, { revalidate: false })
+      throw error
+    }
+  }
+
+  return { ...swr, setPreference }
+}
+
 // Mutations
 type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_at" | "statement_balance" | "pending_amount" | "paid_amount" | "cycle_start_date" | "cycle_end_date" | "sort_order" | "is_favorite" | "icon_url" | "icon_type" | "icon_value" | "primary_color" | "secondary_color" | "background_style" | "credit_limit_dop" | "credit_limit_usd" | "current_balance_dop" | "current_balance_usd" | "current_debt_dop" | "current_debt_usd" | "statement_balance_dop" | "statement_balance_usd" | "paid_statement_amount_dop" | "paid_statement_amount_usd" | "pending_transit_dop" | "pending_transit_usd" | "financed_balance_dop" | "financed_balance_usd" | "available_credit_dop" | "available_credit_usd" | "closing_day" | "payment_due_day" | "due_days_after_cutoff" | "annual_interest_rate" | "minimum_payment_percentage" | "last_statement_cutoff_date" | "statement_due_date" | "late_fee_applied_cycle_dop" | "late_fee_applied_cycle_usd"> & {
   statement_balance?: number | null
