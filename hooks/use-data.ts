@@ -398,7 +398,7 @@ async function syncCreditAccountCycle(creditAccountId: string) {
 
   const { data: txRows } = await supabase
     .from("transactions")
-    .select("id, amount, type, currency, date, billing_cycle_id")
+    .select("id, amount, type, currency, date, billing_cycle_id, metadata")
     .eq("account_id", account.id)
 
   const cycleMap = new Map<string, {
@@ -413,6 +413,10 @@ async function syncCreditAccountCycle(creditAccountId: string) {
   let currentBalanceDop = 0
   let currentBalanceUsd = 0
   for (const tx of txRows || []) {
+    const txMetadata = (tx.metadata || {}) as Record<string, unknown>
+    if (txMetadata.kind === "credit_payment" || txMetadata.operation_type === "credit_card_payment") {
+      continue
+    }
     const signed = tx.type === "expense" ? Number(tx.amount || 0) : -Number(tx.amount || 0)
     if (tx.currency === "USD") currentBalanceUsd += signed
     else currentBalanceDop += signed
@@ -1976,7 +1980,23 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("No autenticado")
 
-  // Insert contribution
+  // Step A: Load source account to get its currency and validate funds.
+  const { data: sourceAccount, error: sourceAccountError } = await supabase
+    .from("accounts")
+    .select("id, type, balance, currency, credit_limit, current_debt, credit_limit_dop, credit_limit_usd, current_debt_dop, current_debt_usd")
+    .eq("id", contribution.account_id)
+    .single()
+
+  if (sourceAccountError || !sourceAccount) {
+    throw new Error("Cuenta origen no encontrada")
+  }
+
+  const accountCurrency = (sourceAccount.currency || "DOP") as "DOP" | "USD"
+
+  // Throws on insufficient funds (no state changes yet).
+  await ensureSufficientFundsForExpense(contribution.account_id, Number(contribution.amount), accountCurrency)
+
+  // Step B: Insert contribution row.
   const { data: newContribution, error: contribError } = await supabase
     .from("goal_contributions")
     .insert({ ...contribution, user_id: user.id })
@@ -1985,37 +2005,94 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
 
   if (contribError) throw contribError
 
-  // Update goal current_amount
+  // Step C: Update goal current_amount.
   const { data: goal } = await supabase
     .from("goals")
     .select("current_amount, target_amount")
     .eq("id", contribution.goal_id)
     .single()
 
+  let previousGoalAmount: number | null = null
+  let targetAmount = 0
   if (goal) {
-    const newAmount = Number(goal.current_amount) + Number(contribution.amount)
-    const isCompleted = newAmount >= Number(goal.target_amount)
-    
-    await supabase
+    previousGoalAmount = Number(goal.current_amount)
+    targetAmount = Number(goal.target_amount)
+    const newAmount = previousGoalAmount + Number(contribution.amount)
+    const isCompleted = newAmount >= targetAmount
+
+    const { error: goalUpdateError } = await supabase
       .from("goals")
       .update({ current_amount: newAmount, is_completed: isCompleted })
       .eq("id", contribution.goal_id)
+
+    if (goalUpdateError) {
+      await supabase.from("goal_contributions").delete().eq("id", newContribution.id)
+      throw goalUpdateError
+    }
   }
 
-  await supabase.from("transactions").insert({
-    user_id: user.id,
-    account_id: contribution.account_id,
-    category_id: null,
-    type: "expense",
-    amount: contribution.amount,
-    currency: "DOP",
-    amount_base: contribution.amount,
-    exchange_rate: 1,
-    description: "Aporte a meta de ahorro",
-    date: contribution.date,
-    notes: contribution.notes || null,
-    is_recurring: false,
-  })
+  // Step D: Insert transaction with proper metadata + real account currency.
+  const { data: newTx, error: txInsertError } = await supabase
+    .from("transactions")
+    .insert({
+      user_id: user.id,
+      account_id: contribution.account_id,
+      category_id: null,
+      type: "expense",
+      amount: contribution.amount,
+      currency: accountCurrency,
+      amount_base: contribution.amount,
+      exchange_rate: 1,
+      description: "Aporte a meta de ahorro",
+      date: contribution.date,
+      notes: contribution.notes || null,
+      is_recurring: false,
+      metadata: {
+        kind: "goal_contribution",
+        goal_id: contribution.goal_id,
+        contribution_id: newContribution.id,
+      },
+    })
+    .select()
+    .single()
+
+  if (txInsertError) {
+    if (goal && previousGoalAmount !== null) {
+      await supabase
+        .from("goals")
+        .update({
+          current_amount: previousGoalAmount,
+          is_completed: previousGoalAmount >= targetAmount,
+        })
+        .eq("id", contribution.goal_id)
+    }
+    await supabase.from("goal_contributions").delete().eq("id", newContribution.id)
+    throw txInsertError
+  }
+
+  // Step E: Debit the account via applyAccountImpact.
+  try {
+    await applyAccountImpact({
+      accountId: contribution.account_id,
+      type: "expense",
+      amount: Number(contribution.amount),
+      direction: 1,
+      currency: accountCurrency,
+    })
+  } catch (impactError) {
+    await supabase.from("transactions").delete().eq("id", newTx.id)
+    if (goal && previousGoalAmount !== null) {
+      await supabase
+        .from("goals")
+        .update({
+          current_amount: previousGoalAmount,
+          is_completed: previousGoalAmount >= targetAmount,
+        })
+        .eq("id", contribution.goal_id)
+    }
+    await supabase.from("goal_contributions").delete().eq("id", newContribution.id)
+    throw impactError
+  }
 
   mutate("goals")
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
