@@ -63,7 +63,8 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
   return (
     <div
       className={cn(
-        "tap-lift relative overflow-hidden rounded-[1.8rem] p-4 shadow-[0_22px_54px_-26px_rgba(0,0,0,0.62)] ring-1 ring-white/15 transition-[transform,box-shadow,filter] duration-300 ease-[var(--ease-out-ios)]",
+        "tap-lift relative overflow-hidden rounded-[1.8rem] shadow-[0_22px_54px_-26px_rgba(0,0,0,0.62)] ring-1 ring-white/15 transition-[transform,box-shadow,filter] duration-300 ease-[var(--ease-out-ios)]",
+        compact ? "p-3" : "p-4",
         className
       )}
       style={{ background, color: textColor }}

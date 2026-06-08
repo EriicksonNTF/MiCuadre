@@ -388,14 +388,14 @@ export default function ScanPage() {
         </div>
 
         {blurScore !== null && blurScore < 120 && (
-          <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/40 bg-amber-100/40 p-3 text-sm text-amber-900">
+          <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-300/40 bg-amber-100/40 p-3 text-sm text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">
             <AlertTriangle className="mt-0.5 h-4 w-4" />
             La foto parece borrosa. Para mejor resultado: mas luz, acercate y evita movimiento.
           </div>
         )}
 
         {error && (
-          <div className="mt-3 rounded-xl border border-red-300/50 bg-red-100/40 p-3 text-sm text-red-900">{error}</div>
+          <div className="mt-3 rounded-xl border border-red-300/50 bg-red-100/40 p-3 text-sm text-red-900 dark:border-red-700/40 dark:bg-red-950/20 dark:text-red-300">{error}</div>
         )}
 
         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -440,7 +440,7 @@ export default function ScanPage() {
             <div className="flex justify-between"><span className="text-muted-foreground">Confianza general</span><span>{Math.round(result.overallConfidence * 100)}%</span></div>
 
             {lowConfidence && (
-              <div className="rounded-lg border border-amber-300/40 bg-amber-100/40 p-3 text-xs text-amber-900">
+              <div className="rounded-lg border border-amber-300/40 bg-amber-100/40 p-3 text-xs text-amber-900 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-300">
                 Deteccion con confianza baja. Revisa cuidadosamente antes de guardar.
               </div>
             )}

@@ -615,7 +615,7 @@ export function HistoryScreen() {
                               </div>
 
                               <div className="shrink-0 text-right">
-                                <p className={cn("text-sm font-semibold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700" : "text-foreground")}>
+                                <p className={cn("text-sm font-semibold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
                                   {tx.type === "income" ? "+" : "-"}
                                   {formatCurrency(tx.amount, tx.currency)}
                                 </p>
@@ -624,7 +624,7 @@ export function HistoryScreen() {
                             </div>
 
                             {tx.isCommission && (
-                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Comisión 0.15%</span>
+                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Comisión 0.15%</span>
                             )}
                           </div>
                         </div>

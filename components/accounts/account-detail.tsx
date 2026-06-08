@@ -38,7 +38,7 @@ import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountDeletionImpact, payCreditCard, updateTransaction, deleteTransaction, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
-import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getLocalDateString, getReadableTextColor } from "@/lib/data"
+import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getCurrencySymbol, getLocalDateString, getReadableTextColor } from "@/lib/data"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { isReportableExpense, isReportableIncome } from "@/lib/transactions/reporting"
 import type { AccountType, Currency } from "@/lib/types/database"
@@ -540,7 +540,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
   const [prevEditDeps, setPrevEditDeps] = useState("")
   const currentEditDeps = `${account?.id}-${accountId}-${searchParams}`
-  if (currentEditDeps !== prevEditDeps) {
+  if (currentEditDeps !== prevEditDeps && searchParams.get("edit") === "1") {
     setPrevEditDeps(currentEditDeps)
     setShowEditModal(true)
   }
@@ -675,23 +675,21 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     Corte y pago
                   </span>
                 </div>
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3">
+                <div className={hasUsdOnCard ? "mt-3 flex gap-3" : "mt-3"}>
+                  <div className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/[0.07] p-3">
                     <p className="mb-2 text-[11px] text-white/70">DOP</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p></div>
                       <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p></div>
                       <div><p className="text-white/60">Pago mínimo</p><p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p></div>
-                      <div><p className="text-white/60">Disponible</p><p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_dop || Number(account.creditLimitDop || 0) - Number(account.currentDebtDop || 0)), "DOP")}</p></div>
                     </div>
                   </div>
-                  {hasUsdOnCard ? <div className="rounded-2xl border border-white/10 bg-white/[0.07] p-3">
+                  {hasUsdOnCard ? <div className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/[0.07] p-3">
                     <p className="mb-2 text-[11px] text-white/70">USD</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p></div>
                       <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p></div>
                       <div><p className="text-white/60">Pago mínimo</p><p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p></div>
-                      <div><p className="text-white/60">Disponible</p><p className="mt-0.5 font-semibold text-emerald-300">{formatCurrency(Number(account.available_credit_usd || Number(account.creditLimitUsd || 0) - Number(account.currentDebtUsd || 0)), "USD")}</p></div>
                     </div>
                   </div> : null}
                 </div>
@@ -766,11 +764,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           <div className="min-w-0 border-r border-border/60 px-3 py-3.5">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
-                <TrendingDown className="h-3.5 w-3.5 text-red-600" />
+                <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
               </div>
               <p className="truncate text-[11px] text-muted-foreground">Gastos</p>
             </div>
-            <p className="mt-2 truncate text-sm font-bold text-red-600">
+            <p className="mt-2 truncate text-sm font-bold text-red-600 dark:text-red-400">
               -{formatCurrency(monthlyExpenses)}
             </p>
           </div>
@@ -793,7 +791,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     netFlow > 0
                       ? "text-emerald-600 dark:text-emerald-400"
                       : netFlow < 0
-                      ? "text-red-600"
+                      ? "text-red-600 dark:text-red-400"
                       : "text-muted-foreground"
                   )}
                 />
@@ -806,7 +804,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 netFlow > 0
                   ? "text-emerald-600 dark:text-emerald-400"
                   : netFlow < 0
-                  ? "text-red-600"
+                  ? "text-red-600 dark:text-red-400"
                   : "text-foreground"
               )}
             >
@@ -893,7 +891,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   </div>
 
                   <div
-                    className="relative z-10 flex items-center gap-3 rounded-[1.35rem] border border-border/55 bg-card/82 p-4 shadow-sm backdrop-blur transition-transform duration-200"
+                    className="relative z-10 flex items-center gap-3 rounded-[1.35rem] border border-border/55 bg-card p-4 shadow-sm transition-transform duration-200"
                     style={{ transform: `translateX(${currentOffset}px)` }}
                     onPointerDown={(event) => {
                       const target = event.target as HTMLElement
@@ -1082,7 +1080,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   Monto a pagar
                 </p>
                 <div className="flex items-center gap-2 rounded-xl bg-muted p-4">
-                    <span className="text-lg font-medium text-muted-foreground">{paymentCurrency === "DOP" ? "RD$" : "US$"}</span>
+                    <span className="text-lg font-medium text-muted-foreground">{getCurrencySymbol(paymentCurrency)}</span>
                   <MoneyInput
                     value={paymentAmount}
                     onValueChange={(value) => {
@@ -1147,7 +1145,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
               {/* Warning if insufficient funds */}
               {sourceAccount && totalDebitPay > Number(sourceAccount.balance || 0) && (
-                <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-red-600">
+                <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-red-600 dark:bg-red-950/30 dark:text-red-400">
                   <AlertTriangle className="h-4 w-4" />
                   <span className="text-xs">Ese monto supera tu balance disponible.</span>
                 </div>

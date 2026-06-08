@@ -1,5 +1,5 @@
 ﻿import type { Account, Transaction, Goal } from "@/lib/types/database"
-import { getLocalDateString } from "@/lib/data"
+import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { isReportableIncome } from "@/lib/transactions/reporting"
 import type { BudgetWithUsage, DebtWithProgress } from "@/types/planning"
 
@@ -149,7 +149,7 @@ export function generateSmartNotifications(
           id: `${today}-credit-payment-${account.id}`,
           type: "credit_payment",
           title: "Pago de tarjeta en 3 dias",
-          body: `Pendiente: RD$${Number(account.pending_amount ?? 0).toLocaleString("es-DO")}.`,
+          body: `Pendiente: ${formatCurrency(Number(account.pending_amount ?? 0))}.`,
           action: "Pagar tarjeta",
           priority: "high",
         })
@@ -164,7 +164,7 @@ export function generateSmartNotifications(
         id: `${today}-budget-exceeded-${budget.id}`,
         type: "budget_exceeded",
         title: "Presupuesto excedido",
-        body: `Te pasaste del presupuesto de ${budget.category_name} por RD$${Math.max(0, budget.spent - budget.amount).toLocaleString("es-DO")}.`,
+        body: `Te pasaste del presupuesto de ${budget.category_name} por ${formatCurrency(Math.max(0, budget.spent - budget.amount))}.`,
         priority: "high",
       })
     } else if (budget.percentage >= 80) {

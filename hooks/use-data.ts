@@ -645,7 +645,7 @@ async function syncCreditAccountCycle(creditAccountId: string) {
       await upsertCreditNotification({
         userId: account.user_id,
         title: `Pago próximo: ${account.name}`,
-        message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${line.currency === "DOP" ? "RD$" : "US$"}${line.pending.toFixed(2)}.`,
+        message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${formatCurrency(line.pending, line.currency)}.`,
         metadata: {
           kind: "credit_payment_warning",
           account_id: account.id,
@@ -2286,7 +2286,7 @@ export async function createTransfer(transfer: {
     userId: user.id,
     type: "transfer",
     title: "Transferencia realizada",
-    message: `Enviaste ${sourceCurrency} ${roundCurrencyAmount(transfer.amount).toFixed(2)}.`,
+    message: `Transferiste ${sourceCurrency} ${roundCurrencyAmount(transfer.amount).toFixed(2)}.`,
     actionUrl: "/history",
   })
   mutate("notifications")

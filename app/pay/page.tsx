@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, CalendarDays, CreditCard } from "lucide-react"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { payCreditCard, useAccounts, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
-import { formatCurrency, formatDate } from "@/lib/data"
+import { formatCurrency, formatDate, getCurrencySymbol } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { cn } from "@/lib/utils"
 import type { Currency } from "@/lib/types/database"
@@ -14,7 +14,7 @@ import { MovementReceipt } from "@/components/receipts/movement-receipt"
 import { PaymentOptionCard } from "@/components/credit-cards/pay-card/payment-option-card"
 import { CustomAmountSheet } from "@/components/credit-cards/pay-card/custom-amount-sheet"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
-import { FinancialAmount, IconBadge, MobileCard, MobilePageShell, MobileSectionHeader, StickyFormFooter } from "@/components/ui/mobile-foundation"
+import { MobilePageShell, MobileSectionHeader, StickyFormFooter } from "@/components/ui/mobile-foundation"
 
 
 type PaymentMode = "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
@@ -145,7 +145,7 @@ export default function PayPage() {
   const totalDebit = paymentCalculations?.totalDebit || sourceDebitAmount
   const validRate = !conversionApplies || (Number.isFinite(parsedRate) && parsedRate > 0)
   const valid = Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && validRate && totalDebit <= Number(source.balance || 0))
-  const currencySymbol = currencyTab === "DOP" ? "RD$" : "US$"
+  const currencySymbol = getCurrencySymbol(currencyTab)
   const warning = !selectedAmount
     ? "Selecciona un monto valido para continuar."
     : selectedAmount > balanceToDate
@@ -268,47 +268,13 @@ export default function PayPage() {
 
         {card && (
           <>
-            <MobileCard className="space-y-4">
-              <div className="flex items-start gap-3">
-                <IconBadge icon={CreditCard} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-bold text-foreground">{card.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {currencyTab === "DOP" ? "Balance en pesos dominicanos" : "Balance en dólares"}
-                  </p>
-                </div>
-                {card.statement_due_date ? (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-muted-foreground">
-                    <CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />
-                    {formatDate(card.statement_due_date)}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <FinancialAmount value={formatCurrency(balanceToDate, currencyTab)} label="Balance a la fecha" className="rounded-2xl bg-muted/55 p-3" />
-                <FinancialAmount value={formatCurrency(pendingStatement, currencyTab)} label="Balance al corte" className="rounded-2xl bg-muted/55 p-3" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="rounded-2xl border border-border/70 p-3">
-                  <p className="text-muted-foreground">Pago mínimo</p>
-                  <p className="mt-1 font-bold text-foreground">{formatCurrency(minimumPayment, currencyTab)}</p>
-                </div>
-                <div className="rounded-2xl border border-border/70 p-3">
-                  <p className="text-muted-foreground">Crédito disponible</p>
-                  <p className="mt-1 font-bold text-foreground">{formatCurrency(availableCredit, currencyTab)}</p>
-                </div>
-              </div>
-            </MobileCard>
-
             {activeCurrencies.length > 1 && (
               <section className="rounded-2xl border border-border bg-card p-4">
                 <p className="mb-3 text-sm font-semibold">¿Qué balance quieres pagar?</p>
                 <div className="grid grid-cols-2 gap-2">
                   {activeCurrencies.map((currency) => (
                     <button type="button" key={currency} onClick={() => { setCurrencyTab(currency); setSourceAccount(""); setCustomAmount("") }} className={cn("h-10 rounded-xl text-sm font-bold transition", currencyTab === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                      {currency === "DOP" ? "RD$" : "US$"}
+                      {getCurrencySymbol(currency)}
                     </button>
                   ))}
                 </div>
@@ -344,7 +310,7 @@ export default function PayPage() {
             {conversionApplies && source && (
               <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
                 <p className="text-sm font-bold">Tasa de cambio</p>
-                <p className="mt-1 text-xs text-muted-foreground">RD$ por US$1. Puedes ajustar esta tasa si tu banco usa otra.</p>
+                <p className="mt-1 text-xs text-muted-foreground">{getCurrencySymbol("DOP")} por {getCurrencySymbol("USD")}1. Puedes ajustar esta tasa si tu banco usa otra.</p>
                 <input value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="59.50" className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold outline-none" />
                 <div className="mt-3 rounded-xl bg-background/70 p-3 text-sm">
                   <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total a descontar</span><span className="font-bold">{formatCurrency(sourceDebitAmount, source.currency)}</span></div>
@@ -384,13 +350,13 @@ export default function PayPage() {
           taxAmount={dgiiAmount}
           totalDebit={totalDebit}
           currencySymbol={currencySymbol}
-          sourceCurrencySymbol={source.currency === "USD" ? "US$" : "RD$"}
+          sourceCurrencySymbol={getCurrencySymbol(source.currency)}
           sourceAccountName={source.name}
           sourceAvailable={formatCurrency(Number(source.balance || 0), source.currency)}
           cardName={card.name}
           warning={warning}
           loading={isPaying}
-          conversionSummary={conversionApplies ? `Al pagar ${currencySymbol}${selectedAmount.toFixed(2)} se debitaran ${source.currency === "USD" ? "US$" : "RD$"}${sourceDebitAmount.toFixed(2)}` : undefined}
+          conversionSummary={conversionApplies ? `Al pagar ${currencySymbol}${selectedAmount.toFixed(2)} se debitaran ${getCurrencySymbol(source.currency)}${sourceDebitAmount.toFixed(2)}` : undefined}
           onClose={() => setShowConfirmSheet(false)}
           onConfirm={async () => {
             await handlePay()
@@ -442,7 +408,7 @@ export default function PayPage() {
             lines: [
               { label: "Pagado", value: receipt?.conversion ? formatCurrency(receipt.conversion.targetAmount, receipt.conversion.targetCurrency) : undefined },
               { label: "Descontado", value: receipt?.conversion ? formatCurrency(receipt.conversion.sourceAmount, receipt.conversion.sourceCurrency) : undefined },
-              { label: "Tasa usada", value: receipt?.conversion ? `RD$${receipt.conversion.exchangeRate.toFixed(2)} x US$1` : undefined },
+              { label: "Tasa usada", value: receipt?.conversion ? `${getCurrencySymbol("DOP")}${receipt.conversion.exchangeRate.toFixed(2)} x ${getCurrencySymbol("USD")}1` : undefined },
               { label: "Fuente", value: receipt?.conversion ? "Manual" : undefined },
             ],
           },

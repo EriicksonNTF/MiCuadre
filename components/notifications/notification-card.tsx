@@ -1,9 +1,9 @@
 ﻿"use client"
 
-import Link from "next/link"
-import { CalendarDays, ChevronRight, CreditCard, MoreHorizontal, PiggyBank, Repeat, Settings, TrendingDown } from "lucide-react"
+import { memo } from "react"
+import { CreditCard, PiggyBank, Repeat, Settings, TrendingDown } from "lucide-react"
 import type { Notification } from "@/lib/types/database"
-import { formatNotificationDateTime, formatNotificationTime } from "@/lib/notifications/format-notification-date"
+import { formatNotificationTime } from "@/lib/notifications/format-notification-date"
 import { getNotificationVisualType } from "@/lib/notifications/notification-type-map"
 
 type NotificationCardProps = {
@@ -63,72 +63,52 @@ function getStyle(notification: Notification) {
   }
 }
 
-export function NotificationCard({ notification, onRead }: NotificationCardProps) {
+export const NotificationCard = memo(function NotificationCard({ notification, onRead }: NotificationCardProps) {
   const style = getStyle(notification)
   const Icon = style.icon
   const isUnread = !notification.read
   const message = cleanMoneyText(notification.message || "")
-  const hasDetail = Boolean(notification.action_url)
 
   return (
     <article
-      className="relative rounded-[28px] border border-border bg-card p-5 shadow-sm"
+      className="relative rounded-2xl border border-border bg-card p-3 shadow-sm"
       role="button"
-      tabIndex={isUnread ? 0 : undefined}
+      tabIndex={0}
       onClick={() => {
         if (isUnread) onRead(notification.id)
       }}
       onKeyDown={(e) => {
-        if ((e.key === 'Enter' || e.key === ' ') && isUnread) {
+        if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
-          onRead(notification.id)
+          if (isUnread) onRead(notification.id)
         }
       }}
     >
-      <div className="grid grid-cols-[56px_1fr] gap-4">
-        <div className="relative">
-          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${style.iconClass}`}>
-            <Icon className="h-6 w-6" />
+      <div className="flex gap-3">
+        <div className="relative shrink-0">
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${style.iconClass}`}>
+            <Icon className="h-5 w-5" />
           </div>
-
-          {isUnread ? <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-primary ring-4 ring-card" /> : null}
+          {isUnread ? <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-card" /> : null}
         </div>
 
-        <div className="min-w-0">
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <span className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${style.badgeClass}`}>
-              {style.label}
-            </span>
-
-            <div className="flex shrink-0 items-center gap-3">
-              <time className="text-sm font-medium text-muted-foreground">{formatNotificationTime(notification.created_at)}</time>
-              <button type="button" className="rounded-full p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground" aria-label="Opciones">
-                <MoreHorizontal className="h-5 w-5" />
-              </button>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${style.badgeClass}`}>
+                {style.label}
+              </span>
+              <time className="shrink-0 text-xs text-muted-foreground">{formatNotificationTime(notification.created_at)}</time>
             </div>
           </div>
 
-          <h3 className="text-[19px] font-bold leading-tight text-foreground">{notification.title}</h3>
+          <h3 className="mt-1 text-sm font-semibold leading-tight text-foreground">{notification.title}</h3>
 
-          <div className="mt-2 space-y-1">
-            <p className="text-[15px] leading-relaxed text-muted-foreground">{message}</p>
-          </div>
-
-          <div className="mt-5 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-              <CalendarDays className="h-4 w-4 shrink-0" />
-              <span className="truncate">{formatNotificationDateTime(notification.created_at)}</span>
-            </div>
-
-            {hasDetail ? (
-              <Link href={notification.action_url!} className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-foreground transition hover:bg-muted">
-                Ver detalle
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            ) : null}
-          </div>
+          {message ? (
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground line-clamp-2">{message}</p>
+          ) : null}
         </div>
       </div>
     </article>
   )
-}
+})

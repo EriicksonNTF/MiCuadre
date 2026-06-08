@@ -14,7 +14,7 @@ interface PaymentSliderProps {
 
 export function PaymentSlider({ 
   amount, 
-  currency = "RD$", 
+  currency = "DOP", 
   recipientName, 
   onConfirm, 
   disabled, 

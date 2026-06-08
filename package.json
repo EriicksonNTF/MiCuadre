@@ -23,6 +23,7 @@
     "build:safe": "pnpm next build",
     "start": "pnpm next start",
     "lint": "pnpm eslint .",
+    "typecheck": "tsc --noEmit",
     "doctor": "npx react-doctor@latest"
   },
   "dependencies": {

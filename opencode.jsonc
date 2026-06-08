@@ -14,16 +14,9 @@
       }
     },
     "supabase": {
-      "type": "local",
-      "enabled": true,
-      "command": [
-        "npx",
-        "-y",
-        "@supabase/mcp-server-supabase@latest"
-      ],
-      "env": {
-        "SUPABASE_ACCESS_TOKEN": "{env:SUPABASE_ACCESS_TOKEN}"
-      }
+      "type": "remote",
+      "url": "https://mcp.supabase.com/mcp?project_ref=zmbxriaftswtxjihatfr&read_only=true",
+      "enabled": true
     },
     "stripe": {
       "type": "local",

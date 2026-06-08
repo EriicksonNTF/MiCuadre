@@ -13,7 +13,7 @@ import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { createAccount, createTransfer, deleteAccount, getAccountDeletionImpact, reorderAccounts, useAccounts } from "@/hooks/use-data"
-import { formatCurrency } from "@/lib/data"
+import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
 import type { Account } from "@/lib/types/database"
@@ -451,22 +451,7 @@ if (!draggedId) return
             />
           </div>
         )}
-        {displayAccounts.length > 0 && (
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm backdrop-blur">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Disponible</p>
-              <p className="mt-1 truncate text-sm font-black tabular-nums text-foreground">{formatCurrency(accountSummary.dopBalance)}</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm backdrop-blur">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Cuentas</p>
-              <p className="mt-1 text-sm font-black text-foreground">{accountSummary.liquidAccounts}</p>
-            </div>
-            <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-sm backdrop-blur">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Tarjetas</p>
-              <p className="mt-1 text-sm font-black text-foreground">{accountSummary.cards}</p>
-            </div>
-          </div>
-        )}
+        
       </header>
 
       {isLoading ? (
@@ -488,7 +473,7 @@ if (!draggedId) return
             </div>
           </div>
 
-          <div className="mx-auto max-w-md space-y-4 px-5 pt-1">
+          <div className="mx-auto max-w-md space-y-3 px-5 pt-1">
         {displayAccounts.map((account) => {
           const isOpen = openSwipeId === account.id
           const isDragging = draggingId === account.id
@@ -610,7 +595,7 @@ if (!draggedId) return
                   }}
                   className="group block transition-transform duration-200 ease-[var(--ease-out-ios)] active:scale-[0.98]"
                 >
-                  <BrandedAccountCard account={account} />
+                  <BrandedAccountCard account={account} compact />
                 </Link>
               </div>
             </div>
@@ -673,7 +658,7 @@ if (!draggedId) return
             <div className="grid grid-cols-2 gap-2">
               {(["DOP", "USD"] as const).map((currency) => (
                 <button type="button" key={currency} onClick={() => { setAccountCurrency(currency); setCreditUsed("") }} className={cn("rounded-xl px-3 py-2 text-xs font-semibold", accountCurrency === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  {currency === "DOP" ? "RD$" : "US$"}
+                  {getCurrencySymbol(currency)}
                 </button>
               ))}
             </div>

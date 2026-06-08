@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
 import { updateProfile, useProfile } from "@/hooks/use-data"
+import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { cn } from "@/lib/utils"
 
 type OnboardingStep = {
@@ -217,7 +218,7 @@ function WelcomeVisual() {
     <div className="space-y-3">
       <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
         <p className="text-xs opacity-75">Balance total</p>
-        <p className="mt-1 text-3xl font-black">RD$ 42,850</p>
+        <p className="mt-1 text-3xl font-black">{formatCurrency(42850)}</p>
         <p className="mt-2 text-xs opacity-80">Cuentas, tarjetas y pagos en una vista.</p>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -232,9 +233,9 @@ function TransactionsVisual() {
   return (
     <div className="space-y-3">
       {[
-        { title: "Ingreso nómina", amount: "+RD$ 58,000", tone: "text-emerald-600" },
-        { title: "Supermercado", amount: "-RD$ 3,240", tone: "text-foreground" },
-        { title: "Pago tarjeta", amount: "-RD$ 12,000", tone: "text-foreground" },
+        { title: "Ingreso nómina", amount: `+${formatCurrency(58000)}`, tone: "text-emerald-600" },
+        { title: "Supermercado", amount: `-${formatCurrency(3240)}`, tone: "text-foreground" },
+        { title: "Pago tarjeta", amount: `-${formatCurrency(12000)}`, tone: "text-foreground" },
       ].map((item) => (
         <div key={item.title} className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3">
           <div className="flex items-center gap-3">
@@ -267,7 +268,7 @@ function PlanningVisual() {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <MiniMetric label="Próximos pagos" value="3" icon={CalendarDays} />
-        <MiniMetric label="Deudas" value="RD$ 92k" icon={PiggyBank} />
+        <MiniMetric label="Deudas" value={`${formatCurrency(92000)}`} icon={PiggyBank} />
       </div>
     </div>
   )

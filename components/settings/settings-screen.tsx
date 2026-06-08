@@ -30,7 +30,7 @@ import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
 import { isPasskeyEnabled, verifyPasskeyUnlock } from "@/lib/passkey"
-import { setPreferredCurrency } from "@/lib/data"
+import { getCurrencySymbol, setPreferredCurrency } from "@/lib/data"
 import type { Theme, Currency } from "@/lib/types/database"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
@@ -363,7 +363,7 @@ export function SettingsScreen() {
               icon={DollarSign}
               title="Moneda principal"
               description={
-                primaryCurrency === "DOP" ? "Peso Dominicano (RD$)" : "Dólar (US$)"
+                primaryCurrency === "DOP" ? `Peso Dominicano (${getCurrencySymbol("DOP")})` : `Dólar (${getCurrencySymbol("USD")})`
               }
               onClick={() => setShowCurrencyPicker(true)}
             />
@@ -549,7 +549,7 @@ export function SettingsScreen() {
                 }
               >
                 <span className="font-medium">{option.label}</span>
-                <span className="text-sm opacity-70">{option.symbol}</span>
+                <span className="text-sm opacity-70">{getCurrencySymbol(option.value)}</span>
               </button>
             ))}
           </div>
