@@ -12,7 +12,8 @@ import { getFinancialCalendarEvents, type FinancialCalendarEvent, type CalendarE
 import { DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN, blockedEntitlement } from "@/lib/entitlements/entitlements"
 import { normalizePlanTier } from "@/lib/billing/plans"
 import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
-import { applyAccountImpact } from "./use-data"
+import { applyAccountImpact, syncAccountBalance } from "./use-data"
+import { LedgerService } from "@/lib/ledger/ledger-service"
 
 const supabase = createClient()
 
@@ -574,6 +575,15 @@ export async function payDebt(input: {
       .eq("id", debtPaymentId)
 
     if (linkError) throw linkError
+
+    try {
+      const ledger = LedgerService.create()
+      await ledger.recordExpense(userId, input.source_account_id, amount, sourceCurrency, `Pago de deuda: ${(debt as any).name}`)
+    } catch (e) {
+      console.error("Ledger write failed (non-blocking):", e)
+    }
+
+    await syncAccountBalance(input.source_account_id, sourceCurrency)
 
     await Promise.all([
       mutate("accounts"),

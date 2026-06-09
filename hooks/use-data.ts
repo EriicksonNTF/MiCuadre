@@ -22,6 +22,7 @@ import { blockedEntitlement, DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/en
 import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 import { normalizePlanTier } from "@/lib/billing/plans"
 import type { PlanTier } from "@/types/billing"
+import { LedgerService } from "@/lib/ledger/ledger-service"
 
 type CreditAccountState = {
   id: string
@@ -721,6 +722,30 @@ export async function applyAccountImpact(params: {
     throw new Error("Fondos insuficientes en la cuenta")
   }
   await supabase.from("accounts").update({ balance: nextBalance }).eq("id", accountId)
+}
+
+export async function syncAccountBalance(accountId: string, currency?: string) {
+  const { data: account } = await supabase
+    .from("accounts")
+    .select("id, type, currency")
+    .eq("id", accountId)
+    .single()
+  if (!account) return
+
+  const { data: ledgerBalance } = await supabase.rpc("ledger_calc_balance", { p_account_id: accountId })
+  if (ledgerBalance === null || ledgerBalance === undefined) return
+
+  const balance = Number(ledgerBalance)
+  if (account.type === "credit") {
+    const cur = (currency || account.currency || "DOP") as "DOP" | "USD"
+    const debtField = cur === "USD" ? "current_debt_usd" : "current_debt_dop"
+    await supabase.from("accounts").update({
+      [debtField]: Math.max(0, balance),
+      current_debt: Math.max(0, balance),
+    }).eq("id", accountId)
+  } else {
+    await supabase.from("accounts").update({ balance: Math.max(0, balance) }).eq("id", accountId)
+  }
 }
 
 // Generic fetcher for Supabase
@@ -1477,6 +1502,22 @@ export async function createTransaction(
       throw impactError
     }
 
+    try {
+      const ledger = LedgerService.create()
+      if (transactionToInsert.type === "expense") {
+        await ledger.recordExpense(user.id, transactionToInsert.account_id, transactionToInsert.amount, transactionToInsert.currency as any, transactionToInsert.description || undefined, data.id, "transactions")
+      } else if (transactionToInsert.type === "income") {
+        await ledger.recordIncome(user.id, transactionToInsert.account_id, transactionToInsert.amount, transactionToInsert.currency as any, transactionToInsert.description || undefined, data.id, "transactions")
+      }
+      if (commissionTxId && commissionAmount > 0) {
+        await ledger.recordCommission(user.id, transactionToInsert.account_id, commissionAmount, transactionToInsert.currency as any, "Comisión por transacción")
+      }
+    } catch (e) {
+      console.error("Ledger write failed (non-blocking):", e)
+    }
+
+    await syncAccountBalance(transactionToInsert.account_id, transactionToInsert.currency)
+
     mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
     mutate("accounts")
 
@@ -1602,6 +1643,13 @@ export async function updateTransaction(
     currency: existing.currency,
   })
 
+  try {
+    const ledger = LedgerService.create()
+    await ledger.reverseTransactionEntries(existing.id, "transactions", user.id)
+  } catch (e) {
+    console.error("Ledger reverse failed (non-blocking):", e)
+  }
+
   // BUG 5: find child commission, revert its impact before parent update.
   const { data: commissionChild } = await supabase
     .from("transactions")
@@ -1663,6 +1711,17 @@ export async function updateTransaction(
     currency: updates.currency,
   })
 
+  try {
+    const ledger = LedgerService.create()
+    if (updates.type === "expense") {
+      await ledger.recordExpense(user.id, updates.account_id, Number(updates.amount), updates.currency, updates.description || undefined)
+    } else {
+      await ledger.recordIncome(user.id, updates.account_id, Number(updates.amount), updates.currency, updates.description || undefined)
+    }
+  } catch (e) {
+    console.error("Ledger write failed (non-blocking):", e)
+  }
+
   // BUG 5: recalculate and re-apply commission for the new amount.
   if (hadCommission) {
     const newCommissionAmount = getCommissionAmount(Number(updates.amount))
@@ -1681,6 +1740,11 @@ export async function updateTransaction(
     } else {
       await supabase.from("transactions").delete().eq("id", commissionChild!.id)
     }
+  }
+
+  await syncAccountBalance(updates.account_id, updates.currency)
+  if (existing.account_id !== updates.account_id) {
+    await syncAccountBalance(existing.account_id, existing.currency)
   }
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
@@ -1760,6 +1824,15 @@ export async function deleteTransaction(id: string) {
     direction: -1,
     currency: existing.currency,
   })
+
+  try {
+    const ledger = LedgerService.create()
+    await ledger.reverseTransactionEntries(existing.id, "transactions", user.id)
+  } catch (e) {
+    console.error("Ledger reverse failed (non-blocking):", e)
+  }
+
+  await syncAccountBalance(existing.account_id, existing.currency)
 
   const { error } = await supabase
     .from("transactions")
@@ -2227,6 +2300,15 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
     throw impactError
   }
 
+  try {
+    const ledger = LedgerService.create()
+    await ledger.recordGoalContribution(user.id, contribution.account_id, Number(contribution.amount), accountCurrency, contribution.goal_id)
+  } catch (e) {
+    console.error("Ledger write failed (non-blocking):", e)
+  }
+
+  await syncAccountBalance(contribution.account_id, accountCurrency)
+
   mutate("goals")
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
@@ -2276,6 +2358,19 @@ export async function createTransfer(transfer: {
   if (rpcError) {
     console.error("Transfer RPC error:", rpcError)
     throw rpcError
+  }
+
+  try {
+    const ledger = LedgerService.create()
+    const toId = transfer.to_account_id || transfer.to_beneficiary_id || ""
+    await ledger.recordTransfer(user.id, transfer.from_account_id, toId, transfer.amount, sourceCurrency, transfer.description || undefined, result?.id)
+  } catch (e) {
+    console.error("Ledger write failed (non-blocking):", e)
+  }
+
+  await syncAccountBalance(transfer.from_account_id, sourceCurrency)
+  if (transfer.to_account_id) {
+    await syncAccountBalance(transfer.to_account_id, sourceCurrency)
   }
 
   mutate("accounts")
@@ -2741,6 +2836,19 @@ export async function payCreditCard(payment: {
     mutate("planning_debts")
     mutate("planning_debt_payments_month")
     mutate("planning_budgets_with_usage")
+
+    try {
+      const ledger = LedgerService.create()
+      await ledger.recordCreditPayment(user.id, payment.source_account_id, payment.credit_account_id, sourceDebitAmount, payment.currency, paymentRecordId || undefined)
+      if (commissionAmount > 0) {
+        await ledger.recordCommission(user.id, payment.source_account_id, commissionAmount, sourceCurrency, "Comisión DGII por pago de tarjeta")
+      }
+    } catch (e) {
+      console.error("Ledger write failed (non-blocking):", e)
+    }
+
+    await syncAccountBalance(payment.source_account_id, sourceCurrency)
+    await syncAccountBalance(payment.credit_account_id, payment.currency)
 
     return {
       payment: paymentRecord,
@@ -3231,6 +3339,8 @@ export async function updateAccountBalance(id: string, newBalance: number) {
     .eq("id", id)
 
   if (error) throw error
+
+  await syncAccountBalance(id)
 }
 
 // Category mutations
@@ -3376,6 +3486,20 @@ export async function setFavoriteAccount(accountId: string) {
 }
 
 export async function deleteAccount(id: string) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("No autenticado")
+
+  const { count: ledgerCount } = await supabase
+    .from("ledger_entries")
+    .select("id", { count: "exact", head: true })
+    .or(`debit_account_id.eq.${id},credit_account_id.eq.${id}`)
+
+  if (ledgerCount && ledgerCount > 0) {
+    throw new Error(
+      "No se puede eliminar una cuenta con movimientos financieros. Desactívala desde Ajustes de cuenta."
+    )
+  }
+
   const { error } = await supabase
     .from("accounts")
     .delete()
