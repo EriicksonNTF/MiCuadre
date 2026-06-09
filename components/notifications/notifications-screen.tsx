@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import Link from "next/link"
 import { ArrowLeft, Check } from "lucide-react"
 import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/hooks/use-data"
@@ -24,21 +24,21 @@ export function NotificationsScreen() {
   const filteredNotifications = useMemo(() => notifications.filter((item) => matchesNotificationFilter(item, filter)), [notifications, filter])
   const unreadCount = notifications.filter((n) => !n.read).length
 
-  const markAsRead = async (id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     try {
       await markNotificationAsRead(id)
     } catch {
       // noop
     }
-  }
+  }, [])
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       await markAllNotificationsAsRead()
     } catch {
       // noop
     }
-  }
+  }, [])
 
   return (
     <main className="min-h-screen bg-background pb-nav-safe text-foreground">

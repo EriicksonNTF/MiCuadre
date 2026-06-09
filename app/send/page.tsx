@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAccounts, useBeneficiaries, createTransfer, createBeneficiary } from "@/hooks/use-data"
-import { formatCurrency } from "@/lib/data"
+import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { PaymentSlider } from "@/components/payment-slider"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
@@ -147,8 +147,8 @@ export default function SendPage() {
     } catch (error) {
       console.error("Transfer error:", error)
       notify({
-        title: "No se pudo enviar",
-        message: "Ese monto supera tu balance disponible. Intenta con un monto menor.",
+        title: "No se pudo transferir",
+        message: error instanceof Error ? error.message : "Error inesperado al procesar la transferencia.",
       })
       setIsSending(false)
     }
@@ -181,7 +181,7 @@ export default function SendPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-lg font-semibold text-foreground">Enviar dinero</h1>
+        <h1 className="text-lg font-semibold text-foreground">Transferir dinero</h1>
       </header>
 
       {/* Progress Steps */}
@@ -326,9 +326,9 @@ export default function SendPage() {
             </div>
 
             <div className="flex flex-col items-center pt-4">
-              <p className="text-sm text-muted-foreground">Monto a enviar</p>
+              <p className="text-sm text-muted-foreground">Monto a transferir</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-medium text-muted-foreground">RD$</span>
+                <span className="text-3xl font-medium text-muted-foreground">{getCurrencySymbol("DOP")}</span>
                 <MoneyInput
                   value={amount}
                   onValueChange={(value) => {
@@ -373,7 +373,7 @@ export default function SendPage() {
                   }}
                   className="rounded-full bg-muted px-4 py-2 text-sm font-medium"
                 >
-                  RD${val.toLocaleString()}
+                  {getCurrencySymbol("DOP")}{val.toLocaleString()}
                 </button>
               ))}
             </div>
@@ -420,13 +420,13 @@ export default function SendPage() {
               <div className="my-4 flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Monto</span>
                 <span className="text-3xl font-bold text-foreground">
-                  RD${totalAmount.toLocaleString()}
+                  {getCurrencySymbol("DOP")}{totalAmount.toLocaleString()}
                 </span>
               </div>
               {applyCommission && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Comisión</span>
-                  <span className="font-medium">RD${commissionAmount.toLocaleString()}</span>
+                  <span className="font-medium">{getCurrencySymbol("DOP")}{commissionAmount.toLocaleString()}</span>
                 </div>
               )}
               <div className="flex items-center justify-between">
@@ -451,7 +451,7 @@ export default function SendPage() {
                 onConfirm={handleSend}
                 disabled={!isValid || isSending}
                 loading={isSending}
-                label="Desliza para enviar"
+                label="Desliza para transferir"
               />
               <button type="button"
                 onClick={() => setStep("amount")}
@@ -506,7 +506,7 @@ export default function SendPage() {
       )}
       <MovementReceipt
         open={Boolean(receipt)}
-        title="Envío registrado"
+        title="Transferencia registrada"
         amount={receipt ? formatCurrency(receipt.amount, receipt.currency) : ""}
         onClose={closeReceiptToDashboard}
         primaryActionLabel="Ver movimientos"

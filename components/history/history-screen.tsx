@@ -352,28 +352,28 @@ export function HistoryScreen() {
         <p className="section-kicker">Actividad</p>
         <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">Historial</h1>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">Revisa el pulso de tu dinero y encuentra cualquier movimiento.</p>
-        <div className="relative mt-5 overflow-hidden rounded-[1.7rem] bg-foreground p-4 text-background shadow-[0_24px_60px_-30px_rgba(0,0,0,0.7)]">
-          <div className="absolute -right-10 -top-12 h-36 w-36 rounded-full bg-background/10" />
-          <div className="absolute -bottom-16 left-8 h-36 w-36 rounded-full border border-background/10" />
-          <div className="relative">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-background/60">Balance del filtro</p>
-            <p className={cn("mt-2 text-3xl font-black tabular-nums tracking-tight", totals.net >= 0 ? "text-emerald-200" : "text-red-200")}>
+        <div className="relative mt-5 overflow-hidden rounded-[1.8rem] border border-border/70 bg-card shadow-[var(--shadow-soft)]">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent" />
+          <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-accent/[0.04] blur-2xl" />
+          <div className="relative px-5 py-5">
+            <p className="section-kicker">Balance del filtro</p>
+            <p className={cn("mt-2 text-3xl font-black tabular-nums tracking-tight text-foreground", totals.net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
               {totals.net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(totals.net))}
             </p>
             <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl bg-background/10 p-3">
+              <div className="rounded-2xl bg-muted/60 p-3">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-200" />
-                  <span className="text-[11px] font-semibold text-background/70">Ingresos</span>
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[11px] font-semibold text-muted-foreground">Ingresos</span>
                 </div>
-                <p className="mt-1 text-sm font-black tabular-nums text-emerald-200">+{formatCurrency(totals.income)}</p>
+                <p className="mt-1 text-sm font-black tabular-nums text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
               </div>
-              <div className="rounded-2xl bg-background/10 p-3">
+              <div className="rounded-2xl bg-muted/60 p-3">
                 <div className="flex items-center gap-2">
-                  <TrendingDown className="h-3.5 w-3.5 text-red-200" />
-                  <span className="text-[11px] font-semibold text-background/70">Gastos</span>
+                  <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                  <span className="text-[11px] font-semibold text-muted-foreground">Gastos</span>
                 </div>
-                <p className="mt-1 text-sm font-black tabular-nums text-red-200">-{formatCurrency(totals.expenses)}</p>
+                <p className="mt-1 text-sm font-black tabular-nums text-red-600 dark:text-red-400">-{formatCurrency(totals.expenses)}</p>
               </div>
             </div>
           </div>
@@ -615,7 +615,7 @@ export function HistoryScreen() {
                               </div>
 
                               <div className="shrink-0 text-right">
-                                <p className={cn("text-sm font-semibold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700" : "text-foreground")}>
+                                <p className={cn("text-sm font-semibold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
                                   {tx.type === "income" ? "+" : "-"}
                                   {formatCurrency(tx.amount, tx.currency)}
                                 </p>
@@ -624,7 +624,7 @@ export function HistoryScreen() {
                             </div>
 
                             {tx.isCommission && (
-                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">Comisión 0.15%</span>
+                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Comisión 0.15%</span>
                             )}
                           </div>
                         </div>

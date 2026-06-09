@@ -173,7 +173,7 @@ export function TransactionsList() {
                         isIncome
                           ? "text-emerald-600 dark:text-emerald-400"
                           : accountType === "credit"
-                            ? "text-orange-600"
+                            ? "text-orange-600 dark:text-orange-400"
                             : "text-foreground",
                       )}
                     >

@@ -441,7 +441,7 @@ export function runReceiptParserSelfCheck() {
   const cases = [
     {
       name: "Caso 1",
-      text: "SUPERMERCADO NACIONAL\nFECHA: 03/05/2026\nSUBTOTAL 1,000.00\nITBIS 180.00\nTOTAL A PAGAR RD$ 1,180.00",
+      text: "SUPERMERCADO NACIONAL\nFECHA: 03/05/2026\nSUBTOTAL 1,000.00\nITBIS 180.00\nTOTAL A PAGAR RD$1,180.00",
       expectedAmount: 1180,
       expectedDate: "2026-05-03",
     },
@@ -453,7 +453,7 @@ export function runReceiptParserSelfCheck() {
     },
     {
       name: "Caso 3",
-      text: "RESTAURANTE\nTOTAL\nRD$ 2,350.00\nFECHA 3/5/26",
+      text: "RESTAURANTE\nTOTAL\nRD$2,350.00\nFECHA 3/5/26",
       expectedAmount: 2350,
       expectedDate: "2026-05-03",
     },

@@ -27,7 +27,7 @@ export function PlanningSummaryCards({
 }) {
   const cappedUsage = Math.min(100, Math.max(0, Math.round(usagePercentage)))
   const budgetStatus = usagePercentage >= 90 ? "Al límite" : usagePercentage >= 70 ? "Vigila" : "Controlado"
-  const budgetTone = usagePercentage >= 90 ? "text-red-600" : usagePercentage >= 70 ? "text-amber-600" : "text-emerald-600"
+  const budgetTone = usagePercentage >= 90 ? "text-red-600 dark:text-red-400" : usagePercentage >= 70 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"
 
   return (
     <div className="grid grid-cols-1 gap-3">

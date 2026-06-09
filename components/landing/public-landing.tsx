@@ -63,8 +63,8 @@ function BudgetMockupCard() {
     <PhoneFrame label="Presupuestos">
       <div className="rounded-2xl bg-muted p-4">
         <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><BadgeDollarSign className="h-3.5 w-3.5" /> Presupuesto usado</p>
-        <p className="mt-1 text-2xl font-black text-foreground">RD$ 18,450</p>
-        <p className="text-xs text-muted-foreground">de RD$ 24,000 este mes</p>
+        <p className="mt-1 text-2xl font-black text-foreground">RD$18,450</p>
+        <p className="text-xs text-muted-foreground">de RD$24,000 este mes</p>
       </div>
       <div className="mt-4 space-y-3">
         {budgets.map((budget) => (
@@ -89,9 +89,9 @@ function BudgetMockupCard() {
 function CalendarMockupCard() {
   const marked = new Set([4, 8, 14, 21, 26])
   const payments = [
-    { name: "Visa Popular", date: "08 Jun", amount: "RD$ 18,650" },
-    { name: "Netflix", date: "14 Jun", amount: "RD$ 450" },
-    { name: "Préstamo personal", date: "21 Jun", amount: "RD$ 7,200" },
+    { name: "Visa Popular", date: "08 Jun", amount: "RD$18,650" },
+    { name: "Netflix", date: "14 Jun", amount: "RD$450" },
+    { name: "Préstamo personal", date: "21 Jun", amount: "RD$7,200" },
   ]
 
   return (
@@ -133,8 +133,8 @@ function DebtsMockupCard() {
     <PhoneFrame label="Deudas">
       <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
         <p className="text-xs opacity-75">Total pendiente</p>
-        <p className="mt-1 text-2xl font-black">RD$ 92,300</p>
-        <p className="mt-2 text-xs opacity-80">Pago próximo: RD$ 7,200</p>
+        <p className="mt-1 text-2xl font-black">RD$92,300</p>
+        <p className="mt-2 text-xs opacity-80">Pago próximo: RD$7,200</p>
       </div>
       <div className="mt-4 space-y-3">
         {debts.map((debt) => (
@@ -328,17 +328,17 @@ export function PublicLanding() {
               {/* Floating Cards */}
               <div className="absolute -left-6 top-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Balance actual</p>
-                <p className="text-lg font-bold text-white">RD$ 152,840</p>
+                <p className="text-lg font-bold text-white">RD$152,840</p>
               </div>
               
               <div className="absolute -right-4 top-1/3 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Disponible</p>
-                <p className="text-lg font-bold text-white">RD$ 75,100</p>
+                <p className="text-lg font-bold text-white">RD$75,100</p>
               </div>
 
               <div className="absolute left-8 -bottom-6 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Gasto del mes</p>
-                <p className="text-lg font-bold text-white">RD$ 31,120</p>
+                <p className="text-lg font-bold text-white">RD$31,120</p>
               </div>
             </div>
 
@@ -401,20 +401,20 @@ export function PublicLanding() {
               <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><PieChart className="w-24 h-24 text-emerald-500" /></div>
               <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Tu mayor gasto</p>
               <p className="mt-4 text-3xl font-extrabold text-slate-900">Comida</p>
-              <p className="mt-2 text-base font-medium text-rose-500">RD$ 8,250 este mes</p>
+              <p className="mt-2 text-base font-medium text-rose-500">RD$8,250 este mes</p>
             </article>
             
             <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
               <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><TrendingUp className="w-24 h-24 text-sky-500" /></div>
               <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Flujo neto</p>
               <p className="mt-4 text-3xl font-extrabold text-slate-900">Positivo</p>
-              <p className="mt-2 text-base font-medium text-emerald-500">+ RD$ 12,400 ahorrados</p>
+              <p className="mt-2 text-base font-medium text-emerald-500">+ RD$12,400 ahorrados</p>
             </article>
             
             <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
               <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><Repeat className="w-24 h-24 text-indigo-500" /></div>
               <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Suscripciones</p>
-              <p className="mt-4 text-3xl font-extrabold text-slate-900">RD$ 1,850/mes</p>
+              <p className="mt-4 text-3xl font-extrabold text-slate-900">RD$1,850/mes</p>
               <p className="mt-2 text-base font-medium text-slate-500">6 pagos automáticos</p>
             </article>
           </div>
@@ -485,20 +485,20 @@ export function PublicLanding() {
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Límite Total</p>
-                  <p className="text-sm font-semibold text-slate-300">RD$ 100,000</p>
+                  <p className="text-sm font-semibold text-slate-300">RD$100,000</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><AlertCircle className="w-3 h-3 text-rose-400" /> Al Corte</p>
-                  <p className="mt-1 text-2xl font-bold text-white tracking-tight">RD$ 18,650</p>
+                  <p className="mt-1 text-2xl font-bold text-white tracking-tight">RD$18,650</p>
                   <p className="text-xs text-rose-400 font-medium mt-1">Pagar antes del 08 Jun</p>
                 </div>
                 
                 <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Balance Actual</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-300 tracking-tight">RD$ 24,900</p>
+                  <p className="mt-1 text-2xl font-bold text-slate-300 tracking-tight">RD$24,900</p>
                   <p className="text-xs text-slate-500 mt-1">Incluye ciclo nuevo</p>
                 </div>
               </div>
@@ -507,7 +507,7 @@ export function PublicLanding() {
                 <div>
                   <div className="flex justify-between text-xs font-medium mb-1.5">
                     <span className="text-slate-400">Disponible para compras</span>
-                    <span className="text-emerald-400">RD$ 75,100</span>
+                    <span className="text-emerald-400">RD$75,100</span>
                   </div>
                   <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800 flex">
                     <div className="h-full bg-gradient-to-r from-rose-500 to-rose-400 w-[24.9%] rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)]" />

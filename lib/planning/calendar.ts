@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client"
-import { getLocalDateString } from "@/lib/data"
+import { formatCurrency, getLocalDateString } from "@/lib/data"
 
 export type CalendarEventType =
   | "credit_card_payment"
@@ -104,7 +104,7 @@ export async function getFinancialCalendarEvents(
         source_table: "accounts",
         status: statusForDueDate(acc.statement_due_date),
         action_label: "Pagar cuota",
-        detail: `Pendiente: ${financedDop > 0 ? "RD$" : "US$"}${(financedDop > 0 ? financedDop : financedUsd).toLocaleString("en-US")}`,
+        detail: `Pendiente: ${formatCurrency(financedDop > 0 ? financedDop : financedUsd, financedDop > 0 ? "DOP" : "USD")}`,
       })
     }
   }
@@ -148,7 +148,7 @@ export async function getFinancialCalendarEvents(
       source_table: "debts",
       status: statusForDueDate(dueDate),
       action_label: "Pagar cuota",
-      detail: `Pendiente: ${debt.currency === "USD" ? "US$" : "RD$"}${Number(debt.current_balance || 0).toLocaleString("en-US")}`,
+      detail: `Pendiente: ${formatCurrency(Number(debt.current_balance || 0), (debt.currency as "DOP" | "USD") || "DOP")}`,
     })
   }
 

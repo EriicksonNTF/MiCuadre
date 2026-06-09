@@ -18,7 +18,7 @@ type SwipeConfirmButtonProps = {
 }
 
 export function SwipeConfirmButton({
-  label = "Desliza para enviar",
+  label = "Desliza para transferir",
   completedLabel = "Confirmado",
   loadingLabel = "Procesando...",
   disabled,

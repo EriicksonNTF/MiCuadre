@@ -32,10 +32,14 @@ export function formatAmount(value: number): string {
 }
 
 // Utility functions
+export function getCurrencySymbol(currency?: Currency): "RD$" | "US$" {
+  const c = currency ?? preferredDisplayCurrency
+  return c === "DOP" ? "RD$" : "US$"
+}
+
 export function formatCurrency(amount: number, currency?: Currency) {
   const displayCurrency = currency ?? preferredDisplayCurrency
-  const symbol = displayCurrency === "DOP" ? "RD$" : "US$"
-  return `${symbol}${formatAmount(amount)}`
+  return `${getCurrencySymbol(displayCurrency)}${formatAmount(amount)}`
 }
 
 export function calculateNetBalance(accounts: Account[]): number {

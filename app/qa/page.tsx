@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { clearCompletedSteps } from "@/components/dashboard/activation-panel"
 import { generateSmartNotifications, type SmartNotification } from "@/lib/smart-notifications"
+import { formatCurrency } from "@/lib/data"
 import { showToast } from "@/components/toast/smart-toast"
 import { useGoals } from "@/hooks/use-data"
 
@@ -209,7 +210,7 @@ export default function QaPage() {
         {
           user_id: userId,
           title: "💰 Ahorraste mas esta semana",
-          message: "Reduciste gastos en delivery y ahorraste RD$2,300 frente a la semana pasada.",
+          message: `Reduciste gastos en delivery y ahorraste ${formatCurrency(2300)} frente a la semana pasada.`,
           type: "system",
           read: false,
           action_url: "/history",
@@ -218,7 +219,7 @@ export default function QaPage() {
         {
           user_id: userId,
           title: "⚠️ Tu tarjeta vence en 5 dias",
-          message: "Banreservas tiene RD$5,200 pendientes. Programa tu pago hoy.",
+          message: `Banreservas tiene ${formatCurrency(5200)} pendientes. Programa tu pago hoy.`,
           type: "credit",
           read: false,
           action_url: "/pay",
@@ -227,7 +228,7 @@ export default function QaPage() {
         {
           user_id: userId,
           title: "🎯 Meta iPhone 17 en 68%",
-          message: "Ya acumulas RD$34,000. Si mantienes el ritmo, la completas este mes.",
+          message: `Ya acumulas ${formatCurrency(34000)}. Si mantienes el ritmo, la completas este mes.`,
           type: "goal",
           read: false,
           action_url: "/goals",
@@ -349,7 +350,7 @@ export default function QaPage() {
               Probar: Daily Reminder
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
-              showToast({ title: "Comida lidera tus gastos", body: "Esta semana has gastado RD$8,500 en comida, el 42% de tus gastos.", type: "info", duration: 3000 })
+              showToast({ title: "Comida lidera tus gastos", body: `Esta semana has gastado ${formatCurrency(8500)} en comida, el 42% de tus gastos.`, type: "info", duration: 3000 })
             }}>
               Probar: Spending Insight
             </Button>
@@ -364,7 +365,7 @@ export default function QaPage() {
               Probar: Credit Cutoff
             </Button>
             <Button size="sm" variant="outline" onClick={() => {
-              showToast({ title: "Pago de tarjeta pendiente", body: "Banreservas: RD$5,200 pendiente. No olvides pagar.", type: "warning", duration: 3000 })
+              showToast({ title: "Pago de tarjeta pendiente", body: `Banreservas: ${formatCurrency(5200)} pendiente. No olvides pagar.`, type: "warning", duration: 3000 })
             }}>
               Probar: Credit Payment
             </Button>

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 const actions = [
   {
     href: "/send",
-    label: "Enviar",
+    label: "Transferir",
     description: "Transferir dinero",
     icon: Send,
     tone: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
@@ -58,11 +58,15 @@ export function QuickActions() {
               href={action.href}
               className="tap-lift rounded-[1.5rem] border border-border/70 bg-card p-4 shadow-sm"
             >
-              <div className={cn("flex h-11 w-11 items-center justify-center rounded-2xl", action.tone)}>
-                <Icon className="h-5 w-5" />
+              <div className="flex items-center gap-3">
+                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", action.tone)}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-black leading-tight text-foreground">{action.label}</p>
+                  <p className="mt-0.5 text-xs leading-snug text-muted-foreground">{action.description}</p>
+                </div>
               </div>
-              <p className="mt-4 text-sm font-black leading-tight text-foreground">{action.label}</p>
-              <p className="mt-1 text-xs leading-snug text-muted-foreground">{action.description}</p>
             </Link>
           )
         })}

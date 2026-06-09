@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { useSwipe } from "@/hooks/use-swipe"
-import DashboardPage from "@/app/dashboard/page"
+import dynamic from "next/dynamic"
+
+const DashboardPage = dynamic(() => import("@/app/dashboard/page"), {
+  ssr: false,
+  loading: () => null,
+})
 import { AccountsScreen } from "@/components/accounts/accounts-screen"
 import { HistoryScreen } from "@/components/history/history-screen"
 import { PlanningShell } from "@/components/planning/planning-shell"
@@ -110,21 +115,26 @@ export function SwipeNavigation({
           willChange: "transform",
         }}
       >
-        {TAB_PAGES.map((tabPage, index) => (
-          <div
-            key={tabPage.route}
-            aria-hidden={index !== activeIndex}
-            style={{
-              minWidth: "100%",
-              height: "100%",
-              flexShrink: 0,
-              overflow: "hidden",
-              pointerEvents: index === activeIndex ? "auto" : "none",
-            }}
-          >
-            {tabPage.page}
-          </div>
-        ))}
+        {TAB_PAGES.map((tabPage, index) => {
+          const isActive = index === activeIndex
+          const isAdjacent = index === activeIndex - 1 || index === activeIndex + 1
+          const shouldMount = isActive || isAdjacent
+          return (
+            <div
+              key={tabPage.route}
+              aria-hidden={!isActive}
+              style={{
+                minWidth: "100%",
+                height: "100%",
+                flexShrink: 0,
+                overflow: "hidden",
+                pointerEvents: isActive ? "auto" : "none",
+              }}
+            >
+              {shouldMount ? tabPage.page : <div style={{ width: "100%", height: "100%" }} />}
+            </div>
+          )
+        })}
       </div>
     </div>
   )

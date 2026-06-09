@@ -82,14 +82,14 @@ export function PlanScreen() {
           </button>
 
           {checkoutState === "success" && !isProActive && (
-            <div className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800">
+            <div className="mt-3 rounded-xl border border-amber-400/40 bg-amber-50 px-3 py-2 text-left text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-700/40">
               Pago recibido. Estamos verificando tu plan. Si no cambia en unos segundos, toca "Verificar estado".
               <p className="mt-1 font-semibold">Última sincronización: {lastSyncedLabel}</p>
             </div>
           )}
 
           {checkoutState === "success" && isProActive && (
-            <div className="mt-3 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-3 text-left text-xs text-emerald-900">
+            <div className="mt-3 rounded-xl border border-emerald-400/40 bg-emerald-50 px-3 py-3 text-left text-xs text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-700/40">
               <p className="text-sm font-bold">Felicidades, ya eres Pro.</p>
               <p className="mt-1">Ya tienes acceso a:</p>
               <ul className="mt-1 list-disc pl-4">
@@ -101,7 +101,7 @@ export function PlanScreen() {
           )}
 
           {checkoutState === "cancelled" && (
-            <div className="mt-3 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-left text-xs text-slate-700">
+            <div className="mt-3 rounded-xl border border-border bg-muted/80 px-3 py-2 text-left text-xs text-muted-foreground">
               No se completó el pago. Puedes intentarlo de nuevo cuando quieras.
             </div>
           )}

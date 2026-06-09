@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
-import { formatCurrency } from "@/lib/data"
+import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { payCreditCard, useAccounts, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
 
@@ -131,14 +131,14 @@ export function QuickPayCardSheet({
           amount={amount}
           taxAmount={dgiiAmount}
           totalDebit={totalDebit}
-          currencySymbol={target.currency === "USD" ? "US$" : "RD$"}
-          sourceCurrencySymbol={sourceCurrency === "USD" ? "US$" : "RD$"}
+          currencySymbol={getCurrencySymbol(target.currency)}
+          sourceCurrencySymbol={getCurrencySymbol(sourceCurrency)}
           sourceAccountName={selectedSource.name}
           sourceAvailable={formatCurrency(Number(selectedSource.balance || 0), selectedSource.currency)}
           cardName={target.name}
           warning={warning}
           loading={loading}
-          conversionSummary={conversionApplies ? `Al pagar ${target.currency === "USD" ? "US$" : "RD$"}${amount.toFixed(2)} se debitaran ${sourceCurrency === "USD" ? "US$" : "RD$"}${sourceDebitAmount.toFixed(2)}` : undefined}
+          conversionSummary={conversionApplies ? `Al pagar ${getCurrencySymbol(target.currency)}${amount.toFixed(2)} se debitaran ${getCurrencySymbol(sourceCurrency)}${sourceDebitAmount.toFixed(2)}` : undefined}
           onClose={() => setShowConfirm(false)}
           onConfirm={async () => {
             if (!selectedSource || !validRate) return

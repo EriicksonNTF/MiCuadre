@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { useAccounts } from "@/hooks/use-data"
 import { payDebt } from "@/hooks/use-planning"
-import { formatCurrency } from "@/lib/data"
+import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { MovementReceipt } from "@/components/receipts/movement-receipt"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
@@ -167,7 +167,7 @@ export function PayDebtSheet({
           amount={amount || 0}
           taxAmount={0}
           totalDebit={amount || 0}
-          currencySymbol={debt.currency === "USD" ? "US$" : "RD$"}
+          currencySymbol={getCurrencySymbol(debt.currency)}
           sourceAccountName={selectedAccount.name}
           sourceAvailable={formatCurrency(Number(selectedAccount.balance || 0), selectedAccount.currency)}
           cardName={debt.name}

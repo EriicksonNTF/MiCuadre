@@ -36,7 +36,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { useAccounts, useCategories, createFinancialSubscription, createTransaction, createCategory, useTransactions } from "@/hooks/use-data"
 
-import { formatCurrency, getAvailableCredit, getAvailableCreditByCurrency } from "@/lib/data"
+import { formatCurrency, getAvailableCredit, getAvailableCreditByCurrency, getCurrencySymbol } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
 import { EventBus } from "@/lib/event-bus"
 import { FINANCIAL_SUBSCRIPTION_PROVIDERS, getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
@@ -411,7 +411,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         <div className="text-center">
           <div className="flex items-baseline justify-center gap-1">
             <span className="text-2xl font-medium text-muted-foreground">
-              {currency === "DOP" ? "RD$" : "US$"}
+              {getCurrencySymbol(currency)}
             </span>
             <MoneyInput
               value={amount}
@@ -544,9 +544,9 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           />
           
           {isCredit && transactionType === "expense" && (
-            <div className="mt-3 flex items-start gap-2 rounded-xl bg-orange-50 px-4 py-3">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />
-              <p className="text-xs text-orange-700">
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-orange-50 px-4 py-3 dark:bg-orange-950/30">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
+              <p className="text-xs text-orange-700 dark:text-orange-300">
                 Este gasto aumentará tu deuda de tarjeta
               </p>
             </div>
@@ -640,7 +640,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             >
               <span>¿Autocompletar como el último?</span>
               <span className="font-semibold text-primary">
-                {descriptionSuggestion.currency === "DOP" ? "RD$" : "US$"}{parseFloat(descriptionSuggestion.amount).toLocaleString()} en {descriptionSuggestion.categoryName}
+                {getCurrencySymbol(descriptionSuggestion.currency)}{parseFloat(descriptionSuggestion.amount).toLocaleString()} en {descriptionSuggestion.categoryName}
               </span>
             </button>
           )}
@@ -671,7 +671,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-border/60 bg-card px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:px-6">
+      <div className="sticky bottom-0 z-20 border-t border-border/60 bg-card px-5 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:px-6">
         <Button
           onClick={handleSave}
           disabled={!isValid || isSaving}

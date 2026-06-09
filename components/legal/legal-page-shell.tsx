@@ -11,32 +11,32 @@ export function LegalPageShell({
   children: React.ReactNode
 }) {
   return (
-    <main className="min-h-screen bg-[#F8FAFC] text-[#0F172A]">
+    <main className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-        <header className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <header className="mb-8 rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Link href="/" className="text-sm font-semibold text-[#0f766e] hover:underline">
+            <Link href="/" className="text-sm font-semibold text-accent hover:underline">
               MiCuadre
             </Link>
-            <nav className="flex items-center gap-4 text-sm text-slate-600">
-              <Link href="/legal/privacidad" className="hover:text-slate-900">Privacidad</Link>
-              <Link href="/legal/terminos" className="hover:text-slate-900">Terminos</Link>
-              <Link href="/legal/aviso-legal" className="hover:text-slate-900">Aviso Legal</Link>
+            <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+              <Link href="/legal/privacidad" className="hover:text-foreground">Privacidad</Link>
+              <Link href="/legal/terminos" className="hover:text-foreground">Terminos</Link>
+              <Link href="/legal/aviso-legal" className="hover:text-foreground">Aviso Legal</Link>
             </nav>
           </div>
           <h1 className="mt-4 text-3xl font-semibold tracking-tight">{title}</h1>
-          <p className="mt-2 text-sm text-slate-500">Ultima actualizacion: {updatedAt}</p>
+          <p className="mt-2 text-sm text-muted-foreground">Ultima actualizacion: {updatedAt}</p>
         </header>
 
-        <article className="prose prose-slate max-w-none rounded-2xl border border-slate-200 bg-white p-6 prose-h2:mt-8 prose-h2:text-xl prose-p:leading-7">
+        <article className="prose prose-slate max-w-none rounded-2xl border border-border bg-card p-6 prose-h2:mt-8 prose-h2:text-xl prose-p:leading-7">
           {children}
         </article>
 
-        <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-6 text-sm text-slate-500">
+        <footer className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6 text-sm text-muted-foreground">
           <p>© 2026 MiCuadre. Todos los derechos reservados.</p>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1.5 text-slate-600"
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-muted-foreground"
             aria-label="Instagram de MiCuadre (proximamente)"
           >
             <Instagram className="h-4 w-4" />

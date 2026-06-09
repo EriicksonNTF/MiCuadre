@@ -86,25 +86,25 @@ export function PlanningShell() {
           <PlanningProLockScreen />
         ) : (
           <>
-            <section className="relative overflow-hidden rounded-[1.8rem] bg-foreground p-4 text-background shadow-[0_24px_60px_-32px_rgba(0,0,0,0.72)]">
-              <div className="absolute -right-12 -top-14 h-40 w-40 rounded-full bg-background/10" />
-              <div className="absolute -bottom-20 left-8 h-44 w-44 rounded-full border border-background/10" />
-              <div className="relative">
-                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-background/55">Centro de mando</p>
-                <h2 className="mt-2 text-2xl font-black tracking-tight">Planifica antes de gastar</h2>
-                <p className="mt-1 text-sm leading-6 text-background/68">Mira límites, pagos próximos y deudas antes de mover dinero.</p>
+            <section className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-card shadow-[var(--shadow-soft)]">
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent" />
+              <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-accent/[0.04] blur-2xl" />
+              <div className="relative px-5 py-5">
+                <p className="section-kicker">Centro de mando</p>
+                <h2 className="mt-2 text-2xl font-black tracking-tight text-foreground">Planifica antes de gastar</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">Mira límites, pagos próximos y deudas antes de mover dinero.</p>
                 <div className="mt-4 grid grid-cols-3 gap-2">
-                  <div className="rounded-2xl bg-background/10 p-3">
-                    <PiggyBank className="h-4 w-4 text-emerald-200" />
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-background/60">Presupuesto</p>
+                  <div className="rounded-2xl bg-muted/60 p-3">
+                    <PiggyBank className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Presupuesto</p>
                   </div>
-                  <div className="rounded-2xl bg-background/10 p-3">
-                    <CalendarDays className="h-4 w-4 text-sky-200" />
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-background/60">Calendario</p>
+                  <div className="rounded-2xl bg-muted/60 p-3">
+                    <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Calendario</p>
                   </div>
-                  <div className="rounded-2xl bg-background/10 p-3">
-                    <CreditCard className="h-4 w-4 text-amber-200" />
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-background/60">Deudas</p>
+                  <div className="rounded-2xl bg-muted/60 p-3">
+                    <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Deudas</p>
                   </div>
                 </div>
               </div>
