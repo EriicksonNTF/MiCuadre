@@ -7,6 +7,8 @@ import { cookies } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { assertServerEnv } from "@/lib/env/server"
 import { getUserPlanServer } from "@/lib/entitlements/server"
+import { billingCheckoutSchema } from "@/lib/validations/billing"
+import { API_RATE_LIMIT } from "@/lib/rate-limit"
 import type { BillingInterval, PaidPlanTier } from "@/types/billing"
 
 function getStripeClient() {
@@ -59,21 +61,28 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
+    const rateCheck = API_RATE_LIMIT.billing(user.id)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
+        { status: 429, headers: { "Retry-After": String(rateCheck.retryAfterSeconds) } }
+      )
+    }
+
     const currentPlan = await getUserPlanServer(user.id)
     if (currentPlan === "pro") {
       return NextResponse.json({ error: "Tu cuenta ya tiene Pro activo." }, { status: 400 })
     }
 
-    const body = (await request.json().catch(() => ({}))) as { plan?: string; interval?: string }
-    if (body.plan !== "pro") {
-      return NextResponse.json({ error: "Plan inválido" }, { status: 400 })
-    }
-    if (body.interval !== "monthly" && body.interval !== "yearly") {
-      return NextResponse.json({ error: "Intervalo de facturación inválido" }, { status: 400 })
+    const body = await request.json().catch(() => ({}))
+    const parsed = billingCheckoutSchema.safeParse(body)
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || "Datos de entrada inválidos"
+      return NextResponse.json({ error: firstError }, { status: 400 })
     }
 
-    const plan = body.plan
-    const interval = body.interval
+    const plan = parsed.data.plan
+    const interval = parsed.data.interval
     const priceId = getPriceIdForCheckout(plan, interval)
     if (!isValidStripePriceId(priceId)) {
       return NextResponse.json({ error: "La configuración de pago no está completa." }, { status: 500 })

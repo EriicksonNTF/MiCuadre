@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { isReportableIncome } from "@/lib/transactions/reporting"
-import type { Account, Goal, Transaction, Subscription, CreditCardCycle } from "@/lib/types/database"
+import type { Account, Currency, Goal, Transaction, Subscription, CreditCardCycle } from "@/lib/types/database"
 
 function toDate(value: string) {
   return new Date(`${value}T12:00:00`)
@@ -88,26 +88,52 @@ export async function getRecurringExpenseSummary(supabase: SupabaseClient, userI
 export async function getCreditCardDebtSummary(supabase: SupabaseClient, userId: string) {
   const { data: accounts } = await supabase
     .from("accounts")
-    .select("name, balance, statement_balance, pending_amount, last_statement_cutoff_date, statement_due_date, currency")
+    .select(`
+      name, balance, currency,
+      current_debt, current_debt_dop, current_debt_usd,
+      statement_balance, statement_balance_dop, statement_balance_usd,
+      pending_amount, paid_amount,
+      paid_statement_amount_dop, paid_statement_amount_usd,
+      available_credit_dop, available_credit_usd,
+      credit_limit_dop, credit_limit_usd,
+      last_statement_cutoff_date, statement_due_date,
+      closing_day, minimum_payment_percentage, annual_interest_rate
+    `)
     .eq("user_id", userId)
     .eq("type", "credit")
     .eq("is_active", true)
 
-  const cards = (accounts || []) as Pick<Account, "name" | "balance" | "statement_balance" | "pending_amount" | "last_statement_cutoff_date" | "statement_due_date" | "currency">[]
+  const cards = (accounts || []) as any[]
 
-  const totalDebt = cards.reduce((sum, card) => sum + Math.abs(Number(card.balance || 0)), 0)
-  const statementDebt = cards.reduce((sum, card) => sum + Number(card.statement_balance || 0), 0)
+  const totalDebtDop = cards.reduce((sum, card) => sum + Number(card.current_debt_dop ?? card.current_debt ?? 0), 0)
+  const totalDebtUsd = cards.reduce((sum, card) => sum + Number(card.current_debt_usd ?? 0), 0)
 
   return {
-    totalDebt,
-    statementDebt,
+    totalDebt: totalDebtDop + totalDebtUsd,
+    totalDebtDop,
+    totalDebtUsd,
     cards: cards.map((c) => ({
       name: c.name,
-      balance: Number(c.balance || 0),
-      statementBalance: Number(c.statement_balance || 0),
-      pendingAmount: Number(c.pending_amount || 0),
-      dueDate: c.statement_due_date,
       currency: c.currency,
+      balance: Number(c.current_debt ?? c.balance ?? 0),
+      balanceDop: Number(c.current_debt_dop ?? 0),
+      balanceUsd: Number(c.current_debt_usd ?? 0),
+      statementBalance: Number(c.statement_balance ?? 0),
+      statementBalanceDop: Number(c.statement_balance_dop ?? 0),
+      statementBalanceUsd: Number(c.statement_balance_usd ?? 0),
+      pendingAmount: Number(c.pending_amount ?? 0),
+      paidAmount: Number(c.paid_amount ?? 0),
+      paidStatementAmountDop: Number(c.paid_statement_amount_dop ?? 0),
+      paidStatementAmountUsd: Number(c.paid_statement_amount_usd ?? 0),
+      availableCreditDop: Number(c.available_credit_dop ?? 0),
+      availableCreditUsd: Number(c.available_credit_usd ?? 0),
+      creditLimitDop: Number(c.credit_limit_dop ?? 0),
+      creditLimitUsd: Number(c.credit_limit_usd ?? 0),
+      dueDate: c.statement_due_date,
+      cutoffDate: c.last_statement_cutoff_date,
+      closingDay: c.closing_day,
+      minPaymentPct: Number(c.minimum_payment_percentage ?? 0.05),
+      annualRate: Number(c.annual_interest_rate ?? 0),
     })),
   }
 }
@@ -280,7 +306,7 @@ export type UpcomingPayment = {
   amount: number
   currency: "DOP" | "USD"
   dueDate: string
-  type: "subscription" | "debt"
+  type: "subscription" | "debt" | "credit"
 }
 
 function isoDate(value: Date): string {
@@ -303,7 +329,7 @@ function nextOccurrenceInDays(paymentDay: number, daysAhead: number): Date | nul
 export async function getUpcomingPaymentsSummary(
   supabase: SupabaseClient,
   userId: string,
-  daysAhead = 7
+  daysAhead = 30
 ): Promise<UpcomingPayment[]> {
   const today = new Date()
   const todayStr = isoDate(today)
@@ -311,7 +337,7 @@ export async function getUpcomingPaymentsSummary(
   future.setDate(future.getDate() + daysAhead)
   const futureStr = isoDate(future)
 
-  const [{ data: subsRaw }, { data: debtsRaw }] = await Promise.all([
+  const [{ data: subsRaw }, { data: debtsRaw }, { data: ccRaw }] = await Promise.all([
     supabase
       .from("subscriptions")
       .select("name, amount, currency, next_payment_date, status")
@@ -324,6 +350,12 @@ export async function getUpcomingPaymentsSummary(
       .from("debts")
       .select("name, fixed_payment_amount, currency, payment_day, is_active")
       .eq("user_id", userId)
+      .eq("is_active", true),
+    supabase
+      .from("accounts")
+      .select("name, statement_balance_dop, statement_balance_usd, pending_amount, statement_due_date, currency")
+      .eq("user_id", userId)
+      .eq("type", "credit")
       .eq("is_active", true),
   ])
 
@@ -353,5 +385,81 @@ export async function getUpcomingPaymentsSummary(
     })
   }
 
+  for (const cc of ccRaw || []) {
+    if (!cc.statement_due_date) continue
+    const dueDate = new Date(cc.statement_due_date)
+    if (dueDate < today || dueDate > future) continue
+    const amountDop = Number(cc.statement_balance_dop ?? cc.pending_amount ?? 0)
+    const amountUsd = Number(cc.statement_balance_usd ?? 0)
+
+    const balanceDue = cc.currency === "USD"
+      ? Math.max(amountUsd, amountDop)
+      : amountDop + amountUsd
+
+    if (balanceDue <= 0) continue
+
+    payments.push({
+      name: `Tarjeta ${cc.name}`,
+      amount: balanceDue,
+      currency: "DOP",
+      dueDate: cc.statement_due_date,
+      type: "credit",
+    })
+
+    if (amountUsd > 0 && cc.currency !== "USD") {
+      payments.push({
+        name: `Tarjeta ${cc.name} (USD)`,
+        amount: amountUsd,
+        currency: "USD",
+        dueDate: cc.statement_due_date,
+        type: "credit",
+      })
+    }
+  }
+
   return payments.sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+}
+
+export type TodayTransaction = {
+  id: string
+  type: "expense" | "income"
+  amount: number
+  currency: Currency
+  description: string | null
+  categoryName: string | null
+  accountName: string
+  kind: string | null
+}
+
+export async function getTodayTransactions(
+  supabase: SupabaseClient,
+  userId: string
+): Promise<TodayTransaction[]> {
+  const todayStr = isoDate(new Date())
+
+  const { data: txs } = await supabase
+    .from("transactions")
+    .select("id, type, amount, currency, description, date, metadata, category:categories(name), account:accounts(name)")
+    .eq("user_id", userId)
+    .eq("date", todayStr)
+    .order("created_at", { ascending: false })
+
+  return ((txs || []) as any[]).map((t) => {
+    const catName = Array.isArray(t.category)
+      ? t.category[0]?.name
+      : t.category?.name
+    const accName = Array.isArray(t.account)
+      ? t.account[0]?.name
+      : t.account?.name
+    return {
+      id: t.id,
+      type: t.type,
+      amount: Number(t.amount || 0),
+      currency: (t.currency || "DOP") as Currency,
+      description: t.description,
+      categoryName: catName || null,
+      accountName: accName || "—",
+      kind: t.metadata?.kind || null,
+    }
+  })
 }

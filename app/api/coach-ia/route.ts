@@ -1,5 +1,8 @@
-﻿import { NextResponse } from "next/server"
+﻿import "server-only"
+
+import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { API_RATE_LIMIT } from "@/lib/rate-limit"
 import { runMiaPhase1Agent } from "@/lib/mia/agent"
 import { isCoachIAEnabledForEmail } from "@/lib/feature-flags"
 import { coachRequestSchema } from "@/lib/mia/schemas"
@@ -114,15 +117,6 @@ async function createGoalFromDraft(
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as CoachRequest
-    const parsed = coachRequestSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Mensaje vacio" }, { status: 400 })
-    }
-    const message = parsed.data.message?.trim() || ""
-
-    const toolTrace: string[] = []
-
     const supabase = await createClient()
     const {
       data: { user },
@@ -131,6 +125,23 @@ export async function POST(request: Request) {
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
+
+    const rateCheck = API_RATE_LIMIT.coach(user.id)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
+        { status: 429, headers: { "Retry-After": String(rateCheck.retryAfterSeconds) } }
+      )
+    }
+
+    const body = (await request.json()) as CoachRequest
+    const parsed = coachRequestSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Mensaje vacio" }, { status: 400 })
+    }
+    const message = parsed.data.message?.trim()?.replace(/<[^>]*>/g, "") || ""
+
+    const toolTrace: string[] = []
 
     if (!isCoachIAEnabledForEmail(user.email)) {
       return NextResponse.json({ error: "Coach IA no habilitado" }, { status: 403 })

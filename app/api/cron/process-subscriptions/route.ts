@@ -1,22 +1,19 @@
 ﻿import "server-only"
+
 import { NextResponse } from "next/server"
-import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { assertServerEnv } from "@/lib/env/server"
 
 export async function GET(request: Request) {
+  const env = assertServerEnv()
   const CRON_SECRET = process.env.CRON_SECRET
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   const authHeader = request.headers.get("authorization")
   if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
   }
 
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-    return NextResponse.json({ ok: false, error: "Missing server env" }, { status: 500 })
-  }
-
-  const supabase = createSupabaseClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  const supabase = createAdminClient()
   const today = new Date().toISOString().slice(0, 10)
 
   const { data: subscriptions, error } = await supabase

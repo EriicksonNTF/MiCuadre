@@ -24,7 +24,8 @@
     "start": "pnpm next start",
     "lint": "pnpm eslint .",
     "typecheck": "tsc --noEmit",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "npx react-doctor@latest",
+    "check:connections": "node scripts/check-connections.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.3.4",

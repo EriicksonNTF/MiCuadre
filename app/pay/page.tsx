@@ -144,15 +144,13 @@ export default function PayPage() {
   const dgiiAmount = paymentCalculations?.dgiiTaxAmount || 0
   const totalDebit = paymentCalculations?.totalDebit || sourceDebitAmount
   const validRate = !conversionApplies || (Number.isFinite(parsedRate) && parsedRate > 0)
-  const valid = Boolean(card && source && selectedAmount > 0 && selectedAmount <= balanceToDate && validRate && totalDebit <= Number(source.balance || 0))
+  const valid = Boolean(card && source && selectedAmount > 0 && validRate && totalDebit <= Number(source.balance || 0))
   const currencySymbol = getCurrencySymbol(currencyTab)
   const warning = !selectedAmount
     ? "Selecciona un monto valido para continuar."
-    : selectedAmount > balanceToDate
-      ? "El monto no puede ser mayor que la deuda de la tarjeta."
-      : source && totalDebit > Number(source.balance || 0)
-        ? "Tu balance disponible es insuficiente."
-        : null
+    : source && totalDebit > Number(source.balance || 0)
+      ? "Tu balance disponible es insuficiente."
+      : null
 
   useEffect(() => {
     if (!conversionApplies) return

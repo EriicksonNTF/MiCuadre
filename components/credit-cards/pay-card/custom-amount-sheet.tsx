@@ -17,9 +17,8 @@ export function CustomAmountSheet({ currencySymbol, maxAmount, onClose, onConfir
     if (!rawAmount) return null
     if (Number.isNaN(amount)) return "Ingresa un monto valido."
     if (amount <= 0) return "El monto debe ser mayor que cero."
-    if (amount > maxAmount) return "El monto no puede ser mayor que la deuda de la tarjeta."
     return null
-  }, [amount, maxAmount, rawAmount])
+  }, [amount, rawAmount])
   const canSubmit = rawAmount.length > 0 && !error
 
   return (

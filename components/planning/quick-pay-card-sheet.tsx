@@ -72,9 +72,7 @@ export function QuickPayCardSheet({
     ? "Selecciona una cuenta de origen."
     : totalDebit > Number(selectedSource.balance || 0)
       ? "Tu balance disponible es insuficiente."
-      : amount > Number(target.currentDebt || 0)
-        ? "El monto no puede ser mayor que la deuda de la tarjeta."
-        : null
+      : null
 
   const validRate = !conversionApplies || (Number.isFinite(parsedRate) && parsedRate > 0)
 

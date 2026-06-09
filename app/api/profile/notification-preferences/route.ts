@@ -1,8 +1,8 @@
 import "server-only"
 
 import { NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
+import { notificationPreferencesSchema } from "@/lib/validations/notifications"
 
 const ALLOWED_KEYS = ["transactions", "budgets", "creditAlerts", "marketing"] as const
 type NotificationKey = (typeof ALLOWED_KEYS)[number]
@@ -16,41 +16,9 @@ const DEFAULTS: NotificationPreferences = {
   marketing: false,
 }
 
-async function getSupabase() {
-  const cookieStore = await cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-}
-
-function sanitizePreferences(input: unknown): Partial<NotificationPreferences> {
-  if (!input || typeof input !== "object") return {}
-  const result: Partial<NotificationPreferences> = {}
-  for (const key of ALLOWED_KEYS) {
-    const value = (input as Record<string, unknown>)[key]
-    if (typeof value === "boolean") {
-      result[key] = value
-    }
-  }
-  return result
-}
-
 export async function GET() {
   try {
-    const supabase = await getSupabase()
+    const supabase = await createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -84,7 +52,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await getSupabase()
+    const supabase = await createClient()
     const {
       data: { user },
     } = await supabase.auth.getUser()
@@ -92,8 +60,14 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
     }
 
-    const body = await request.json().catch(() => null)
-    const updates = sanitizePreferences(body)
+    const raw = await request.json().catch(() => null)
+    const parsed = notificationPreferencesSchema.safeParse(raw)
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || "Sin cambios válidos"
+      return NextResponse.json({ error: firstError }, { status: 400 })
+    }
+
+    const updates = parsed.data
     const keys = Object.keys(updates) as NotificationKey[]
 
     if (keys.length === 0) {

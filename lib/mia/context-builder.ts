@@ -7,6 +7,7 @@ import {
   getGoalProgressSummary,
   getCategoryBudgetsSummary,
   getUpcomingPaymentsSummary,
+  getTodayTransactions,
 } from "./financial-insights"
 
 export async function buildFinancialContext(supabase: SupabaseClient, userId: string) {
@@ -29,13 +30,14 @@ export async function buildFinancialContext(supabase: SupabaseClient, userId: st
   const accounts = accountsRaw || []
   const cashAccounts = accounts.filter((a) => a.type === "cash" || a.type === "debit")
 
-  const [health, recurring, ccSummary, goals, categoryBudgets, upcomingPayments] = await Promise.all([
+  const [health, recurring, ccSummary, goals, categoryBudgets, upcomingPayments, todayTxs] = await Promise.all([
     getFinancialHealthScore(supabase, userId),
     getRecurringExpenseSummary(supabase, userId),
     getCreditCardDebtSummary(supabase, userId),
     getGoalProgressSummary(supabase, userId),
     getCategoryBudgetsSummary(supabase, userId),
     getUpcomingPaymentsSummary(supabase, userId),
+    getTodayTransactions(supabase, userId),
   ])
 
   const { data: recentTxsRaw } = await supabase
@@ -85,8 +87,14 @@ CUENTAS DE EFECTIVO Y DEBITO ACTIVAS:
 ${cashAccounts.length > 0 ? cashAccounts.map((a) => `  - ${a.name}: ${formatCurrency(Number(a.balance), a.currency)}`).join("\n") : "  - Ninguna"}
 
 TARJETAS DE CREDITO ACTIVAS Y DEUDAS:
-- Deuda total en tarjetas de credito: ${formatCurrency(ccSummary.totalDebt, currency)}
-${ccSummary.cards.length > 0 ? ccSummary.cards.map((c) => `  - ${c.name}: Balance actual ${formatCurrency(c.balance, c.currency)} | Al corte ${formatCurrency(c.statementBalance, c.currency)} | Pago minimo ${formatCurrency(c.pendingAmount, c.currency)}`).join("\n") : "  - Ninguna"}
+- Deuda total en tarjetas de credito: ${formatCurrency(ccSummary.totalDebt, currency)} (DOP: ${formatCurrency(ccSummary.totalDebtDop, "DOP")} | USD: ${formatCurrency(ccSummary.totalDebtUsd, "USD")})
+${ccSummary.cards.length > 0 ? ccSummary.cards.map((c) => {
+  const dueInfo = c.dueDate ? ` | Vence: ${c.dueDate}` : c.closingDay ? ` | Corte dia ${c.closingDay}` : ""
+  const dopBal = c.balanceDop > 0 ? `DOP: ${formatCurrency(c.balanceDop, "DOP")}` : ""
+  const usdBal = c.balanceUsd > 0 ? `USD: ${formatCurrency(c.balanceUsd, "USD")}` : ""
+  const cross = dopBal && usdBal ? " / " : ""
+  return `  - ${c.name}: ${dopBal}${cross}${usdBal}${dueInfo}`
+}).join("\n") : "  - Ninguna"}
 
 METAS DE AHORRO ACTIVAS:
 ${goals.length > 0 ? goals.map((g) => `  - ${g.name}: ${g.progress}% completado (${formatCurrency(g.current, g.currency)} de ${formatCurrency(g.target, g.currency)})`).join("\n") : "  - Ninguna"}
@@ -102,8 +110,17 @@ ${debts.length > 0 ? debts.map((d) => `  - ${d.name}: Pendiente ${formatCurrency
 PRESUPUESTOS POR CATEGORIA (limite vs gastado en el mes):
 ${categoryBudgets.length > 0 ? categoryBudgets.map((b) => `  - ${b.name} (${b.categoryName}): Limite ${formatCurrency(b.limit, b.currency)} | Gastado ${formatCurrency(b.spent, b.currency)} | Restante ${formatCurrency(Math.max(0, b.limit - b.spent), b.currency)}`).join("\n") : "  - Ninguno"}
 
-PROXIMOS PAGOS (7 dias):
-${upcomingPayments.length > 0 ? upcomingPayments.map((p) => `  - ${p.name} (${p.type === "subscription" ? "suscripcion" : "deuda"}): ${formatCurrency(p.amount, p.currency)} el ${p.dueDate}`).join("\n") : "  - Ninguno"}
+PROXIMOS PAGOS (30 dias):
+${upcomingPayments.length > 0 ? upcomingPayments.map((p) => {
+  const typeLabel = p.type === "subscription" ? "suscripcion" : p.type === "credit" ? "tarjeta" : "deuda"
+  return `  - ${p.name} (${typeLabel}): ${formatCurrency(p.amount, p.currency)} el ${p.dueDate}`
+}).join("\n") : "  - Ninguno"}
+
+MOVIMIENTOS DE HOY:
+${todayTxs.length > 0 ? todayTxs.map((t) => {
+  const kindTag = t.kind && t.kind !== "regular" ? ` [${t.kind}]` : ""
+  return `  - ${t.type === "income" ? "+" : "-"}${formatCurrency(t.amount, t.currency)}${kindTag} | ${t.description || t.categoryName || "—"} (${t.accountName})`
+}).join("\n") : "  - Ninguno"}
 
 SENALES DE SALUD FINANCIERA:
 ${health.positiveSignals.length > 0 ? health.positiveSignals.map((s) => `  [POSITIVO] ${s}`).join("\n") : "  No se detectan senales positivas destacadas todavia."}

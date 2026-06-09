@@ -5,7 +5,7 @@ export const coachRequestSchema = z.object({
   screenContext: z.string().trim().max(120).optional(),
   confirmAction: z
     .object({
-      mutationType: z.enum(["create_transaction", "create_goal", "create_subscription", "add_money_to_goal"]),
+      mutationType: z.enum(["create_transaction", "create_goal", "create_subscription", "add_money_to_goal", "create_transfer", "pay_credit_card"]),
       payload: z.record(z.string(), z.unknown()).optional(),
     })
     .optional(),

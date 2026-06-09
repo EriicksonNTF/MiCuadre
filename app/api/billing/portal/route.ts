@@ -6,6 +6,7 @@ import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { assertServerEnv } from "@/lib/env/server"
+import { API_RATE_LIMIT } from "@/lib/rate-limit"
 
 function getStripeClient() {
   const env = assertServerEnv()
@@ -39,6 +40,14 @@ export async function POST(request: Request) {
     const user = await getAuthenticatedUser()
     if (!user) {
       return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+    }
+
+    const rateCheck = API_RATE_LIMIT.billing(user.id)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Demasiadas solicitudes. Intenta de nuevo en un momento." },
+        { status: 429, headers: { "Retry-After": String(rateCheck.retryAfterSeconds) } }
+      )
     }
 
     const admin = createAdminClient()

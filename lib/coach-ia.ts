@@ -186,7 +186,7 @@ export function buildCoachReply(message: string, context: CoachContext): CoachRe
           type: "category_list",
           title: "Proximos pagos",
           items: context.upcomingPayments.map((p) => ({
-            label: `${p.name} - ${p.dueDate} (${p.type === "subscription" ? "suscripcion" : "deuda"})`,
+            label: `${p.name} - ${p.dueDate} (${p.type === "subscription" ? "suscripcion" : p.type === "credit" ? "tarjeta" : "deuda"})`,
             value: formatCurrency(p.amount, p.currency),
           })),
         },

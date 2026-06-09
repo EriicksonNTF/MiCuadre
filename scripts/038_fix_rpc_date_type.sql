@@ -1,13 +1,17 @@
--- Phase: Atomic operations via Postgres RPC functions
--- Each function wraps multiple table operations in a single ACID transaction
--- respecting RLS via auth.uid() — no service_role used.
+-- =====================================================
+-- 038_fix_rpc_date_type.sql
+-- Fixes v_local_date from text to date in all 3 atomic RPCs.
+-- The original 029 functions used:
+--   v_local_date text := to_char(CURRENT_DATE,'YYYY-MM-DD')
+-- which caused "column date is of type date but expression is of type text"
+-- (PostgreSQL code 42804) on transactions.date (type date).
+--
+-- This migration recreate-or-replaces all 3 with proper typing.
 -- Idempotent: all functions use create or replace.
+-- =====================================================
 
 -- =====================================================
 -- 1. create_transfer_safe
--- Atomically: validate → insert transfer → insert source tx → debit source
--- → insert dest tx → credit dest → insert commission → debit commission
--- All within one Postgres transaction. If any step fails, everything rolls back.
 -- =====================================================
 
 create or replace function public.create_transfer_safe(
@@ -73,11 +77,8 @@ begin
   end if;
   v_total_source_debit := round((p_amount + v_commission_amount) * 100) / 100;
 
-  -- ── Validate funds (same logic as ensureSufficientFundsForExpense) ──
-  if v_source_type = 'credit' then
-    -- handled per-currency in the update section
-    null;
-  else
+  -- ── Validate funds ──
+  if v_source_type != 'credit' then
     if v_source_balance < v_total_source_debit then
       raise exception 'El monto más comisión excede tu balance disponible.';
     end if;
@@ -100,7 +101,7 @@ begin
   end if;
 
   -- ══════════════════════════════════════════════════
-  -- ATOMIC BLOCK – all inserts/updates from here on
+  -- ATOMIC BLOCK
   -- ══════════════════════════════════════════════════
 
   -- 1) Insert transfer record
@@ -213,7 +214,6 @@ begin
     end if;
   end if;
 
-  -- Build return
   v_result := jsonb_build_object(
     'transfer_id', v_transfer_id,
     'source_transaction_id', v_source_tx_id,
@@ -230,8 +230,6 @@ $func$;
 
 -- =====================================================
 -- 2. add_goal_contribution_safe
--- Atomically: validate funds → insert contribution → update goal
--- → insert transaction → debit account. All in one transaction.
 -- =====================================================
 
 create or replace function public.add_goal_contribution_safe(
@@ -345,8 +343,6 @@ $func$;
 
 -- =====================================================
 -- 3. create_transaction_safe
--- Atomically: insert transaction + optional commission
--- + debit account. All in one transaction.
 -- =====================================================
 
 create or replace function public.create_transaction_safe(
@@ -411,9 +407,7 @@ begin
 
   -- Validate funds
   if p_type = 'expense' then
-    if v_account_type = 'credit' then
-      null; -- credit validation handled by the update clamping to >= 0
-    else
+    if v_account_type != 'credit' then
       if v_account_balance < v_total_debit then
         raise exception 'El monto más comisión excede tu balance disponible.';
       end if;

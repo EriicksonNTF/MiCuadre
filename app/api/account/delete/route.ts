@@ -1,33 +1,12 @@
 import "server-only"
+
 import { NextResponse } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
-
-async function createUserScopedClient() {
-  const cookieStore = await cookies()
-
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        },
-      },
-    }
-  )
-}
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function DELETE() {
   try {
-    const supabase = await createUserScopedClient()
+    const supabase = await createClient()
     const {
       data: { user },
       error: userError,
@@ -62,14 +41,7 @@ export async function DELETE() {
       return NextResponse.json({ error: "Error eliminando perfil" }, { status: 500 })
     }
 
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: true, deletedAuthUser: false })
-    }
-
-    const adminClient = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
+    const adminClient = createAdminClient()
 
     const { error: authDeleteError } = await adminClient.auth.admin.deleteUser(userId)
     if (authDeleteError) {

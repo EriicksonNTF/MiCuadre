@@ -1585,11 +1585,6 @@ export async function updateTransaction(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error("No autenticado")
 
-  const normalizedUpdates = {
-    ...updates,
-    date: normalizeTransactionDateInput(updates.date),
-  }
-
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
     .select("*")
@@ -1621,135 +1616,26 @@ export async function updateTransaction(
     return recreated?.sourceTransaction || recreated?.cardTransaction
   }
 
-  // Estrategia A: validate new currency matches new account (if non-credit).
-  const { data: newAccount } = await supabase
-    .from("accounts")
-    .select("id, type, currency")
-    .eq("id", updates.account_id)
-    .single()
-
-  if (newAccount && newAccount.type !== "credit") {
-    const newAccountCurrency = (newAccount.currency || "DOP") as "DOP" | "USD"
-    if (updates.currency !== newAccountCurrency) {
-      throw new Error("La moneda de la transacción no coincide con la de la cuenta.")
-    }
-  }
-
-  await applyAccountImpact({
-    accountId: existing.account_id,
-    type: existing.type,
-    amount: Number(existing.amount),
-    direction: -1,
-    currency: existing.currency,
+  const { data: result, error: rpcError } = await supabase.rpc("update_transaction_safe", {
+    p_transaction_id: id,
+    p_account_id: updates.account_id,
+    p_type: updates.type,
+    p_amount: Number(updates.amount),
+    p_currency: updates.currency,
+    p_description: updates.description || null,
+    p_date: normalizeTransactionDateInput(updates.date) || null,
+    p_category_id: updates.category_id || null,
+    p_notes: updates.notes || null,
+    p_amount_base: updates.amount_base || null,
+    p_exchange_rate: updates.exchange_rate || null,
+    p_is_recurring: updates.is_recurring ?? null,
   })
 
-  try {
-    const ledger = LedgerService.create()
-    await ledger.reverseTransactionEntries(existing.id, "transactions", user.id)
-  } catch (e) {
-    console.error("Ledger reverse failed (non-blocking):", e)
-  }
-
-  // BUG 5: find child commission, revert its impact before parent update.
-  const { data: commissionChild } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("parent_transaction_id", existing.id)
-    .eq("metadata->>kind", "commission")
-    .maybeSingle()
-
-  let hadCommission = false
-  let oldCommissionCurrency: "DOP" | "USD" = "DOP"
-  let oldCommissionAccountId = ""
-  let oldCommissionAmount = 0
-  if (commissionChild) {
-    hadCommission = true
-    oldCommissionCurrency = commissionChild.currency
-    oldCommissionAccountId = commissionChild.account_id
-    oldCommissionAmount = Number(commissionChild.amount)
-    await applyAccountImpact({
-      accountId: commissionChild.account_id,
-      type: commissionChild.type,
-      amount: Number(commissionChild.amount),
-      direction: -1,
-      currency: commissionChild.currency,
-    })
-  }
-
-  const { data, error } = await supabase
-    .from("transactions")
-    .update(normalizedUpdates)
-    .eq("id", id)
-    .select()
-    .single()
-
-  if (error) {
-    await applyAccountImpact({
-      accountId: existing.account_id,
-      type: existing.type,
-    amount: Number(existing.amount),
-    direction: 1,
-    currency: existing.currency,
-  })
-    if (hadCommission) {
-      await applyAccountImpact({
-        accountId: oldCommissionAccountId,
-        type: "expense",
-        amount: oldCommissionAmount,
-        direction: 1,
-        currency: oldCommissionCurrency,
-      })
-    }
-    throw error
-  }
-
-  await applyAccountImpact({
-    accountId: updates.account_id,
-    type: updates.type,
-    amount: Number(updates.amount),
-    direction: 1,
-    currency: updates.currency,
-  })
-
-  try {
-    const ledger = LedgerService.create()
-    if (updates.type === "expense") {
-      await ledger.recordExpense(user.id, updates.account_id, Number(updates.amount), updates.currency, updates.description || undefined)
-    } else {
-      await ledger.recordIncome(user.id, updates.account_id, Number(updates.amount), updates.currency, updates.description || undefined)
-    }
-  } catch (e) {
-    console.error("Ledger write failed (non-blocking):", e)
-  }
-
-  // BUG 5: recalculate and re-apply commission for the new amount.
-  if (hadCommission) {
-    const newCommissionAmount = getCommissionAmount(Number(updates.amount))
-    if (newCommissionAmount > 0) {
-      await supabase
-        .from("transactions")
-        .update({ amount: newCommissionAmount })
-        .eq("id", commissionChild!.id)
-      await applyAccountImpact({
-        accountId: oldCommissionAccountId,
-        type: "expense",
-        amount: newCommissionAmount,
-        direction: 1,
-        currency: oldCommissionCurrency,
-      })
-    } else {
-      await supabase.from("transactions").delete().eq("id", commissionChild!.id)
-    }
-  }
-
-  await syncAccountBalance(updates.account_id, updates.currency)
-  if (existing.account_id !== updates.account_id) {
-    await syncAccountBalance(existing.account_id, existing.currency)
-  }
+  if (rpcError) throw rpcError
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
-  return data
+  return result
 }
 
 export async function deleteTransaction(id: string) {
@@ -1758,96 +1644,35 @@ export async function deleteTransaction(id: string) {
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
-    .select("*")
+    .select("metadata")
     .eq("id", id)
     .single()
 
   if (existingError || !existing) throw existingError || new Error("Transacción no encontrada")
 
-  // BUG 5: find and handle child commission before the parent revert/delete.
-  const { data: commissionChild } = await supabase
-    .from("transactions")
-    .select("*")
-    .eq("parent_transaction_id", existing.id)
-    .eq("metadata->>kind", "commission")
-    .maybeSingle()
-
-  if (commissionChild) {
-    await applyAccountImpact({
-      accountId: commissionChild.account_id,
-      type: commissionChild.type,
-      amount: Number(commissionChild.amount),
-      direction: -1,
-      currency: commissionChild.currency,
-    })
-    await supabase.from("transactions").delete().eq("id", commissionChild.id)
-  }
-
-  if (isCreditCardPaymentTx(existing.metadata)) {
-    const paymentLinkId = getPaymentLinkId(existing.metadata)
-    if (paymentLinkId) {
-      await deleteCreditCardPaymentGroup({ userId: user.id, paymentLinkId, notifyDeletion: true })
-      return
-    }
-  }
-
-  // BUG 8: reverse debt balance when deleting a debt payment transaction.
   const existingMeta = (existing.metadata || {}) as Record<string, unknown>
-  if (existingMeta.kind === "debt_payment") {
-    const debtId = existingMeta.debt_id as string
-    if (debtId) {
-      const { data: debtPayment } = await supabase
-        .from("debt_payments")
-        .select("id, previous_debt_balance")
-        .eq("id", existingMeta.debt_payment_id as string)
-        .maybeSingle()
 
-      if (debtPayment) {
-        await supabase
-          .from("debts")
-          .update({
-            current_balance: debtPayment.previous_debt_balance,
-            is_active: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", debtId)
-
-        await supabase.from("debt_payments").delete().eq("id", debtPayment.id)
-      }
-    }
-  }
-
-  await applyAccountImpact({
-    accountId: existing.account_id,
-    type: existing.type,
-    amount: Number(existing.amount),
-    direction: -1,
-    currency: existing.currency,
+  const { data: result, error: rpcError } = await supabase.rpc("delete_transaction_safe", {
+    p_transaction_id: id,
   })
 
-  try {
-    const ledger = LedgerService.create()
-    await ledger.reverseTransactionEntries(existing.id, "transactions", user.id)
-  } catch (e) {
-    console.error("Ledger reverse failed (non-blocking):", e)
-  }
-
-  await syncAccountBalance(existing.account_id, existing.currency)
-
-  const { error } = await supabase
-    .from("transactions")
-    .delete()
-    .eq("id", id)
-
-  if (error) throw error
+  if (rpcError) throw rpcError
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
 
+  if (existingMeta.kind === "transfer") {
+    mutate(["transfers", 100])
+  }
   if (existingMeta.kind === "debt_payment") {
     mutate("planning_debts")
     mutate("planning_debt_payments_month")
   }
+  if (existingMeta.kind === "credit_payment") {
+    mutate("notifications")
+  }
+
+  return result
 }
 
 async function deleteCreditCardPaymentGroup(params: {
@@ -2356,8 +2181,10 @@ export async function createTransfer(transfer: {
   })
 
   if (rpcError) {
-    console.error("Transfer RPC error:", rpcError)
-    throw rpcError
+    console.error("Transfer RPC error (full):", JSON.stringify(rpcError, null, 2))
+    console.error("Transfer RPC keys:", Object.keys(rpcError))
+    console.error("Transfer RPC code:", (rpcError as any)?.code, "message:", (rpcError as any)?.message, "details:", (rpcError as any)?.details, "hint:", (rpcError as any)?.hint)
+    throw new Error(typeof rpcError === 'object' && rpcError !== null ? (rpcError as any).message || `RPC error: ${JSON.stringify(rpcError)}` : String(rpcError))
   }
 
   try {
