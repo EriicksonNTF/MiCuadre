@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Send, Sparkles, Plus, Trash2 } from "lucide-react"
@@ -93,6 +93,14 @@ export default function CoachIAPage() {
       actions: [{ label: "Agregar transacción", href: "/expense", actionType: "navigate" }],
     },
   ])
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
+  }, [messages])
 
   useEffect(() => {
     async function loadHistory() {
@@ -319,7 +327,7 @@ export default function CoachIAPage() {
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <div ref={scrollContainerRef} className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
