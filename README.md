@@ -85,12 +85,7 @@ ppnpm dev
 ### 4. Verificación de Configuración
 ```bash
 # Confirma que el archivo `.env.local` exista y tenga:
-VAPID_PUBLIC_KEY=BL3gg6JUN1MUFycVYnKJYbdwVR6iG9qOImlGfpfcBsce32sre727WCiBoyFFanE9apGBfq5gB8JRA0JYblNBqZc
-VAPID_PRIVATE_KEY=ZKibWnEPVO9zxFlyLQsteziKBmFsh7SFKUKMjCUAM7w
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
 ```
 
-## ✅ Confirmación de Seguridad
-
-- [x] **.env.local** está en `.gitignore` ✔️
-- [x] **VAPID keys** generadas localmente y no expuestas ✔️
-- [x] **Configuración actualizada** en README ✔️
