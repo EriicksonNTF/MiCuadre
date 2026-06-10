@@ -1,6 +1,7 @@
 ﻿import "server-only"
 import { NextResponse } from "next/server"
 import { createClient as createSupabaseClient } from "@supabase/supabase-js"
+import { sendPushToUserIfHasSubscription } from "@/lib/notifications/push-dispatcher"
 
 export async function GET(request: Request) {
   const CRON_SECRET = process.env.CRON_SECRET
@@ -74,6 +75,12 @@ export async function GET(request: Request) {
           .eq("id", subscription.id)
 
         alerts += 1
+        await sendPushToUserIfHasSubscription(subscription.user_id, {
+          title: "⏰ Recordatorio de suscripción",
+          body: `Mañana se registrará ${subscription.name} por ${Number(subscription.amount || 0).toLocaleString("es-DO")} ${subscription.currency || "DOP"}.`,
+          tag: `pre-alert-${subscription.id}`,
+          action_url: "/settings/subscriptions",
+        })
       }
     }
 
@@ -120,6 +127,12 @@ export async function GET(request: Request) {
         read: false,
         action_url: "/settings/subscriptions",
         metadata: { kind: "subscription_auto_failed", period_key: periodKey, subscription_id: subscription.id },
+      })
+      await sendPushToUserIfHasSubscription(subscription.user_id, {
+        title: "⚠️ No pudimos registrar una suscripción",
+        body: `No pudimos registrar ${subscription.name} por fondos insuficientes.`,
+        tag: `failed-${subscription.id}`,
+        action_url: "/settings/subscriptions",
       })
       skipped += 1
       continue
@@ -193,6 +206,13 @@ export async function GET(request: Request) {
       read: false,
       action_url: "/history",
       metadata: { kind: "subscription_auto_success", period_key: periodKey, subscription_id: subscription.id },
+    })
+
+    await sendPushToUserIfHasSubscription(subscription.user_id, {
+      title: "✅ Suscripción registrada",
+      body: `${subscription.name} se registró automáticamente.`,
+      tag: `success-${subscription.id}`,
+      action_url: "/history",
     })
 
     processed += 1
