@@ -7,11 +7,16 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 next.user-config.*
 
+# Next.js build cache
+.next/
+.turbo/
+node_modules/.cache/
+.cache/
+
 # Environment variables
 .env
 .env*.local
 
 # Common ignores
 node_modules
-.next/
 .DS_Store
