@@ -8,9 +8,26 @@
 
 ## Commands (verified from `package.json`)
 - `npm run dev` -> starts Next dev server.
-- `npm run build` -> production build.
+- `npm run build` -> production build (SSR).
+- `npm run build:mobile` -> mobile static export build (runs prebuild:mobile → build:mobile → postbuild:mobile).
+  - `prebuild:mobile` -> moves `app/api/` to `.api-backup/` (static export doesn't support API routes).
+  - `build:mobile` -> runs `next build` with `BUILD_EXPORT=true`.
+  - `postbuild:mobile` -> runs `fix-asset-paths.mjs && postbuild-export.mjs`.
 - `npm run start` -> start built app.
 - `npm run lint` -> runs `eslint .`, but currently fails in this repo because `eslint` is not installed in `devDependencies`.
+
+## Mobile Build Pipeline (Static Export + Capacitor)
+- Build: `npm run build:mobile` — generates all pages as flat `.html` files in `out/`.
+- Post-build step 1 (`scripts/fix-asset-paths.mjs`): converts absolute `/_next/...` and public asset paths to relative paths (e.g. `./_next/...`, `../_next/...`, `../../_next/...` depending on file depth inside `out/`). Also fixes `manifest.json` (scope/start_url/icon paths) and `sw.js` (precache URLs, routing regex).
+- Post-build step 2 (`scripts/postbuild-export.mjs`): restores `app/api/` from `.api-backup/`.
+- Copy to iOS: `npx cap copy` (copies `out/` contents to `ios/App/public/`).
+- Open in Xcode: `npx cap open ios` (requires user interaction to select simulator and run).
+
+## Capacitor / Path Resolution
+- `capacitor.config.json`: `webDir: "out"`, no `server.url` (loads from local filesystem).
+- Next.js 16 static export uses absolute paths (`/_next/static/...`) which break under `file://` protocol in WKWebView.
+- `scripts/fix-asset-paths.mjs` fixes this by converting to relative paths via regex matching `"`/`'`/`\"` followed by `/_next/`, `/favicon`, `/manifest.json`, `/apple-touch-icon`, `/icon-*`, `/placeholder-*`, `/micuadre-logo`, `/icono-favicon`, `/background_music.m4a`, `/offline`.
+- The script handles all depths (root → `./`, one level → `../`, two levels → `../../`).
 
 ## Routing/Auth Guard Behavior
 - Request auth protection is implemented in `middleware.ts` via `lib/supabase/middleware.ts`.

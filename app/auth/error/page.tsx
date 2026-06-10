@@ -1,21 +1,21 @@
+"use client"
+
+import { Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import Image from 'next/image'
 import { AlertCircle } from 'lucide-react'
 
-type AuthErrorPageProps = {
-  searchParams?: Promise<{ reason?: string }>
-}
-
 const errorMessages: Record<string, string> = {
   missing_code: 'No se recibio el codigo de autenticacion. Revisa la configuracion del proveedor OAuth en Supabase.',
   oauth_exchange_failed: 'No se pudo completar el intercambio de sesion OAuth. Verifica Client ID, Client Secret y Redirect URL.',
 }
 
-export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps) {
-  const params = searchParams ? await searchParams : undefined
-  const reason = params?.reason
+function ErrorContent() {
+  const searchParams = useSearchParams()
+  const reason = searchParams.get("reason")
   const detail = reason ? errorMessages[reason] : undefined
 
   return (
@@ -61,5 +61,13 @@ export default async function AuthErrorPage({ searchParams }: AuthErrorPageProps
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AuthErrorPage() {
+  return (
+    <Suspense fallback={null}>
+      <ErrorContent />
+    </Suspense>
   )
 }

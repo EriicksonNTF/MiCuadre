@@ -1,4 +1,5 @@
 export default {
+  output: process.env.BUILD_EXPORT === 'true' ? 'export' : undefined,
   logging: {
     fetches: false,
     browserToTerminal: false,

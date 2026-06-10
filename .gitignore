@@ -20,3 +20,13 @@ node_modules/.cache/
 # Common ignores
 node_modules
 .DS_Store
+
+# Mobile/Capacitor static export
+out/
+.api-backup/
+
+# Auto-generated build info
+tsconfig.tsbuildinfo
+
+# Screenshots
+screenshots/

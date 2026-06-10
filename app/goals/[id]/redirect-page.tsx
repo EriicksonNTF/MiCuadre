@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 
-export default function GoalsPage() {
+export function GoalRedirectPage() {
   const router = useRouter()
   useEffect(() => { router.replace("/planning") }, [router])
   return null

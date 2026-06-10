@@ -1,5 +1,9 @@
-import { redirect } from "next/navigation"
+import { GoalRedirectPage } from "./redirect-page"
 
 export default function GoalDetailPage() {
-  redirect("/planning")
+  return <GoalRedirectPage />
+}
+
+export function generateStaticParams() {
+  return [{ id: "placeholder" }]
 }

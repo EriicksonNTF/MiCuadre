@@ -1,10 +1,18 @@
+"use client"
+
+import { Suspense } from "react"
+import { useSearchParams } from "next/navigation"
 import { SubscriptionsScreen } from "@/components/settings/subscriptions-screen"
 
-export default async function SettingsSubscriptionsPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ create?: string }>
-}) {
-  const resolved = (await searchParams) || {}
-  return <SubscriptionsScreen initialOpenCreate={resolved.create === "1"} />
+function SettingsSubscriptionsInner() {
+  const searchParams = useSearchParams()
+  return <SubscriptionsScreen initialOpenCreate={searchParams.get("create") === "1"} />
+}
+
+export default function SettingsSubscriptionsPage() {
+  return (
+    <Suspense fallback={null}>
+      <SettingsSubscriptionsInner />
+    </Suspense>
+  )
 }

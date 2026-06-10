@@ -1,10 +1,14 @@
-import { AccountDetail } from "@/components/accounts/account-detail"
+import { Suspense } from "react"
+import { AccountDetailPage } from "./account-page"
 
-interface AccountPageProps {
-  params: Promise<{ id: string }>
+export function generateStaticParams() {
+  return [{ id: "placeholder" }]
 }
 
-export default async function AccountPage({ params }: AccountPageProps) {
-  const { id } = await params
-  return <AccountDetail accountId={id} />
+export default function AccountPage() {
+  return (
+    <Suspense fallback={null}>
+      <AccountDetailPage />
+    </Suspense>
+  )
 }
