@@ -1,9 +1,0 @@
-allowBuilds:
-  msgpackr-extract: true
-  sharp: true
-  tesseract.js: true
-  unrs-resolver: true
-
-trustPolicy: allow-all
-
-minimumReleaseAge: 0

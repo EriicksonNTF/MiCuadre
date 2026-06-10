@@ -1,6 +1,0 @@
-[LOG] SW registered: https://micuadre-five.vercel.app/
-[LOG] SW registered: https://micuadre-five.vercel.app/
-[HTTP 403] https://micuadre-five.vercel.app/api/mia/chat
-[ERROR] Failed to load resource: the server responded with a status of 403 ()
-[HTTP 403] https://micuadre-five.vercel.app/api/mia/chat
-[ERROR] Failed to load resource: the server responded with a status of 403 ()
