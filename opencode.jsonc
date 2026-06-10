@@ -15,7 +15,7 @@
     },
     "supabase": {
       "type": "remote",
-      "url": "https://mcp.supabase.com/mcp?project_ref=zmbxriaftswtxjihatfr&read_only=false",
+      "url": "https://mcp.supabase.com/mcp?project_ref=zmbxriaftswtxjihatfr&read_only=true",
       "enabled": true
     },
     "stripe": {
@@ -29,6 +29,27 @@
       "env": {
         "STRIPE_API_KEY": "{env:STRIPE_SECRET_KEY}",
         "STRIPE_SECRET_KEY": "{env:STRIPE_SECRET_KEY}"
+      }
+    }
+  },
+  "provider": {
+    "bai": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "B.AI",
+      "options": {
+        "baseURL": "https://api.b.ai/v1",
+        "apiKey": "{env:BAI_API_KEY}"
+      },
+      "models": {
+        "gemini-3.5-flash": {
+          "name": "Gemini 3.5 Flash (rapido)"
+        },
+        "glm-5.1": {
+          "name": "GLM 5.1 - Zhipu AI (chino)"
+        },
+        "kimi-k2.5": {
+          "name": "Kimi K2.5 - Moonshot AI (chino)"
+        }
       }
     }
   }

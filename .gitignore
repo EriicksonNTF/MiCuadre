@@ -30,3 +30,6 @@ tsconfig.tsbuildinfo
 
 # Screenshots
 screenshots/
+
+# Captured site artifacts
+captured-site/
