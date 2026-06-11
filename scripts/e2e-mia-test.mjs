@@ -3,9 +3,9 @@ import { spawn, execSync } from "child_process"
 import { writeFileSync, unlinkSync, mkdirSync, appendFileSync } from "node:fs"
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:3000"
-const EMAIL = "example@example.com"
-const PASSWORD = "1234567890"
-const MGMT_TOKEN = "SUPABASE_ACCESS_TOKEN"
+const EMAIL = process.env.TEST_EMAIL || "example@example.com"
+const PASSWORD = process.env.TEST_PASSWORD || "1234567890"
+const MGMT_TOKEN = process.env.SUPABASE_ACCESS_TOKEN
 const PROJECT_REF = "zmbxriaftswtxjihatfr"
 const SCREENSHOTS_DIR = "screenshots/e2e-mia"
 
