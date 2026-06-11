@@ -233,8 +233,9 @@ function TransactionsVisual() {
   return (
     <div className="space-y-3">
       {[
-        { title: "Ingreso nómina", amount: `+${formatCurrency(58000)}`, tone: "text-emerald-600" },
+        { title: "Ingreso nómina", amount: `+${formatCurrency(58000)}`, tone: "text-emerald-600 dark:text-emerald-400" },
         { title: "Supermercado", amount: `-${formatCurrency(3240)}`, tone: "text-foreground" },
+        { title: "Pago tarjeta", amount: `-${formatCurrency(12000)}`, tone: "text-foreground" },
         { title: "Pago tarjeta", amount: `-${formatCurrency(12000)}`, tone: "text-foreground" },
       ].map((item) => (
         <div key={item.title} className="flex items-center justify-between rounded-2xl border border-border bg-background px-4 py-3">

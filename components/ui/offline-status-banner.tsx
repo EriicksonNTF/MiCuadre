@@ -159,7 +159,7 @@ export function OfflineStatusBanner() {
           className={cn(
             "ml-2 shrink-0 rounded-md px-2 py-0.5 text-[10px] uppercase tracking-wide font-extrabold shadow-xs transition active:scale-95",
             failedCount > 0
-              ? "bg-red-500 text-white hover:bg-red-600"
+              ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
               : "bg-primary text-primary-foreground hover:opacity-90"
           )}
         >

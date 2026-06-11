@@ -7,6 +7,7 @@ import { ToastContainer } from '@/components/toast/smart-toast'
 import { BodyCleanup } from '@/components/providers/body-cleanup'
 import { OfflineStatusBanner } from '@/components/ui/offline-status-banner'
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
+import { ThemeColor } from '@/components/providers/theme-color'
 import './globals.css'
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -18,7 +19,6 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#000000',
 }
 
 export const metadata: Metadata = {
@@ -77,15 +77,16 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className="bg-background">
+    <html lang="es" className="bg-background" suppressHydrationWarning>
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#12121a" media="(prefers-color-scheme: dark)" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("micuadre-theme");if(t==="dark")document.documentElement.classList.add("dark");else if(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches)document.documentElement.classList.add("dark")}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem("micuadre-theme");if(!t)t="system";if(t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches))document.documentElement.classList.add("dark")}catch(e){}})()`,
           }}
         />
       </head>

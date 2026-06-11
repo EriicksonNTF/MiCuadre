@@ -331,7 +331,7 @@ export function SettingsScreen() {
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14">
                 <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || "Usuario"} />
-                <AvatarFallback className="bg-gradient-to-br from-accent to-emerald-600 text-white">
+                <AvatarFallback className="bg-gradient-to-br from-accent to-emerald-600 text-white dark:to-emerald-700">
                   <User className="h-7 w-7" aria-hidden />
                 </AvatarFallback>
               </Avatar>

@@ -312,7 +312,7 @@ export default function PayPage() {
                 <input value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="59.50" className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold outline-none" />
                 <div className="mt-3 rounded-xl bg-background/70 p-3 text-sm">
                   <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total a descontar</span><span className="font-bold">{formatCurrency(sourceDebitAmount, source.currency)}</span></div>
-                  {selectedAmount > 0 ? <div className="mt-2 flex justify-between gap-4 text-xs"><span className="text-muted-foreground">Impuesto DGII 0.15%</span><span className="text-amber-500">{formatCurrency(dgiiAmount, source.currency)}</span></div> : null}
+                  {selectedAmount > 0 ? <div className="mt-2 flex justify-between gap-4 text-xs"><span className="text-muted-foreground">Impuesto DGII 0.15%</span><span className="text-amber-600 dark:text-amber-400">{formatCurrency(dgiiAmount, source.currency)}</span></div> : null}
                   {selectedAmount > 0 ? <div className="mt-1 flex justify-between gap-4 border-t border-amber-500/20 pt-2 text-sm font-semibold"><span className="text-muted-foreground">Total a debitar</span><span>{formatCurrency(totalDebit, source.currency)}</span></div> : null}
                   <p className="mt-1 text-xs text-muted-foreground">Tasa guardada para esta transacción.</p>
                 </div>

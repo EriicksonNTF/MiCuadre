@@ -164,8 +164,8 @@ export function TransactionSwipeRow({
     { label: "Ver", icon: <Eye className="h-5 w-5" />, bgColor: "bg-muted", textColor: "text-foreground", onClick: () => onView?.(id) }
   ] : []
   const rightActions = [
-    ...(onEdit ? [{ label: "Editar", icon: <Edit3 className="h-5 w-5" />, bgColor: "bg-blue-500", textColor: "text-white", onClick: () => onEdit?.(id) }] : []),
-    ...(onDelete ? [{ label: "Eliminar", icon: <Trash2 className="h-5 w-5" />, bgColor: "bg-red-500", textColor: "text-white", onClick: () => onDelete?.(id), destructive: true }] : [])
+    ...(onEdit ? [{ label: "Editar", icon: <Edit3 className="h-5 w-5" />, bgColor: "bg-primary", textColor: "text-primary-foreground", onClick: () => onEdit?.(id) }] : []),
+    ...(onDelete ? [{ label: "Eliminar", icon: <Trash2 className="h-5 w-5" />, bgColor: "bg-destructive", textColor: "text-destructive-foreground", onClick: () => onDelete?.(id), destructive: true }] : [])
   ]
   return (
     <SwipeRow leftActions={leftActions} rightActions={rightActions} className={className}>

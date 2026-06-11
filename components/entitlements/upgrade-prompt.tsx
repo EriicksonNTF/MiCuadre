@@ -24,7 +24,7 @@ export function UpgradePrompt({
   return (
     <>
       <div className="rounded-2xl border border-border bg-card p-4">
-        <div className="mb-3 rounded-xl bg-gradient-to-br from-primary/10 to-emerald-500/10 p-3">
+        <div className="mb-3 rounded-xl bg-gradient-to-br from-primary/10 to-emerald-500/10 p-3 dark:to-emerald-900/20">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <div className="rounded-lg bg-primary/10 p-2 text-primary"><Sparkles className="h-4 w-4" /></div>

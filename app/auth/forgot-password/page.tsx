@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
               <Input id="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             {error && <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{error}</p>}
-            {message && <p className="rounded-md bg-emerald-500/10 p-2 text-sm text-emerald-600">{message}</p>}
+            {message && <p className="rounded-md bg-emerald-500/10 p-2 text-sm text-emerald-600 dark:text-emerald-400">{message}</p>}
             <Button type="submit" className="w-full" disabled={loading}>{loading ? "Enviando..." : "Enviar enlace"}</Button>
           </form>
           <Link href="/login" className="mt-4 block text-center text-sm text-primary hover:underline">Volver a iniciar sesión</Link>

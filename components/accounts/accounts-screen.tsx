@@ -700,9 +700,9 @@ if (!draggedId) return
 
       {confirmDeleteId && (
         <>
-          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-black/40" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
+          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
           <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
               <AlertTriangle className="h-7 w-7" />
             </div>
             <div className="mt-4 text-center">

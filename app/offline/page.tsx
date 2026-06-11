@@ -8,7 +8,7 @@ export default function OfflinePage() {
     <main className="flex min-h-[100dvh] flex-col items-center justify-center bg-background px-6 py-10 text-center">
       <div className="relative flex h-20 w-20 items-center justify-center rounded-[1.65rem] bg-card shadow-[var(--shadow-soft)] ring-1 ring-border/60">
         <CloudOff className="h-9 w-9 text-muted-foreground" />
-        <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-amber-500 ring-2 ring-background" />
+        <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-amber-500 ring-2 ring-background dark:bg-amber-400 dark:ring-background" />
       </div>
 
       <h1 className="mt-6 text-2xl font-extrabold tracking-tight text-foreground">

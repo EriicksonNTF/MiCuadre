@@ -27,7 +27,7 @@ const monthNames = [
 
 const markerStyles = {
   card: "bg-primary text-primary-foreground border-primary",
-  sub: "bg-emerald-500 text-white border-emerald-500",
+  sub: "bg-emerald-500 text-white border-emerald-500 dark:bg-emerald-600 dark:text-white dark:border-emerald-600",
   debt: "bg-destructive text-destructive-foreground border-destructive",
 } as const
 

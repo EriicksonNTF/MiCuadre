@@ -59,7 +59,7 @@ export function HoldToConfirmButton({
       onKeyDown={handleKeyDown}
       disabled={disabled || loading}
       className={cn(
-        "relative h-12 overflow-hidden rounded-2xl bg-red-600 px-4 text-sm font-black text-white transition active:scale-[0.99] disabled:opacity-60",
+        "relative h-12 overflow-hidden rounded-2xl bg-destructive px-4 text-sm font-black text-destructive-foreground transition active:scale-[0.99] disabled:opacity-60",
         className
       )}
     >

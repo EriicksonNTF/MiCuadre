@@ -426,7 +426,7 @@ export default function ScanPage() {
 
         {result && (
           <div className="mt-6 space-y-3 rounded-2xl bg-card p-4 text-sm">
-            <div className="flex items-center gap-2 text-emerald-600">
+            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4" />
               <span className="font-medium">Datos detectados</span>
             </div>

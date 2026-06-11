@@ -196,7 +196,7 @@ export default function ProfilePage() {
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt="Avatar" className="h-24 w-24 rounded-full object-cover" />
               ) : (
-                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-accent to-emerald-600">
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-accent to-emerald-600 dark:to-emerald-700">
                   <User className="h-12 w-12 text-white" />
                 </div>
               )}

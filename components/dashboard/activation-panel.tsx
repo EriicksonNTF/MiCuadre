@@ -135,9 +135,9 @@ export function ActivationPanel() {
               <div
                 className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
                   isCompleted
-                    ? "bg-green-500 text-white"
+                    ? "bg-green-500 text-white dark:bg-green-600 dark:text-white"
                     : isNext
-                    ? "bg-green-600 text-white animate-pulse"
+                    ? "bg-green-600 text-white animate-pulse dark:bg-green-500 dark:text-white"
                     : "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400"
                 }`}
               >
@@ -171,7 +171,7 @@ export function ActivationPanel() {
                   isCompleted
                     ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
                     : isNext
-                    ? "bg-green-600 text-white hover:bg-green-700"
+                    ? "bg-green-600 text-white hover:bg-green-700 dark:bg-green-500 dark:text-white dark:hover:bg-green-600"
                     : "bg-muted text-muted-foreground"
                 }`}
               >

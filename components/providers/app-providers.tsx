@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { ProfilePreferencesSync } from "@/components/providers/profile-preferences-sync"
 import { PasskeyLockGate } from "@/components/security/passkey-lock-gate"
+import { ThemeColor } from "@/components/providers/theme-color"
 
 export function AppProviders({
   children,
@@ -24,6 +25,7 @@ export function AppProviders({
 
   return (
     <ThemeProvider>
+      <ThemeColor />
       <ProfilePreferencesSync />
       <PasskeyLockGate />
       {bodyCleanup}

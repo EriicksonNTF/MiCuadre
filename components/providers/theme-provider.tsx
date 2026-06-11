@@ -46,7 +46,7 @@ interface ThemeProviderProps {
 
 export function ThemeProvider({ children, initialTheme, onThemeChange }: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    return getStoredTheme() || initialTheme || "light"
+    return getStoredTheme() || initialTheme || "system"
   })
   const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("light")
   const [mounted, setMounted] = useState(false)

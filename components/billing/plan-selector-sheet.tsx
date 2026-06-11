@@ -196,7 +196,7 @@ export function PlanSelectorSheet({
                   <div className="relative mt-3 grid gap-1.5 text-[11px] text-muted-foreground">
                     {config.benefits.slice(0, 4).map((benefit) => (
                       <span key={benefit} className="flex items-start gap-2">
-                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                         {benefit}
                       </span>
                     ))}

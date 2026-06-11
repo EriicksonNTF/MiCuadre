@@ -41,7 +41,7 @@ export function MovementReceipt({
 
   return (
     <>
-      <div className="fixed inset-0 z-[90] bg-black/40 animate-in fade-in duration-200" onClick={onClose} />
+      <div className="fixed inset-0 z-[90] bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45 animate-in fade-in duration-200" onClick={onClose} />
       <div className="fixed inset-x-4 bottom-4 z-[100] mx-auto max-w-md rounded-2xl border border-border bg-card shadow-2xl ring-1 ring-border animate-in slide-in-from-bottom-5 fade-in duration-200 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2">
         <div className="p-5">
           <div className="flex items-start justify-between gap-4">

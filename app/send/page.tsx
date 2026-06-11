@@ -357,7 +357,7 @@ export default function SendPage() {
                 </p>
               )}
               {exceedsBalance && (
-                <p className="mt-1 text-xs text-red-500">
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                   El monto más comisión excede tu balance disponible.
                 </p>
               )}

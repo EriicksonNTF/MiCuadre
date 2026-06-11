@@ -18,7 +18,7 @@ export default function AboutPage() {
       </div>
       <div className="mx-auto max-w-md px-6 pt-8 space-y-6">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-accent to-emerald-600">
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-accent to-emerald-600 dark:to-emerald-700">
             <Smartphone className="h-10 w-10 text-white" />
           </div>
           <h2 className="mt-4 text-2xl font-bold">MiCuadre</h2>
