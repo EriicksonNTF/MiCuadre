@@ -52,9 +52,8 @@ BEGIN
     SET current_debt = v_new_balance
     WHERE id = p_account_id AND user_id = v_user_id;
   ELSE
-    -- Non-credit accounts: balance = stored initial balance + ledger transaction sum
-    v_stored_balance := COALESCE(v_previous_balance, 0);
-    v_new_balance := GREATEST(v_stored_balance + v_ledger_balance, 0);
+    -- Non-credit accounts: ledger_calc_balance already includes initial balance + all tx deltas.
+    v_new_balance := GREATEST(v_ledger_balance, 0);
     UPDATE public.accounts
     SET balance = v_new_balance
     WHERE id = p_account_id AND user_id = v_user_id;
@@ -106,9 +105,9 @@ BEGIN
         UPDATE public.accounts SET current_debt = GREATEST(v_balance, 0)
         WHERE id = NEW.debit_account_id;
       ELSE
-        -- Non-credit: balance = stored initial balance + ledger sum
+        -- Non-credit: v_balance already includes all ledger entries (initial + tx deltas)
         UPDATE public.accounts
-        SET balance = GREATEST(COALESCE(v_account.balance, 0) + v_balance, 0)
+        SET balance = GREATEST(v_balance, 0)
         WHERE id = NEW.debit_account_id;
       END IF;
     END IF;
@@ -140,7 +139,7 @@ BEGIN
         WHERE id = NEW.credit_account_id;
       ELSE
         UPDATE public.accounts
-        SET balance = GREATEST(COALESCE(v_account.balance, 0) + v_balance, 0)
+        SET balance = GREATEST(v_balance, 0)
         WHERE id = NEW.credit_account_id;
       END IF;
     END IF;

@@ -741,16 +741,11 @@ export async function syncAccountBalance(accountId: string, currency?: string) {
       current_debt: Math.max(0, ledgerSum),
     }).eq("id", accountId)
   } else {
-    // For non-credit accounts: ledger only tracks transaction deltas (not initial balance).
-    // Balance = stored initial balance + ledger transaction sum.
-    const { data: accountRow } = await supabase
-      .from("accounts")
-      .select("balance")
-      .eq("id", accountId)
-      .single()
-    const storedBalance = Number(accountRow?.balance || 0)
-    const nextBalance = Math.max(0, storedBalance + ledgerSum)
-    await supabase.from("accounts").update({ balance: nextBalance }).eq("id", accountId)
+    // Non-credit: ledger_calc_balance returns the cumulative balance
+    // (initial balance + all income - all expenses). Use it directly.
+    await supabase.from("accounts").update({
+      balance: Math.max(0, ledgerSum),
+    }).eq("id", accountId)
   }
 }
 
