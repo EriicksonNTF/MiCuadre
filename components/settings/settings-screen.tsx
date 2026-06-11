@@ -113,14 +113,13 @@ export function SettingsScreen() {
       }
       if (profile.theme) {
         setCurrentTheme(profile.theme)
-        setTheme(profile.theme)
       }
       if (profile.language) {
         setCurrentLanguage(profile.language === "en" ? "en" : "es")
       }
       setIsLoadingTheme(false)
     }
-  }, [profile, setTheme])
+    }, [profile])
 
   const handleThemeChange = async (newTheme: Theme) => {
     setCurrentTheme(newTheme)

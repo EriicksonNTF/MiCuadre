@@ -14,6 +14,8 @@ import { normalizePlanTier } from "@/lib/billing/plans"
 import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 import { applyAccountImpact, syncAccountBalance } from "./use-data"
 import { LedgerService } from "@/lib/ledger/ledger-service"
+import { buildOutboxItem, tryEnqueueOffline, enqueueOfflineFallback, isOfflineError } from "@/lib/offline/outbox"
+import { getAuthenticatedUser } from "@/lib/supabase/user"
 
 const supabase = createClient()
 
@@ -37,18 +39,26 @@ function normalizePositiveAmount(value: unknown) {
 }
 
 async function fetchBudgets(): Promise<Budget[]> {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) return []
+  const userData = await getAuthenticatedUser()
+  if (!userData) return []
 
   const { data, error } = await supabase
     .from("budgets")
     .select("*")
-    .eq("user_id", userData.user.id)
+    .eq("user_id", userData.id)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
 
-  if (error) throw error
-  return (data as Budget[]) || []
+  if (error) {
+    const cached = await offlineDB.getAll<Budget>("budgets_cache")
+    if (cached.length > 0) return cached
+    throw error
+  }
+  const budgets = (data as Budget[]) || []
+  for (const b of budgets) {
+    await offlineDB.put("budgets_cache", b)
+  }
+  return budgets
 }
 
 async function fetchBudgetUsageRows() {
@@ -79,46 +89,58 @@ async function fetchPendingOutboxExpenses() {
 }
 
 async function fetchDebts(): Promise<Debt[]> {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) return []
+  const userData = await getAuthenticatedUser()
+  if (!userData) return []
 
   const { data, error } = await supabase
     .from("debts")
     .select("*")
-    .eq("user_id", userData.user.id)
+    .eq("user_id", userData.id)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
 
   if (error) {
     if ((error as any).code === "42P01") return []
+    const cached = await offlineDB.getAll<Debt>("debts_cache")
+    if (cached.length > 0) return cached
     throw error
   }
 
-  return ((data as Debt[]) || []).map((debt) => ({
+  const debts = ((data as Debt[]) || []).map((debt) => ({
     ...debt,
     debt_type: (debt.debt_type || "loan") as Debt["debt_type"],
     payment_frequency: (debt.payment_frequency || "monthly") as Debt["payment_frequency"],
   }))
+  for (const d of debts) {
+    await offlineDB.put("debts_cache", d)
+  }
+  return debts
 }
 
 async function fetchDebtPaymentsThisMonth() {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) return [] as DebtPayment[]
+  const userData = await getAuthenticatedUser()
+  if (!userData) return [] as DebtPayment[]
   const { from, to } = monthRange()
 
   const { data, error } = await supabase
     .from("debt_payments")
     .select("*")
-    .eq("user_id", userData.user.id)
+    .eq("user_id", userData.id)
     .gte("payment_date", `${from}T00:00:00`)
     .lte("payment_date", `${to}T23:59:59`)
 
   if (error) {
     if ((error as any).code === "42P01") return []
+    const cached = await offlineDB.getAll<DebtPayment>("debt_payments_cache")
+    if (cached.length > 0) return cached
     throw error
   }
 
-  return (data as DebtPayment[]) || []
+  const payments = (data as DebtPayment[]) || []
+  for (const p of payments) {
+    await offlineDB.put("debt_payments_cache", p)
+  }
+  return payments
 }
 
 type CreditCardDebtSnapshot = {
@@ -132,13 +154,13 @@ type CreditCardDebtSnapshot = {
 }
 
 async function fetchCreditCardDebtSnapshot(): Promise<CreditCardDebtSnapshot[]> {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) return []
+  const userData = await getAuthenticatedUser()
+  if (!userData) return []
 
   const { data, error } = await supabase
     .from("accounts")
     .select("id,name,statement_due_date,pending_amount,minimum_payment,current_debt_dop,current_debt_usd")
-    .eq("user_id", userData.user.id)
+    .eq("user_id", userData.id)
     .eq("type", "credit")
     .eq("is_active", true)
 
@@ -217,9 +239,9 @@ function plusDays(base: Date, days: number) {
 
 export function useFinancialCalendar() {
   return useSWR<FinancialCalendarEvent[]>("planning_calendar_events", async () => {
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) return []
-    return getFinancialCalendarEvents(userData.user.id)
+    const userData = await getAuthenticatedUser()
+    if (!userData) return []
+    return getFinancialCalendarEvents(userData.id)
   })
 }
 
@@ -306,16 +328,22 @@ export async function createBudget(input: {
   currency: "DOP" | "USD"
   alert_threshold: number
 }) {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) throw new Error("No autenticado")
-  const userId = userData.user.id
+  const userData = await getAuthenticatedUser()
+  if (!userData) throw new Error("No autenticado")
+  const userId = userData.id
+
+  const outboxItem = buildOutboxItem({
+    userId, operation: "create_budget", entity: "budgets",
+    payload: input,
+  })
+  if (await tryEnqueueOffline(outboxItem, ["planning_budgets_with_usage"])) return
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan_tier, email")
     .eq("id", userId)
     .maybeSingle()
-  const plan = isTestFullAccessEmail(userData.user.email) || isTestFullAccessEmail((profile as any)?.email)
+  const plan = isTestFullAccessEmail(userData.email) || isTestFullAccessEmail((profile as any)?.email)
     ? "pro"
     : normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
   const limits = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
@@ -337,19 +365,27 @@ export async function createBudget(input: {
     }
   }
 
-  const { error } = await supabase.from("budgets").insert({
-    user_id: userId,
-    category_id: input.category_id || null,
-    category_name: input.category_name,
-    name: input.name,
-    amount: input.amount,
-    currency: input.currency,
-    period: "monthly",
-    alert_threshold: input.alert_threshold,
-    is_active: true,
-  })
-  if (error) throw error
-  mutate("planning_budgets_with_usage")
+  try {
+    const { error } = await supabase.from("budgets").insert({
+      user_id: userId,
+      category_id: input.category_id || null,
+      category_name: input.category_name,
+      name: input.name,
+      amount: input.amount,
+      currency: input.currency,
+      period: "monthly",
+      alert_threshold: input.alert_threshold,
+      is_active: true,
+    })
+    if (error) throw error
+    mutate("planning_budgets_with_usage")
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["planning_budgets_with_usage"])
+      return
+    }
+    throw err
+  }
 }
 
 export async function updateBudget(input: {
@@ -361,39 +397,67 @@ export async function updateBudget(input: {
   currency: "DOP" | "USD"
   alert_threshold: number
 }) {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) throw new Error("No autenticado")
+  const userData = await getAuthenticatedUser()
+  if (!userData) throw new Error("No autenticado")
 
-  const { error } = await supabase
-    .from("budgets")
-    .update({
-      category_id: input.category_id || null,
-      category_name: input.category_name,
-      name: input.name,
-      amount: input.amount,
-      currency: input.currency,
-      alert_threshold: input.alert_threshold,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", input.id)
-    .eq("user_id", userData.user.id)
+  const outboxItem = buildOutboxItem({
+    userId: userData.id, operation: "update_budget", entity: "budgets",
+    payload: input,
+  })
+  if (await tryEnqueueOffline(outboxItem, ["planning_budgets_with_usage"])) return
 
-  if (error) throw error
-  mutate("planning_budgets_with_usage")
+  try {
+    const { error } = await supabase
+      .from("budgets")
+      .update({
+        category_id: input.category_id || null,
+        category_name: input.category_name,
+        name: input.name,
+        amount: input.amount,
+        currency: input.currency,
+        alert_threshold: input.alert_threshold,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.id)
+      .eq("user_id", userData.id)
+
+    if (error) throw error
+    mutate("planning_budgets_with_usage")
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["planning_budgets_with_usage"])
+      return
+    }
+    throw err
+  }
 }
 
 export async function deactivateBudget(id: string) {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) throw new Error("No autenticado")
+  const userData = await getAuthenticatedUser()
+  if (!userData) throw new Error("No autenticado")
 
-  const { error } = await supabase
-    .from("budgets")
-    .update({ is_active: false, updated_at: new Date().toISOString() })
-    .eq("id", id)
-    .eq("user_id", userData.user.id)
+  const outboxItem = buildOutboxItem({
+    userId: userData.id, operation: "delete_budget", entity: "budgets",
+    payload: { id },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["planning_budgets_with_usage"])) return
 
-  if (error) throw error
-  mutate("planning_budgets_with_usage")
+  try {
+    const { error } = await supabase
+      .from("budgets")
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .eq("user_id", userData.id)
+
+    if (error) throw error
+    mutate("planning_budgets_with_usage")
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["planning_budgets_with_usage"])
+      return
+    }
+    throw err
+  }
 }
 
 export async function createDebt(input: {
@@ -410,16 +474,16 @@ export async function createDebt(input: {
   interest_rate?: number | null
   notes?: string | null
 }) {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) throw new Error("No autenticado")
-  const userId = userData.user.id
+  const userData = await getAuthenticatedUser()
+  if (!userData) throw new Error("No autenticado")
+  const userId = userData.id
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("plan_tier, email")
     .eq("id", userId)
     .maybeSingle()
-  const plan = isTestFullAccessEmail(userData.user.email) || isTestFullAccessEmail((profile as any)?.email)
+  const plan = isTestFullAccessEmail(userData.email) || isTestFullAccessEmail((profile as any)?.email)
     ? "pro"
     : normalizePlanTier((profile as any)?.plan_tier as string | undefined) || DEFAULT_PLAN
   const limits = ENTITLEMENTS_BY_PLAN[plan] || ENTITLEMENTS_BY_PLAN[DEFAULT_PLAN]
@@ -442,29 +506,45 @@ export async function createDebt(input: {
     }
   }
 
-  const { data, error } = await supabase.from("debts").insert({
-    user_id: userId,
-    name: input.name,
-    debt_type: input.debt_type,
-    original_amount: normalizePositiveAmount(input.original_amount),
-    current_balance: normalizePositiveAmount(input.current_balance),
-    currency: input.currency,
-    linked_account_id: input.linked_account_id || null,
-    fixed_payment_amount: input.fixed_payment_amount ? normalizeAmount(input.fixed_payment_amount) : null,
-    payment_frequency: input.payment_frequency || "monthly",
-    payment_day: input.payment_day || null,
-    start_date: input.start_date || null,
-    interest_rate: input.interest_rate || null,
-    notes: input.notes || null,
-    is_active: true,
-  }).select("*").single()
+  const outboxItem = buildOutboxItem({
+    userId, operation: "create_debt", entity: "debts",
+    payload: input,
+  })
+  if (await tryEnqueueOffline(outboxItem, ["planning_debts", "planning_calendar_events", "accounts"])) {
+    return { id: outboxItem.id, user_id: userId, ...input } as Debt
+  }
 
-  if (error) throw error
-  mutate("planning_debts")
-  mutate("planning_calendar_events")
-  mutate("accounts")
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  return data as Debt
+  try {
+    const { data, error } = await supabase.from("debts").insert({
+      user_id: userId,
+      name: input.name,
+      debt_type: input.debt_type,
+      original_amount: normalizePositiveAmount(input.original_amount),
+      current_balance: normalizePositiveAmount(input.current_balance),
+      currency: input.currency,
+      linked_account_id: input.linked_account_id || null,
+      fixed_payment_amount: input.fixed_payment_amount ? normalizeAmount(input.fixed_payment_amount) : null,
+      payment_frequency: input.payment_frequency || "monthly",
+      payment_day: input.payment_day || null,
+      start_date: input.start_date || null,
+      interest_rate: input.interest_rate || null,
+      notes: input.notes || null,
+      is_active: true,
+    }).select("*").single()
+
+    if (error) throw error
+    mutate("planning_debts")
+    mutate("planning_calendar_events")
+    mutate("accounts")
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    return data as Debt
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["planning_debts", "planning_calendar_events", "accounts"])
+      return { id: outboxItem.id, user_id: userId, ...input } as Debt
+    }
+    throw err
+  }
 }
 
 export async function payDebt(input: {
@@ -473,9 +553,9 @@ export async function payDebt(input: {
   amount: number
   notes?: string | null
 }) {
-  const { data: userData } = await supabase.auth.getUser()
-  if (!userData.user) throw new Error("No autenticado")
-  const userId = userData.user.id
+  const userData = await getAuthenticatedUser()
+  if (!userData) throw new Error("No autenticado")
+  const userId = userData.id
 
   const amount = normalizePositiveAmount(input.amount)
   if (amount <= 0) throw new Error("Monto invalido")

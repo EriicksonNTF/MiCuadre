@@ -16,6 +16,7 @@ import type {
 } from "@/lib/types/database"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { offlineDB, OutboxItem } from "@/lib/offline/db"
+import { buildOutboxItem, tryEnqueueOffline, enqueueOfflineFallback, isOfflineError } from "@/lib/offline/outbox"
 import { getCycleForDate } from "@/lib/credit-cycle"
 import { getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
 import { blockedEntitlement, DEFAULT_PLAN, ENTITLEMENTS_BY_PLAN } from "@/lib/entitlements/entitlements"
@@ -23,6 +24,7 @@ import { isTestFullAccessEmail } from "@/lib/entitlements/test-user"
 import { normalizePlanTier } from "@/lib/billing/plans"
 import type { PlanTier } from "@/types/billing"
 import { LedgerService } from "@/lib/ledger/ledger-service"
+import { getAuthenticatedUser } from "@/lib/supabase/user"
 
 type CreditAccountState = {
   id: string
@@ -347,7 +349,7 @@ async function createNotification(params: {
 }
 
 async function fetchFinancialSubscriptions(): Promise<FinancialSubscription[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -356,8 +358,16 @@ async function fetchFinancialSubscriptions(): Promise<FinancialSubscription[]> {
     .eq("user_id", user.id)
     .order("next_payment_date", { ascending: true })
 
-  if (error) throw error
-  return (data as FinancialSubscription[]) || []
+  if (error) {
+    const cached = await offlineDB.getAll<FinancialSubscription>("subscriptions_cache")
+    if (cached.length > 0) return cached
+    throw error
+  }
+  const subs = (data as FinancialSubscription[]) || []
+  for (const s of subs) {
+    await offlineDB.put("subscriptions_cache", s)
+  }
+  return subs
 }
 
 async function getUserPlanAndLimits(userId: string, email?: string | null) {
@@ -751,7 +761,7 @@ export async function syncAccountBalance(accountId: string, currency?: string) {
 
 // Generic fetcher for Supabase
 async function fetchAccounts(): Promise<Account[]> {
-  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+  const user = await getAuthenticatedUser()
   const userId = user?.id
 
   let accounts: Account[] = []
@@ -846,7 +856,7 @@ async function fetchAccounts(): Promise<Account[]> {
 }
 
 async function fetchTransactions(limit = 10): Promise<Transaction[]> {
-  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+  const user = await getAuthenticatedUser()
   const userId = user?.id
 
   let serverTxs: Transaction[] = []
@@ -932,7 +942,7 @@ async function fetchTransactions(limit = 10): Promise<Transaction[]> {
 }
 
 async function fetchCategories(): Promise<Category[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -942,12 +952,20 @@ async function fetchCategories(): Promise<Category[]> {
     .order("is_default", { ascending: false })
     .order("name", { ascending: true })
 
-  if (error) throw error
-  return (data as Category[]) || []
+  if (error) {
+    const cached = await offlineDB.getAll<Category>("categories_cache")
+    if (cached.length > 0) return cached
+    throw error
+  }
+  const cats = (data as Category[]) || []
+  for (const cat of cats) {
+    await offlineDB.put("categories_cache", cat)
+  }
+  return cats
 }
 
 async function fetchGoals(): Promise<Goal[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -956,12 +974,20 @@ async function fetchGoals(): Promise<Goal[]> {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
-  if (error) throw error
-  return (data as Goal[]) || []
+  if (error) {
+    const cached = await offlineDB.getAll<Goal>("goals_cache")
+    if (cached.length > 0) return cached
+    throw error
+  }
+  const goals = (data as Goal[]) || []
+  for (const g of goals) {
+    await offlineDB.put("goals_cache", g)
+  }
+  return goals
 }
 
 async function fetchNotifications(): Promise<Notification[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) return []
 
   // Sync credit cycles in background (non-blocking)
@@ -974,12 +1000,20 @@ async function fetchNotifications(): Promise<Notification[]> {
     .order("created_at", { ascending: false })
     .limit(20)
 
-  if (error) throw error
-  return (data as Notification[]) || []
+  if (error) {
+    const cached = await offlineDB.getAll<Notification>("notifications_cache")
+    if (cached.length > 0) return cached
+    throw error
+  }
+  const notifs = (data as Notification[]) || []
+  for (const n of notifs) {
+    await offlineDB.put("notifications_cache", n)
+  }
+  return notifs
 }
 
 async function fetchProfile(): Promise<Profile | null> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) return null
 
   const { data, error } = await supabase
@@ -988,12 +1022,20 @@ async function fetchProfile(): Promise<Profile | null> {
     .eq("id", user.id)
     .single()
 
-  if (error && error.code !== "PGRST116") throw error
+  if (error && error.code !== "PGRST116") {
+    const cached = await offlineDB.getAll<Profile & { id: string }>("profile_cache")
+    const cachedProfile = cached.find(p => p.id === user.id)
+    if (cachedProfile) return cachedProfile
+    throw error
+  }
+  if (data) {
+    await offlineDB.put("profile_cache", data)
+  }
   return data
 }
 
 async function fetchBeneficiaries(): Promise<Beneficiary[]> {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) return []
 
   const { data, error } = await supabase
@@ -1003,8 +1045,16 @@ async function fetchBeneficiaries(): Promise<Beneficiary[]> {
     .order("is_favorite", { ascending: false })
     .order("name", { ascending: true })
 
-  if (error) throw error
-  return (data as Beneficiary[]) || []
+  if (error) {
+    const cached = await offlineDB.getAll<Beneficiary>("beneficiaries_cache")
+    if (cached.length > 0) return cached
+    throw error
+  }
+  const beneficiaries = (data as Beneficiary[]) || []
+  for (const b of beneficiaries) {
+    await offlineDB.put("beneficiaries_cache", b)
+  }
+  return beneficiaries
 }
 
 // SWR Hooks
@@ -1221,8 +1271,16 @@ type NewAccountInput = Omit<Account, "id" | "user_id" | "created_at" | "updated_
 }
 
 export async function createAccount(account: NewAccountInput) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "create_account", entity: "accounts",
+    payload: { ...account },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["accounts"])) {
+    return { id: outboxItem.id, user_id: user.id, ...account, created_at: outboxItem.created_at } as Account
+  }
 
   const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.max_accounts !== "unlimited") {
@@ -1311,7 +1369,7 @@ export async function createTransaction(
   transaction: Omit<Transaction, "id" | "user_id" | "created_at" | "category" | "account">,
   options?: { applyCommission?: boolean; skipOutbox?: boolean; idempotencyKey?: string }
 ) {
-  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }))
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   const idempotencyKey = options?.idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
@@ -1602,8 +1660,14 @@ export async function updateTransaction(
   id: string,
   updates: Pick<Transaction, "account_id" | "type" | "amount" | "description" | "date" | "category_id" | "notes" | "currency" | "amount_base" | "exchange_rate" | "is_recurring">
 ) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "update_transaction", entity: "transactions",
+    payload: { id, ...updates },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["transactions"])) return { id, ...updates } as Transaction
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
@@ -1651,7 +1715,13 @@ export async function updateTransaction(
     p_is_recurring: updates.is_recurring ?? null,
   })
 
-  if (rpcError) throw rpcError
+  if (rpcError) {
+    if (isOfflineError(rpcError)) {
+      await enqueueOfflineFallback(outboxItem, ["transactions", "accounts"])
+      return { id, ...updates } as Transaction
+    }
+    throw rpcError
+  }
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
@@ -1659,8 +1729,14 @@ export async function updateTransaction(
 }
 
 export async function deleteTransaction(id: string) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "delete_transaction", entity: "transactions",
+    payload: { id },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["transactions", "accounts"])) return
 
   const { data: existing, error: existingError } = await supabase
     .from("transactions")
@@ -1676,7 +1752,13 @@ export async function deleteTransaction(id: string) {
     p_transaction_id: id,
   })
 
-  if (rpcError) throw rpcError
+  if (rpcError) {
+    if (isOfflineError(rpcError)) {
+      await enqueueOfflineFallback(outboxItem, ["transactions", "accounts"])
+      return
+    }
+    throw rpcError
+  }
 
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   mutate("accounts")
@@ -1771,7 +1853,7 @@ async function deleteCreditCardPaymentGroup(params: {
 }
 
 export async function updateProfile(updates: Partial<Profile> & { username?: string | null; phone?: string | null }) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   const { data: existing } = await supabase
@@ -1905,8 +1987,14 @@ async function updateSubscriptionProcessingMeta(subscriptionId: string, payload:
 }
 
 export async function markNotificationAsRead(id: string) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "mark_notification_read", entity: "notifications",
+    payload: { id },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["notifications"])) return
 
   mutate("notifications", (prev?: Notification[]) =>
     (prev || []).map((n) => (n.id === id ? { ...n, read: true } : n)),
@@ -1920,6 +2008,10 @@ export async function markNotificationAsRead(id: string) {
     .eq("user_id", user.id)
 
   if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["notifications"])
+      return
+    }
     mutate("notifications")
     throw error
   }
@@ -1928,8 +2020,14 @@ export async function markNotificationAsRead(id: string) {
 }
 
 export async function markAllNotificationsAsRead() {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "mark_all_notifications_read", entity: "notifications",
+    payload: {},
+  })
+  if (await tryEnqueueOffline(outboxItem, ["notifications"])) return
 
   mutate("notifications", (prev?: Notification[]) =>
     (prev || []).map((n) => ({ ...n, read: true })),
@@ -1943,6 +2041,10 @@ export async function markAllNotificationsAsRead() {
     .eq("read", false)
 
   if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["notifications"])
+      return
+    }
     mutate("notifications")
     throw error
   }
@@ -1952,8 +2054,16 @@ export async function markAllNotificationsAsRead() {
 
 // Goal mutations
 export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at" | "updated_at" | "is_completed" | "current_amount">) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "create_goal", entity: "goals",
+    payload: { ...goal },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["goals"])) {
+    return { id: outboxItem.id, user_id: user.id, ...goal, current_amount: 0, is_completed: false, created_at: outboxItem.created_at } as Goal
+  }
 
   const { limits } = await getUserPlanAndLimits(user.id, user.email)
   if (limits.max_goals !== "unlimited") {
@@ -1973,29 +2083,45 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
     }
   }
 
-  const { data, error } = await supabase
-    .from("goals")
-    .insert({ ...goal, user_id: user.id, current_amount: 0, is_completed: false })
-    .select()
-    .single()
+  try {
+    const { data, error } = await supabase
+      .from("goals")
+      .insert({ ...goal, user_id: user.id, current_amount: 0, is_completed: false })
+      .select()
+      .single()
 
-  if (error) throw error
-  mutate("goals")
+    if (error) throw error
 
-  await createNotification({
-    userId: user.id,
-    type: "goal",
-    title: "Meta creada",
-    message: `Tu meta ${goal.name} fue creada correctamente.`,
-    actionUrl: "/goals",
-  })
-  mutate("notifications")
-  return data
+    mutate("goals")
+    await createNotification({
+      userId: user.id,
+      type: "goal",
+      title: "Meta creada",
+      message: `Tu meta ${goal.name} fue creada correctamente.`,
+      actionUrl: "/goals",
+    })
+    mutate("notifications")
+    return data
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["goals", "notifications"])
+      return { id: outboxItem.id, user_id: user.id, ...goal, current_amount: 0, is_completed: false, created_at: outboxItem.created_at } as Goal
+    }
+    throw err
+  }
 }
 
 export async function updateGoal(id: string, updates: Partial<Goal>) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "update_goal", entity: "goals",
+    payload: { id, ...updates },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["goals"])) {
+    return { id, ...updates } as Goal
+  }
 
   const { data, error } = await supabase
     .from("goals")
@@ -2004,7 +2130,13 @@ export async function updateGoal(id: string, updates: Partial<Goal>) {
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["goals"])
+      return { id, ...updates } as Goal
+    }
+    throw error
+  }
   mutate("goals")
 
   await createNotification({
@@ -2019,16 +2151,31 @@ export async function updateGoal(id: string, updates: Partial<Goal>) {
 }
 
 export async function deleteGoal(id: string) {
+  const user = await getAuthenticatedUser()
+  if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "delete_goal", entity: "goals",
+    payload: { id },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["goals"])) return
+
   const { error } = await supabase
     .from("goals")
     .delete()
     .eq("id", id)
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["goals"])
+      return
+    }
+    throw error
+  }
 }
 
 export async function addGoalContribution(contribution: Omit<GoalContribution, "id" | "created_at" | "user_id">) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   // Step A: Load source account to get its currency and validate funds.
@@ -2181,10 +2328,16 @@ export async function createTransfer(transfer: {
   apply_commission?: boolean
   exchange_rate?: number
 }) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   if (transfer.amount <= 0) throw new Error("Monto inválido")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "create_transfer", entity: "transactions",
+    payload: transfer,
+  })
+  if (await tryEnqueueOffline(outboxItem, ["accounts"])) return { id: outboxItem.id }
 
   const sourceCurrency = (transfer.currency || "DOP") as "DOP" | "USD"
 
@@ -2201,6 +2354,10 @@ export async function createTransfer(transfer: {
   })
 
   if (rpcError) {
+    if (isOfflineError(rpcError)) {
+      await enqueueOfflineFallback(outboxItem, ["accounts"])
+      return { id: outboxItem.id }
+    }
     console.error("Transfer RPC error (full):", JSON.stringify(rpcError, null, 2))
     console.error("Transfer RPC keys:", Object.keys(rpcError))
     console.error("Transfer RPC code:", (rpcError as any)?.code, "message:", (rpcError as any)?.message, "details:", (rpcError as any)?.details, "hint:", (rpcError as any)?.hint)
@@ -2249,7 +2406,7 @@ export async function payCreditCard(payment: {
 }) {
   const applyCommission = Boolean(payment.apply_commission)
   const paymentGroupId = generatePaymentGroupId()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   if (payment.amount <= 0) {
@@ -2881,30 +3038,55 @@ export async function deleteCreditCardPayment(transactionId: string) {
 
 // Beneficiary mutations
 export async function createBeneficiary(beneficiary: Omit<Beneficiary, "id" | "user_id" | "created_at">) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
-  const { data, error } = await supabase
-    .from("beneficiaries")
-    .insert({ ...beneficiary, user_id: user.id })
-    .select()
-    .single()
-
-  if (error) throw error
-  mutate("beneficiaries")
-
-  await createNotification({
-    userId: user.id,
-    type: "transfer",
-    title: "Beneficiario creado",
-    message: `${beneficiary.name} esta listo para transferencias.`,
-    actionUrl: "/send",
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "create_beneficiary", entity: "beneficiaries",
+    payload: beneficiary,
   })
-  mutate("notifications")
-  return data
+  if (await tryEnqueueOffline(outboxItem, ["beneficiaries"])) {
+    return { id: outboxItem.id, user_id: user.id, ...beneficiary, created_at: outboxItem.created_at } as Beneficiary
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("beneficiaries")
+      .insert({ ...beneficiary, user_id: user.id })
+      .select()
+      .single()
+
+    if (error) throw error
+    mutate("beneficiaries")
+
+    await createNotification({
+      userId: user.id,
+      type: "transfer",
+      title: "Beneficiario creado",
+      message: `${beneficiary.name} esta listo para transferencias.`,
+      actionUrl: "/send",
+    })
+    mutate("notifications")
+    return data
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["beneficiaries", "notifications"])
+      return { id: outboxItem.id, user_id: user.id, ...beneficiary, created_at: outboxItem.created_at } as Beneficiary
+    }
+    throw err
+  }
 }
 
 export async function updateBeneficiary(id: string, updates: Partial<Beneficiary>) {
+  const user = await getAuthenticatedUser()
+  if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "update_beneficiary", entity: "beneficiaries",
+    payload: { id, ...updates },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["beneficiaries"])) return { id, ...updates } as Beneficiary
+
   const { data, error } = await supabase
     .from("beneficiaries")
     .update(updates)
@@ -2912,17 +3094,38 @@ export async function updateBeneficiary(id: string, updates: Partial<Beneficiary
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["beneficiaries"])
+      return { id, ...updates } as Beneficiary
+    }
+    throw error
+  }
   return data
 }
 
 export async function deleteBeneficiary(id: string) {
+  const user = await getAuthenticatedUser()
+  if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "delete_beneficiary", entity: "beneficiaries",
+    payload: { id },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["beneficiaries"])) return
+
   const { error } = await supabase
     .from("beneficiaries")
     .delete()
     .eq("id", id)
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["beneficiaries"])
+      return
+    }
+    throw error
+  }
 }
 
 export async function createFinancialSubscription(input: {
@@ -2941,7 +3144,7 @@ export async function createFinancialSubscription(input: {
   pre_alert_enabled?: boolean
   status?: "active" | "paused" | "cancelled"
 }) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   const { limits } = await getUserPlanAndLimits(user.id, user.email)
@@ -2966,41 +3169,57 @@ export async function createFinancialSubscription(input: {
 
   const categoryId = input.category_id || await getOrCreateSubscriptionCategoryId(user.id)
 
-  const { data, error } = await supabase
-    .from("subscriptions")
-    .insert({
-      name: input.name,
-      logo_url: input.logo_url || null,
-      provider_key: input.provider_key || null,
-      amount: input.amount,
-      currency: input.currency,
-      account_id: input.account_id,
-      category_id: categoryId,
-      billing_day: input.billing_day,
-      next_payment_date: input.next_payment_date,
-      user_id: user.id,
-      status: input.status || "active",
-    })
-    .select("*")
-    .single()
-
-  if (error) throw error
-
-  await createNotification({
-    userId: user.id,
-    type: "subscription",
-    title: "Suscripcion creada",
-    message: `${input.name} por ${input.currency} ${roundCurrencyAmount(input.amount).toFixed(2)} al mes.`,
-    actionUrl: "/settings/subscriptions",
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "create_subscription", entity: "subscriptions",
+    payload: { ...input, category_id: categoryId },
   })
+  if (await tryEnqueueOffline(outboxItem, ["financial_subscriptions"])) {
+    return { id: outboxItem.id, user_id: user.id, ...input, category_id: categoryId, created_at: outboxItem.created_at } as FinancialSubscription
+  }
 
-  mutate("financial_subscriptions")
-  mutate("notifications")
-  return data
+  try {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .insert({
+        name: input.name,
+        logo_url: input.logo_url || null,
+        provider_key: input.provider_key || null,
+        amount: input.amount,
+        currency: input.currency,
+        account_id: input.account_id,
+        category_id: categoryId,
+        billing_day: input.billing_day,
+        next_payment_date: input.next_payment_date,
+        user_id: user.id,
+        status: input.status || "active",
+      })
+      .select("*")
+      .single()
+
+    if (error) throw error
+
+    await createNotification({
+      userId: user.id,
+      type: "subscription",
+      title: "Suscripcion creada",
+      message: `${input.name} por ${input.currency} ${roundCurrencyAmount(input.amount).toFixed(2)} al mes.`,
+      actionUrl: "/settings/subscriptions",
+    })
+
+    mutate("financial_subscriptions")
+    mutate("notifications")
+    return data
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["financial_subscriptions", "notifications"])
+      return { id: outboxItem.id, user_id: user.id, ...input, category_id: categoryId, created_at: outboxItem.created_at } as FinancialSubscription
+    }
+    throw err
+  }
 }
 
 export async function updateFinancialSubscription(id: string, updates: Partial<FinancialSubscription>) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   if (updates.auto_record_enabled || updates.pre_alert_enabled) {
@@ -3014,6 +3233,12 @@ export async function updateFinancialSubscription(id: string, updates: Partial<F
     }
   }
 
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "update_subscription", entity: "subscriptions",
+    payload: { id, ...updates },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["financial_subscriptions"])) return { id, ...updates } as FinancialSubscription
+
   const { data, error } = await supabase
     .from("subscriptions")
     .update(updates)
@@ -3022,23 +3247,44 @@ export async function updateFinancialSubscription(id: string, updates: Partial<F
     .select("*")
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["financial_subscriptions"])
+      return { id, ...updates } as FinancialSubscription
+    }
+    throw error
+  }
   mutate("financial_subscriptions")
   return data
 }
 
 export async function deleteFinancialSubscription(id: string) {
+  const user = await getAuthenticatedUser()
+  if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "delete_subscription", entity: "subscriptions",
+    payload: { id },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["financial_subscriptions"])) return
+
   const { error } = await supabase
     .from("subscriptions")
     .delete()
     .eq("id", id)
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["financial_subscriptions"])
+      return
+    }
+    throw error
+  }
   mutate("financial_subscriptions")
 }
 
 export async function processDueFinancialSubscriptions() {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) return
   const schema = await ensureCreditSchemas()
 
@@ -3192,31 +3438,56 @@ export async function updateAccountBalance(id: string, newBalance: number) {
 
 // Category mutations
 export async function createCategory(category: Omit<Category, "id" | "user_id" | "created_at">) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
-  const { data, error } = await supabase
-    .from("categories")
-    .insert({ ...category, user_id: user.id })
-    .select()
-    .single()
-
-  if (error) throw error
-  mutate("categories")
-
-  await createNotification({
-    userId: user.id,
-    type: "system",
-    title: "Categoria creada",
-    message: `La categoria ${category.name} fue creada correctamente.`,
-    actionUrl: "/settings/categories",
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "create_category", entity: "categories",
+    payload: category,
   })
-  mutate("notifications")
+  if (await tryEnqueueOffline(outboxItem, ["categories"])) {
+    return { id: outboxItem.id, user_id: user.id, ...category, created_at: outboxItem.created_at } as Category
+  }
 
-  return data
+  try {
+    const { data, error } = await supabase
+      .from("categories")
+      .insert({ ...category, user_id: user.id })
+      .select()
+      .single()
+
+    if (error) throw error
+    mutate("categories")
+
+    await createNotification({
+      userId: user.id,
+      type: "system",
+      title: "Categoria creada",
+      message: `La categoria ${category.name} fue creada correctamente.`,
+      actionUrl: "/settings/categories",
+    })
+    mutate("notifications")
+
+    return data
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["categories", "notifications"])
+      return { id: outboxItem.id, user_id: user.id, ...category, created_at: outboxItem.created_at } as Category
+    }
+    throw err
+  }
 }
 
 export async function updateCategory(id: string, updates: Pick<Category, "name" | "icon" | "color" | "type" | "is_subscription">) {
+  const user = await getAuthenticatedUser()
+  if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "update_category", entity: "categories",
+    payload: { id, ...updates },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["categories"])) return { id, ...updates } as Category
+
   const { data, error } = await supabase
     .from("categories")
     .update(updates)
@@ -3225,12 +3496,27 @@ export async function updateCategory(id: string, updates: Pick<Category, "name" 
     .select()
     .single()
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["categories"])
+      return { id, ...updates } as Category
+    }
+    throw error
+  }
   mutate("categories")
   return data
 }
 
 export async function deleteCategory(id: string, force = false) {
+  const user = await getAuthenticatedUser()
+  if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "delete_category", entity: "categories",
+    payload: { id, force },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["categories"])) return
+
   const { data: txs, error: txError } = await supabase
     .from("transactions")
     .select("id")
@@ -3248,13 +3534,25 @@ export async function deleteCategory(id: string, force = false) {
     .eq("id", id)
     .eq("is_default", false)
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["categories"])
+      return
+    }
+    throw error
+  }
   mutate("categories")
 }
 
 export async function updateAccount(id: string, updates: Partial<Account>) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "update_account", entity: "accounts",
+    payload: { id, ...updates },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["accounts"])) return { id, ...updates } as Account
 
   // Capture previous balance for ledger recording
   const { data: prevAccount } = await supabase
@@ -3296,7 +3594,13 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
     finalError = response.error
   }
 
-  if (finalError || !data) throw finalError || new Error("No se pudo actualizar la cuenta")
+  if (finalError || !data) {
+    if (finalError && isOfflineError(finalError)) {
+      await enqueueOfflineFallback(outboxItem, ["accounts"])
+      return { id, ...updates } as Account
+    }
+    throw finalError || new Error("No se pudo actualizar la cuenta")
+  }
 
   // Record balance change in ledger for non-credit accounts
   if (
@@ -3337,7 +3641,7 @@ export const deleteSubscription = deleteFinancialSubscription
 export const processDueSubscriptions = processDueFinancialSubscriptions
 
 export async function reconcileAccountBalance(accountId: string) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   const { data, error } = await supabase.rpc("reconcile_account_balance", {
@@ -3363,7 +3667,7 @@ export async function reorderAccounts(accountIdsInOrder: string[]) {
 }
 
 export async function setFavoriteAccount(accountId: string) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
   await supabase.from("accounts").update({ is_favorite: false }).eq("user_id", user.id)
@@ -3372,13 +3676,27 @@ export async function setFavoriteAccount(accountId: string) {
 }
 
 export async function deleteAccount(id: string) {
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
-  const { count: ledgerCount } = await supabase
+  const outboxItem = buildOutboxItem({
+    userId: user.id, operation: "delete_account", entity: "accounts",
+    payload: { id },
+  })
+  if (await tryEnqueueOffline(outboxItem, ["accounts"])) return
+
+  const { count: ledgerCount, error: ledgerError } = await supabase
     .from("ledger_entries")
     .select("id", { count: "exact", head: true })
     .or(`debit_account_id.eq.${id},credit_account_id.eq.${id}`)
+
+  if (ledgerError) {
+    if (isOfflineError(ledgerError)) {
+      await enqueueOfflineFallback(outboxItem, ["accounts"])
+      return
+    }
+    throw ledgerError
+  }
 
   if (ledgerCount && ledgerCount > 0) {
     throw new Error(
@@ -3391,7 +3709,13 @@ export async function deleteAccount(id: string) {
     .delete()
     .eq("id", id)
 
-  if (error) throw error
+  if (error) {
+    if (isOfflineError(error)) {
+      await enqueueOfflineFallback(outboxItem, ["accounts"])
+      return
+    }
+    throw error
+  }
   mutate("accounts")
   mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
 }

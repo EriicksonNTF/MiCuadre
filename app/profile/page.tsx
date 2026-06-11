@@ -6,6 +6,7 @@ import { ChevronLeft, User, Camera, Save, X, Edit3 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
 import { useAuth } from "@/hooks/use-auth"
+import { useTheme } from "@/components/providers/theme-provider"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 
@@ -31,7 +32,8 @@ export default function ProfilePage() {
   const [username, setUsername] = useState("")
   const [phone, setPhone] = useState("")
   const [preferredCurrency, setPreferredCurrency] = useState<"DOP" | "USD">("DOP")
-  const [theme, setTheme] = useState<"light" | "dark" | "system">("system")
+  const { setTheme: setAppTheme } = useTheme()
+  const [theme, setLocalTheme] = useState<"light" | "dark" | "system">("system")
   const [language, setLanguage] = useState<"es" | "en">("es")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -50,7 +52,7 @@ export default function ProfilePage() {
     setUsername(String((profile as unknown as Record<string, unknown>).username || ""))
     setPhone(String((profile as unknown as Record<string, unknown>).phone || ""))
     setPreferredCurrency(profile.preferred_currency || "DOP")
-    setTheme(profile.theme || "system")
+    setLocalTheme(profile.theme || "system")
     setLanguage(profile.language || "es")
   }, [profile])
 
@@ -59,7 +61,7 @@ export default function ProfilePage() {
     setUsername(String(((profile as unknown as Record<string, unknown>)?.username as string) || ""))
     setPhone(String(((profile as unknown as Record<string, unknown>)?.phone as string) || ""))
     setPreferredCurrency(profile?.preferred_currency || "DOP")
-    setTheme(profile?.theme || "system")
+    setLocalTheme(profile?.theme || "system")
     setLanguage(profile?.language || "es")
     setIsEditing(true)
   }
@@ -70,7 +72,7 @@ export default function ProfilePage() {
     setUsername(String(((profile as unknown as Record<string, unknown>)?.username as string) || ""))
     setPhone(String(((profile as unknown as Record<string, unknown>)?.phone as string) || ""))
     setPreferredCurrency(profile?.preferred_currency || "DOP")
-    setTheme(profile?.theme || "system")
+    setLocalTheme(profile?.theme || "system")
     setLanguage(profile?.language || "es")
   }
 
@@ -265,7 +267,7 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-theme" className="mb-1 block text-xs font-medium text-muted-foreground">Tema</label>
               {isEditing ? (
-                <select id="profile-theme" value={theme} onChange={(e) => setTheme(e.target.value as "light" | "dark" | "system")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                <select id="profile-theme" value={theme} onChange={(e) => { const t = e.target.value as "light" | "dark" | "system"; setLocalTheme(t); setAppTheme(t) }} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
                   <option value="system">Sistema</option>
                   <option value="light">Claro</option>
                   <option value="dark">Oscuro</option>

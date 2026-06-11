@@ -1,8 +1,41 @@
+export type EntityType = "transactions" | "accounts" | "categories" | "goals" | "notifications" | "subscriptions" | "beneficiaries" | "budgets" | "debts" | "debt_payments"
+
+export type OutboxOperation =
+  | "create_transaction"
+  | "update_transaction"
+  | "delete_transaction"
+  | "create_account"
+  | "update_account"
+  | "delete_account"
+  | "create_category"
+  | "update_category"
+  | "delete_category"
+  | "create_goal"
+  | "update_goal"
+  | "delete_goal"
+  | "add_goal_contribution"
+  | "create_transfer"
+  | "pay_credit_card"
+  | "create_subscription"
+  | "update_subscription"
+  | "delete_subscription"
+  | "create_beneficiary"
+  | "update_beneficiary"
+  | "delete_beneficiary"
+  | "create_budget"
+  | "update_budget"
+  | "delete_budget"
+  | "create_debt"
+  | "pay_debt"
+  | "mark_notification_read"
+  | "mark_all_notifications_read"
+  | "update_profile"
+
 export interface OutboxItem {
-  id: string; // client-generated local transaction ID
-  user_id?: string; // client-generated local user ID for isolation
-  operation: "create_transaction";
-  entity: "transactions";
+  id: string;
+  user_id?: string;
+  operation: OutboxOperation;
+  entity: EntityType;
   payload: any;
   status: "pending" | "syncing" | "failed";
   retry_count: number;
@@ -12,9 +45,16 @@ export interface OutboxItem {
   idempotency_key: string;
 }
 
+const CACHE_STORES = [
+  "transactions_cache", "accounts_cache",
+  "categories_cache", "goals_cache", "notifications_cache",
+  "profile_cache", "subscriptions_cache", "beneficiaries_cache",
+  "budgets_cache", "debts_cache", "debt_payments_cache", "calendar_events_cache",
+] as const
+
 class OfflineDB {
   private dbName = "micuadre-offline";
-  private version = 1;
+  private version = 2;
   private db: IDBDatabase | null = null;
 
   private isClient(): boolean {
@@ -40,20 +80,19 @@ class OfflineDB {
 
       request.onupgradeneeded = (event) => {
         const db = request.result;
-        
+
         // Caches for offline reading
-        if (!db.objectStoreNames.contains("transactions_cache")) {
-          db.createObjectStore("transactions_cache", { keyPath: "id" });
+        for (const store of CACHE_STORES) {
+          if (!db.objectStoreNames.contains(store)) {
+            db.createObjectStore(store, { keyPath: "id" });
+          }
         }
-        if (!db.objectStoreNames.contains("accounts_cache")) {
-          db.createObjectStore("accounts_cache", { keyPath: "id" });
-        }
-        
+
         // Outbox queue for offline actions
         if (!db.objectStoreNames.contains("offline_outbox")) {
           db.createObjectStore("offline_outbox", { keyPath: "id" });
         }
-        
+
         // Log of sync errors
         if (!db.objectStoreNames.contains("sync_errors")) {
           db.createObjectStore("sync_errors", { keyPath: "id" });
@@ -119,7 +158,7 @@ class OfflineDB {
   }
 
   async clearAllCaches(): Promise<void> {
-    const stores = ["transactions_cache", "accounts_cache", "offline_outbox", "sync_errors"];
+    const stores = [...CACHE_STORES, "offline_outbox", "sync_errors"];
     await Promise.all(stores.map((store) => this.clearStore(store).catch((err) => console.error(`Failed to clear ${store}:`, err))));
   }
 }

@@ -27,8 +27,8 @@ export function AppProviders({
       <ProfilePreferencesSync />
       <PasskeyLockGate />
       {bodyCleanup}
-      {children}
       {offlineBanner}
+      {children}
       {toastContainer}
       <Toaster />
     </ThemeProvider>
