@@ -15,7 +15,7 @@
     },
     "supabase": {
       "type": "remote",
-      "url": "https://mcp.supabase.com/mcp?project_ref=zmbxriaftswtxjihatfr&read_only=true",
+      "url": "https://mcp.supabase.com/mcp?project_ref=zmbxriaftswtxjihatfr&read_only=false",
       "enabled": true
     },
     "stripe": {
