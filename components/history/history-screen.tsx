@@ -34,6 +34,7 @@ import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { isExcludedFromRealIncome } from "@/lib/transactions/reporting"
 import type { AccountType } from "@/lib/types/database"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 const categoryIcons: Record<string, typeof Utensils> = {
   food: Utensils,
@@ -347,7 +348,7 @@ export function HistoryScreen() {
   const filteredAccounts = accounts.filter((account) => account.name.toLowerCase().includes(accountSearch.toLowerCase().trim()))
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <header className="px-6 pb-4 pt-8">
         <p className="section-kicker">Actividad</p>
         <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">Historial</h1>
@@ -364,14 +365,14 @@ export function HistoryScreen() {
               <div className="rounded-2xl bg-muted/60 p-3">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[11px] font-semibold text-muted-foreground">Ingresos</span>
+                  <span className="text-[0.6875rem] font-semibold text-muted-foreground">Ingresos</span>
                 </div>
                 <p className="mt-1 text-sm font-black tabular-nums text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
               </div>
               <div className="rounded-2xl bg-muted/60 p-3">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                  <span className="text-[11px] font-semibold text-muted-foreground">Gastos</span>
+                  <span className="text-[0.6875rem] font-semibold text-muted-foreground">Gastos</span>
                 </div>
                 <p className="mt-1 text-sm font-black tabular-nums text-red-600 dark:text-red-400">-{formatCurrency(totals.expenses)}</p>
               </div>
@@ -420,7 +421,7 @@ export function HistoryScreen() {
                 <button type="button"
                   key={option.value}
                   onClick={() => setDatePreset(option.value as DatePreset)}
-                  className={cn("tap-lift rounded-xl px-2 py-2 text-[11px] font-bold transition-colors", datePreset === option.value ? "bg-primary text-primary-foreground" : "bg-background/70 text-foreground")}
+                  className={cn("tap-lift rounded-xl px-2 py-2 text-[0.6875rem] font-bold transition-colors", datePreset === option.value ? "bg-primary text-primary-foreground" : "bg-background/70 text-foreground")}
                 >
                   {option.label}
                 </button>
@@ -581,7 +582,7 @@ export function HistoryScreen() {
                                   <p className="truncate text-sm font-medium text-foreground">{tx.title}</p>
                                   {tx.metadata?.kind === "offline_pending" && (
                                     <span className={cn(
-                                      "inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide border shrink-0",
+                                      "inline-flex items-center rounded-full px-1.5 py-0.5 text-[0.5rem] font-extrabold uppercase tracking-wide border shrink-0",
                                       tx.metadata.sync_status === "failed"
                                         ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50"
                                         : tx.metadata.sync_status === "syncing"
@@ -603,12 +604,12 @@ export function HistoryScreen() {
                                   <span className="truncate">{tx.categoryName}</span>
                                 </div>
                                 {tx.metadata?.kind === "credit_card_income" && (
-                                  <span className="mt-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                                  <span className="mt-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[0.625rem] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
                                     {creditCardIncomeLabels[String(tx.metadata.movement_kind || "")] || "Movimiento positivo de tarjeta"}
                                   </span>
                                 )}
                                 {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
-                                  <p className="mt-1 text-[10px] font-medium text-red-600 dark:text-red-400">
+                                  <p className="mt-1 text-[0.625rem] font-medium text-red-600 dark:text-red-400">
                                     Error: {tx.metadata.last_error}
                                   </p>
                                 )}
@@ -619,12 +620,12 @@ export function HistoryScreen() {
                                   {tx.type === "income" ? "+" : "-"}
                                   {formatCurrency(tx.amount, tx.currency)}
                                 </p>
-                                <p className="mt-1 text-[11px] text-muted-foreground">{formatTime(tx.date, tx.createdAt)}</p>
+                                <p className="mt-1 text-[0.6875rem] text-muted-foreground">{formatTime(tx.date, tx.createdAt)}</p>
                               </div>
                             </div>
 
                             {tx.isCommission && (
-                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Comisión 0.15%</span>
+                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[0.625rem] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Comisión 0.15%</span>
                             )}
                           </div>
                         </div>
@@ -671,6 +672,6 @@ export function HistoryScreen() {
           <p className="pt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
         </BaseModalForm>
       )}
-    </div>
+    </MobilePageShell>
   )
 }

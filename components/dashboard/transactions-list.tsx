@@ -126,8 +126,8 @@ export function TransactionsList() {
         {groups.map((group, groupIndex) => (
           <div key={group.key} className={cn(groupIndex > 0 && "border-t border-border/60")}>
             <div className="flex items-center justify-between bg-muted/45 px-4 py-2.5">
-              <p className="text-[11px] font-black uppercase tracking-[0.16em] text-muted-foreground">{group.label}</p>
-              <p className="text-[11px] font-semibold text-muted-foreground">{group.items.length} mov.</p>
+              <p className="text-[0.6875rem] font-black uppercase tracking-[0.16em] text-muted-foreground">{group.label}</p>
+              <p className="text-[0.6875rem] font-semibold text-muted-foreground">{group.items.length} mov.</p>
             </div>
             <div>
               {group.items.map((transaction, index) => {

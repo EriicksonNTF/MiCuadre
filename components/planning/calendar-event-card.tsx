@@ -53,10 +53,10 @@ export function CalendarEventCard({ event }: { event: FinancialCalendarEvent }) 
           <p className="text-sm font-semibold">{event.title}</p>
           {event.detail && <p className="text-xs text-muted-foreground">{event.detail}</p>}
           {event.amount ? <p className="mt-1 text-sm font-bold">{formatCurrency(event.amount, event.currency || "DOP")}</p> : null}
-          <p className="text-[11px] text-muted-foreground">{typeLabel(event)}</p>
+          <p className="text-[0.6875rem] text-muted-foreground">{typeLabel(event)}</p>
         </div>
         {urgency ? (
-          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${event.status === "overdue" ? "bg-destructive/15 text-destructive" : "bg-muted text-foreground"}`}>
+          <span className={`rounded-full px-2 py-1 text-[0.625rem] font-semibold ${event.status === "overdue" ? "bg-destructive/15 text-destructive" : "bg-muted text-foreground"}`}>
             {urgency}
           </span>
         ) : null}

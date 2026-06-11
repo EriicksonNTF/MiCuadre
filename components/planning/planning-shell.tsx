@@ -10,6 +10,7 @@ import { PlanningSummaryCards } from "@/components/planning/planning-summary-car
 import { useDebtsSummary, useFinancialCalendarSummary, usePlanningSummary } from "@/hooks/use-planning"
 import { PlanningProLockScreen } from "@/components/planning/planning-pro-lock-screen"
 import { useEntitlements } from "@/hooks/use-entitlements"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 type PlanningTab = "budgets" | "calendar" | "debts"
 
@@ -57,7 +58,7 @@ export function PlanningShell() {
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-20 border-b border-border/55 bg-background/88 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
           <button
@@ -96,15 +97,15 @@ export function PlanningShell() {
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   <div className="rounded-2xl bg-muted/60 p-3">
                     <PiggyBank className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Presupuesto</p>
+                    <p className="mt-2 text-[0.625rem] font-bold uppercase tracking-wide text-muted-foreground">Presupuesto</p>
                   </div>
                   <div className="rounded-2xl bg-muted/60 p-3">
                     <CalendarDays className="h-4 w-4 text-sky-600 dark:text-sky-400" />
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Calendario</p>
+                    <p className="mt-2 text-[0.625rem] font-bold uppercase tracking-wide text-muted-foreground">Calendario</p>
                   </div>
                   <div className="rounded-2xl bg-muted/60 p-3">
                     <CreditCard className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Deudas</p>
+                    <p className="mt-2 text-[0.625rem] font-bold uppercase tracking-wide text-muted-foreground">Deudas</p>
                   </div>
                 </div>
               </div>
@@ -118,7 +119,7 @@ export function PlanningShell() {
             <PlanningProContent tab={tab} onChangeTab={onChangeTab} />
           </>
         )}
-      </main>
-    </div>
+        </main>
+      </MobilePageShell>
   )
 }

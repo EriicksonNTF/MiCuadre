@@ -24,6 +24,7 @@ import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { MovementReceipt } from "@/components/receipts/movement-receipt"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 export default function SendPage() {
   const router = useRouter()
@@ -172,7 +173,7 @@ export default function SendPage() {
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       {/* Header */}
       <header className="flex items-center gap-3 px-6 pb-4 pt-8">
         <Link
@@ -540,6 +541,6 @@ export default function SendPage() {
           },
         ]}
       />
-    </div>
+    </MobilePageShell>
   )
 }

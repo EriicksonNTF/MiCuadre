@@ -36,7 +36,7 @@ function BlockCard({ block }: { block: CoachUIBlock }) {
   if (block.type === "kpi_card") {
     return (
       <div className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
+        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
         <p className="mt-1 text-sm font-semibold text-foreground">{block.value}</p>
       </div>
     )
@@ -45,7 +45,7 @@ function BlockCard({ block }: { block: CoachUIBlock }) {
   if (block.type === "warning_bar") {
     return (
       <div className="mt-3 rounded-xl border border-amber-300/50 bg-amber-50/60 px-3 py-2 dark:border-amber-700/40 dark:bg-amber-900/20">
-        <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">{block.title}</p>
+        <p className="text-[0.6875rem] font-semibold text-amber-700 dark:text-amber-300">{block.title}</p>
         <p className="text-sm text-amber-800 dark:text-amber-200">{block.value}</p>
       </div>
     )
@@ -54,7 +54,7 @@ function BlockCard({ block }: { block: CoachUIBlock }) {
   if (block.type === "category_list") {
     return (
       <div className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
+        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
         <div className="mt-2 space-y-1.5">
           {block.items.map((item) => (
             <div key={`${item.label}-${item.value}`} className="flex items-center justify-between text-xs">
@@ -69,7 +69,7 @@ function BlockCard({ block }: { block: CoachUIBlock }) {
 
   return (
     <div className="mt-3 rounded-xl border border-border bg-muted/40 px-3 py-2">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
+      <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
       <p className="mt-1 text-sm text-foreground">{block.amount} · {block.category}</p>
     </div>
   )
@@ -374,7 +374,7 @@ export default function CoachIAPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Finanzas generales</p>
+            <p className="mb-2 text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Finanzas generales</p>
             <div className="flex flex-wrap gap-2">
               {GENERAL_PROMPTS.map((prompt) => (
                 <button type="button"
@@ -389,7 +389,7 @@ export default function CoachIAPage() {
             </div>
           </div>
           <div className="mt-3">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tarjetas de credito</p>
+            <p className="mb-2 text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Tarjetas de credito</p>
             <div className="flex flex-wrap gap-2">
               {CARD_PROMPTS.map((prompt) => (
                 <button type="button"
@@ -437,7 +437,7 @@ export default function CoachIAPage() {
                 )}
 
                 {message.disclaimer && (
-                  <p className="mt-2 text-[11px] text-muted-foreground">{message.disclaimer}</p>
+                  <p className="mt-2 text-[0.6875rem] text-muted-foreground">{message.disclaimer}</p>
                 )}
               </div>
             </div>

@@ -17,6 +17,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
 import { updateProfile, useProfile } from "@/hooks/use-data"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
@@ -90,20 +91,20 @@ export default function OnboardingPage() {
 
   if (profileLoading) {
     return (
-      <main className="flex min-h-[100dvh] items-center justify-center bg-background text-foreground">
+      <MobilePageShell fullBleed noBottomNav>
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </main>
+      </MobilePageShell>
     )
   }
 
   return (
-    <main className="min-h-[100dvh] bg-background text-foreground">
+    <MobilePageShell fullBleed noBottomNav>
       <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]">
         <header className="flex items-center justify-between py-2">
           <div className="flex items-center gap-3">
             <Image src="/icono-favicon.png" alt="MiCuadre" width={42} height={42} className="rounded-2xl border border-border bg-card shadow-sm" />
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">MiCuadre</p>
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">MiCuadre</p>
               <p className="text-sm font-bold text-foreground">Inicio guiado</p>
             </div>
           </div>
@@ -202,7 +203,7 @@ export default function OnboardingPage() {
         reasonTitle="Planificación Pro"
         reasonBody="Presupuestos, calendario financiero, deudas y automatizaciones cuando necesites más control."
       />
-    </main>
+    </MobilePageShell>
   )
 }
 

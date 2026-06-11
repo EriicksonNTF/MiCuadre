@@ -24,7 +24,7 @@ export function CalendarFilterPills({
         <button type="button"
           key={opt.id}
           onClick={() => onChange(opt.id)}
-          className={`h-9 rounded-xl text-[11px] font-bold ${value === opt.id ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+          className={`h-9 rounded-xl text-[0.6875rem] font-bold ${value === opt.id ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
         >
           {opt.label}
         </button>

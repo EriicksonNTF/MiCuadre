@@ -45,7 +45,7 @@ function Block({ block }: { block: CoachUIBlock }) {
   if (block.type === "kpi_card") {
     return (
       <div className="mt-2 rounded-xl border border-border bg-muted/40 px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
+        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
         <p className="mt-1 text-sm font-semibold text-foreground">{block.value}</p>
       </div>
     )
@@ -54,7 +54,7 @@ function Block({ block }: { block: CoachUIBlock }) {
   if (block.type === "warning_bar") {
     return (
       <div className="mt-2 rounded-xl border border-amber-300/50 bg-amber-50/60 px-3 py-2 dark:border-amber-700/40 dark:bg-amber-900/20">
-        <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-300">{block.title}</p>
+        <p className="text-[0.6875rem] font-semibold text-amber-700 dark:text-amber-300">{block.title}</p>
         <p className="text-xs text-amber-800 dark:text-amber-200">{block.value}</p>
       </div>
     )
@@ -63,7 +63,7 @@ function Block({ block }: { block: CoachUIBlock }) {
   if (block.type === "category_list") {
     return (
       <div className="mt-2 rounded-xl border border-border bg-muted/40 px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
+        <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-foreground">{block.title}</p>
         <div className="mt-1.5 space-y-1">
           {block.items.map((item) => (
             <div key={`${item.label}-${item.value}`} className="flex items-center justify-between text-xs">
@@ -254,7 +254,7 @@ export function CoachIAWidget() {
               <div className="rounded-lg bg-primary/10 p-1.5 text-primary"><Sparkles className="h-4 w-4" /></div>
               <div>
                 <p className="text-xs font-semibold text-foreground">{COACH_NAME}</p>
-                <p className="text-[11px] text-muted-foreground">Copiloto financiero</p>
+                <p className="text-[0.6875rem] text-muted-foreground">Copiloto financiero</p>
               </div>
             </div>
             <button type="button" onClick={() => setOpen(false)} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted">
@@ -268,7 +268,7 @@ export function CoachIAWidget() {
                 <button type="button"
                   key={prompt}
                   onClick={() => sendMessage(prompt)}
-                  className="rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-foreground hover:bg-muted"
+                  className="rounded-full border border-border bg-card px-2.5 py-1 text-[0.6875rem] font-medium text-foreground hover:bg-muted"
                 >
                   {prompt}
                 </button>
@@ -298,7 +298,7 @@ export function CoachIAWidget() {
                             }
                             window.location.href = action.href
                           }}
-                          className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted/80"
+                          className="rounded-full bg-muted px-2.5 py-1 text-[0.6875rem] font-semibold text-foreground hover:bg-muted/80"
                         >
                           {action.label}
                         </button>
@@ -307,7 +307,7 @@ export function CoachIAWidget() {
                   )}
 
                   {message.disclaimer && (
-                    <p className="mt-1.5 text-[10px] text-muted-foreground">{message.disclaimer}</p>
+                    <p className="mt-1.5 text-[0.625rem] text-muted-foreground">{message.disclaimer}</p>
                   )}
                 </div>
               </div>

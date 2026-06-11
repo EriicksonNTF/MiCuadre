@@ -44,7 +44,7 @@ export function PlanningSummaryCards({
                 <p className="text-xs font-medium text-muted-foreground">{formatCurrency(totalSpent)} de {formatCurrency(totalBudget)}</p>
               </div>
             </div>
-            <span className={`rounded-full bg-muted px-2.5 py-1 text-[10px] font-black uppercase tracking-wide ${budgetTone}`}>
+            <span className={`rounded-full bg-muted px-2.5 py-1 text-[0.625rem] font-black uppercase tracking-wide ${budgetTone}`}>
               {budgetStatus}
             </span>
           </div>
@@ -80,11 +80,11 @@ export function PlanningSummaryCards({
         </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-2xl bg-muted/60 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">DOP</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-wide text-muted-foreground">DOP</p>
             <p className="mt-1 text-sm font-black tabular-nums">{formatCurrency(debtPendingDop, "DOP")}</p>
           </div>
           <div className="rounded-2xl bg-muted/60 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">USD</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-wide text-muted-foreground">USD</p>
             <p className="mt-1 text-sm font-black tabular-nums">{debtPendingUsd > 0 ? formatCurrency(debtPendingUsd, "USD") : "$0.00"}</p>
           </div>
         </div>

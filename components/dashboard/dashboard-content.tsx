@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { processDueFinancialSubscriptions, useProfile } from "@/hooks/use-data"
 import { useAccounts, useFinancialSubscriptions, useTransactions } from "@/hooks/use-data"
 import { Button } from "@/components/ui/button"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { generateFinancialInsights } from "@/lib/insights"
 import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-splash"
@@ -252,8 +253,7 @@ export function DashboardContent() {
   }
 
   return (
-    <main className="app-scroll min-h-[100dvh] overflow-y-auto bg-background">
-      <div className="mobile-page">
+    <MobilePageShell>
         <Header />
 
         <div className="motion-list">
@@ -321,7 +321,6 @@ export function DashboardContent() {
             })}
           </div>
         )}
-        </div>
       </div>
 
       <CoachIAWidget />
@@ -337,6 +336,6 @@ export function DashboardContent() {
       )}
       <PlanSelectorSheet open={showWelcomePlanPrompt} onOpenChange={setShowWelcomePlanPrompt} welcome />
       <PlanSelectorSheet open={planningUpsellOpen} onOpenChange={setPlanningUpsellOpen} reasonTitle="Planificación Pro" reasonBody="Desbloquea presupuestos, calendario y deudas con Pro." />
-    </main>
+    </MobilePageShell>
   )
 }

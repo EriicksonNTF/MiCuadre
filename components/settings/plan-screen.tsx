@@ -8,6 +8,7 @@ import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
 import { useBillingStatus } from "@/hooks/use-billing-status"
 import { notify } from "@/lib/notifications"
 import { PLAN_CONFIG } from "@/lib/billing/plans"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 export function PlanScreen() {
   const [open, setOpen] = useState(false)
@@ -43,7 +44,7 @@ export function PlanScreen() {
     : "Sin sincronización reciente"
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe text-foreground">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
           <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/80 transition hover:bg-muted">
@@ -106,11 +107,11 @@ export function PlanScreen() {
             </div>
           )}
 
-          <p className="mt-3 text-[11px] text-muted-foreground">Última sincronización de facturación: {lastSyncedLabel}</p>
+          <p className="mt-3 text-[0.6875rem] text-muted-foreground">Última sincronización de facturación: {lastSyncedLabel}</p>
         </div>
       </main>
 
       <PlanSelectorSheet open={open} onOpenChange={setOpen} />
-    </div>
+    </MobilePageShell>
   )
 }

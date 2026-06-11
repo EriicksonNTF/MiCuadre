@@ -13,6 +13,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/
 import { generateFinancialInsights } from "@/lib/insights"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { FeatureGate } from "@/components/entitlements/feature-gate"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { PlanBadge } from "@/components/entitlements/plan-badge"
 import { getEntitlementCopy } from "@/lib/entitlements/entitlement-copy"
 import { isExcludedFromRealIncome, isInternalTransfer } from "@/lib/transactions/reporting"
@@ -164,7 +165,7 @@ export function ReportsScreen() {
   const PIE_COLORS = ["#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6"]
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center gap-4">
@@ -380,6 +381,6 @@ export function ReportsScreen() {
           </>
         )}
       </div>
-    </div>
+    </MobilePageShell>
   )
 }

@@ -383,7 +383,7 @@ export default function QaPage() {
                         Ver como toast
                       </button>
                     </div>
-                    <p className="mt-1 text-[10px] uppercase text-muted-foreground">[{n.priority}] {n.type}</p>
+                    <p className="mt-1 text-[0.625rem] uppercase text-muted-foreground">[{n.priority}] {n.type}</p>
                   </div>
                 ))}
               </div>

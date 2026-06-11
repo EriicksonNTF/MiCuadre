@@ -12,7 +12,7 @@ export function PlanBadge({ plan, className }: { plan: PlanTier; className?: str
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-[0.6875rem] font-semibold",
         plan === "free" && "bg-muted text-muted-foreground",
         plan === "pro" && "bg-primary/15 text-primary",
         className

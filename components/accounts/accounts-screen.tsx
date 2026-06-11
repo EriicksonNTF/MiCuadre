@@ -13,6 +13,7 @@ import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { createAccount, createTransfer, deleteAccount, getAccountDeletionImpact, reorderAccounts, useAccounts } from "@/hooks/use-data"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
@@ -403,7 +404,7 @@ if (!draggedId) return
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <header className="mx-auto max-w-md px-5 pb-4 pt-[calc(1.5rem+env(safe-area-inset-top))]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -468,7 +469,7 @@ if (!draggedId) return
       ) : (
         <>
           <div className="mx-auto max-w-md px-5 pt-3">
-            <div className="rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+            <div className="rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-[0.6875rem] font-semibold text-muted-foreground">
               Mantén presionado una tarjeta para ordenar. Desliza hacia la izquierda para editar o eliminar.
             </div>
           </div>
@@ -688,7 +689,7 @@ if (!draggedId) return
                     {BANK_LOGO_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.name}</option>)}
                   </select>
                 </div>
-              ) : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button type="button" key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[10px]">{preset.label}</span></button>)}</div>}
+              ) : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button type="button" key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[0.625rem]">{preset.label}</span></button>)}</div>}
               <div className="flex flex-wrap gap-2">{COLOR_PRESETS.map((preset) => <button type="button" key={preset.key} onClick={() => { setBrandingPrimaryColor(preset.primary); setBrandingSecondaryColor(preset.secondary) }} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", brandingPrimaryColor === preset.primary && brandingSecondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}><span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} /></button>)}</div>
               <div className="grid grid-cols-3 gap-2">{(["gradient", "solid", "glass"] as const).map((style) => <button type="button" key={style} onClick={() => setBrandingBackgroundStyle(style)} className={cn("rounded-xl px-3 py-2 text-xs", brandingBackgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>{style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}</button>)}</div>
               <BrandedAccountCard account={previewAccount as any} compact />
@@ -726,6 +727,6 @@ if (!draggedId) return
         </>
       )}
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
-    </div>
+    </MobilePageShell>
   )
 }

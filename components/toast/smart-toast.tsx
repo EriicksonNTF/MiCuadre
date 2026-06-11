@@ -165,14 +165,14 @@ export function ToastContainer() {
                   })()}
                 </div>
                 <div className="flex-1 min-w-0 pr-2">
-                  <div className="mb-1 inline-flex rounded-full bg-background/70 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground ring-1 ring-border/60">
+                  <div className="mb-1 inline-flex rounded-full bg-background/70 px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-muted-foreground ring-1 ring-border/60">
                     {accent.badge}
                   </div>
-                  <p className="text-[14px] font-semibold leading-tight text-foreground tracking-tight">
+                  <p className="text-[0.875rem] font-semibold leading-tight text-foreground tracking-tight">
                     {item.title}
                   </p>
                   {item.body && (
-                    <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                    <p className="mt-1 text-[0.78125rem] leading-relaxed text-muted-foreground">
                       {item.body}
                     </p>
                   )}

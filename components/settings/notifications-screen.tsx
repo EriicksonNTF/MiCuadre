@@ -6,6 +6,7 @@ import { useNotificationPreferences } from "@/hooks/use-data"
 import { notify } from "@/lib/notifications"
 import { SettingsGroup } from "@/components/settings/settings-group"
 import { SettingsRow } from "@/components/settings/settings-row"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 const PREFERENCE_ROWS = [
   {
@@ -45,7 +46,7 @@ export function NotificationsScreen() {
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-10 border-b border-border/55 bg-background/88 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
           <Link
@@ -87,6 +88,6 @@ export function NotificationsScreen() {
           })}
         </SettingsGroup>
       </div>
-    </div>
+    </MobilePageShell>
   )
 }

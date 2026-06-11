@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Loader2, Upload, AlertTriangle, CheckCircle2, Sparkles, FileImage } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { parseReceiptText } from "@/lib/receipt-parser"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 type ScanStep = "idle" | "preprocess" | "ocr" | "parse" | "done" | "error"
 
@@ -308,7 +309,7 @@ export default function ScanPage() {
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <header className="flex items-center gap-3 px-6 pb-4 pt-8">
         <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
           <ArrowLeft className="h-5 w-5" />
@@ -479,6 +480,6 @@ export default function ScanPage() {
           </div>
         )}
       </div>
-    </div>
+    </MobilePageShell>
   )
 }

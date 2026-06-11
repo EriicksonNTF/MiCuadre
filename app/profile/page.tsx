@@ -8,6 +8,7 @@ import { useProfile, updateProfile } from "@/hooks/use-data"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Button } from "@/components/ui/button"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { useToast } from "@/hooks/use-toast"
 
 const supabase = createClient()
@@ -159,7 +160,7 @@ export default function ProfilePage() {
 
   if (isLoading || authLoading) {
     return (
-      <div className="min-h-screen bg-background pb-28">
+      <MobilePageShell fullBleed>
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center gap-4">
             <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -171,12 +172,12 @@ export default function ProfilePage() {
         <div className="mx-auto flex max-w-md items-center justify-center pt-20">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-accent" />
         </div>
-      </div>
+      </MobilePageShell>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background pb-28">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center justify-between">
@@ -318,6 +319,6 @@ export default function ProfilePage() {
           )}
         </div>
       </div>
-    </div>
+    </MobilePageShell>
   )
 }

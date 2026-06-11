@@ -3,6 +3,7 @@
 import { useMemo, useState, useCallback } from "react"
 import Link from "next/link"
 import { ArrowLeft, Check } from "lucide-react"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { useNotifications, markNotificationAsRead, markAllNotificationsAsRead } from "@/hooks/use-data"
 import { NotificationStack } from "@/components/notifications/notification-stack"
 import { NotificationFilterTabs } from "@/components/notifications/notification-filter-tabs"
@@ -41,7 +42,7 @@ export function NotificationsScreen() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-background pb-nav-safe text-foreground">
+    <MobilePageShell fullBleed>
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-5 pb-4 pt-4 backdrop-blur">
         <div className="mx-auto max-w-xl">
           <div className="flex items-center justify-between gap-4">
@@ -73,6 +74,6 @@ export function NotificationsScreen() {
           <NotificationEmptyState message={emptyMessageByFilter(filter)} />
         )}
       </section>
-    </main>
+    </MobilePageShell>
   )
 }

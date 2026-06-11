@@ -29,7 +29,7 @@ export function BudgetCard({ budget, onEdit }: { budget: BudgetWithUsage; onEdit
           <p className="text-xs text-muted-foreground">{budget.category_name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold", statusStyle[budget.status])}>
+          <span className={cn("rounded-full px-2 py-1 text-[0.625rem] font-semibold", statusStyle[budget.status])}>
             {statusCopy[budget.status]}
           </span>
           <button type="button" onClick={onEdit} className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground" aria-label="Editar presupuesto">
@@ -45,7 +45,7 @@ export function BudgetCard({ budget, onEdit }: { budget: BudgetWithUsage; onEdit
         <div className={cn("h-full rounded-full", budget.status === "exceeded" ? "bg-destructive" : "bg-primary")} style={{ width: `${progress}%` }} />
       </div>
       {budget.includesPending && (
-        <p className="mt-2 text-[11px] text-muted-foreground">Incluye movimientos pendientes</p>
+        <p className="mt-2 text-[0.6875rem] text-muted-foreground">Incluye movimientos pendientes</p>
       )}
     </article>
   )

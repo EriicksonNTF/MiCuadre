@@ -92,7 +92,7 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))]">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] hide-on-desktop">
       <div className="mx-auto flex h-[4.7rem] max-w-md items-center justify-around rounded-[1.8rem] border border-border/65 bg-card/88 px-3 shadow-[var(--shadow-float)] backdrop-blur-2xl">
         {navItems.map((item) => {
           const isActive = pathname === item.href || 
@@ -159,7 +159,7 @@ export function BottomNav() {
             >
               {isActive && <span className="absolute inset-x-4 top-1 h-7 rounded-full bg-accent/10" />}
               <Icon className={cn("relative h-5 w-5 transition-transform duration-200 ease-[var(--ease-out-ios)]", isActive && "-translate-y-0.5 text-accent")} />
-              <span className={cn("relative max-w-full truncate text-[10px] font-semibold", isActive && "text-foreground")}>{item.label}</span>
+              <span className={cn("relative max-w-full truncate text-[0.625rem] font-semibold", isActive && "text-foreground")}>{item.label}</span>
             </Link>
           )
         })}

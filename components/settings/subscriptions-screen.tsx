@@ -13,6 +13,7 @@ import { FINANCIAL_SUBSCRIPTION_PROVIDERS, getFinancialSubscriptionProvider, get
 import { createFinancialSubscription, deleteFinancialSubscription, updateFinancialSubscription, useAccounts, useCategories, useFinancialSubscriptions } from "@/hooks/use-data"
 import { notify } from "@/lib/notifications"
 import { useEntitlementBlocked } from "@/hooks/use-entitlement-blocked"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { UpsellModal } from "@/components/entitlements/upsell-modal"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
@@ -102,7 +103,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
@@ -216,6 +217,6 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
         </BaseModalForm>
       )}
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
-    </div>
+    </MobilePageShell>
   )
 }

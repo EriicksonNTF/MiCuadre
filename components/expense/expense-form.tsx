@@ -382,7 +382,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               setCategory("")
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl text-[13px] transition-all",
+              "flex flex-1 items-center justify-center gap-2 rounded-xl text-[0.8125rem] transition-all",
               transactionType === "expense"
                 ? "bg-primary text-primary-foreground font-bold"
                 : "text-muted-foreground"
@@ -397,7 +397,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               setCategory("")
             }}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-xl text-[13px] transition-all",
+              "flex flex-1 items-center justify-center gap-2 rounded-xl text-[0.8125rem] transition-all",
               transactionType === "income"
                  ? "bg-emerald-600 text-emerald-50 font-bold"
                 : "text-muted-foreground"
@@ -468,7 +468,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
             <PopoverTrigger asChild>
               <button type="button" className="flex h-16 w-full flex-col items-start justify-center rounded-2xl bg-card px-4 ring-1 ring-border/60">
-                <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Fecha</span>
+                <span className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Fecha</span>
                 <span className="mt-1 text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
               </button>
             </PopoverTrigger>
@@ -506,7 +506,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
                 : "bg-muted/50 text-muted-foreground ring-border/50"
             )}
           >
-            <span className="flex items-center gap-1 text-[11px] uppercase tracking-wide">
+            <span className="flex items-center gap-1 text-[0.6875rem] uppercase tracking-wide">
               <Repeat className="h-3.5 w-3.5" /> Recurrente
             </span>
             <span className="mt-1 text-sm font-semibold">
@@ -662,7 +662,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
                     )}
                   >
                     <span className="block text-xs font-semibold">{option.label}</span>
-                    <span className="mt-1 block text-[11px] leading-snug">{option.description}</span>
+                    <span className="mt-1 block text-[0.6875rem] leading-snug">{option.description}</span>
                   </button>
                 ))}
               </div>
@@ -708,7 +708,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
             />
             <div className="mb-1 flex items-center justify-between">
               <span className="block text-xs font-medium text-muted-foreground">Tipo</span>
-              <span id="new-category-type-label" className="text-[11px] text-muted-foreground">
+              <span id="new-category-type-label" className="text-[0.6875rem] text-muted-foreground">
                 {newCategoryType === "expense" ? "Gasto" : newCategoryType === "income" ? "Ingreso" : "Ambos"}
               </span>
             </div>

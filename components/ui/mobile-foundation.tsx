@@ -6,12 +6,18 @@ import { cn } from "@/lib/utils"
 type MobilePageShellProps = HTMLAttributes<HTMLElement> & {
   children: ReactNode
   as?: "main" | "div" | "section"
+  /** Remove inner .mobile-page container for edge-to-edge layouts (camera, scan, expense) */
+  fullBleed?: boolean
+  /** Remove bottom-nav safe-area padding for auth pages, onboarding, or sidebar mode */
+  noBottomNav?: boolean
 }
 
 function MobilePageShell({
   as: Comp = "main",
   className,
   children,
+  fullBleed,
+  noBottomNav,
   ...props
 }: MobilePageShellProps) {
   return (
@@ -19,7 +25,11 @@ function MobilePageShell({
       className={cn("app-scroll min-h-[100dvh] overflow-y-auto bg-background", className)}
       {...props}
     >
-      <div className="mobile-page">{children}</div>
+      {fullBleed ? children : (
+        <div className={cn("mobile-page", noBottomNav && "mobile-page--no-nav")}>
+          {children}
+        </div>
+      )}
     </Comp>
   )
 }

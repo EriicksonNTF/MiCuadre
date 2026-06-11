@@ -6,6 +6,7 @@ import { ChevronLeft, Plus, Pencil, Trash2, Star } from "lucide-react"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
 import { cn } from "@/lib/utils"
 import { createCategory, deleteCategory, updateCategory, useCategories } from "@/hooks/use-data"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 const COLOR_PRESETS = [
   "#0f766e",
@@ -65,7 +66,7 @@ export function CategoriesScreen() {
   }
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
@@ -93,7 +94,7 @@ export function CategoriesScreen() {
                   <div className="h-9 w-9 rounded-full ring-2 ring-background" style={{ backgroundColor: category.color }} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
-                    <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                    <div className="mt-1 flex items-center gap-2 text-[0.6875rem] text-muted-foreground">
                       <span className="rounded-full bg-muted px-2 py-0.5">
                         {category.type === "expense" ? "Gasto" : category.type === "income" ? "Ingreso" : "Ambos"}
                       </span>
@@ -124,7 +125,7 @@ export function CategoriesScreen() {
                     <div className="h-9 w-9 rounded-full ring-2 ring-background" style={{ backgroundColor: category.color }} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{category.name}</p>
-                      <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <div className="mt-1 flex items-center gap-2 text-[0.6875rem] text-muted-foreground">
                         <span className="rounded-full bg-muted px-2 py-0.5">
                           {category.type === "expense" ? "Gasto" : category.type === "income" ? "Ingreso" : "Ambos"}
                         </span>
@@ -213,6 +214,6 @@ export function CategoriesScreen() {
           </div>
         </BaseModalForm>
       )}
-    </div>
+    </MobilePageShell>
   )
 }

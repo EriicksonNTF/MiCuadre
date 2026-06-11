@@ -95,7 +95,7 @@ export function RotatingUpcomingPaymentsCard({
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-semibold">Proximos pagos</p>
         {urgency ? (
-          <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold text-foreground">{urgency}</span>
+          <span className="rounded-full bg-muted px-2 py-1 text-[0.625rem] font-semibold text-foreground">{urgency}</span>
         ) : null}
       </div>
 

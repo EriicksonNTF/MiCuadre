@@ -71,7 +71,7 @@ export function FinScoreCard({ accounts, transactions, goals }: Props) {
 
       <div className="mt-2 flex justify-between">
         {breakdownConfig.map(({ key, label: breakdownLabel }) => (
-          <p key={key} className="text-[9px] text-muted-foreground">
+          <p key={key} className="text-[0.5625rem] text-muted-foreground">
             {breakdownLabel.substring(0, 3)}
           </p>
         ))}

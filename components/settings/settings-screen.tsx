@@ -42,6 +42,7 @@ import { SettingsGroup } from "@/components/settings/settings-group"
 import { SettingsRow } from "@/components/settings/settings-row"
 import { SettingsSectionLabel } from "@/components/settings/settings-section-label"
 import { PlanCard, PlanCardActions } from "@/components/settings/plan-card"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 const QA_EMAIL = "example@example.com"
 
@@ -308,7 +309,7 @@ export function SettingsScreen() {
   const displayEmail = authEmail ?? "sin correo"
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-10 border-b border-border/55 bg-background/88 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
           <Link
@@ -656,6 +657,6 @@ export function SettingsScreen() {
       ) : null}
 
       <PlanSelectorSheet open={showPlanSelector} onOpenChange={setShowPlanSelector} />
-    </div>
+    </MobilePageShell>
   )
 }

@@ -41,7 +41,7 @@ export default function OfflinePage() {
         </Link>
       </div>
 
-      <p className="mt-10 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+      <p className="mt-10 text-[0.6875rem] font-medium uppercase tracking-[0.18em] text-muted-foreground">
         MiCuadre · Funciona offline
       </p>
     </main>

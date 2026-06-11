@@ -147,7 +147,7 @@ export function PlanCardActions({
           trailingLabel={isRestoringPurchases ? "Restaurando..." : undefined}
         />
         {!canExport ? (
-          <div className="px-4 pb-3 pt-1 text-[11px] text-muted-foreground">
+          <div className="px-4 pb-3 pt-1 text-[0.6875rem] text-muted-foreground">
             <Crown className="mr-1 inline-block h-3 w-3" aria-hidden />
             La exportación a CSV está incluida en MiCuadre Pro.
           </div>

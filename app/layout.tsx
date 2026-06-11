@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/react'
 import { BottomNav } from '@/components/navigation/bottom-nav'
+import { SideNav } from '@/components/navigation/side-nav'
 import { AppProviders } from '@/components/providers/app-providers'
 import { ToastContainer } from '@/components/toast/smart-toast'
 import { BodyCleanup } from '@/components/providers/body-cleanup'
@@ -16,8 +17,6 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
 }
 
@@ -92,7 +91,10 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <AppProviders bodyCleanup={<BodyCleanup />} offlineBanner={<OfflineStatusBanner />} toastContainer={<ToastContainer />}>
-          {children}
+          <SideNav />
+          <div className="main-content">
+            {children}
+          </div>
         </AppProviders>
         <BottomNav />
         {process.env.NODE_ENV === 'production' && <ServiceWorkerRegister />}

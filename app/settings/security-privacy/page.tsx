@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { ChevronLeft, ShieldCheck, Brain, BadgeAlert, SlidersHorizontal, CircleHelp } from "lucide-react"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
 const sections = [
   {
@@ -33,7 +34,7 @@ const sections = [
 
 export default function SecurityPrivacyPage() {
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-6 py-4">
           <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -70,6 +71,6 @@ export default function SecurityPrivacyPage() {
           </p>
         </div>
       </div>
-    </div>
+    </MobilePageShell>
   )
 }

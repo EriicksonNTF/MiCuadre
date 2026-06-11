@@ -143,7 +143,7 @@ export function PlanningMiniCalendar({ events, selectedDate, onSelectDate }: Pro
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-muted-foreground">
+      <div className="grid grid-cols-7 gap-1 text-center text-[0.6875rem] text-muted-foreground">
         {weekDays.map((day) => <span key={day}>{day}</span>)}
       </div>
 
@@ -188,7 +188,7 @@ export function PlanningMiniCalendar({ events, selectedDate, onSelectDate }: Pro
         })}
       </div>
 
-      <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+      <div className="mt-2 flex items-center gap-3 text-[0.6875rem] text-muted-foreground">
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-primary" />Tarjeta</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Suscripción</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-destructive" />Deuda</span>

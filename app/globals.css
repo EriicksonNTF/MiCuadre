@@ -148,7 +148,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    -webkit-text-size-adjust: 100%;
+    -webkit-text-size-adjust: auto;
     background:
       linear-gradient(180deg, color-mix(in oklab, var(--surface) 92%, var(--accent) 8%) 0%, var(--background) 36%, var(--background) 100%);
     overflow-x: hidden;
@@ -179,6 +179,40 @@ body:not(.modal-open) {
   padding-top: calc(1.5rem + env(safe-area-inset-top));
   padding-bottom: calc(6rem + env(safe-area-inset-bottom));
   animation: page-enter 420ms var(--ease-out-ios) both;
+}
+
+.mobile-page--no-nav {
+  padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+}
+
+@media (width >= 480px) {
+  .mobile-page {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (width >= 640px) {
+  .mobile-page {
+    max-width: 36rem;
+  }
+}
+
+@media (width >= 768px) {
+  .mobile-page {
+    max-width: 42rem;
+  }
+}
+
+@media (width >= 1024px) {
+  .mobile-page {
+    max-width: 56rem;
+  }
+}
+
+@media (width >= 1280px) {
+  .mobile-page {
+    max-width: 64rem;
+  }
 }
 
 .mobile-card {
@@ -270,6 +304,21 @@ body:not(.modal-open) {
   }
   .pt-safe-areas {
     padding-top: max(1.5rem, env(safe-area-inset-top));
+  }
+}
+
+/* ── App Shell (sidebar-aware layout) ── */
+@media (width >= 1024px) {
+  .main-content {
+    margin-inline-start: 280px;
+  }
+
+  .mobile-page {
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+  }
+
+  .hide-on-desktop {
+    display: none !important;
   }
 }
 

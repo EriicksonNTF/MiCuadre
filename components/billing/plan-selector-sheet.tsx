@@ -99,7 +99,7 @@ export function PlanSelectorSheet({
           <DrawerHeader className="px-0 pb-2 pt-4 text-left">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-primary">
+                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[0.6875rem] font-black uppercase tracking-[0.14em] text-primary">
                   <Sparkles className="h-3.5 w-3.5" />
                   Planes MiCuadre
                 </div>
@@ -169,17 +169,17 @@ export function PlanSelectorSheet({
                       <div className="flex flex-wrap items-center gap-1.5">
                         <h3 className="text-base font-black">{config.label}</h3>
                         {config.badge && (
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-black text-primary">
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[0.5625rem] font-black text-primary">
                             {config.badge}
                           </span>
                         )}
                         {current && (
-                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black text-emerald-700 dark:text-emerald-300">
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[0.5625rem] font-black text-emerald-700 dark:text-emerald-300">
                             Plan actual
                           </span>
                         )}
                       </div>
-                      <p className="mt-1 min-h-9 text-[11px] font-medium leading-relaxed text-muted-foreground">{config.description}</p>
+                      <p className="mt-1 min-h-9 text-[0.6875rem] font-medium leading-relaxed text-muted-foreground">{config.description}</p>
                     </div>
                   </div>
 
@@ -187,13 +187,13 @@ export function PlanSelectorSheet({
                     <span className="text-2xl font-black tracking-tight">{formatPlanPrice(tier, interval)}</span>
                     <span className="ml-1 text-xs font-semibold text-muted-foreground">{getBillingIntervalSuffix(interval)}</span>
                     {paid && interval === "yearly" && (
-                      <p className="mt-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <p className="mt-1 text-[0.625rem] font-semibold text-emerald-600 dark:text-emerald-400">
                         Equivale a ${config.price.yearlyMonthlyEquivalent.toFixed(2)}/mes
                       </p>
                     )}
                   </div>
 
-                  <div className="relative mt-3 grid gap-1.5 text-[11px] text-muted-foreground">
+                  <div className="relative mt-3 grid gap-1.5 text-[0.6875rem] text-muted-foreground">
                     {config.benefits.slice(0, 4).map((benefit) => (
                       <span key={benefit} className="flex items-start gap-2">
                         <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />

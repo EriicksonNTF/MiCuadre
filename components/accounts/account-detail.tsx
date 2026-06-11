@@ -42,6 +42,7 @@ import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCre
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { isReportableExpense, isReportableIncome } from "@/lib/transactions/reporting"
 import type { AccountType, Currency } from "@/lib/types/database"
+import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
 import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
 
@@ -610,7 +611,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     : `linear-gradient(145deg, color-mix(in oklab, ${headerPrimary} 82%, white), color-mix(in oklab, ${headerSecondary} 72%, white))`
 
   return (
-    <div className="app-scroll min-h-[100dvh] overflow-y-auto bg-background pb-nav-safe">
+    <MobilePageShell fullBleed>
       <div className="relative overflow-hidden px-6 pb-8 pt-8" style={{ background: headerBackground, color: headerTextColor }}>
         <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-white/14 blur-sm" />
         <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-full border border-white/18" />
@@ -671,13 +672,13 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <div className="rounded-[1.45rem] border border-white/15 bg-slate-950/60 p-4 text-sm text-white shadow-[0_22px_60px_-32px_rgba(0,0,0,0.85)] backdrop-blur-md">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold tracking-tight text-white">Resumen de tarjeta</p>
-                  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white/70">
+                  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[0.625rem] font-bold uppercase tracking-wide text-white/70">
                     Corte y pago
                   </span>
                 </div>
                 <div className={hasUsdOnCard ? "mt-3 flex gap-3" : "mt-3"}>
                   <div className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/[0.07] p-3">
-                    <p className="mb-2 text-[11px] text-white/70">DOP</p>
+                    <p className="mb-2 text-[0.6875rem] text-white/70">DOP</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p></div>
                       <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p></div>
@@ -685,7 +686,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     </div>
                   </div>
                   {hasUsdOnCard ? <div className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/[0.07] p-3">
-                    <p className="mb-2 text-[11px] text-white/70">USD</p>
+                    <p className="mb-2 text-[0.6875rem] text-white/70">USD</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p></div>
                       <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p></div>
@@ -714,7 +715,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           <button
             type="button"
             onClick={() => setShowSummaryPeriodMenu((prev) => !prev)}
-            className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground"
+            className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[0.6875rem] font-medium text-muted-foreground"
           >
             <CalendarDays className="h-3.5 w-3.5" />
             <span>{dateFilter === "week" ? "7 días" : dateFilter === "month" ? "Este mes" : "Todo"}</span>
@@ -754,7 +755,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="truncate text-[11px] text-muted-foreground">Ingresos</p>
+              <p className="truncate text-[0.6875rem] text-muted-foreground">Ingresos</p>
             </div>
             <p className="mt-2 truncate text-sm font-bold text-emerald-600 dark:text-emerald-400">
               +{formatCurrency(monthlyIncome)}
@@ -766,7 +767,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                 <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
               </div>
-              <p className="truncate text-[11px] text-muted-foreground">Gastos</p>
+              <p className="truncate text-[0.6875rem] text-muted-foreground">Gastos</p>
             </div>
             <p className="mt-2 truncate text-sm font-bold text-red-600 dark:text-red-400">
               -{formatCurrency(monthlyExpenses)}
@@ -796,7 +797,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   )}
                 />
               </div>
-              <p className="truncate text-[11px] text-muted-foreground">Neto</p>
+              <p className="truncate text-[0.6875rem] text-muted-foreground">Neto</p>
             </div>
             <p
               className={cn(
@@ -840,7 +841,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             ))}
           </div>
         </div>
-        <div className="mt-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-[11px] font-semibold text-muted-foreground">
+        <div className="mt-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-[0.6875rem] font-semibold text-muted-foreground">
           Desliza a la izquierda para editar o eliminar movimientos.
         </div>
         <div className="mt-3 flex items-center gap-2 rounded-2xl border border-border/60 bg-card/82 px-3 py-2.5 shadow-sm backdrop-blur">
@@ -936,7 +937,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                         <p className="truncate font-medium text-foreground">{tx.title}</p>
                         {tx.metadata?.kind === "offline_pending" && (
                           <span className={cn(
-                            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase tracking-wide border shrink-0",
+                            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[0.5rem] font-extrabold uppercase tracking-wide border shrink-0",
                             tx.metadata.sync_status === "failed"
                               ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50"
                               : tx.metadata.sync_status === "syncing"
@@ -949,7 +950,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">{tx.date}</p>
                       {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
-                        <p className="mt-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                        <p className="mt-0.5 text-[0.625rem] font-medium text-red-600 dark:text-red-400">
                           Error: {tx.metadata.last_error}
                         </p>
                       )}
@@ -1423,6 +1424,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             </div>
           </>
         )}
-      </div>
+      </MobilePageShell>
     )
   }

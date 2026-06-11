@@ -29,7 +29,7 @@ function LogoMark({ dark = true }: { dark?: boolean }) {
       <Image src="/icono-favicon.png" alt="Icono MiCuadre" width={40} height={40} className="rounded-xl shadow-lg shadow-black/20" />
       <div>
         <p className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}>MiCuadre</p>
-        <p className={`text-[11px] font-medium tracking-wide uppercase ${dark ? "text-emerald-400/80" : "text-emerald-600/80"}`}>Copiloto Financiero</p>
+        <p className={`text-[0.6875rem] font-medium tracking-wide uppercase ${dark ? "text-emerald-400/80" : "text-emerald-600/80"}`}>Copiloto Financiero</p>
       </div>
     </div>
   )
@@ -41,7 +41,7 @@ function PhoneFrame({ children, label }: { children: React.ReactNode; label: str
       <div className="overflow-hidden rounded-[1.5rem] border border-border bg-card text-card-foreground">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Planificación</p>
+            <p className="text-[0.625rem] font-bold uppercase tracking-wider text-muted-foreground">Planificación</p>
             <p className="text-sm font-black text-foreground">{label}</p>
           </div>
           <span className="h-2.5 w-2.5 rounded-full bg-accent" />
@@ -100,7 +100,7 @@ function CalendarMockupCard() {
         {Array.from({ length: 28 }, (_, index) => {
           const day = index + 1
           return (
-            <div key={day} className="flex aspect-square flex-col items-center justify-center rounded-lg bg-muted text-[10px] font-semibold text-muted-foreground">
+            <div key={day} className="flex aspect-square flex-col items-center justify-center rounded-lg bg-muted text-[0.625rem] font-semibold text-muted-foreground">
               {day}
               {marked.has(day) && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />}
             </div>
@@ -113,7 +113,7 @@ function CalendarMockupCard() {
           <div key={item.name} className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2">
             <div>
               <p className="text-xs font-bold text-foreground">{item.name}</p>
-              <p className="text-[11px] text-muted-foreground">{item.date}</p>
+              <p className="text-[0.6875rem] text-muted-foreground">{item.date}</p>
             </div>
             <p className="text-xs font-bold text-foreground">{item.amount}</p>
           </div>
@@ -146,7 +146,7 @@ function DebtsMockupCard() {
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-accent" style={{ width: `${debt.paid}%` }} />
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">Pago próximo: {debt.next}</p>
+            <p className="mt-2 text-[0.6875rem] text-muted-foreground">Pago próximo: {debt.next}</p>
           </div>
         ))}
       </div>
@@ -327,17 +327,17 @@ export function PublicLanding() {
 
               {/* Floating Cards */}
               <div className="absolute -left-6 top-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Balance actual</p>
+                <p className="text-[0.625rem] font-bold uppercase tracking-wider text-emerald-400">Balance actual</p>
                 <p className="text-lg font-bold text-white">RD$152,840</p>
               </div>
               
               <div className="absolute -right-4 top-1/3 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Disponible</p>
+                <p className="text-[0.625rem] font-bold uppercase tracking-wider text-sky-400">Disponible</p>
                 <p className="text-lg font-bold text-white">RD$75,100</p>
               </div>
 
               <div className="absolute left-8 -bottom-6 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Gasto del mes</p>
+                <p className="text-[0.625rem] font-bold uppercase tracking-wider text-rose-400">Gasto del mes</p>
                 <p className="text-lg font-bold text-white">RD$31,120</p>
               </div>
             </div>
@@ -484,20 +484,20 @@ export function PublicLanding() {
                   <p className="text-xs text-slate-500 mt-1">**** **** **** 8421</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-sky-400">Límite Total</p>
+                  <p className="text-[0.625rem] font-bold uppercase tracking-wider text-sky-400">Límite Total</p>
                   <p className="text-sm font-semibold text-slate-300">RD$100,000</p>
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><AlertCircle className="w-3 h-3 text-rose-400" /> Al Corte</p>
+                  <p className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><AlertCircle className="w-3 h-3 text-rose-400" /> Al Corte</p>
                   <p className="mt-1 text-2xl font-bold text-white tracking-tight">RD$18,650</p>
                   <p className="text-xs text-rose-400 font-medium mt-1">Pagar antes del 08 Jun</p>
                 </div>
                 
                 <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Balance Actual</p>
+                  <p className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Balance Actual</p>
                   <p className="mt-1 text-2xl font-bold text-slate-300 tracking-tight">RD$24,900</p>
                   <p className="text-xs text-slate-500 mt-1">Incluye ciclo nuevo</p>
                 </div>
@@ -516,13 +516,13 @@ export function PublicLanding() {
                 
                 <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase font-bold text-amber-500 tracking-wider">Próximo Corte</span>
+                    <span className="text-[0.625rem] uppercase font-bold text-amber-500 tracking-wider">Próximo Corte</span>
                     <div className="flex items-center gap-2 text-slate-300 font-medium bg-white/5 rounded-lg p-2 border border-white/5">
                       <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> 24 de Mayo
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-[10px] uppercase font-bold text-emerald-500 tracking-wider">Fecha de Pago</span>
+                    <span className="text-[0.625rem] uppercase font-bold text-emerald-500 tracking-wider">Fecha de Pago</span>
                     <div className="flex items-center gap-2 text-slate-300 font-medium bg-white/5 rounded-lg p-2 border border-white/5">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" /> 08 de Junio
                     </div>

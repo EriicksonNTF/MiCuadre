@@ -106,7 +106,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
             )}
           </div>
           <h3 className="truncate text-[1.04rem] font-bold leading-tight">{account.name}</h3>
-          <p className="mt-1 text-[11px] opacity-80">
+          <p className="mt-1 text-[0.6875rem] opacity-80">
             Cuenta <span className="break-all rounded-full bg-white/15 px-2 py-0.5 font-medium">{displayNumber}</span>
           </p>
         </div>
@@ -119,7 +119,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           <>
             <div className="flex items-center gap-1.5">
               <p className="text-xs font-semibold opacity-80">Deuda actual</p>
-              {hasPending && <span className="animate-pulse text-[9px] font-medium text-amber-200">(Tiene pendientes)</span>}
+              {hasPending && <span className="animate-pulse text-[0.5625rem] font-medium text-amber-200">(Tiene pendientes)</span>}
             </div>
             <div className="mt-1 space-y-0.5">
               {isMultiCurrency ? (
@@ -140,14 +140,14 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
             {(dueSoon || overdue) && (
               <div
                 className={cn(
-                  "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm",
+                  "mt-2 inline-flex rounded-full px-2.5 py-1 text-[0.6875rem] font-bold backdrop-blur-sm",
                   overdue ? "bg-red-500/20 text-white" : "bg-amber-400/20 text-white"
                 )}
               >
                 {overdue ? "Pago vencido" : daysUntilDue === 0 ? "Pago vence hoy" : `Pago en ${daysUntilDue} días`}
               </div>
             )}
-            <div className={cn("mt-3 grid grid-cols-3 gap-2 border-t border-white/20 pt-3", compact ? "text-[11px]" : "text-xs")}>
+            <div className={cn("mt-3 grid grid-cols-3 gap-2 border-t border-white/20 pt-3", compact ? "text-[0.6875rem]" : "text-xs")}>
               <div>
                 <p className="opacity-70">Disponible</p>
                 {isMultiCurrency ? (
@@ -177,7 +177,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
           <>
             <div className="flex items-center gap-1.5">
               <p className="text-xs opacity-80">Balance disponible</p>
-              {hasPending && <span className="animate-pulse text-[9px] font-medium text-amber-200">(Tiene pendientes)</span>}
+              {hasPending && <span className="animate-pulse text-[0.5625rem] font-medium text-amber-200">(Tiene pendientes)</span>}
             </div>
             <p className="mt-1 text-2xl font-black tabular-nums tracking-tight">{formatCurrency(Number(account.balance || 0), account.currency)}</p>
           </>
