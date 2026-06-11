@@ -716,12 +716,9 @@ export async function applyAccountImpact(params: {
     throw new Error("La moneda de la transacción no coincide con la de la cuenta.")
   }
 
-  const signed = type === "income" ? amount * direction : -amount * direction
-  const nextBalance = Number(account.balance) + signed
-  if (nextBalance < 0) {
-    throw new Error("Fondos insuficientes en la cuenta")
-  }
-  await supabase.from("accounts").update({ balance: nextBalance }).eq("id", accountId)
+  // For non-credit accounts: balance is managed by syncAccountBalance (which uses ledger).
+  // The ledger entry is recorded separately in createTransaction / updateTransaction / etc.
+  // No direct balance update here — syncAccountBalance will recalculate from ledger after tx.
 }
 
 export async function syncAccountBalance(accountId: string, currency?: string) {
@@ -735,16 +732,25 @@ export async function syncAccountBalance(accountId: string, currency?: string) {
   const { data: ledgerBalance } = await supabase.rpc("ledger_calc_balance", { p_account_id: accountId })
   if (ledgerBalance === null || ledgerBalance === undefined) return
 
-  const balance = Number(ledgerBalance)
+  const ledgerSum = Number(ledgerBalance)
   if (account.type === "credit") {
     const cur = (currency || account.currency || "DOP") as "DOP" | "USD"
     const debtField = cur === "USD" ? "current_debt_usd" : "current_debt_dop"
     await supabase.from("accounts").update({
-      [debtField]: Math.max(0, balance),
-      current_debt: Math.max(0, balance),
+      [debtField]: Math.max(0, ledgerSum),
+      current_debt: Math.max(0, ledgerSum),
     }).eq("id", accountId)
   } else {
-    await supabase.from("accounts").update({ balance: Math.max(0, balance) }).eq("id", accountId)
+    // For non-credit accounts: ledger only tracks transaction deltas (not initial balance).
+    // Balance = stored initial balance + ledger transaction sum.
+    const { data: accountRow } = await supabase
+      .from("accounts")
+      .select("balance")
+      .eq("id", accountId)
+      .single()
+    const storedBalance = Number(accountRow?.balance || 0)
+    const nextBalance = Math.max(0, storedBalance + ledgerSum)
+    await supabase.from("accounts").update({ balance: nextBalance }).eq("id", accountId)
   }
 }
 
@@ -1274,6 +1280,25 @@ export async function createAccount(account: NewAccountInput) {
   }
 
   if (finalError || !data) throw finalError || new Error("No se pudo crear la cuenta")
+
+  // Record initial balance in ledger for non-credit accounts (fixes syncAccountBalance)
+  if (data.type !== "credit" && Number(account.balance || 0) > 0) {
+    try {
+      const ledger = LedgerService.create()
+      await ledger.recordIncome(
+        user.id,
+        data.id,
+        Number(account.balance),
+        (account.currency || "DOP") as "DOP" | "USD",
+        "Saldo inicial",
+        data.id,
+        "accounts"
+      )
+    } catch (e) {
+      console.error("Failed to record initial balance in ledger (non-blocking):", e)
+    }
+  }
+
   await mutate("accounts", undefined, { revalidate: true })
 
   await createNotification({
@@ -3233,6 +3258,16 @@ export async function deleteCategory(id: string, force = false) {
 }
 
 export async function updateAccount(id: string, updates: Partial<Account>) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error("No autenticado")
+
+  // Capture previous balance for ledger recording
+  const { data: prevAccount } = await supabase
+    .from("accounts")
+    .select("id, type, balance, currency")
+    .eq("id", id)
+    .single()
+
   const extractMissingAccountColumn = (message: string) => {
     const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"accounts"\s+does\s+not\s+exist/i)
     return match?.[1] || null
@@ -3267,6 +3302,35 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
   }
 
   if (finalError || !data) throw finalError || new Error("No se pudo actualizar la cuenta")
+
+  // Record balance change in ledger for non-credit accounts
+  if (
+    prevAccount &&
+    prevAccount.type !== "credit" &&
+    updates.balance !== undefined &&
+    Number(updates.balance) !== Number(prevAccount.balance)
+  ) {
+    const prevBalance = Number(prevAccount.balance || 0)
+    const newBalance = Number(updates.balance || 0)
+    const delta = newBalance - prevBalance
+
+    if (delta !== 0) {
+      try {
+        const ledger = LedgerService.create()
+        const currency = (data.currency || "DOP") as "DOP" | "USD"
+        if (delta > 0) {
+          // Balance increased: record as income (account credited)
+          await ledger.recordIncome(user.id, id, Math.abs(delta), currency, "Ajuste manual de saldo", data.id, "accounts")
+        } else {
+          // Balance decreased: record as expense (account debited)
+          await ledger.recordExpense(user.id, id, Math.abs(delta), currency, "Ajuste manual de saldo", data.id, "accounts")
+        }
+      } catch (e) {
+        console.error("Failed to record balance change in ledger (non-blocking):", e)
+      }
+    }
+  }
+
   mutate("accounts")
   return data
 }
