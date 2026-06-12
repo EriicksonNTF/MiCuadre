@@ -34,7 +34,7 @@ const sections = [
 
 export default function SecurityPrivacyPage() {
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-6 py-4">
           <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">

@@ -233,7 +233,7 @@ export function CoachIAWidget() {
   }
 
   return (
-    <div className="fixed bottom-[calc(5.85rem+env(safe-area-inset-bottom))] right-4 z-50 sm:right-6">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 sm:right-6">
       {!open && (
         <button type="button"
           onClick={() => setOpen(true)}

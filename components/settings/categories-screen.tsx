@@ -66,7 +66,7 @@ export function CategoriesScreen() {
   }
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">

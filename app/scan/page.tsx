@@ -309,7 +309,7 @@ export default function ScanPage() {
   }
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <header className="flex items-center gap-3 px-6 pb-4 pt-8">
         <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
           <ArrowLeft className="h-5 w-5" />

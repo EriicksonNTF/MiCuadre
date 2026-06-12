@@ -56,7 +56,7 @@ export function PlanningShell() {
             <PlanningProLockScreen />
           </div>
         ) : (
-          <div className="motion-list mx-auto max-w-md space-y-4 px-5 py-4 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <div className="motion-list mx-auto max-w-md space-y-4 px-5 py-4 pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             {tab === "budgets" && <BudgetsTab />}
             {tab === "calendar" && <FinancialCalendarTab />}
             {tab === "debts" && <DebtsTab />}

@@ -42,7 +42,7 @@ export function NotificationsScreen() {
   }, [])
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-5 pb-4 pt-4 backdrop-blur">
         <div className="mx-auto max-w-xl">
           <div className="flex items-center justify-between gap-4">

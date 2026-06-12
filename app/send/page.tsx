@@ -173,7 +173,7 @@ export default function SendPage() {
   }
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       {/* Header */}
       <header className="flex items-center gap-3 px-6 pb-4 pt-8">
         <Link

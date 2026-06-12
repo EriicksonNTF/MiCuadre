@@ -165,7 +165,7 @@ export function ReportsScreen() {
   const PIE_COLORS = ["#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6"]
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center gap-4">

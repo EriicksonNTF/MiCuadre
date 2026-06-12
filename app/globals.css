@@ -168,7 +168,7 @@ body:not(.modal-open) {
 }
 
 .pb-nav-safe {
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
 }
 
 .mobile-page {
@@ -177,7 +177,7 @@ body:not(.modal-open) {
   max-width: 28rem;
   padding-inline: 1.25rem;
   padding-top: calc(1.5rem + env(safe-area-inset-top));
-  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   animation: page-enter 420ms var(--ease-out-ios) both;
 }
 
@@ -380,6 +380,16 @@ body.modal-open {
   }
   50% {
     transform: translateY(-10px);
+  }
+}
+
+/* Prevent iOS Safari auto-zoom on input focus (font-size < 16px triggers zoom).
+   When keyboard opens on a small-input, Safari zooms viewport and often doesn't
+   reset on keyboard dismiss, breaking the form flow. Forcing 16px on mobile
+   prevents the zoom entirely. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }
 

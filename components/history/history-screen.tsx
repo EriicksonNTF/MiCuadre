@@ -348,7 +348,7 @@ export function HistoryScreen() {
   const filteredAccounts = accounts.filter((account) => account.name.toLowerCase().includes(accountSearch.toLowerCase().trim()))
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <header className="px-6 pb-4 pt-8">
         <p className="section-kicker">Actividad</p>
         <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">Historial</h1>

@@ -611,7 +611,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     : `linear-gradient(145deg, color-mix(in oklab, ${headerPrimary} 82%, white), color-mix(in oklab, ${headerSecondary} 72%, white))`
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <div className="relative overflow-hidden px-6 pb-8 pt-8" style={{ background: headerBackground, color: headerTextColor }}>
         <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-white/14 blur-sm" />
         <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-full border border-white/18" />

@@ -404,7 +404,7 @@ if (!draggedId) return
   }
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <header className="mx-auto max-w-md px-5 pb-4 pt-[calc(1.5rem+env(safe-area-inset-top))]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

@@ -160,7 +160,7 @@ export default function ProfilePage() {
 
   if (isLoading || authLoading) {
     return (
-      <MobilePageShell fullBleed>
+      <MobilePageShell fullBleed className="pb-nav-safe">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center gap-4">
             <Link href="/settings" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -177,7 +177,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <MobilePageShell fullBleed>
+    <MobilePageShell fullBleed className="pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border bg-background/80 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-6 py-4">
           <div className="flex items-center justify-between">

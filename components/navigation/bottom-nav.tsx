@@ -92,79 +92,84 @@ export function BottomNav() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-[calc(0.65rem+env(safe-area-inset-bottom))] hide-on-desktop">
-      <div className="mx-auto flex h-[4.7rem] max-w-md items-center justify-around rounded-[1.8rem] border border-border/65 bg-card/88 px-3 shadow-[var(--shadow-float)] backdrop-blur-2xl">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== "/" && pathname.startsWith(item.href))
-          const Icon = item.icon
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card hide-on-desktop"
+        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+      >
+        <div className="mx-auto flex h-[4.5rem] max-w-md items-center justify-around px-2">
+          {navItems.map((item) => {
+            const isActive = pathname === item.href || 
+              (item.href !== "/" && pathname.startsWith(item.href))
+            const Icon = item.icon
 
-          if (item.isAction) {
+            if (item.isAction) {
+              return (
+                <button type="button"
+                  key={item.href}
+                  onPointerDown={(event) => {
+                    setPressingAction(true)
+                    setLongPressTriggered(false)
+                    setPressStart({ x: event.clientX, y: event.clientY })
+                    clearLongPress()
+                    longPressTimerRef.current = window.setTimeout(() => {
+                      setLongPressTriggered(true)
+                      setShowQuickMenu(true)
+                    }, 520)
+                  }}
+                  onPointerMove={(event) => {
+                    if (!pressStart || !pressingAction || longPressTriggered) return
+                    const movedX = Math.abs(event.clientX - pressStart.x)
+                    const movedY = Math.abs(event.clientY - pressStart.y)
+                    if (movedX > 10 || movedY > 10) {
+                      clearLongPress()
+                    }
+                  }}
+                  onPointerUp={() => {
+                    clearLongPress()
+                    const wasLongPress = longPressTriggered
+                    setPressingAction(false)
+                    setPressStart(null)
+                    if (!wasLongPress) {
+                      setShowQuickMenu(false)
+                      router.push("/expense")
+                    }
+                  }}
+                  onPointerLeave={() => {
+                    if (!longPressTriggered) {
+                      clearLongPress()
+                    }
+                  }}
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-[transform,box-shadow] duration-200 ease-[var(--ease-out-ios)] active:scale-95",
+                    pressingAction && "scale-95"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="sr-only">{item.label}</span>
+                </button>
+              )
+            }
+
             return (
-              <button type="button"
+              <Link
                 key={item.href}
-                onPointerDown={(event) => {
-                  setPressingAction(true)
-                  setLongPressTriggered(false)
-                  setPressStart({ x: event.clientX, y: event.clientY })
-                  clearLongPress()
-                  longPressTimerRef.current = window.setTimeout(() => {
-                    setLongPressTriggered(true)
-                    setShowQuickMenu(true)
-                  }, 520)
-                }}
-                onPointerMove={(event) => {
-                  if (!pressStart || !pressingAction || longPressTriggered) return
-                  const movedX = Math.abs(event.clientX - pressStart.x)
-                  const movedY = Math.abs(event.clientY - pressStart.y)
-                  if (movedX > 10 || movedY > 10) {
-                    clearLongPress()
-                  }
-                }}
-                onPointerUp={() => {
-                  clearLongPress()
-                  const wasLongPress = longPressTriggered
-                  setPressingAction(false)
-                  setPressStart(null)
-                  if (!wasLongPress) {
-                    setShowQuickMenu(false)
-                    router.push("/expense")
-                  }
-                }}
-                onPointerLeave={() => {
-                  if (!longPressTriggered) {
-                    clearLongPress()
-                  }
-                }}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_18px_42px_-24px_rgba(0,0,0,0.55)] transition-[transform,box-shadow] duration-200 ease-[var(--ease-out-ios)] active:scale-95",
-                  pressingAction && "scale-95"
+                  "tap-lift relative flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-xl px-1 py-1.5 transition-colors",
+                  isActive ? "text-foreground" : "text-muted-foreground"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="sr-only">{item.label}</span>
-              </button>
+                <Icon className={cn(
+                  "relative transition-all duration-200 ease-[var(--ease-out-ios)]",
+                  isActive ? "h-5 w-5 scale-110 drop-shadow-sm" : "h-5 w-5"
+                )} />
+                <span className={cn("relative max-w-full truncate text-[0.625rem] font-semibold")}>{item.label}</span>
+              </Link>
             )
-          }
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              className={cn(
-                "tap-lift relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-1 py-2 transition-colors",
-                isActive ? "text-foreground" : "text-muted-foreground"
-              )}
-            >
-              {isActive && <span className="absolute inset-x-4 top-1 h-7 rounded-full bg-accent/10" />}
-              <Icon className={cn("relative h-5 w-5 transition-transform duration-200 ease-[var(--ease-out-ios)]", isActive && "-translate-y-0.5 text-accent")} />
-              <span className={cn("relative max-w-full truncate text-[0.625rem] font-semibold", isActive && "text-foreground")}>{item.label}</span>
-            </Link>
-          )
-        })}
-      </div>
-    </nav>
+          })}
+        </div>
+      </nav>
     </>
   )
 }
