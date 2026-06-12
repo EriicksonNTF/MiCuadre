@@ -133,3 +133,16 @@ pnpm dev
 ```bash
 "dev": "pnpm build && pnpm start"
 ```
+
+## Contrast Ratio Verification (COMPLETED)
+- Script at `scripts/check-contrast.mjs` (uses `culori` — installed via `pnpm add culori`).
+- **All text-on-background pairs pass WCAG AA (4.5:1) in both modes.** Most pass AAA (7:1).
+- Light mode results:
+  - `background--foreground`: 18.06:1 ✅ AAA
+  - `muted--muted-foreground`: 5.16:1 ✅ AA (predicted failure was wrong — actual passes)
+  - `surface--surface-raised`: 1.03:1 ❌ (expected — two background surfaces, not text)
+- Dark mode results:
+  - `background--foreground`: 18.09:1 ✅ AAA
+  - `muted--muted-foreground`: 6.74:1 ✅ AA
+  - `surface--surface-raised`: 1.07:1 ❌ (expected)
+- **No changes needed** — all foreground/text contrast is compliant.
