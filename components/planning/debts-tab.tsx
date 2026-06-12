@@ -8,7 +8,7 @@ import { PayDebtSheet } from "@/components/planning/pay-debt-sheet"
 import { QuickPayCardSheet } from "@/components/planning/quick-pay-card-sheet"
 import { useDebtsSummary } from "@/hooks/use-planning"
 import { useEntitlements } from "@/hooks/use-entitlements"
-import { useAccounts } from "@/hooks/use-data"
+import { useAccounts, useFinancialSubscriptions } from "@/hooks/use-data"
 import { notify } from "@/lib/notifications"
 import { formatCurrency } from "@/lib/data"
 import type { DebtWithProgress } from "@/types/planning"
@@ -31,6 +31,7 @@ export function DebtsTab() {
   const { debts, summary, isLoading } = useDebtsSummary()
   const { limits } = useEntitlements()
   const { data: accounts = [] } = useAccounts()
+  const { data: subscriptions = [] } = useFinancialSubscriptions()
   const [createOpen, setCreateOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [selectedDebt, setSelectedDebt] = useState<DebtWithProgress | null>(null)
@@ -123,6 +124,26 @@ export function DebtsTab() {
           {debts.map((debt) => <DebtCard key={debt.id} debt={debt} onPay={onPay} />)}
         </article>
       )}
+
+      <article className="space-y-3 rounded-2xl border border-border bg-card p-4 text-card-foreground">
+        <p className="text-sm font-semibold">Suscripciones</p>
+        {subscriptions.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No tienes suscripciones activas.</p>
+        ) : (
+          subscriptions.map((sub) => (
+            <div key={sub.id} className="rounded-xl border border-border bg-background p-3">
+              <p className="text-sm font-semibold">{sub.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(Number(sub.amount || 0), (sub.currency as "DOP" | "USD") || "DOP")} ·{" "}
+                {sub.next_payment_date
+                  ? new Date(`${sub.next_payment_date}T12:00:00`).toLocaleDateString("es-DO", { day: "numeric", month: "long" })
+                  : "Sin fecha"}
+              </p>
+              {sub.status ? <p className="text-xs text-muted-foreground capitalize">Estado: {sub.status}</p> : null}
+            </div>
+          ))
+        )}
+      </article>
 
       <DebtFormSheet open={createOpen} onOpenChange={setCreateOpen} />
       <PayDebtSheet open={payOpen} onOpenChange={setPayOpen} debt={selectedDebt} />

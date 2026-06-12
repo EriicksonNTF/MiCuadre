@@ -8,6 +8,7 @@ import { useDebtsSummary } from "@/hooks/use-planning"
 import { CalendarEventCard } from "@/components/planning/calendar-event-card"
 import { CalendarFilterPills, type CalendarFilter } from "@/components/planning/calendar-filter-pills"
 import { PlanningMiniCalendar } from "@/components/planning/planning-mini-calendar"
+import { RotatingUpcomingPaymentsCard } from "@/components/planning/rotating-upcoming-payments-card"
 import { QuickPayCardSheet } from "@/components/planning/quick-pay-card-sheet"
 import { PayDebtSheet } from "@/components/planning/pay-debt-sheet"
 
@@ -19,7 +20,7 @@ function emptyByFilter(filter: CalendarFilter) {
 }
 
 export function FinancialCalendarTab() {
-  const { events, next7Amount, monthCommitted, isLoading } = useFinancialCalendarSummary()
+  const { events, isLoading } = useFinancialCalendarSummary()
   const { data: accounts = [] } = useAccounts()
   const { debts = [] } = useDebtsSummary()
   const [filter, setFilter] = useState<CalendarFilter>("all")
@@ -80,16 +81,14 @@ export function FinancialCalendarTab() {
 
   return (
     <section className="space-y-4">
-      <article className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
-        <p className="text-sm font-semibold">Calendario financiero</p>
-        <p className="mt-2 text-lg font-bold">Próximos 7 días</p>
-        <p className="text-sm text-muted-foreground">{formatCurrency(next7Amount)} en compromisos</p>
-        <p className="mt-2 text-xs text-muted-foreground">Total comprometido del mes: {formatCurrency(monthCommitted)}</p>
-      </article>
-
       <PlanningMiniCalendar events={events} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
-      <CalendarFilterPills value={filter} onChange={setFilter} />
+      <RotatingUpcomingPaymentsCard events={events} />
+
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filtrar por tipo</p>
+        <CalendarFilterPills value={filter} onChange={setFilter} />
+      </div>
 
       {isLoading ? (
         <div className="space-y-3">
