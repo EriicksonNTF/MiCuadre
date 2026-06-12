@@ -253,7 +253,7 @@ export function DashboardContent() {
   }
 
   return (
-    <MobilePageShell>
+    <><MobilePageShell>
         <Header />
 
         <div className="motion-list">
@@ -323,8 +323,6 @@ export function DashboardContent() {
         )}
       </div>
 
-      <CoachIAWidget />
-
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/18 px-6 backdrop-blur-[6px] dark:bg-black/45">
           <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-300 ease-[var(--ease-sheet-ios)] rounded-[1.6rem] border border-border/70 bg-card/96 p-5 shadow-[var(--shadow-float)] backdrop-blur-2xl">
@@ -337,5 +335,8 @@ export function DashboardContent() {
       <PlanSelectorSheet open={showWelcomePlanPrompt} onOpenChange={setShowWelcomePlanPrompt} welcome />
       <PlanSelectorSheet open={planningUpsellOpen} onOpenChange={setPlanningUpsellOpen} reasonTitle="Planificación Pro" reasonBody="Desbloquea presupuestos, calendario y deudas con Pro." />
     </MobilePageShell>
+
+    <CoachIAWidget />
+    </>
   )
 }

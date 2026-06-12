@@ -4,22 +4,18 @@ import { execSync } from 'child_process';
 
 const nextDir = path.join(process.cwd(), '.next');
 
-// 1. Clean .next/dev and .next/cache directories
+// 1. Delete entire .next directory to prevent conflicts between
+//    production build artifacts and dev server files. This avoids
+//    ENOENT errors on .next/dev/routes-manifest.json when switching
+//    between `npm run build` and `npm run dev`.
 console.log('Cleaning Next.js cache...');
 try {
-  const devDir = path.join(nextDir, 'dev');
-  const cacheDir = path.join(nextDir, 'cache');
-  
-  if (fs.existsSync(devDir)) {
-    fs.rmSync(devDir, { recursive: true, force: true });
-    console.log('Removed .next/dev');
-  }
-  if (fs.existsSync(cacheDir)) {
-    fs.rmSync(cacheDir, { recursive: true, force: true });
-    console.log('Removed .next/cache');
+  if (fs.existsSync(nextDir)) {
+    fs.rmSync(nextDir, { recursive: true, force: true });
+    console.log('Removed .next/');
   }
 } catch (err) {
-  console.warn('Warning: Could not clean cache directories:', err.message);
+  console.warn('Warning: Could not clean .next:', err.message);
 }
 
 // 2. Terminate any process on port 3000

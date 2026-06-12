@@ -104,34 +104,31 @@
 
 ## Troubleshooting
 
-### Next.js Dev Server Fails with "ENOENT: no such file or directory"
-If you get errors like:
-```
-Error: ENOENT: no such file or directory, open '.../.next/dev/server/middleware-manifest.json'
-```
-This indicates a corrupted `.next` cache or dependency issue.
+### `ENOENT: .next/dev/routes-manifest.json` (Dev Server → Build Switch)
 
-**Solution:**
+If you run `npm run build` and then `npm run dev` without clearing `.next`, the
+dev server fails with:
+```
+Error: ENOENT: no such file or directory, open '.../.next/dev/routes-manifest.json'
+```
+
+**Root cause:** `npm run build` writes production artifacts to `.next/`. When the
+dev server starts next, it reads stale files from the same directory.
+
+**Permanent fix (already applied):** `scripts/predev.js` now deletes the entire
+`.next/` directory before every `npm run dev` (not just subdirectories). This
+ensures a clean slate every time.
+
+**If the error still happens:**
 ```bash
-# 1. Kill any running Next processes
-pkill -f "next" 2>/dev/null
+# 1. Kill any processes on port 3000
+npx kill-port 3000
 
-# 2. Clean .next directory completely
+# 2. Delete .next manually
 rm -rf .next
 
-# 3. Reinstall dependencies to fix corrupted packages
-pnpm install --force
-
-# 4. Test with production build first
-pnpm build && pnpm start
-
-# 5. If production works, dev server should also work
-pnpm dev
-```
-
-**Alternative (if dev server keeps failing):** Use build + start as dev:
-```bash
-"dev": "pnpm build && pnpm start"
+# 3. Start dev fresh
+npm run dev
 ```
 
 ## Contrast Ratio Verification (COMPLETED)
