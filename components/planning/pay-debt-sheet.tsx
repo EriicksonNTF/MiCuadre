@@ -126,9 +126,9 @@ export function PayDebtSheet({
             <article className="rounded-xl border border-border bg-background p-3 text-sm">
               <p className="text-xs text-muted-foreground">Resumen</p>
               <div className="mt-2 space-y-1 text-sm">
-                <p className="flex items-center justify-between"><span>Pendiente actual</span><span className="font-semibold">{formatCurrency(debt.current_balance, debt.currency)}</span></p>
-                <p className="flex items-center justify-between"><span>Cuota sugerida</span><span className="font-semibold">{formatCurrency(suggestedInstallment, debt.currency)}</span></p>
-                <p className="flex items-center justify-between"><span>Nuevo pendiente</span><span className="font-semibold">{formatCurrency(nextDebtBalance, debt.currency)}</span></p>
+              <p className="flex items-center justify-between"><span>Pendiente actual</span><span className="text-xl font-bold">{formatCurrency(debt.current_balance, debt.currency)}</span></p>
+                <p className="flex items-center justify-between"><span>Cuota sugerida</span><span className="text-xl font-bold">{formatCurrency(suggestedInstallment, debt.currency)}</span></p>
+                <p className="flex items-center justify-between"><span>Nuevo pendiente</span><span className="text-xl font-bold">{formatCurrency(nextDebtBalance, debt.currency)}</span></p>
                 {selectedAccount && (
                   <p className="flex items-center justify-between text-xs text-muted-foreground"><span>Balance cuenta</span><span>{formatCurrency(selectedAccount.balance || 0, selectedAccount.currency)}</span></p>
                 )}

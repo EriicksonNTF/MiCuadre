@@ -96,26 +96,24 @@ export function PlanSelectorSheet({
     <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
       <DrawerContent className="mx-auto max-h-[92dvh] max-w-md rounded-t-2xl border-border bg-background shadow-2xl ring-1 ring-border">
         <div className="app-scroll overflow-y-auto px-5 pb-safe">
-          <DrawerHeader className="px-0 pb-2 pt-4 text-left">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[0.6875rem] font-black uppercase tracking-[0.14em] text-primary">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Planes MiCuadre
-                </div>
-                <DrawerTitle className="mt-3 text-2xl font-black tracking-tight">
-                  {welcome ? "Bienvenido a MiCuadre" : "Elige tu plan"}
-                </DrawerTitle>
-                <DrawerDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {welcome
-                    ? "Puedes empezar gratis y desbloquear Pro cuando necesites más control."
-                    : "Empieza gratis y desbloquea todo MiCuadre cuando lo necesites."}
-                </DrawerDescription>
+          <DrawerHeader className="relative px-0 pb-2 pt-4 text-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[0.6875rem] font-black uppercase tracking-[0.14em] text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                Planes MiCuadre
               </div>
-              <DrawerClose className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground">
-                <X className="h-5 w-5" />
-              </DrawerClose>
+              <DrawerTitle className="text-2xl font-black tracking-tight">
+                {welcome ? "Bienvenido a MiCuadre" : "Elige tu plan"}
+              </DrawerTitle>
+              <DrawerDescription className="text-sm leading-relaxed text-muted-foreground">
+                {welcome
+                  ? "Puedes empezar gratis y desbloquear Pro cuando necesites más control."
+                  : "Empieza gratis y desbloquea todo MiCuadre cuando lo necesites."}
+              </DrawerDescription>
             </div>
+            <DrawerClose className="absolute right-0 top-8 flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground">
+              <X className="h-5 w-5" />
+            </DrawerClose>
           </DrawerHeader>
 
           {(reasonTitle || reasonBody) && (

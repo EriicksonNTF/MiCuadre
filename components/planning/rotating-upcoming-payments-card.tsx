@@ -22,16 +22,6 @@ function formatDetail(event: FinancialCalendarEvent) {
   return ""
 }
 
-function actionHref(event: FinancialCalendarEvent) {
-  if (event.type === "credit_card_payment") {
-    const query = event.source_id ? `?card=${encodeURIComponent(event.source_id)}` : ""
-    return `/pay${query}`
-  }
-  if (event.type === "financial_subscription") return "/settings/subscriptions"
-  if (event.type === "debt_payment") return "/planning?tab=debts"
-  return "/planning?tab=calendar"
-}
-
 function urgencyPrefix(event: FinancialCalendarEvent) {
   const today = getLocalDateString()
   const now = new Date(`${today}T12:00:00`)
@@ -47,9 +37,11 @@ function urgencyPrefix(event: FinancialCalendarEvent) {
 export function RotatingUpcomingPaymentsCard({
   events,
   intervalMs = 5000,
+  onAction,
 }: {
   events: FinancialCalendarEvent[]
   intervalMs?: number
+  onAction?: (event: FinancialCalendarEvent) => void
 }) {
   const [activeIndex, setActiveIndex] = useState(0)
 
@@ -103,15 +95,15 @@ export function RotatingUpcomingPaymentsCard({
         <p className="text-base font-bold">{active.title}</p>
         <p className="text-xs text-muted-foreground">{formatDueLabel(active)}</p>
         {active.amount ? (
-          <p className="mt-1 text-sm font-semibold">{formatCurrency(active.amount, active.currency || "DOP")}</p>
+          <p className="mt-1 text-xl font-bold">{formatCurrency(active.amount, active.currency || "DOP")}</p>
         ) : null}
         <p className="text-xs text-muted-foreground">{formatDetail(active)}</p>
       </div>
 
       <div className="mt-3 flex items-center justify-between gap-2">
-        <Link href={actionHref(active)} className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground">
+        <button type="button" onClick={() => onAction?.(active)} className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground">
           {active.action_label || "Ver"}
-        </Link>
+        </button>
         <Link href="/planning?tab=calendar" className="inline-flex h-9 items-center justify-center rounded-xl bg-accent px-3 text-xs font-bold text-accent-foreground">
           Ver calendario
         </Link>

@@ -227,18 +227,18 @@ export function ReportsScreen() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.income}</p><p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.income)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.expense}</p><p className="text-lg font-semibold text-red-600">{formatCurrency(totals.expense)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.netBalance}</p><p className="text-lg font-semibold text-foreground">{formatCurrency(totals.net)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.subscriptions}</p><p className="text-lg font-semibold text-amber-600">{formatCurrency(subscriptionTotal)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.income}</p><p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.income)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.expense}</p><p className="text-xl font-bold text-red-600">{formatCurrency(totals.expense)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.netBalance}</p><p className="text-xl font-bold text-foreground">{formatCurrency(totals.net)}</p></div>
+          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.subscriptions}</p><p className="text-xl font-bold text-amber-600">{formatCurrency(subscriptionTotal)}</p></div>
         </div>
 
         <section className="rounded-2xl border border-border bg-card p-4">
           <p className="text-sm font-semibold text-foreground">Resumen del mes</p>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div><p className="text-xs text-muted-foreground">Ingreso total</p><p className="text-base font-semibold text-foreground">{formatCurrency(totals.income)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Gasto total</p><p className="text-base font-semibold text-foreground">{formatCurrency(totals.expense)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Balance neto</p><p className="text-base font-semibold text-foreground">{formatCurrency(totals.net)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Ingreso total</p><p className="text-xl font-bold text-foreground">{formatCurrency(totals.income)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Gasto total</p><p className="text-xl font-bold text-foreground">{formatCurrency(totals.expense)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Balance neto</p><p className="text-xl font-bold text-foreground">{formatCurrency(totals.net)}</p></div>
             <div><p className="text-xs text-muted-foreground">Tasa de ahorro</p><p className="text-base font-semibold text-foreground">{Number.isFinite(savingsRate) ? `${savingsRate.toFixed(1)}%` : "0%"}</p></div>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">{netVsPrevious >= 0 ? `Este mes vas ${formatCurrency(Math.abs(netVsPrevious))} por encima del mes anterior.` : `Este mes vas ${formatCurrency(Math.abs(netVsPrevious))} por debajo del mes anterior.`}</p>

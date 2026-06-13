@@ -83,7 +83,7 @@ export function FinancialCalendarTab() {
     <section className="space-y-4">
       <PlanningMiniCalendar events={events} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
-      <RotatingUpcomingPaymentsCard events={events} />
+      <RotatingUpcomingPaymentsCard events={events} onAction={navigateFromEvent} />
 
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Filtrar por tipo</p>
@@ -101,7 +101,7 @@ export function FinancialCalendarTab() {
       ) : (
         <div className="space-y-3">
           {filtered.map((event) => (
-            <CalendarEventCard key={event.id} event={event} />
+            <CalendarEventCard key={event.id} event={event} onAction={navigateFromEvent} />
           ))}
         </div>
       )}

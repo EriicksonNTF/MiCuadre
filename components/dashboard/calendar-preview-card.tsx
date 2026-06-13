@@ -31,7 +31,7 @@ export function CalendarPreviewCard() {
             <article key={event.id} className="rounded-xl border border-border bg-background px-3 py-3">
               <p className="text-sm font-semibold text-foreground">{event.title}</p>
               <p className="text-xs text-muted-foreground">{event.detail || "Próximo compromiso"}</p>
-              {event.amount ? <p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(Number(event.amount || 0), (event.currency as "DOP" | "USD") || "DOP")}</p> : null}
+              {event.amount ? <p className="mt-1 text-xl font-bold text-foreground">{formatCurrency(Number(event.amount || 0), (event.currency as "DOP" | "USD") || "DOP")}</p> : null}
             </article>
           ))
         )}

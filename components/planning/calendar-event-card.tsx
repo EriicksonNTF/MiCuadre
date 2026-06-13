@@ -1,6 +1,5 @@
 ﻿"use client"
 
-import Link from "next/link"
 import type { FinancialCalendarEvent } from "@/lib/planning/calendar"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 
@@ -22,16 +21,6 @@ function typeLabel(event: FinancialCalendarEvent) {
   return "Recordatorio"
 }
 
-function actionHref(event: FinancialCalendarEvent) {
-  if (event.type === "credit_card_payment") {
-    const query = event.source_id ? `?card=${encodeURIComponent(event.source_id)}` : ""
-    return `/pay${query}`
-  }
-  if (event.type === "financial_subscription") return "/settings/subscriptions"
-  if (event.type === "debt_payment") return event.source_table === "debts" ? `/planning?tab=debts&debt=${encodeURIComponent(event.source_id || "")}` : "/planning?tab=debts"
-  return "/planning?tab=calendar"
-}
-
 function urgencyText(event: FinancialCalendarEvent) {
   if (event.status === "overdue") return "Atrasado"
   if (event.status === "due_today") return "Pagar hoy"
@@ -43,7 +32,7 @@ function urgencyText(event: FinancialCalendarEvent) {
   return ""
 }
 
-export function CalendarEventCard({ event }: { event: FinancialCalendarEvent }) {
+export function CalendarEventCard({ event, onAction }: { event: FinancialCalendarEvent; onAction?: (event: FinancialCalendarEvent) => void }) {
   const urgency = urgencyText(event)
   return (
     <article className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
@@ -52,7 +41,7 @@ export function CalendarEventCard({ event }: { event: FinancialCalendarEvent }) 
           <p className="text-xs text-muted-foreground">{relativeLabel(event.due_date)}</p>
           <p className="text-sm font-semibold">{event.title}</p>
           {event.detail && <p className="text-xs text-muted-foreground">{event.detail}</p>}
-          {event.amount ? <p className="mt-1 text-sm font-bold">{formatCurrency(event.amount, event.currency || "DOP")}</p> : null}
+          {event.amount ? <p className="mt-1 text-xl font-bold">{formatCurrency(event.amount, event.currency || "DOP")}</p> : null}
           <p className="text-[0.6875rem] text-muted-foreground">{typeLabel(event)}</p>
         </div>
         {urgency ? (
@@ -61,9 +50,9 @@ export function CalendarEventCard({ event }: { event: FinancialCalendarEvent }) 
           </span>
         ) : null}
       </div>
-      <Link href={actionHref(event)} className="mt-3 inline-flex h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground">
+      <button type="button" onClick={() => onAction?.(event)} className="mt-3 inline-flex h-9 items-center justify-center rounded-xl bg-primary px-3 text-xs font-bold text-primary-foreground">
         {event.action_label || "Ver"}
-      </Link>
+      </button>
     </article>
   )
 }

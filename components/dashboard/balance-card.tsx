@@ -59,7 +59,7 @@ export function BalanceCard() {
           <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="flex w-full items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">Deuda tarjetas</p>
-            <p className="text-sm font-bold text-foreground tabular-nums">
+            <p className="text-xl font-bold text-foreground tabular-nums">
               {showBalance ? formatCurrency(totalCreditDebt, "DOP") : hiddenText}
             </p>
           </div>

@@ -25,7 +25,7 @@ export function PaymentOptionCard({ title, description, amount, selected, onClic
           <p className="text-base font-semibold leading-tight text-foreground">{title}</p>
           {description ? <p className="mt-1 text-sm leading-snug text-muted-foreground">{description}</p> : null}
         </div>
-        {amount ? <p className="shrink-0 text-sm font-semibold text-foreground">{amount}</p> : null}
+        {amount ? <p className="shrink-0 text-xl font-bold text-foreground">{amount}</p> : null}
       </div>
     </button>
   )

@@ -367,14 +367,14 @@ export function HistoryScreen() {
                   <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                   <span className="text-[0.6875rem] font-semibold text-muted-foreground">Ingresos</span>
                 </div>
-                <p className="mt-1 text-sm font-black tabular-nums text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
               </div>
               <div className="rounded-2xl bg-muted/60 p-3">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                   <span className="text-[0.6875rem] font-semibold text-muted-foreground">Gastos</span>
                 </div>
-                <p className="mt-1 text-sm font-black tabular-nums text-red-600 dark:text-red-400">-{formatCurrency(totals.expenses)}</p>
+                <p className="mt-1 text-xl font-bold tabular-nums text-red-600 dark:text-red-400">-{formatCurrency(totals.expenses)}</p>
               </div>
             </div>
           </div>
@@ -616,7 +616,7 @@ export function HistoryScreen() {
                               </div>
 
                               <div className="shrink-0 text-right">
-                                <p className={cn("text-sm font-semibold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
+                                <p className={cn("text-xl font-bold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
                                   {tx.type === "income" ? "+" : "-"}
                                   {formatCurrency(tx.amount, tx.currency)}
                                 </p>

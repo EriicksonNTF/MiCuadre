@@ -757,7 +757,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               </div>
               <p className="truncate text-[0.6875rem] text-muted-foreground">Ingresos</p>
             </div>
-            <p className="mt-2 truncate text-sm font-bold text-emerald-600 dark:text-emerald-400">
+            <p className="mt-2 truncate text-xl font-bold text-emerald-600 dark:text-emerald-400">
               +{formatCurrency(monthlyIncome)}
             </p>
           </div>
@@ -769,7 +769,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               </div>
               <p className="truncate text-[0.6875rem] text-muted-foreground">Gastos</p>
             </div>
-            <p className="mt-2 truncate text-sm font-bold text-red-600 dark:text-red-400">
+            <p className="mt-2 truncate text-xl font-bold text-red-600 dark:text-red-400">
               -{formatCurrency(monthlyExpenses)}
             </p>
           </div>
@@ -801,7 +801,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             </div>
             <p
               className={cn(
-                "mt-2 truncate text-sm font-bold",
+                "mt-2 truncate text-xl font-bold",
                 netFlow > 0
                   ? "text-emerald-600 dark:text-emerald-400"
                   : netFlow < 0
@@ -957,7 +957,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     </div>
                     <p
                       className={cn(
-                        "shrink-0 text-sm font-bold tabular-nums",
+                        "shrink-0 text-xl font-bold tabular-nums",
                         tx.type === "income"
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-foreground"

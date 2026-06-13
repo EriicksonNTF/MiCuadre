@@ -37,6 +37,7 @@ import { AccountCarouselSelector } from "@/components/ui/account-carousel-select
 import { useAccounts, useCategories, createFinancialSubscription, createTransaction, createCategory, useTransactions } from "@/hooks/use-data"
 
 import { formatCurrency, getAvailableCredit, getAvailableCreditByCurrency, getCurrencySymbol } from "@/lib/data"
+import { MovementReceipt } from "@/components/receipts/movement-receipt"
 import { getLocalDateString } from "@/lib/data"
 import { EventBus } from "@/lib/event-bus"
 import { FINANCIAL_SUBSCRIPTION_PROVIDERS, getNextFinancialBillingDateFrom } from "@/lib/financial-subscriptions"
@@ -114,6 +115,17 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [applyCommission, setApplyCommission] = useState(false)
   const [creditCardIncomeKind, setCreditCardIncomeKind] = useState<CreditCardIncomeKind>("card_payment")
   const [isSaving, setIsSaving] = useState(false)
+  const [receipt, setReceipt] = useState<{
+    amount: number
+    currency: Currency
+    type: TransactionType
+    accountName: string
+    accountLast4: string
+    categoryName: string
+    description: string
+    date: string
+    commission: number
+  } | null>(null)
 
   const [subscriptionProvider, setSubscriptionProvider] = useState("netflix")
   const [subscriptionMode, setSubscriptionMode] = useState<"once" | "recurring">("once")
@@ -298,26 +310,18 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         localStorage.setItem("micuadre:last_currency", currency)
       }
 
-      const isDeviceOnline = typeof navigator !== "undefined" ? navigator.onLine : true
-      showToast({
-        title: isCreditCardIncome ? selectedCreditCardIncomeOption.label : transactionType === "income" ? "Ingreso registrado" : "Gasto guardado",
-        body: isDeviceOnline
-          ? `${formatCurrency(parsedAmount, currency)} · ${description}`
-          : "Gasto guardado sin conexión. Se sincronizará cuando vuelva internet.",
-        type: "success",
-        duration: isDeviceOnline ? 2500 : 3500,
+      setReceipt({
+        amount: parsedAmount,
+        currency,
+        type: transactionType,
+        accountName: selectedRawAccount?.name || "",
+        accountLast4: selectedRawAccount?.account_number?.slice(-4) || "",
+        categoryName: selectedCategory?.label || "",
+        description,
+        date: getLocalDateString(date),
+        commission: transactionType === "expense" && applyCommission ? commissionAmount : 0,
       })
-      EventBus.emit({ type: "transaction_created", payload: { type: transactionType, amount: parsedAmount, currency } })
-      
       setIsSaving(false)
-      setAmount("")
-      setDescription("")
-      setCategory("")
-      setDate(new Date())
-      setApplyCommission(false)
-      setCreditCardIncomeKind("card_payment")
-      setSubscriptionMode("once")
-      onBack?.()
     } catch (error) {
       if (!handleEntitlementBlocked(error)) {
         showToast({
@@ -360,6 +364,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   }, [prefill, categories])
 
   return (
+    <>
     <div className="app-scroll flex h-[100dvh] flex-col overflow-hidden bg-background">
       {/* Header */}
       <header className="flex shrink-0 items-center gap-3 px-5 pb-2 pt-[calc(1.5rem+env(safe-area-inset-top))] sm:px-6">
@@ -769,5 +774,33 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </div>
       )}
     </div>
+
+      <MovementReceipt
+        open={receipt !== null}
+        title={receipt?.type === "income" ? "Ingreso registrado" : "Gasto guardado"}
+        amount={formatCurrency(receipt?.amount ?? 0, receipt?.currency ?? "DOP")}
+        sections={[
+          {
+            title: "Detalle",
+            lines: [
+              { label: "Tipo", value: receipt?.type === "income" ? "Ingreso" : "Gasto" },
+              { label: "Categoría", value: receipt?.categoryName },
+              { label: "Descripción", value: receipt?.description },
+              { label: "Cuenta", value: receipt ? `${receipt.accountName} ·-${receipt.accountLast4}` : "" },
+              { label: "Fecha", value: receipt?.date },
+              ...(receipt && receipt.commission > 0
+                ? [{ label: "Comisión 0.15%", value: formatCurrency(receipt.commission, receipt.currency) }]
+                : []),
+              { label: "No. Transacción", value: Math.random().toString(36).slice(2, 14).toUpperCase() },
+            ],
+          },
+        ]}
+        primaryActionLabel="Cerrar"
+        secondaryActionLabel="Nueva transacción"
+        onPrimaryAction={() => { setReceipt(null); onBack?.() }}
+        onSecondaryAction={() => setReceipt(null)}
+        onClose={() => { setReceipt(null); onBack?.() }}
+      />
+    </>
   )
 }

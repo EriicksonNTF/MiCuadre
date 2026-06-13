@@ -75,15 +75,17 @@ export function DashboardContent() {
 
     if (typeof window !== "undefined") {
       window.localStorage.setItem("onboarding_completed", "true")
-      const promptKey = `micuadre_plan_prompt_seen_${profile?.id || user?.id || "local"}`
-      if (window.localStorage.getItem(promptKey) !== "true") {
-        window.localStorage.setItem(promptKey, "true")
-        setShowWelcomePlanPrompt(true)
+      if (!isPro) {
+        const promptKey = `micuadre_plan_prompt_seen_${profile?.id || user?.id || "local"}`
+        if (window.localStorage.getItem(promptKey) !== "true") {
+          window.localStorage.setItem(promptKey, "true")
+          setShowWelcomePlanPrompt(true)
+        }
       }
     }
 
     setIsReady(true)
-  }, [loading, profile?.id, profile?.onboarding_completed, profileLoading, router, user?.id])
+  }, [isPro, loading, profile?.id, profile?.onboarding_completed, profileLoading, router, user?.id])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -336,7 +338,7 @@ export function DashboardContent() {
       <PlanSelectorSheet open={planningUpsellOpen} onOpenChange={setPlanningUpsellOpen} reasonTitle="Planificación Pro" reasonBody="Desbloquea presupuestos, calendario y deudas con Pro." />
     </MobilePageShell>
 
-    <CoachIAWidget />
+    {!showWelcomePlanPrompt && !planningUpsellOpen && <CoachIAWidget />}
     </>
   )
 }

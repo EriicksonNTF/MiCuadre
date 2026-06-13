@@ -131,6 +131,63 @@ rm -rf .next
 npm run dev
 ```
 
+## Known Fix Patterns (recurring issues — remember these)
+
+### `position: fixed` breaks inside `.mobile-page`
+- **Root cause:** The `page-enter` CSS keyframe animation on `.mobile-page` applies `transform: translateY(0) scale(1)` with `animation-fill-mode: both`, which creates a CSS containing block. Any `position: fixed` child inside `.mobile-page` is fixed to the animation transform origin, not the viewport.
+- **Fix:** Move the fixed element OUTSIDE `MobilePageShell` as a sibling of `<main>`. Do NOT place fixed elements inside `.mobile-page` unless using `fullBleed` mode (which skips the `.mobile-page` wrapper).
+- **Affected:** `CoachIAWidget` (moved to sibling of `<main>` in `dashboard-content.tsx`)
+
+### CoachIAWidget overlaps with plan selector sheets
+- **Rule:** The MIA chat bubble (`z-[60]`) must be hidden whenever `PlanSelectorSheet` or any full-screen upsell drawer is open.
+- **Fix:** Conditional render: `{!showWelcomePlanPrompt && !planningUpsellOpen && <CoachIAWidget />}`
+
+### Welcome plan prompt gates
+- **Rule:** Free users see the prompt exactly once (per account). Pro users NEVER see it.
+- **Fix:** Check `!isPro` before setting `showWelcomePlanPrompt` + localStorage flag. localStorage key: `micuadre_plan_prompt_seen_{profile_id}`.
+
+### iOS Safari auto-zoom on input focus
+- **Root cause:** iOS Safari zooms the page when an `<input>` with `font-size < 16px` receives focus.
+- **Fix:** Globals CSS rule: `@media (hover: none) and (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }`
+
+### Bottom nav redesign rules
+- Flat bar (not floating pill): `bg-card`, `border-t`, `h-[4.5rem]`.
+- Active indicator: `scale-110 drop-shadow-sm` (not pill background).
+- No `backdrop-blur`, no `mx-4`.
+- FAB and long-press menu preserved.
+
+### MovementReceipt is the single shared centered receipt
+- **Rule:** ALL transaction types (transfers, card payments, debt payments) must use `MovementReceipt` component.
+- **Position:** `fixed inset-0 flex items-center justify-center p-4` (centered on all screen sizes).
+- **Backdrop:** `bg-black/50` (covers navbar too).
+- **Missing implementations:** `quick-pay-card-sheet.tsx`, `expense-form.tsx`.
+
+### Planning action buttons must open in-app sheets, not navigate away
+- **Rule:** ALL payment action buttons ("Pagar tarjeta", "Pagar cuota", "Pagar") must open the Vaul bottom drawer sheet (`QuickPayCardSheet` or `PayDebtSheet`), not navigate to a different page via `<Link>`.
+- **Fix:** Use `<button type="button" onClick={() => onAction?.(event)}>` with an `onAction` callback prop. The parent component passes `navigateFromEvent` which opens the correct sheet.
+- **Affected:** `calendar-event-card.tsx:64` (fixed), `rotating-upcoming-payments-card.tsx:112` (fixed).
+- **Parent handling:** `financial-calendar-tab.tsx` has `navigateFromEvent()` that builds the correct `QuickCardTarget` or finds the debt object and opens the appropriate drawer.
+
+### Vaul Drawer — disable drag-to-dismiss for forms
+- **Rule:** Vaul Drawers that contain interactive forms MUST use `dismissible={false}` to prevent accidental sheet dismissal by swipe gestures.
+- **Root cause:** Vaul defaults `dismissible` to `true`, applying `transform: translate3d(0, dragY, 0)` on touch drag. When the form has `overflow-y-auto`, touching near `scrollTop === 0` triggers drawer-close instead of scroll.
+- **Fix:** Pass `dismissible={false}` to `<Drawer>`. Users close via Cancel button or backdrop overlay.
+- **Affected:** `debt-form-sheet.tsx:120` (fixed).
+- **Exception:** Payment sheets (`QuickPayCardSheet`, `PayDebtSheet`) can keep drag-to-dismiss since they have minimal scrollable content and the confirm step prevents accidental closure.
+
+### Form validation must always show a toast
+- **Rule:** Every form validation failure should show BOTH an inline error AND a toast notification, so the user sees feedback even if they've scrolled past the inline error.
+- **Fix:** Add `notify({ title: "Validación", message: "..." })` alongside each `setFormError(...)` call.
+- **Affected:** `debt-form-sheet.tsx` (fixed — 6 validation blocks).
+
+### Credit-card payment receipt — field reduction
+- **DO include:** Title, large amount, transaction type, origin (name + last-4), destination (name + last-4), date/time, DGII tax, random transaction number (max 12 digits).
+- **DO NOT include:** Balance antes/después, reference numbers, NCF, conceptos.
+
+### Amount input font-size minimum
+- **Rule:** All amount inputs/display fields must be at least `text-xl font-bold` (20px).
+- **Reference standard:** Expense form uses `text-[clamp(2.75rem,15vw,4.5rem)]` for primary transaction flows.
+
 ## Contrast Ratio Verification (COMPLETED)
 - Script at `scripts/check-contrast.mjs` (uses `culori` — installed via `pnpm add culori`).
 - **All text-on-background pairs pass WCAG AA (4.5:1) in both modes.** Most pass AAA (7:1).

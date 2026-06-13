@@ -37,10 +37,10 @@ export function BudgetCard({ budget, onEdit }: { budget: BudgetWithUsage; onEdit
           </button>
         </div>
       </div>
-      <p className="mt-3 text-sm font-semibold tabular-nums">
+      <p className="mt-3 text-xl font-bold tabular-nums">
         {formatCurrency(budget.spent, budget.currency)} / {formatCurrency(budget.amount, budget.currency)}
       </p>
-      <p className="mt-1 text-xs text-muted-foreground">Restante: {formatCurrency(Math.max(0, budget.remaining), budget.currency)}</p>
+      <p className="mt-1 text-sm font-semibold text-muted-foreground">Restante: {formatCurrency(Math.max(0, budget.remaining), budget.currency)}</p>
       <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
         <div className={cn("h-full rounded-full", budget.status === "exceeded" ? "bg-destructive" : "bg-primary")} style={{ width: `${progress}%` }} />
       </div>

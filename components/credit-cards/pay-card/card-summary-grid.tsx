@@ -24,7 +24,7 @@ export function CardSummaryGrid({ currentBalance, statementBalance, minimumPayme
         {items.map((item) => (
           <div key={item.label} className="rounded-xl border border-border bg-background p-3">
             <p className="text-[0.6875rem] text-muted-foreground">{item.label}</p>
-            <p className="mt-1 truncate text-sm font-bold text-foreground">{item.value}</p>
+            <p className="mt-1 truncate text-xl font-bold text-foreground">{item.value}</p>
           </div>
         ))}
       </div>

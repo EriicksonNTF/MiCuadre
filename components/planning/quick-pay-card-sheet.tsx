@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useCallback } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { payCreditCard, useAccounts, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
+import { MovementReceipt } from "@/components/receipts/movement-receipt"
 
 type QuickCardTarget = {
   id: string
@@ -34,6 +35,16 @@ export function QuickPayCardSheet({
   const [exchangeRate, setExchangeRate] = useState("")
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [receipt, setReceipt] = useState<{
+    amount: number
+    currency: "DOP" | "USD"
+    sourceName: string
+    sourceLast4: string
+    cardName: string
+    cardLast4: string
+    date: string
+    dgiiAmount: number
+  } | null>(null)
 
   const sourceAccounts = useMemo(
     () => accounts.filter((acc) => acc.type === "cash" || acc.type === "debit"),
@@ -111,11 +122,11 @@ export function QuickPayCardSheet({
             )}
 
             <article className="rounded-xl border border-border bg-background p-3 text-sm">
-              <p className="flex items-center justify-between"><span>Monto a pagar</span><span className="font-semibold">{formatCurrency(amount, target.currency)}</span></p>
+              <p className="flex items-center justify-between"><span>Monto a pagar</span><span className="text-xl font-bold">{formatCurrency(amount, target.currency)}</span></p>
               {selectedSource ? <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><span>Disponible en origen</span><span>{formatCurrency(Number(selectedSource.balance || 0), selectedSource.currency)}</span></p> : null}
               {selectedSource && conversionApplies ? <p className="mt-1 flex items-center justify-between text-xs"><span className="text-muted-foreground">Total a debitar (sin DGII)</span><span>{formatCurrency(sourceDebitAmount, sourceCurrency)}</span></p> : null}
               {dgiiAmount > 0 ? <p className="mt-1 flex items-center justify-between text-xs"><span className="text-muted-foreground">Impuesto DGII 0.15%</span><span className="text-amber-500">{formatCurrency(dgiiAmount, sourceCurrency)}</span></p> : null}
-              <p className="mt-1 flex items-center justify-between text-sm font-semibold"><span>Total a debitar</span><span>{formatCurrency(totalDebit, sourceCurrency)}</span></p>
+              <p className="mt-1 flex items-center justify-between text-xl font-bold"><span>Total a debitar</span><span>{formatCurrency(totalDebit, sourceCurrency)}</span></p>
               <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><span>Nuevo balance de tarjeta</span><span>{formatCurrency(Math.max(0, target.currentDebt - amount), target.currency)}</span></p>
             </article>
 
@@ -154,7 +165,16 @@ export function QuickPayCardSheet({
               })
               notify({ title: "Pago registrado", message: "Tu pago de tarjeta fue aplicado." })
               setShowConfirm(false)
-              onOpenChange(false)
+              setReceipt({
+                amount,
+                currency: target.currency,
+                sourceName: selectedSource.name,
+                sourceLast4: selectedSource.account_number?.slice(-4) || "",
+                cardName: target.name,
+                cardLast4: target.id.slice(-4),
+                date: new Date().toISOString(),
+                dgiiAmount,
+              })
             } catch (error: any) {
               notify({ title: "No se pudo pagar", message: error?.message || "Inténtalo nuevamente." })
               throw error
@@ -164,6 +184,30 @@ export function QuickPayCardSheet({
           }}
         />
       ) : null}
+
+      <MovementReceipt
+        open={receipt !== null}
+        title="Pago exitoso"
+        amount={formatCurrency(receipt?.amount ?? 0, receipt?.currency ?? "DOP")}
+        sections={[
+          {
+            title: "Detalle del pago",
+            lines: [
+              { label: "Tipo", value: "Pago de tarjeta de crédito" },
+              { label: "Origen", value: receipt ? `${receipt.sourceName} ·-${receipt.sourceLast4}` : "" },
+              { label: "Destino", value: receipt ? `${receipt.cardName} ·-${receipt.cardLast4}` : "" },
+              { label: "Fecha y hora", value: receipt ? new Date(receipt.date).toLocaleString("es-DO") : "" },
+              { label: "Impuesto DGII", value: receipt ? formatCurrency(receipt.dgiiAmount, receipt.currency) : "" },
+              { label: "No. Transacción", value: Math.random().toString(36).slice(2, 14).toUpperCase() },
+            ],
+          },
+        ]}
+        primaryActionLabel="Cerrar"
+        secondaryActionLabel="Nuevo pago"
+        onPrimaryAction={() => { setReceipt(null); onOpenChange(false) }}
+        onSecondaryAction={() => setReceipt(null)}
+        onClose={() => { setReceipt(null); onOpenChange(false) }}
+      />
     </>
   )
 }

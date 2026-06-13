@@ -63,26 +63,32 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
 
     if (!name.trim()) {
       setFormError("El nombre es obligatorio.")
+      notify({ title: "Validación", message: "El nombre es obligatorio." })
       return
     }
     if (!Number.isFinite(parsedOriginal) || parsedOriginal <= 0) {
       setFormError("El monto original debe ser mayor que cero.")
+      notify({ title: "Validación", message: "El monto original debe ser mayor que cero." })
       return
     }
     if (!Number.isFinite(parsedPending) || parsedPending < 0) {
       setFormError("El monto pendiente debe ser cero o mayor.")
+      notify({ title: "Validación", message: "El monto pendiente debe ser cero o mayor." })
       return
     }
     if (parsedPending > parsedOriginal) {
       setFormError("El monto pendiente no puede ser mayor que el monto original.")
+      notify({ title: "Validación", message: "El monto pendiente no puede ser mayor que el monto original." })
       return
     }
     if (parsedPaymentDay !== null && (!Number.isInteger(parsedPaymentDay) || parsedPaymentDay < 1 || parsedPaymentDay > 31)) {
       setFormError("El día de pago debe estar entre 1 y 31.")
+      notify({ title: "Validación", message: "El día de pago debe estar entre 1 y 31." })
       return
     }
     if (parsedFixedPayment !== null && (!Number.isFinite(parsedFixedPayment) || parsedFixedPayment <= 0)) {
       setFormError("La cuota fija debe ser mayor que cero.")
+      notify({ title: "Validación", message: "La cuota fija debe ser mayor que cero." })
       return
     }
 
@@ -117,7 +123,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="bottom" dismissible={false}>
       <DrawerContent className="mx-auto flex max-h-[90dvh] max-w-md flex-col rounded-t-[2rem] border-border bg-card p-0 shadow-2xl ring-1 ring-border">
         <DrawerHeader className="shrink-0 border-b border-border px-5 pb-4 pt-5">
           <DrawerTitle>Nueva deuda</DrawerTitle>
