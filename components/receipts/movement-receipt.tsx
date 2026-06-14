@@ -44,11 +44,20 @@ export function MovementReceipt({
     setMounted(true)
   }, [])
 
+  useEffect(() => {
+    if (open) {
+      document.body.classList.add("modal-open")
+    } else {
+      document.body.classList.remove("modal-open")
+    }
+    return () => { document.body.classList.remove("modal-open") }
+  }, [open])
+
   if (!open || !mounted) return null
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-[8px] animate-in fade-in duration-200" onClick={onClose} />
+      <div className="fixed inset-0 z-[90] bg-foreground/18 backdrop-blur-[6px] animate-in fade-in duration-200 dark:bg-black/45" onClick={onClose} aria-hidden="true" />
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-5">
         <div className="mx-auto flex w-full max-w-sm flex-col rounded-[20px] border border-border/15 bg-card shadow-[0_20px_60px_rgba(0,0,0,0.55)] animate-in fade-in zoom-in-95 duration-200 max-h-[calc(100dvh-2.5rem)]">
           <div className="overflow-y-auto p-5">

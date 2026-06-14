@@ -1,1 +1,1 @@
-export { SmartToast } from "./smart-toast"
+export { showToast, ToastContainer } from "./smart-toast"

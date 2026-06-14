@@ -136,6 +136,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --text-2xl: 1.25rem;
   --text-3xl: 1.5rem;
+  --z-overlay-nav: 40;
+  --z-overlay: 50;
+  --z-floating: 60;
+  --z-fullscreen: 200;
+  --z-toast: 9999;
 }
 
 @layer base {

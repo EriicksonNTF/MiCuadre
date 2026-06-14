@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Loader2, Upload, AlertTriangle, CheckCircle2, Sparkles, FileImage } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { parseReceiptText } from "@/lib/receipt-parser"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 
@@ -319,9 +320,10 @@ export default function ScanPage() {
 
       <div className="px-6 pb-8">
         {isScanning && (
-          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-[6px]">
-            <div className="w-[92%] max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
-              <div className="mb-4 flex items-center gap-3">
+          <ModalOverlay open={true} blocking>
+            <div className="flex min-h-full items-center justify-center p-4">
+              <div className="w-[92%] max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
+                <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
                   <Sparkles className="h-6 w-6 animate-pulse" />
                 </div>
@@ -343,6 +345,7 @@ export default function ScanPage() {
               </div>
             </div>
           </div>
+        </ModalOverlay>
         )}
 
         <div className="rounded-2xl bg-card p-4">

@@ -1,8 +1,10 @@
 "use client"
 
+import { useId, useRef } from "react"
 import type { ReactNode } from "react"
-import { useEffect, useId } from "react"
 import { X } from "lucide-react"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { useModalA11y } from "@/lib/a11y/use-modal-a11y"
 
 type MobileSheetLayoutProps = {
   title: string
@@ -13,17 +15,14 @@ type MobileSheetLayoutProps = {
 
 export function MobileSheetLayout({ title, children, footer, onClose }: MobileSheetLayoutProps) {
   const titleId = useId()
-
-  useEffect(() => {
-    document.body.classList.add("modal-open", "mobile-form-open")
-    return () => {
-      document.body.classList.remove("modal-open", "mobile-form-open")
-    }
-  }, [])
+  const containerRef = useRef<HTMLElement | null>(null)
+  useModalA11y({ containerRef, onClose, enabled: true, trapFocus: true })
 
   return (
-    <div data-app-modal="true" className="fixed inset-0 z-50 flex items-end bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45">
+    <ModalOverlay open={true} onClose={onClose}>
+      <div data-app-modal="true" className="flex min-h-full items-end">
       <section
+        ref={containerRef}
         className="flex max-h-[88vh] w-full animate-in slide-in-from-bottom-8 duration-500 ease-[var(--ease-sheet-ios)] flex-col rounded-t-[2rem] border border-border/70 bg-card/96 text-card-foreground shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl"
         role="dialog"
         aria-modal="true"
@@ -54,5 +53,6 @@ export function MobileSheetLayout({ title, children, footer, onClose }: MobileSh
         </footer>
       </section>
     </div>
+    </ModalOverlay>
   )
 }

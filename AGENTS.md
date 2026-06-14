@@ -162,13 +162,6 @@ pnpm run dev:reset
 - **Affected:** `calendar-event-card.tsx:64` (fixed), `rotating-upcoming-payments-card.tsx:112` (fixed).
 - **Parent handling:** `financial-calendar-tab.tsx` has `navigateFromEvent()` that builds the correct `QuickCardTarget` or finds the debt object and opens the appropriate drawer.
 
-### Vaul Drawer — disable drag-to-dismiss for forms
-- **Rule:** Vaul Drawers that contain interactive forms MUST use `dismissible={false}` to prevent accidental sheet dismissal by swipe gestures.
-- **Root cause:** Vaul defaults `dismissible` to `true`, applying `transform: translate3d(0, dragY, 0)` on touch drag. When the form has `overflow-y-auto`, touching near `scrollTop === 0` triggers drawer-close instead of scroll.
-- **Fix:** Pass `dismissible={false}` to `<Drawer>`. Users close via Cancel button or backdrop overlay.
-- **Affected:** `debt-form-sheet.tsx:120` (fixed).
-- **Exception:** Payment sheets (`QuickPayCardSheet`, `PayDebtSheet`) can keep drag-to-dismiss since they have minimal scrollable content and the confirm step prevents accidental closure.
-
 ### Form validation must always show a toast
 - **Rule:** Every form validation failure should show BOTH an inline error AND a toast notification, so the user sees feedback even if they've scrolled past the inline error.
 - **Fix:** Add `notify({ title: "Validación", message: "..." })` alongside each `setFormError(...)` call.

@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
@@ -1389,12 +1390,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </BaseModalForm>
         )}
 
-        {/* Delete Modal */}
-        {showDeleteModal && (
-          <>
-            <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-black/50 backdrop-blur-[6px]" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
-            <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
+        <AlertDialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) } }}>
+          <AlertDialogContent className="max-w-sm p-0 gap-0">
+            <div className="p-5">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
                 <AlertTriangle className="h-7 w-7" />
               </div>
               <div className="mt-4 text-center">
@@ -1410,7 +1409,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     : "Esta acción no se puede deshacer."}
                 </p>
                 {deleteError && (
-                  <div className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 p-3 text-left text-red-600 dark:bg-red-950/30">
+                  <div className="mt-4 flex items-center gap-2 rounded-xl bg-destructive/10 p-3 text-left text-destructive">
                     <AlertTriangle className="h-4 w-4 flex-shrink-0" />
                     <span className="text-xs">{deleteError}</span>
                   </div>
@@ -1423,8 +1422,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <HoldToConfirmButton onConfirm={handleDeleteAccount} loading={isDeleting} className="w-full" label="Eliminar" />
               </div>
             </div>
-          </>
-        )}
+          </AlertDialogContent>
+        </AlertDialog>
       </MobilePageShell>
     )
   }

@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { useModalA11y } from "@/lib/a11y/use-modal-a11y"
 
@@ -28,11 +29,11 @@ export function MobileFullscreenForm({
     }
   }, [])
 
-  return (
+  const content = (
     <div
       ref={containerRef}
       data-app-modal="true"
-      className="fixed inset-0 z-[9999] flex h-[100dvh] w-screen animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden bg-background"
+      className="fixed inset-0 z-[--z-fullscreen] flex h-[100dvh] w-screen animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden bg-background"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
@@ -63,4 +64,6 @@ export function MobileFullscreenForm({
       )}
     </div>
   )
+
+  return createPortal(content, document.body)
 }

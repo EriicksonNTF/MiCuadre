@@ -330,18 +330,17 @@ export default function PayPage() {
           </>
         )}
       </div>
-      {showCustomSheet && card ? (
-        <CustomAmountSheet
-          currencySymbol={currencySymbol}
-          maxAmount={balanceToDate}
-          onClose={() => setShowCustomSheet(false)}
-          onConfirm={(amount) => {
-            setCustomAmount(String(amount))
-            setPaymentMode("custom")
-            setShowCustomSheet(false)
-          }}
-        />
-      ) : null}
+      <CustomAmountSheet
+        currencySymbol={currencySymbol}
+        maxAmount={balanceToDate}
+        open={showCustomSheet}
+        onOpenChange={setShowCustomSheet}
+        onConfirm={(amount) => {
+          setCustomAmount(String(amount))
+          setPaymentMode("custom")
+          setShowCustomSheet(false)
+        }}
+      />
       {showConfirmSheet && card && source ? (
         <ConfirmPaymentSheet
           amount={selectedAmount}

@@ -20,6 +20,7 @@ import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-spla
 import { ActivationPanel } from "@/components/dashboard/activation-panel"
 import { PlanningSummaryCard } from "@/components/dashboard/planning-summary-card"
 import { CalendarPreviewCard } from "@/components/dashboard/calendar-preview-card"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { showToast } from "@/components/toast/smart-toast"
 import { EventBus } from "@/lib/event-bus"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
@@ -326,13 +327,15 @@ export function DashboardContent() {
       </div>
 
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 px-6 backdrop-blur-[6px]">
-          <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-300 ease-[var(--ease-sheet-ios)] rounded-[1.6rem] border border-border/70 bg-card/96 p-5 shadow-[var(--shadow-float)] backdrop-blur-2xl">
-            <p className="text-sm font-semibold text-foreground">{creditWarnings[activeWarningIndex].title}</p>
-            <p className="mt-2 text-sm text-muted-foreground">{creditWarnings[activeWarningIndex].message}</p>
-            <Button className="mt-4 h-11 w-full" onClick={closeCreditReminder}>Entendido</Button>
+        <ModalOverlay open={true} onClose={closeCreditReminder}>
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-300 ease-[var(--ease-sheet-ios)] rounded-[1.6rem] border border-border/70 bg-card/96 p-5 shadow-[var(--shadow-float)] backdrop-blur-2xl">
+              <p className="text-sm font-semibold text-foreground">{creditWarnings[activeWarningIndex].title}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{creditWarnings[activeWarningIndex].message}</p>
+              <Button className="mt-4 h-11 w-full" onClick={closeCreditReminder}>Entendido</Button>
+            </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
       <PlanSelectorSheet open={showWelcomePlanPrompt} onOpenChange={setShowWelcomePlanPrompt} welcome />
       <PlanSelectorSheet open={planningUpsellOpen} onOpenChange={setPlanningUpsellOpen} reasonTitle="Planificación Pro" reasonBody="Desbloquea presupuestos, calendario y deudas con Pro." />

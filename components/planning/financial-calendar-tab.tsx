@@ -9,6 +9,7 @@ import { CalendarEventCard } from "@/components/planning/calendar-event-card"
 import { CalendarFilterPills, type CalendarFilter } from "@/components/planning/calendar-filter-pills"
 import { PlanningMiniCalendar } from "@/components/planning/planning-mini-calendar"
 import { RotatingUpcomingPaymentsCard } from "@/components/planning/rotating-upcoming-payments-card"
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { QuickPayCardSheet } from "@/components/planning/quick-pay-card-sheet"
 import { PayDebtSheet } from "@/components/planning/pay-debt-sheet"
 
@@ -106,37 +107,35 @@ export function FinancialCalendarTab() {
         </div>
       )}
 
-      {selectedDate ? (
-        <div className="fixed inset-0 z-[60] flex items-end bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45" data-no-edge-back="true">
-          <section className="flex max-h-[82vh] w-full flex-col rounded-t-[28px] border border-border bg-card text-card-foreground">
-            <header className="shrink-0 border-b border-border px-5 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-lg font-bold text-foreground">Pagos del {selectedDateLabel}</h3>
-                <button type="button" onClick={() => setSelectedDate(null)} className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-foreground">Cerrar</button>
-              </div>
-            </header>
-            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-              {selectedDateEvents.length === 0 ? (
-                <p className="rounded-xl bg-muted px-4 py-4 text-sm text-muted-foreground">No hay compromisos para este día.</p>
-              ) : (
-                <div className="space-y-3">
-                  {selectedDateEvents.map((event) => (
-                    <article key={event.id} className="rounded-2xl border border-border bg-background p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{event.type === "credit_card_payment" ? "Tarjeta" : event.type === "financial_subscription" ? "Suscripción" : "Deuda"}</p>
-                      <p className="mt-1 text-base font-semibold text-foreground">{event.title}</p>
-                      {event.amount ? <p className="mt-1 text-sm text-muted-foreground">Monto: {formatCurrency(Number(event.amount || 0), (event.currency as "DOP" | "USD") || "DOP")}</p> : null}
-                      {event.detail ? <p className="mt-1 text-sm text-muted-foreground">{event.detail}</p> : null}
-                      <button type="button" onClick={() => navigateFromEvent(event)} className="mt-3 h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
-                        {event.type === "credit_card_payment" ? "Pagar tarjeta" : event.type === "financial_subscription" ? "Ver suscripción" : "Pagar cuota"}
-                      </button>
-                    </article>
-                  ))}
-                </div>
-              )}
+      <Drawer open={!!selectedDate} onOpenChange={(open) => { if (!open) setSelectedDate(null) }} direction="bottom">
+        <DrawerContent className="mx-auto flex max-h-[90dvh] max-w-md flex-col rounded-t-[2rem] border-border bg-card p-0 shadow-2xl ring-1 ring-border">
+          <DrawerHeader className="shrink-0 border-b border-border px-5 pb-4 pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <DrawerTitle>Pagos del {selectedDateLabel}</DrawerTitle>
+              <button type="button" onClick={() => setSelectedDate(null)} className="rounded-full bg-muted px-3 py-1 text-sm font-semibold text-foreground">Cerrar</button>
             </div>
-          </section>
-        </div>
-      ) : null}
+          </DrawerHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
+            {selectedDateEvents.length === 0 ? (
+              <p className="rounded-xl bg-muted px-4 py-4 text-sm text-muted-foreground">No hay compromisos para este día.</p>
+            ) : (
+              <div className="space-y-3">
+                {selectedDateEvents.map((event) => (
+                  <article key={event.id} className="rounded-2xl border border-border bg-background p-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{event.type === "credit_card_payment" ? "Tarjeta" : event.type === "financial_subscription" ? "Suscripción" : "Deuda"}</p>
+                    <p className="mt-1 text-base font-semibold text-foreground">{event.title}</p>
+                    {event.amount ? <p className="mt-1 text-sm text-muted-foreground">Monto: {formatCurrency(Number(event.amount || 0), (event.currency as "DOP" | "USD") || "DOP")}</p> : null}
+                    {event.detail ? <p className="mt-1 text-sm text-muted-foreground">{event.detail}</p> : null}
+                    <button type="button" onClick={() => navigateFromEvent(event)} className="mt-3 h-10 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground">
+                      {event.type === "credit_card_payment" ? "Pagar tarjeta" : event.type === "financial_subscription" ? "Ver suscripción" : "Pagar cuota"}
+                    </button>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       <QuickPayCardSheet open={quickCardOpen} onOpenChange={setQuickCardOpen} target={quickCardTarget} />
       <PayDebtSheet open={quickDebtOpen} onOpenChange={setQuickDebtOpen} debt={quickDebtTarget} />

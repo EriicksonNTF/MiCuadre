@@ -108,7 +108,7 @@ export function BudgetFormSheet({
         <DrawerHeader className="px-0">
           <DrawerTitle>{budget ? "Editar presupuesto" : "Nuevo presupuesto"}</DrawerTitle>
         </DrawerHeader>
-        <div className="space-y-3">
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto px-0.5">
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Categoría</span>
             <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={categoryId} onChange={(e) => {

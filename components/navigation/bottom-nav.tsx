@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { Home, Plus, Wallet, CalendarCog, Clock, Repeat, ReceiptText } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
@@ -57,17 +58,9 @@ export function BottomNav() {
 
   return (
     <>
-      {showQuickMenu && (
-        <button type="button"
-          aria-label="Cerrar menú rápido"
-          onClick={() => setShowQuickMenu(false)}
-          className="fixed inset-0 z-40 bg-foreground/12 backdrop-blur-[6px] dark:bg-black/35"
-        />
-      )}
-
-      {showQuickMenu && (
-        <div className="pointer-events-none fixed bottom-24 left-0 right-0 z-50 animate-in fade-in-0 slide-in-from-bottom-3 duration-300 ease-[var(--ease-out-ios)]">
-          <div className="pointer-events-auto mx-auto w-[min(92vw,20rem)] rounded-[1.45rem] border border-border/70 bg-card/96 p-2 shadow-[var(--shadow-float)] backdrop-blur-2xl">
+      <ModalOverlay open={showQuickMenu} onClose={() => setShowQuickMenu(false)}>
+        <div className="flex min-h-full items-end justify-center pb-[calc(4.5rem+env(safe-area-inset-bottom))] px-4">
+          <div className="w-full max-w-[20rem] animate-in fade-in-0 slide-in-from-bottom-3 duration-300 ease-[var(--ease-out-ios)] rounded-[1.45rem] border border-border/70 bg-card/96 p-2 shadow-[var(--shadow-float)] backdrop-blur-2xl">
             <button type="button"
               onClick={() => {
                 setShowQuickMenu(false)
@@ -90,7 +83,7 @@ export function BottomNav() {
             </button>
           </div>
         </div>
-      )}
+      </ModalOverlay>
 
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card hide-on-desktop"

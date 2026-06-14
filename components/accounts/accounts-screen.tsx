@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
@@ -692,10 +693,9 @@ if (!draggedId) return
         </BaseModalForm>
       )}
 
-      {confirmDeleteId && (
-        <>
-          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-black/50 backdrop-blur-[6px]" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
-          <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
+      <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) { setConfirmDeleteId(null); setDeleteImpact(null) } }}>
+        <AlertDialogContent className="max-w-sm p-0 gap-0">
+          <div className="p-5">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
               <AlertTriangle className="h-7 w-7" />
             </div>
@@ -717,8 +717,8 @@ if (!draggedId) return
               <HoldToConfirmButton onConfirm={handleDeleteFromList} loading={isDeleting} className="w-full" label="Eliminar" />
             </div>
           </div>
-        </>
-      )}
+        </AlertDialogContent>
+      </AlertDialog>
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </MobilePageShell>
   )

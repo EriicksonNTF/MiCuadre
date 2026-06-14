@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { Home, Wallet, Plus, Clock, CalendarCog, Repeat, ReceiptText, Bell, Sparkles, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
@@ -161,41 +162,32 @@ export function SideNav() {
         </nav>
       </aside>
 
-      {/* Quick menu overlay */}
-      {showQuickMenu && (
-        <>
-          <button
-            type="button"
-            aria-label="Cerrar menú rápido"
-            onClick={() => setShowQuickMenu(false)}
-            className="fixed inset-0 z-50 bg-foreground/12 backdrop-blur-[6px] dark:bg-black/35"
-          />
-          <div className="fixed left-[calc(280px+1rem)] top-1/2 z-50 -translate-y-1/2 animate-in fade-in-0 zoom-in-95 duration-200">
-            <div className="w-56 rounded-[1.45rem] border border-border/70 bg-card/96 p-2 shadow-[var(--shadow-float)] backdrop-blur-2xl">
-              <button
-                type="button"
-                onClick={() => { setShowQuickMenu(false); router.push("/expense") }}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/14 text-accent">
-                  <ReceiptText className="h-4 w-4" />
-                </span>
-                Añadir transacción
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowQuickMenu(false); router.push("/settings/subscriptions?create=1") }}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/18 text-gold">
-                  <Repeat className="h-4 w-4" />
-                </span>
-                Añadir suscripción
-              </button>
-            </div>
+      <ModalOverlay open={showQuickMenu} onClose={() => setShowQuickMenu(false)}>
+        <div className="flex min-h-full items-center justify-center">
+          <div className="w-56 animate-in fade-in-0 zoom-in-95 duration-200 rounded-[1.45rem] border border-border/70 bg-card/96 p-2 shadow-[var(--shadow-float)] backdrop-blur-2xl">
+            <button
+              type="button"
+              onClick={() => { setShowQuickMenu(false); router.push("/expense") }}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/14 text-accent">
+                <ReceiptText className="h-4 w-4" />
+              </span>
+              Añadir transacción
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowQuickMenu(false); router.push("/settings/subscriptions?create=1") }}
+              className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/18 text-gold">
+                <Repeat className="h-4 w-4" />
+              </span>
+              Añadir suscripción
+            </button>
           </div>
-        </>
-      )}
+        </div>
+      </ModalOverlay>
     </>
   )
 }

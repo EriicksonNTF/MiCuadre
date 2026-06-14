@@ -45,10 +45,19 @@ export function PasskeyLockGate() {
     }
   }
 
+  useEffect(() => {
+    if (locked) {
+      document.body.classList.add("modal-open")
+    } else {
+      document.body.classList.remove("modal-open")
+    }
+    return () => { document.body.classList.remove("modal-open") }
+  }, [locked])
+
   if (!locked) return null
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-background/95 px-6 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/18 px-6 backdrop-blur-[6px] dark:bg-black/45">
       <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-center shadow-2xl">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <ShieldCheck className="h-8 w-8" />

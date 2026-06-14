@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import { X } from "lucide-react"
 import { useIsMobile } from "@/components/ui/use-mobile"
 import { MobileFullscreenForm } from "@/components/ui/mobile-fullscreen-form"
+import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { useModalA11y } from "@/lib/a11y/use-modal-a11y"
 
 export function BaseModalForm({
@@ -20,14 +21,6 @@ export function BaseModalForm({
   contentClassName?: string
 }) {
   const isMobile = useIsMobile()
-
-  React.useEffect(() => {
-    if (isMobile) return
-    document.body.classList.add("modal-open")
-    return () => {
-      document.body.classList.remove("modal-open")
-    }
-  }, [isMobile])
 
   if (isMobile) {
     return (
@@ -66,20 +59,14 @@ function DesktopModal({
   useModalA11y({ containerRef, onClose, enabled: true, trapFocus: true })
 
   return (
-    <>
-      <div
-        data-app-modal="true"
-        className="fixed inset-0 z-[90] bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+    <ModalOverlay open={true} onClose={onClose}>
       <div
         ref={containerRef}
         data-app-modal="true"
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
-        className="fixed inset-x-0 bottom-0 z-[100] mt-auto flex max-h-[85dvh] animate-in slide-in-from-bottom-8 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden rounded-t-[2rem] border border-border/70 bg-card/96 shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[80dvh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
+        className="fixed inset-x-0 bottom-0 mt-auto flex max-h-[85dvh] animate-in slide-in-from-bottom-8 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden rounded-t-[2rem] border border-border/70 bg-card/96 shadow-[var(--shadow-float)] ring-1 ring-border/50 backdrop-blur-2xl sm:inset-auto sm:top-1/2 sm:left-1/2 sm:max-h-[80dvh] sm:w-full sm:max-w-md sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.6rem]"
       >
         {title && (
           <div className="sticky top-0 z-10 flex flex-none items-center justify-between border-b border-border/55 bg-card/92 p-5 backdrop-blur">
@@ -100,6 +87,6 @@ function DesktopModal({
           {children}
         </div>
       </div>
-    </>
+    </ModalOverlay>
   )
 }
