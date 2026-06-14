@@ -90,7 +90,6 @@ export function AccountsScreen() {
   const [fromAccount, setFromAccount] = useState("")
   const [toAccount, setToAccount] = useState("")
   const [transferAmount, setTransferAmount] = useState("")
-  const [applyCommission, setApplyCommission] = useState(false)
   const [isTransferring, setIsTransferring] = useState(false)
 
   const resetCreateAccountForm = () => {
@@ -117,14 +116,11 @@ export function AccountsScreen() {
     setFromAccount("")
     setToAccount("")
     setTransferAmount("")
-    setApplyCommission(false)
   }
 
   const parsedTransferAmount = parseFloat(transferAmount.replace(/[^0-9.]/g, "")) || 0
-  const transferCommissionAmount = applyCommission ? Math.round(parsedTransferAmount * 0.15) / 100 : 0
-  const totalTransferAmount = parsedTransferAmount + transferCommissionAmount
   const selectedFromAccount = accounts.find((a) => a.id === fromAccount)
-  const exceedsFromBalance = Boolean(selectedFromAccount && totalTransferAmount > Number(selectedFromAccount.balance || 0))
+  const exceedsFromBalance = Boolean(selectedFromAccount && parsedTransferAmount > Number(selectedFromAccount.balance || 0))
 
 // Initialize orderedAccounts when accounts load, sync when accounts change
   useEffect(() => {
@@ -385,15 +381,14 @@ if (!draggedId) return
     const amount = parseAmount(transferAmount)
     const source = accounts.find((a) => a.id === fromAccount)
     if (!source) return
-    const commissionAmount = applyCommission ? Math.round(amount * 0.15) / 100 : 0
-    if (amount + commissionAmount > Number(source.balance || 0)) {
-      notify({ title: "Fondos insuficientes", message: "El monto más comisión supera tu balance disponible." })
+    if (amount > Number(source.balance || 0)) {
+      notify({ title: "Fondos insuficientes", message: "No tienes suficiente balance disponible." })
       return
     }
 
     setIsTransferring(true)
     try {
-      await createTransfer({ from_account_id: fromAccount, to_account_id: toAccount, amount, currency: source.currency, apply_commission: applyCommission })
+      await createTransfer({ from_account_id: fromAccount, to_account_id: toAccount, amount, currency: source.currency, apply_commission: false })
       notify({ title: "Transferencia exitosa", message: "Se han transferido los fondos." })
       EventBus.emit({ type: "transfer_completed" })
       resetTransferForm()
@@ -613,7 +608,7 @@ if (!draggedId) return
             setShowTransfer(false)
             resetTransferForm()
           }}
-          footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
+          footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || fromAccount === toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
         >
           <div className="space-y-5">
             <div>
@@ -628,18 +623,16 @@ if (!draggedId) return
             <div className="flex justify-center"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"><ChevronDown className="h-4 w-4 text-muted-foreground" /></div></div>
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground">Hacia</p>
-              <AccountCarouselSelector
-                compact
-                items={accounts.map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
-                selectedId={toAccount}
-                onSelect={setToAccount}
-              />
+                <AccountCarouselSelector
+                  compact
+                  items={accounts.filter((a) => a.type !== "credit" && a.id !== fromAccount).map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
+                  selectedId={toAccount}
+                  onSelect={setToAccount}
+                />
             </div>
             <div className="mobile-card p-4">
               <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
-              <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="w-full rounded-2xl bg-muted p-4 text-2xl font-bold" />
-              <button type="button" onClick={() => setApplyCommission((prev) => !prev)} className={cn("mt-2 rounded-full px-3 py-1 text-xs font-medium", applyCommission ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>Comisión 0.15%</button>
-              {applyCommission && parsedTransferAmount > 0 && <p className="mt-1 text-xs text-muted-foreground">Comisión: {formatCurrency(transferCommissionAmount)} · Total: {formatCurrency(totalTransferAmount)}</p>}
+              <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-[clamp(1.75rem,8vw,2.75rem)] font-extrabold leading-none min-w-[100px]" />
             </div>
           </div>
         </BaseModalForm>
@@ -701,7 +694,7 @@ if (!draggedId) return
 
       {confirmDeleteId && (
         <>
-          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-foreground/18 backdrop-blur-[6px] dark:bg-black/45" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
+          <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-black/50 backdrop-blur-[6px]" onClick={() => { setConfirmDeleteId(null); setDeleteImpact(null) }} />
           <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
               <AlertTriangle className="h-7 w-7" />

@@ -388,7 +388,7 @@ body.modal-open {
    reset on keyboard dismiss, breaking the form flow. Forcing 16px on mobile
    prevents the zoom entirely. */
 @media (hover: none) and (pointer: coarse) {
-  input, select, textarea {
+  input:not(.hero-amount), select, textarea {
     font-size: 16px !important;
   }
 }

@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
+import { cn } from "@/lib/utils"
 import { formatAmount } from "@/lib/data"
 
 function sanitize(value: string) {
@@ -14,6 +15,7 @@ export function MoneyInput({
   value,
   onValueChange,
   className,
+  wrapperClassName,
   placeholder,
   autoFocus,
   id,
@@ -22,6 +24,7 @@ export function MoneyInput({
   value: string
   onValueChange: (value: string) => void
   className?: string
+  wrapperClassName?: string
   placeholder?: string
   autoFocus?: boolean
   id?: string
@@ -36,16 +39,18 @@ export function MoneyInput({
   }, [value])
 
   return (
-    <input
-      type="text"
-      inputMode="decimal"
-      value={displayValue}
-      onChange={(event) => onValueChange(sanitize(event.target.value))}
-      placeholder={placeholder}
-      className={className}
-      autoFocus={autoFocus}
-      id={id}
-      aria-label={ariaLabel}
-    />
+    <div className={cn("min-w-0 overflow-x-auto scrollbar-none", wrapperClassName)}>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={displayValue}
+        onChange={(event) => onValueChange(sanitize(event.target.value))}
+        placeholder={placeholder}
+        className={className}
+        autoFocus={autoFocus}
+        id={id}
+        aria-label={ariaLabel}
+      />
+    </div>
   )
 }

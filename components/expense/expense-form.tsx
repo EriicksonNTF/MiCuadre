@@ -422,7 +422,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               value={amount}
               onValueChange={handleAmountChange}
               placeholder="0"
-              className="w-full max-w-[240px] bg-transparent text-center text-[clamp(2.75rem,15vw,4.5rem)] font-extrabold leading-none text-foreground outline-none placeholder:text-muted-foreground/30"
+              className="hero-amount w-full bg-transparent text-center text-[clamp(2rem,10vw,3.5rem)] font-extrabold leading-none text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[120px]"
               autoFocus
             />
           </div>
@@ -699,7 +699,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
 
       {showCategoryModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/20 backdrop-blur-sm px-6">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-[6px] px-6">
           <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl ring-1 ring-border">
             <h2 className="mb-4 text-lg font-extrabold text-foreground">Nueva categoría</h2>
             <label htmlFor="new-category-name" className="mb-1 block text-xs font-medium text-muted-foreground">Nombre</label>

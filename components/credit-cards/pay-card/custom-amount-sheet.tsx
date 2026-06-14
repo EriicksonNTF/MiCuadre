@@ -30,8 +30,8 @@ export function CustomAmountSheet({ currencySymbol, maxAmount, onClose, onConfir
       <div className="space-y-3">
         <label className="block rounded-[24px] bg-muted px-5 py-4">
           <span className="text-sm text-muted-foreground">Monto a transferir</span>
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-2xl font-bold text-foreground">{currencySymbol}</span>
+          <div className="mt-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <span className="shrink-0 text-2xl font-bold text-foreground">{currencySymbol}</span>
             <input value={rawAmount} onChange={(event) => setRawAmount(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" autoFocus className="min-w-0 flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground" />
           </div>
         </label>

@@ -319,7 +319,7 @@ export default function ScanPage() {
 
       <div className="px-6 pb-8">
         {isScanning && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-[6px]">
             <div className="w-[92%] max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">

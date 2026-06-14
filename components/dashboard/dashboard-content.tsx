@@ -326,7 +326,7 @@ export function DashboardContent() {
       </div>
 
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-foreground/18 px-6 backdrop-blur-[6px] dark:bg-black/45">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 px-6 backdrop-blur-[6px]">
           <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-300 ease-[var(--ease-sheet-ios)] rounded-[1.6rem] border border-border/70 bg-card/96 p-5 shadow-[var(--shadow-float)] backdrop-blur-2xl">
             <p className="text-sm font-semibold text-foreground">{creditWarnings[activeWarningIndex].title}</p>
             <p className="mt-2 text-sm text-muted-foreground">{creditWarnings[activeWarningIndex].message}</p>

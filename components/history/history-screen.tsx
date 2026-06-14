@@ -358,23 +358,23 @@ export function HistoryScreen() {
           <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-accent/[0.04] blur-2xl" />
           <div className="relative px-5 py-5">
             <p className="section-kicker">Balance del filtro</p>
-            <p className={cn("mt-2 text-3xl font-black tabular-nums tracking-tight text-foreground", totals.net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+            <p className={cn("mt-1 text-2xl font-black tabular-nums tracking-tight text-foreground truncate", totals.net >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
               {totals.net >= 0 ? "+" : "-"}{formatCurrency(Math.abs(totals.net))}
             </p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl bg-muted/60 p-3">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[0.6875rem] font-semibold text-muted-foreground">Ingresos</span>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-[0.6875rem] font-semibold text-muted-foreground truncate">Ingresos</span>
                 </div>
-                <p className="mt-1 text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">+{formatCurrency(totals.income)}</p>
+                <p className="mt-1 text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400 truncate">+{formatCurrency(totals.income)}</p>
               </div>
-              <div className="rounded-2xl bg-muted/60 p-3">
-                <div className="flex items-center gap-2">
-                  <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
-                  <span className="text-[0.6875rem] font-semibold text-muted-foreground">Gastos</span>
+              <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <TrendingDown className="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" />
+                  <span className="text-[0.6875rem] font-semibold text-muted-foreground truncate">Gastos</span>
                 </div>
-                <p className="mt-1 text-xl font-bold tabular-nums text-red-600 dark:text-red-400">-{formatCurrency(totals.expenses)}</p>
+                <p className="mt-1 text-base font-bold tabular-nums text-red-600 dark:text-red-400 truncate">-{formatCurrency(totals.expenses)}</p>
               </div>
             </div>
           </div>

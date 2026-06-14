@@ -1,24 +1,6 @@
-import fs from 'fs';
-import path from 'path';
 import { execSync } from 'child_process';
 
-const nextDir = path.join(process.cwd(), '.next');
-
-// 1. Delete entire .next directory to prevent conflicts between
-//    production build artifacts and dev server files. This avoids
-//    ENOENT errors on .next/dev/routes-manifest.json when switching
-//    between `npm run build` and `npm run dev`.
-console.log('Cleaning Next.js cache...');
-try {
-  if (fs.existsSync(nextDir)) {
-    fs.rmSync(nextDir, { recursive: true, force: true });
-    console.log('Removed .next/');
-  }
-} catch (err) {
-  console.warn('Warning: Could not clean .next:', err.message);
-}
-
-// 2. Terminate any process on port 3000
+// Terminate any process on port 3000 to avoid port conflicts on restart.
 console.log('Checking for processes on port 3000...');
 try {
   if (process.platform === 'win32') {

@@ -86,6 +86,7 @@
 - Path alias `@/*` is enabled in `tsconfig.json`.
 - UI uses shadcn-style structure (`components/ui`) with Tailwind v4 (`@tailwindcss/postcss`).
 - Bottom nav visibility is centralized in `components/navigation/bottom-nav.tsx` and already hides on `/auth*` and `/onboarding*`.
+- Every `components/*/` directory has a barrel file (`index.ts`) that re-exports all public components. Use these for clean imports: `import { AccountsScreen } from "@/components/accounts"`. The barrel is the single source of truth for each module's public API — check it first when looking for a component.
 
 ## Dark Mode Rules (CRITICAL — no regressions)
 - **NEVER** use hardcoded colors like `bg-white`, `bg-black`, `bg-gray-*`, `text-white`, `text-gray-*`, `bg-*-50` for UI containers, backgrounds, or text that should adapt to theme.
@@ -115,20 +116,13 @@ Error: ENOENT: no such file or directory, open '.../.next/dev/routes-manifest.js
 **Root cause:** `npm run build` writes production artifacts to `.next/`. When the
 dev server starts next, it reads stale files from the same directory.
 
-**Permanent fix (already applied):** `scripts/predev.js` now deletes the entire
-`.next/` directory before every `npm run dev` (not just subdirectories). This
-ensures a clean slate every time.
+**Permanent fix:** `scripts/predev.js` only kills processes on port 3000 (does
+NOT delete `.next/`). This prevents ENOENT errors during HMR while the dev
+server is running.
 
-**If the error still happens:**
+**If you need a full reset (e.g. switching from build to dev):**
 ```bash
-# 1. Kill any processes on port 3000
-npx kill-port 3000
-
-# 2. Delete .next manually
-rm -rf .next
-
-# 3. Start dev fresh
-npm run dev
+pnpm run dev:reset
 ```
 
 ## Known Fix Patterns (recurring issues — remember these)

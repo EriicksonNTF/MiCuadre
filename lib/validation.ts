@@ -47,7 +47,10 @@ export const transferSchema = z.object({
     { message: "El monto debe ser mayor a 0" }
   ),
   description: z.string().max(100, "Máximo 100 caracteres").optional(),
-})
+}).refine(
+  (data) => data.fromAccountId !== data.toAccountId,
+  { message: "La cuenta de origen y destino deben ser diferentes", path: ["toAccountId"] }
+)
 
 export const createGoalSchema = z.object({
   name: z.string().min(1, "El nombre es requerido").max(50, "Máximo 50 caracteres"),

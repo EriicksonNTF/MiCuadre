@@ -1080,8 +1080,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <p className="mb-2 text-xs font-medium text-muted-foreground">
                   Monto a pagar
                 </p>
-                <div className="flex items-center gap-2 rounded-xl bg-muted p-4">
-                    <span className="text-lg font-medium text-muted-foreground">{getCurrencySymbol(paymentCurrency)}</span>
+                <div className="flex items-center gap-2 rounded-xl bg-muted p-4 overflow-x-auto scrollbar-none">
+                    <span className="shrink-0 text-lg font-medium text-muted-foreground">{getCurrencySymbol(paymentCurrency)}</span>
                   <MoneyInput
                     value={paymentAmount}
                     onValueChange={(value) => {
@@ -1089,7 +1089,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       setPaymentKind("custom")
                     }}
                     placeholder="0"
-                    className="flex-1 bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30"
+                    className="bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[80px]"
+                    wrapperClassName="flex-1"
                   />
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1391,7 +1392,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         {/* Delete Modal */}
         {showDeleteModal && (
           <>
-            <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-foreground/20 backdrop-blur-sm" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
+            <button type="button" aria-label="Cerrar" className="fixed inset-0 z-[90] cursor-default bg-black/50 backdrop-blur-[6px]" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }} />
             <div className="fixed left-1/2 top-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-border bg-card p-5 shadow-2xl ring-1 ring-border">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-500/12 text-red-500">
                 <AlertTriangle className="h-7 w-7" />

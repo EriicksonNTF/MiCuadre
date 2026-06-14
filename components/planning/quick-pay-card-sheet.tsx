@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState, useCallback } from "react"
+import { useMemo, useState, useCallback, useRef } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
@@ -33,6 +33,7 @@ export function QuickPayCardSheet({
   const { data: accounts = [] } = useAccounts()
   const [sourceAccountId, setSourceAccountId] = useState("")
   const [exchangeRate, setExchangeRate] = useState("")
+  const continueRef = useRef(false)
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [receipt, setReceipt] = useState<{
@@ -89,7 +90,22 @@ export function QuickPayCardSheet({
 
   return (
     <>
-      <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
+      <Drawer open={open} onOpenChange={(newOpen) => {
+        if (newOpen) {
+          setSourceAccountId("")
+          setExchangeRate("")
+          setShowConfirm(false)
+          setReceipt(null)
+        }
+        if (!newOpen && !continueRef.current) {
+          setSourceAccountId("")
+          setExchangeRate("")
+          setShowConfirm(false)
+          setReceipt(null)
+        }
+        continueRef.current = false
+        onOpenChange(newOpen)
+      }} direction="bottom">
         <DrawerContent className="mx-auto max-w-md rounded-t-2xl border-border bg-card px-4 pb-6 shadow-2xl ring-1 ring-border">
           <DrawerHeader className="px-0">
             <DrawerTitle>Pago rápido</DrawerTitle>
@@ -130,7 +146,7 @@ export function QuickPayCardSheet({
               <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><span>Nuevo balance de tarjeta</span><span>{formatCurrency(Math.max(0, target.currentDebt - amount), target.currency)}</span></p>
             </article>
 
-            <button type="button" disabled={Boolean(warning) || !validRate} onClick={() => setShowConfirm(true)} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Continuar</button>
+            <button type="button" disabled={Boolean(warning) || !validRate} onClick={() => { continueRef.current = true; onOpenChange(false); setShowConfirm(true) }} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Continuar</button>
           </div>
         </DrawerContent>
       </Drawer>

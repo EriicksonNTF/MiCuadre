@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useRef } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { useAccounts } from "@/hooks/use-data"
 import { payDebt } from "@/hooks/use-planning"
@@ -37,6 +37,7 @@ export function PayDebtSheet({
   const [mode, setMode] = useState<"installment" | "custom">("installment")
   const [customAmount, setCustomAmount] = useState("")
   const [notes, setNotes] = useState("")
+  const continueRef = useRef(false)
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null)
@@ -88,7 +89,6 @@ export function PayDebtSheet({
         date: result.paymentDate,
         notes: result.notes,
       })
-      onOpenChange(false)
       notify({ title: "Pago registrado", message: "La cuota fue aplicada correctamente." })
       reset()
     } catch (error: any) {
@@ -101,7 +101,20 @@ export function PayDebtSheet({
 
   return (
     <>
-      <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
+      <Drawer open={open} onOpenChange={(newOpen) => {
+        if (newOpen) {
+          reset()
+          setShowConfirm(false)
+          setReceipt(null)
+        }
+        if (!newOpen && !continueRef.current) {
+          reset()
+          setShowConfirm(false)
+          setReceipt(null)
+        }
+        continueRef.current = false
+        onOpenChange(newOpen)
+      }} direction="bottom">
         <DrawerContent className="mx-auto max-w-md rounded-t-2xl border-border bg-card px-4 pb-6 shadow-2xl ring-1 ring-border">
           <DrawerHeader className="px-0">
             <DrawerTitle>Pagar deuda</DrawerTitle>
@@ -155,7 +168,7 @@ export function PayDebtSheet({
               <textarea className="min-h-[82px] w-full rounded-xl border border-border bg-background px-3 py-2" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
 
-            <button type="button" onClick={() => setShowConfirm(true)} disabled={!sourceAccountId || !amount || amount <= 0} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
+            <button type="button" onClick={() => { continueRef.current = true; onOpenChange(false); setShowConfirm(true) }} disabled={!sourceAccountId || !amount || amount <= 0} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
               Continuar
             </button>
           </div>
