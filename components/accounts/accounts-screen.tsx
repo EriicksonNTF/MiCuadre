@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, ArrowRightLeft, Banknote, Building2, ChevronDown, CreditCard, Landmark, Pencil, PiggyBank, Plus, Trash2, Wallet } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
@@ -13,13 +13,13 @@ import { AccountCarouselSelector } from "@/components/ui/account-carousel-select
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { createAccount, createTransfer, deleteAccount, getAccountDeletionImpact, reorderAccounts, useAccounts } from "@/hooks/use-data"
+import { createTransfer, deleteAccount, getAccountDeletionImpact, reorderAccounts, useAccounts } from "@/hooks/use-data"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
 import type { Account } from "@/lib/types/database"
-import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
+import { AccountCreationWizard } from "@/components/accounts/account-creation-wizard"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { UsageLimitBanner } from "@/components/entitlements/usage-limit-banner"
 import { useEntitlementBlocked } from "@/hooks/use-entitlement-blocked"
@@ -27,25 +27,7 @@ import { UpsellModal } from "@/components/entitlements/upsell-modal"
 import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
 
-const ICON_PRESETS = [
-  { value: "banknote", label: "Efectivo", icon: Banknote },
-  { value: "building-2", label: "Banco", icon: Building2 },
-  { value: "credit-card", label: "Tarjeta", icon: CreditCard },
-  { value: "landmark", label: "Institución", icon: Landmark },
-  { value: "piggy-bank", label: "Ahorro", icon: PiggyBank },
-  { value: "wallet", label: "Billetera", icon: Wallet },
-]
 
-const COLOR_PRESETS = [
-  { key: "banreservas", name: "Banreservas", primary: "#0b4a8a", secondary: "#38bdf8" },
-  { key: "premium", name: "Premium", primary: "#07111f", secondary: "#1f2937" },
-  { key: "emerald", name: "Emerald", primary: "#0f766e", secondary: "#14b8a6" },
-  { key: "sky", name: "Sky", primary: "#0369a1", secondary: "#38bdf8" },
-  { key: "purple", name: "Purple", primary: "#4338ca", secondary: "#8b5cf6" },
-  { key: "orange", name: "Orange", primary: "#b45309", secondary: "#fb923c" },
-  { key: "teal", name: "Teal", primary: "#0f766e", secondary: "#2dd4bf" },
-  { key: "neutral", name: "Neutral", primary: "#334155", secondary: "#64748b" },
-]
 
 export function AccountsScreen() {
   const router = useRouter()
@@ -68,51 +50,14 @@ export function AccountsScreen() {
   const longPressTimerRef = useRef<number | null>(null)
   const rowRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
-  const [accountName, setAccountName] = useState("")
-  const [accountType, setAccountType] = useState<"cash" | "debit" | "credit">("cash")
-  const [accountCurrency, setAccountCurrency] = useState<"DOP" | "USD">("DOP")
-  const [initialBalance, setInitialBalance] = useState("")
-  const [creditLimitDop, setCreditLimitDop] = useState("")
-  const [creditLimitUsd, setCreditLimitUsd] = useState("")
-  const [creditUsed, setCreditUsed] = useState("")
-  const [closingDate, setClosingDate] = useState("")
-  const [dueDate, setDueDate] = useState("")
-  const [isCreating, setIsCreating] = useState(false)
 
-  const [brandingIconType, setBrandingIconType] = useState<"icon" | "image">("icon")
-  const [brandingIconValue, setBrandingIconValue] = useState("building-2")
-  const [brandingIconUrl, setBrandingIconUrl] = useState<string | null>(null)
-  const [accountNumber, setAccountNumber] = useState("")
-  const [brandingPrimaryColor, setBrandingPrimaryColor] = useState("#0b4a8a")
-  const [brandingSecondaryColor, setBrandingSecondaryColor] = useState("#38bdf8")
-  const [brandingBackgroundStyle, setBrandingBackgroundStyle] = useState<"gradient" | "solid" | "glass">("gradient")
-  const [brandingBankKey, setBrandingBankKey] = useState("none")
 
   const [fromAccount, setFromAccount] = useState("")
   const [toAccount, setToAccount] = useState("")
   const [transferAmount, setTransferAmount] = useState("")
   const [isTransferring, setIsTransferring] = useState(false)
 
-  const resetCreateAccountForm = () => {
-    setAccountName("")
-    setAccountType("cash")
-    setAccountCurrency("DOP")
-    setInitialBalance("")
-    setCreditLimitDop("")
-    setCreditLimitUsd("")
-    setCreditUsed("")
-    setClosingDate("")
-    setDueDate("")
-    setBrandingIconType("icon")
-    setBrandingIconValue("building-2")
-    setBrandingIconUrl(null)
-    setAccountNumber("")
-    setBrandingPrimaryColor("#0b4a8a")
-    setBrandingSecondaryColor("#38bdf8")
-    setBrandingBackgroundStyle("gradient")
-    setBrandingBankKey("none")
-  }
-
+  
   const resetTransferForm = () => {
     setFromAccount("")
     setToAccount("")
@@ -174,42 +119,6 @@ export function AccountsScreen() {
     return () => document.removeEventListener("pointerdown", onOutside)
   }, [])
 
-  const previewAccount = useMemo(() => ({
-    id: "preview",
-    user_id: "preview",
-    name: accountName || "Cuenta personalizada",
-    type: accountType,
-    currency: accountCurrency,
-    balance: parseAmount(initialBalance),
-    credit_limit: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
-    credit_limit_dop: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
-    credit_limit_usd: accountType === "credit" ? parseAmount(creditLimitUsd || "0") : null,
-    current_debt: accountType === "credit" && accountCurrency === "DOP" ? parseAmount(creditUsed || "0") : 0,
-    current_debt_dop: accountType === "credit" && accountCurrency === "DOP" ? parseAmount(creditUsed || "0") : 0,
-    current_debt_usd: accountType === "credit" && accountCurrency === "USD" ? parseAmount(creditUsed || "0") : 0,
-    statement_balance: null,
-    pending_amount: null,
-    paid_amount: null,
-    cycle_start_date: null,
-    cycle_end_date: null,
-    closing_date: accountType === "credit" && closingDate ? parseInt(closingDate) : null,
-    due_date: accountType === "credit" && dueDate ? parseInt(dueDate) : null,
-    minimum_payment: null,
-    color: "",
-    icon: "",
-    icon_url: brandingIconUrl,
-    icon_type: brandingIconType,
-    icon_value: brandingIconValue,
-    account_number: accountNumber || null,
-    primary_color: brandingPrimaryColor,
-    secondary_color: brandingSecondaryColor,
-    background_style: brandingBackgroundStyle,
-    is_active: true,
-    sort_order: null,
-    is_favorite: false,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }), [accountName, accountType, accountCurrency, initialBalance, creditLimitDop, creditLimitUsd, creditUsed, closingDate, dueDate, brandingIconUrl, brandingIconType, brandingIconValue, brandingPrimaryColor, brandingSecondaryColor, brandingBackgroundStyle, accountNumber])
 
   const triggerHaptic = () => {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -293,88 +202,7 @@ if (!draggedId) return
     }
   }
 
-  const handleBankLogoChange = (key: string) => {
-    const selected = getBankLogoByKey(key)
-    setBrandingBankKey(key)
-    if (!selected || key === "none") {
-      setBrandingIconUrl(null)
-      setBrandingIconType("icon")
-      setBrandingIconValue("building-2")
-      return
-    }
-    setBrandingIconType("image")
-    setBrandingIconValue(key)
-    setBrandingIconUrl(selected.logoUrl)
-  }
 
-  const handleCreateAccount = async () => {
-    const creditUsedAmount = parseAmount(creditUsed || "0")
-    const initialBalanceAmount = accountType === "credit" ? 0 : parseAmount(initialBalance || "0")
-    if (!accountName) return
-    if (!canCreateAccount) {
-      handleEntitlementBlocked({
-        ...createBlockedResponse("max_accounts", {
-          currentUsage: accounts.length,
-          limit: typeof limits.max_accounts === "number" ? limits.max_accounts : undefined,
-          requiredPlan: "pro",
-        }),
-      })
-      return
-    }
-    setIsCreating(true)
-    try {
-      await createAccount({
-        name: accountName,
-        type: accountType,
-        currency: accountCurrency,
-        balance: initialBalanceAmount,
-        credit_limit: accountType === "credit" ? parseAmount(creditLimitDop || initialBalance || "0") : null,
-        current_debt: accountType === "credit" && accountCurrency === "DOP" ? creditUsedAmount : 0,
-        credit_limit_dop: accountType === "credit" ? parseAmount(creditLimitDop || "0") : null,
-        credit_limit_usd: accountType === "credit" ? parseAmount(creditLimitUsd || "0") : null,
-        current_debt_dop: accountType === "credit" && accountCurrency === "DOP" ? creditUsedAmount : 0,
-        current_debt_usd: accountType === "credit" && accountCurrency === "USD" ? creditUsedAmount : 0,
-        statement_balance_dop: accountType === "credit" && accountCurrency === "DOP" ? creditUsedAmount : 0,
-        statement_balance_usd: accountType === "credit" && accountCurrency === "USD" ? creditUsedAmount : 0,
-        paid_statement_amount_dop: 0,
-        paid_statement_amount_usd: 0,
-        pending_transit_dop: 0,
-        pending_transit_usd: 0,
-        closing_day: accountType === "credit" && closingDate ? parseInt(closingDate) : null,
-        due_days_after_cutoff: accountType === "credit" ? 20 : null,
-        minimum_payment_percentage: accountType === "credit" ? 0.0278 : null,
-        minimum_payment: null,
-        color: "",
-        icon: "",
-        is_active: true,
-        closing_date: accountType === "credit" && closingDate ? parseInt(closingDate) : null,
-        due_date: null,
-        icon_url: brandingIconUrl,
-        icon_type: brandingIconType,
-        icon_value: brandingIconValue,
-        account_number: accountNumber || null,
-        primary_color: brandingPrimaryColor,
-        secondary_color: brandingSecondaryColor,
-        background_style: brandingBackgroundStyle,
-        bank_name: brandingBankKey !== "none" ? getBankLogoByKey(brandingBankKey)?.name || null : null,
-        bank_logo_key: brandingBankKey !== "none" ? brandingBankKey : null,
-        bank_logo_url: brandingBankKey !== "none" ? getBankLogoByKey(brandingBankKey)?.logoUrl || null : null,
-      })
-      notify({ title: "Cuenta creada", message: "Tu cuenta fue creada correctamente." })
-      EventBus.emit({ type: "account_created", payload: { name: accountName } })
-      resetCreateAccountForm()
-      setShowCreateAccount(false)
-      router.push("/accounts")
-    } catch (error) {
-      if (handleEntitlementBlocked(error)) return
-      notify({
-        title: "No se pudo crear la cuenta",
-        message: "Intenta de nuevo en unos segundos.",
-      })
-    } finally {
-      setIsCreating(false)
-    }
-  }
 
   const handleTransfer = async () => {
     const validation = transferSchema.safeParse({ fromAccountId: fromAccount, toAccountId: toAccount, amount: transferAmount, description: undefined })
@@ -639,59 +467,7 @@ if (!draggedId) return
         </BaseModalForm>
       )}
 
-      {showCreateAccount && (
-        <BaseModalForm title="Nueva cuenta" onClose={() => {
-          setShowCreateAccount(false)
-          resetCreateAccountForm()
-        }} footer={<Button onClick={handleCreateAccount} disabled={!canCreateAccount || !accountName || (accountType === "credit" && !creditLimitDop && !creditLimitUsd) || isCreating} className="mobile-action-button w-full">{isCreating ? "Creando cuenta..." : "Guardar cuenta"}</Button>}>
-          <div className="space-y-5">
-            <input value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Nombre" className="h-14 w-full rounded-2xl border border-border bg-background px-4" />
-            {accountType !== "cash" && (
-              <input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, "").slice(0, 24))} placeholder="Número de cuenta" className="h-14 w-full rounded-2xl border border-border bg-background px-4" />
-            )}
-            <div className="grid grid-cols-3 gap-2">{(["cash", "debit", "credit"] as const).map((t) => <button type="button" key={t} onClick={() => setAccountType(t)} className={cn("h-12 rounded-2xl px-2 text-xs font-bold", accountType === t ? "bg-primary text-primary-foreground" : "bg-muted")}>{t === "cash" ? "Efectivo" : t === "debit" ? "Débito" : "Crédito"}</button>)}</div>
-            <div className="grid grid-cols-2 gap-2">
-              {(["DOP", "USD"] as const).map((currency) => (
-                <button type="button" key={currency} onClick={() => { setAccountCurrency(currency); setCreditUsed("") }} className={cn("rounded-xl px-3 py-2 text-xs font-semibold", accountCurrency === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                  {getCurrencySymbol(currency)}
-                </button>
-              ))}
-            </div>
-            {accountType !== "credit" && (
-              <MoneyInput value={initialBalance} onValueChange={setInitialBalance} placeholder="Balance" className="w-full rounded-xl bg-muted p-3" />
-            )}
-
-            {accountType === "credit" && (
-              <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {accountCurrency !== "USD" && <MoneyInput value={creditLimitDop} onValueChange={setCreditLimitDop} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
-                  {accountCurrency !== "DOP" && <MoneyInput value={creditLimitUsd} onValueChange={setCreditLimitUsd} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
-                </div>
-                <MoneyInput value={creditUsed} onValueChange={setCreditUsed} placeholder="Crédito utilizado" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
-                <input type="text" inputMode="numeric" value={closingDate} onChange={(e) => setClosingDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))} placeholder="Día de corte" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
-                <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
-              </div>
-            )}
-
-            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
-              <p className="text-sm font-semibold">Personalización visual</p>
-              <div className="grid grid-cols-2 gap-2">{(["icon", "image"] as const).map((value) => <button type="button" key={value} onClick={() => setBrandingIconType(value)} className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", brandingIconType === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>{value === "icon" ? "Ícono" : "Logo/Banco"}</button>)}</div>
-              {brandingIconType === "image" ? (
-                <div>
-                  <p className="mb-1 text-xs text-muted-foreground">Banco / Logo</p>
-                  <select value={brandingBankKey} onChange={(e) => handleBankLogoChange(e.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
-                    {BANK_LOGO_OPTIONS.map((option) => <option key={option.key} value={option.key}>{option.name}</option>)}
-                  </select>
-                </div>
-              ) : <div className="grid grid-cols-3 gap-2">{ICON_PRESETS.map((preset) => <button type="button" key={preset.value} onClick={() => setBrandingIconValue(preset.value)} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", brandingIconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}><preset.icon className="h-4 w-4" /><span className="text-[0.625rem]">{preset.label}</span></button>)}</div>}
-              <div className="flex flex-wrap gap-2">{COLOR_PRESETS.map((preset) => <button type="button" key={preset.key} onClick={() => { setBrandingPrimaryColor(preset.primary); setBrandingSecondaryColor(preset.secondary) }} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", brandingPrimaryColor === preset.primary && brandingSecondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}><span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} /></button>)}</div>
-              <div className="grid grid-cols-3 gap-2">{(["gradient", "solid", "glass"] as const).map((style) => <button type="button" key={style} onClick={() => setBrandingBackgroundStyle(style)} className={cn("rounded-xl px-3 py-2 text-xs", brandingBackgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>{style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}</button>)}</div>
-              <BrandedAccountCard account={previewAccount as any} compact />
-            </div>
-
-          </div>
-        </BaseModalForm>
-      )}
+      <AccountCreationWizard open={showCreateAccount} onOpenChange={setShowCreateAccount} />
 
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) { setConfirmDeleteId(null); setDeleteImpact(null) } }}>
         <AlertDialogContent className="max-w-sm p-0 gap-0">
