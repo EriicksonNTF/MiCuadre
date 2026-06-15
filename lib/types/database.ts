@@ -123,6 +123,7 @@ export interface Transaction {
   parent_transaction_id: string | null
   metadata: Record<string, unknown> | null
   created_at: string
+  deleted_at?: string | null
   // Joined fields
   category?: Category
   account?: Account

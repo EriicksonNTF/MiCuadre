@@ -867,6 +867,7 @@ async function fetchTransactions(limit = 10): Promise<Transaction[]> {
       .from("transactions")
       .select("*, category:categories(*), account:accounts(*)")
       .eq("user_id", userId)
+      .is("deleted_at", null)
       .order("date", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(limit)
@@ -2800,6 +2801,7 @@ export async function payCreditCard(payment: {
           date: getLocalDateString(),
           notes: null,
           is_recurring: false,
+          parent_transaction_id: sourceTxId,
           metadata: { kind: "commission", rate: COMMISSION_RATE },
         })
         .select()
@@ -3685,24 +3687,10 @@ export async function deleteAccount(id: string) {
   })
   if (await tryEnqueueOffline(outboxItem, ["accounts"])) return
 
-  const { count: ledgerCount, error: ledgerError } = await supabase
+  await supabase
     .from("ledger_entries")
-    .select("id", { count: "exact", head: true })
+    .delete()
     .or(`debit_account_id.eq.${id},credit_account_id.eq.${id}`)
-
-  if (ledgerError) {
-    if (isOfflineError(ledgerError)) {
-      await enqueueOfflineFallback(outboxItem, ["accounts"])
-      return
-    }
-    throw ledgerError
-  }
-
-  if (ledgerCount && ledgerCount > 0) {
-    throw new Error(
-      "No se puede eliminar una cuenta con movimientos financieros. Desactívala desde Ajustes de cuenta."
-    )
-  }
 
   const { error } = await supabase
     .from("accounts")

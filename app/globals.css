@@ -48,6 +48,13 @@
   --sidebar-accent-foreground: oklch(0.18 0.01 260);
   --sidebar-border: oklch(0.92 0.005 90);
   --sidebar-ring: oklch(0.55 0.18 145);
+  --text-fluid-2xl: clamp(1.125rem, 0.5rem + 2.5vi, 1.75rem);
+  --text-fluid-3xl: clamp(1.25rem, 0.5rem + 3.5vi, 2.25rem);
+  --space-fluid-xs: clamp(0.25rem, 0.125rem + 0.6vi, 0.5rem);
+  --space-fluid-sm: clamp(0.375rem, 0.125rem + 1vi, 0.75rem);
+  --space-fluid-md: clamp(0.625rem, 0.25rem + 1.5vi, 1.25rem);
+  --space-fluid-lg: clamp(0.875rem, 0.375rem + 2.2vi, 1.75rem);
+  --space-fluid-xl: clamp(1.125rem, 0.5rem + 3vi, 2.5rem);
 }
 
 .dark {
@@ -153,7 +160,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    -webkit-text-size-adjust: auto;
+    -webkit-text-size-adjust: 100%;
     background:
       linear-gradient(180deg, color-mix(in oklab, var(--surface) 92%, var(--accent) 8%) 0%, var(--background) 36%, var(--background) 100%);
     overflow-x: hidden;
@@ -180,7 +187,7 @@ body:not(.modal-open) {
   margin-inline: auto;
   width: 100%;
   max-width: 28rem;
-  padding-inline: 1.25rem;
+  padding-inline: clamp(1rem, 0.5rem + 3vi, 1.75rem);
   padding-top: calc(1.5rem + env(safe-area-inset-top));
   padding-bottom: calc(5rem + env(safe-area-inset-bottom));
   animation: page-enter 420ms var(--ease-out-ios) both;
@@ -190,9 +197,16 @@ body:not(.modal-open) {
   padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
 }
 
+/* Large iPhones (414px+): slightly wider content area for better density */
+@media (width >= 414px) {
+  .mobile-page {
+    max-width: 31rem;
+  }
+}
+
 @media (width >= 480px) {
   .mobile-page {
-    padding-inline: 1.5rem;
+    padding-inline: clamp(1.25rem, 0.5rem + 3.5vi, 2rem);
   }
 }
 

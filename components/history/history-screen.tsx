@@ -25,11 +25,13 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { BaseModalForm } from "@/components/ui/base-modal-form"
-import { MoneyInput } from "@/components/ui/money-input"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { useAccounts, useTransactions, updateTransaction, deleteTransaction } from "@/hooks/use-data"
+import { useAccounts, useTransactions } from "@/hooks/use-data"
+import { mutate } from "swr"
+import { EditTransactionSheet } from "@/components/transactions"
+import { useUndoDelete } from "@/hooks/use-undo-delete"
+import type { Transaction } from "@/lib/types/database"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { isExcludedFromRealIncome } from "@/lib/transactions/reporting"
@@ -148,14 +150,14 @@ export function HistoryScreen() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [accountSearch, setAccountSearch] = useState("")
 
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [editAmount, setEditAmount] = useState("")
-  const [editDescription, setEditDescription] = useState("")
-  const [editType, setEditType] = useState<"income" | "expense">("expense")
-  const [editAccountId, setEditAccountId] = useState("")
-  const [editDate, setEditDate] = useState("")
-  const [editCategoryId, setEditCategoryId] = useState<string | null>(null)
+  const [undoLoading, setUndoLoading] = useState(false)
+
+  const { pending: undoPending, deleteWithUndo, undo } = useUndoDelete(() => {
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    mutate("accounts")
+  })
 
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
@@ -285,62 +287,33 @@ export function HistoryScreen() {
   }, [filteredTransactions])
 
   const openEdit = (txId: string) => {
-    const tx = transactions.find((item) => item.id === txId)
-    if (!tx) return
-    if (tx.isTransfer || tx.isCommission || tx.metadata?.kind === "credit_payment" || tx.metadata?.kind === "credit_card_income") {
-      notify({ title: "No se puede editar", message: "Los pagos y transferencias no se pueden editar directamente. Elimínalo y vuelve a registrarlo." })
-      return
-    }
-    setEditingId(txId)
-    setEditAmount(String(tx.amount))
-    setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
-    setEditType(tx.type)
-    setEditAccountId(tx.accountId)
-    setEditDate(getLocalDateString(parseTxDate(tx.date)))
-    setEditCategoryId(tx.categoryId)
+    const rawTx = rawTransactions.find((item) => item.id === txId)
+    if (!rawTx) return
+    setEditingTx(rawTx)
     setOpenSwipeId(null)
     setSwipeOffset(null)
-  }
-
-  const saveEdit = async () => {
-    if (!editingId || !editAccountId || !editAmount || !editDate) return
-    const amount = parseFloat(editAmount)
-    if (!amount || amount <= 0) return
-
-    try {
-      await updateTransaction(editingId, {
-        account_id: editAccountId,
-        type: editType,
-        amount,
-        description: editDescription || null,
-        date: editDate,
-        category_id: editCategoryId,
-        notes: null,
-        currency: "DOP",
-        amount_base: amount,
-        exchange_rate: 1,
-        is_recurring: false,
-      })
-      notify({ title: "Transacción actualizada", message: "La transacción fue editada correctamente." })
-      EventBus.emit({ type: "transaction_updated" })
-      setEditingId(null)
-    } catch {
-      notify({ title: "Error", message: "No se pudo editar la transacción." })
-    }
   }
 
   const confirmDelete = async () => {
     if (!deletingId) return
     try {
-      await deleteTransaction(deletingId)
-      notify({ title: "Transacción eliminada", message: "La transacción fue eliminada correctamente." })
-      EventBus.emit({ type: "transaction_deleted" })
-      setDeletingId(null)
-      setOpenSwipeId(null)
-      setSwipeOffset(null)
-    } catch {
+      const { deleteTransaction } = await import("@/hooks/use-data")
+      await deleteWithUndo(deletingId, async () => {
+        await deleteTransaction(deletingId)
+        setDeletingId(null)
+        setOpenSwipeId(null)
+        setSwipeOffset(null)
+      })
+    } catch (err) {
+      console.error("Delete error:", err)
       notify({ title: "Error", message: "No se pudo eliminar la transacción." })
     }
+  }
+
+  const handleUndo = async () => {
+    setUndoLoading(true)
+    await undo()
+    setUndoLoading(false)
   }
 
   const selectedAccountLabel = accountFilter === "all" ? "Todas" : accounts.find((a) => a.id === accountFilter)?.name || "Todas"
@@ -636,38 +609,44 @@ export function HistoryScreen() {
         </div>
       </div>
 
-      {editingId && (
-        <BaseModalForm title="Editar transacción" onClose={() => setEditingId(null)} footer={<Button onClick={saveEdit} className="h-12 w-full">Guardar cambios</Button>}>
-          <div className="space-y-3 pt-2">
-            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripción" />
-            <MoneyInput className="w-full rounded-xl border bg-background px-3 py-3" value={editAmount} onValueChange={setEditAmount} placeholder="Monto" />
-            <input className="w-full rounded-xl border bg-background px-3 py-3" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
-            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}> 
-              <option value="income">Ingreso</option>
-              <option value="expense">Gasto</option>
-            </select>
-            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editAccountId} onChange={(e) => setEditAccountId(e.target.value)}>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>{account.name}</option>
-              ))}
-            </select>
-          </div>
-        </BaseModalForm>
-      )}
+      <EditTransactionSheet
+        open={!!editingTx}
+        onOpenChange={(open) => { if (!open) setEditingTx(null) }}
+        transaction={editingTx}
+      />
 
       {deletingId && (
-        <BaseModalForm
-          title="Eliminar transacción"
-          onClose={() => setDeletingId(null)}
-          footer={
-            <div className="space-y-2">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-foreground">Eliminar transacción</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada. Puedes deshacerla dentro de los próximos 10 segundos.</p>
+            <div className="mt-6 space-y-2">
               <Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminación</Button>
               <Button variant="outline" onClick={() => setDeletingId(null)} className="h-12 w-full">Cancelar</Button>
             </div>
-          }
-        >
-          <p className="pt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
-        </BaseModalForm>
+          </div>
+        </div>
+      )}
+
+      {/* Undo bar */}
+      {undoPending && (
+        <div className="fixed bottom-20 left-4 right-4 z-[110] animate-slide-up">
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-lg backdrop-blur-md">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Transacción eliminada</p>
+              <p className="text-xs text-muted-foreground">Deshacer en {undoPending.count}s</p>
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleUndo}
+              disabled={undoLoading}
+              className="shrink-0"
+            >
+              {undoLoading ? "..." : "Deshacer"}
+            </Button>
+          </div>
+        </div>
       )}
     </MobilePageShell>
   )

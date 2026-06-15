@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
-import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
@@ -193,6 +193,8 @@ if (!draggedId) return
   }
 
   const openDeleteConfirm = async (accountId: string) => {
+    const active = document.activeElement as HTMLElement | null
+    if (active && typeof active.blur === "function") active.blur()
     setConfirmDeleteId(accountId)
     setDeleteImpact(null)
     try {
@@ -470,16 +472,16 @@ if (!draggedId) return
       <AccountCreationWizard open={showCreateAccount} onOpenChange={setShowCreateAccount} />
 
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) { setConfirmDeleteId(null); setDeleteImpact(null) } }}>
-        <AlertDialogContent className="max-w-sm p-0 gap-0">
+        <AlertDialogContent className="max-w-sm p-0 gap-0" onCloseAutoFocus={(e) => { e.preventDefault() }}>
           <div className="p-5">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
               <AlertTriangle className="h-7 w-7" />
             </div>
             <div className="mt-4 text-center">
-              <h2 className="text-lg font-black text-foreground">Eliminar cuenta</h2>
-              <p className="mt-2 text-sm font-semibold text-foreground">
+              <AlertDialogTitle className="text-lg font-black text-foreground">Eliminar cuenta</AlertDialogTitle>
+              <AlertDialogDescription className="mt-2 text-sm font-semibold text-foreground">
                 {deleteImpact?.hasMovements ? "Esta cuenta tiene movimientos registrados." : "¿Eliminar esta cuenta?"}
-              </p>
+              </AlertDialogDescription>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {deleteImpact?.hasMovements
                   ? "Si la eliminas, también se perderán sus movimientos, historial e información asociada. Esta acción no se puede deshacer."

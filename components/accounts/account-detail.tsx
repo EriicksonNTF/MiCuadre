@@ -32,7 +32,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { BaseModalForm } from "@/components/ui/base-modal-form"
-import { AlertDialog, AlertDialogContent } from "@/components/ui/alert-dialog"
+import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
@@ -43,9 +43,12 @@ import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCre
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { isReportableExpense, isReportableIncome } from "@/lib/transactions/reporting"
 import type { AccountType, Currency } from "@/lib/types/database"
+import type { Transaction } from "@/lib/types/database"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
 import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
+import { EditTransactionSheet } from "@/components/transactions"
+import { useUndoDelete } from "@/hooks/use-undo-delete"
 
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
@@ -120,13 +123,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const [paymentComment, setPaymentComment] = useState("")
   const [paymentKind, setPaymentKind] = useState<"balance_to_date" | "statement_balance" | "minimum_payment" | "custom">("custom")
   const [isPaying, setIsPaying] = useState(false)
-  const [editingTxId, setEditingTxId] = useState<string | null>(null)
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
-  const [editAmount, setEditAmount] = useState("")
-  const [editDescription, setEditDescription] = useState("")
-  const [editType, setEditType] = useState<"income" | "expense">("expense")
-  const [editDate, setEditDate] = useState("")
-  const [editCategoryId, setEditCategoryId] = useState<string | null>(null)
+  const [undoLoading, setUndoLoading] = useState(false)
+
+  const { pending: undoPending, deleteWithUndo, undo } = useUndoDelete()
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
   const pointerRef = useRef<{ id: string; startX: number; startY: number; swiping: boolean } | null>(null)
@@ -325,67 +326,34 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }, [visibleTransactions])
 
   const openEditTx = (txId: string) => {
-    const tx = accountTransactions.find((item) => item.id === txId)
-    if (!tx) return
-    if (tx.metadata?.kind === "transfer" || tx.metadata?.kind === "credit_payment") {
-      notify({ title: "No se puede editar", message: "Los pagos y transferencias no se pueden editar directamente. Elimínalo y vuelve a registrarlo." })
-      return
-    }
-    setEditingTxId(txId)
-    setEditAmount(String(tx.amount))
-    setEditDescription(tx.title === "Sin descripción" ? "" : tx.title)
-    setEditType(tx.type)
-    setEditDate(getLocalDateString(parseTxDate(tx.rawDate)))
-    setEditCategoryId(tx.categoryId)
+    const rawTx = rawTransactions.find((item) => item.id === txId)
+    if (!rawTx) return
+    setEditingTx(rawTx)
     setOpenSwipeId(null)
     setSwipeOffset(null)
-  }
-
-  const saveEditTx = async () => {
-    if (!editingTxId || !editAmount || !editDate) return
-    const amount = parseFloat(editAmount)
-    if (!amount || amount <= 0) return
-
-    try {
-      const current = accountTransactions.find((item) => item.id === editingTxId)
-      if (!current) return
-      await updateTransaction(editingTxId, {
-        account_id: current.accountId,
-        type: editType,
-        amount,
-        description: editDescription || null,
-        date: editDate,
-        category_id: editCategoryId,
-        notes: null,
-        currency: current.currency,
-        amount_base: amount,
-        exchange_rate: 1,
-        is_recurring: false,
-      })
-      notify({ title: "Transacción actualizada", message: "La transacción fue editada correctamente." })
-      EventBus.emit({ type: "transaction_updated" })
-      setEditingTxId(null)
-      mutate("accounts")
-      mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-    } catch {
-      notify({ title: "Error", message: "No se pudo editar la transacción." })
-    }
   }
 
   const confirmDeleteTx = async () => {
     if (!deletingTxId) return
     try {
-      await deleteTransaction(deletingTxId)
-      notify({ title: "Transacción eliminada", message: "La transacción fue eliminada correctamente." })
-      EventBus.emit({ type: "transaction_deleted" })
-      setDeletingTxId(null)
-      setOpenSwipeId(null)
-      setSwipeOffset(null)
-      mutate("accounts")
-      mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-    } catch {
+      await deleteWithUndo(deletingTxId, async () => {
+        await deleteTransaction(deletingTxId)
+        setDeletingTxId(null)
+        setOpenSwipeId(null)
+        setSwipeOffset(null)
+      })
+    } catch (err) {
+      console.error("Delete error:", err)
       notify({ title: "Error", message: "No se pudo eliminar la transacción." })
     }
+  }
+
+  const handleUndo = async () => {
+    setUndoLoading(true)
+    await undo()
+    setUndoLoading(false)
+    mutate("accounts")
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   }
 
   const monthlyIncome = accountTransactions
@@ -613,7 +581,228 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
   return (
     <MobilePageShell fullBleed className="pb-nav-safe">
-      <div className="relative overflow-hidden px-6 pb-8 pt-8" style={{ background: headerBackground, color: headerTextColor }}>
+      {showEditModal ? (
+        <div className="flex min-h-full flex-col">
+          <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-5 py-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+            <button type="button" onClick={closeEditModal} className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-lg font-bold text-foreground">Editar cuenta</h1>
+          </div>
+          <div className="flex-1 overflow-y-auto px-5 py-6 pb-8">
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="account-name" className="text-xs font-medium text-muted-foreground">Nombre</label>
+                <input
+                  id="account-name"
+                  type="text"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                  placeholder="Ej. Cuenta de Ahorros"
+                />
+              </div>
+              <div>
+                <label htmlFor="account-type" className="text-xs font-medium text-muted-foreground">Tipo</label>
+                <div className="mt-1 grid grid-cols-3 gap-2">
+                  {[
+                    { id: "cash", label: "Efectivo", icon: Banknote },
+                    { id: "debit", label: "Débito", icon: Building2 },
+                    { id: "credit", label: "Crédito", icon: CreditCard },
+                  ].map((type) => {
+                    const TypeIcon = type.icon
+                    const isSelected = editForm.type === type.id
+                    return (
+                      <button type="button"
+                        key={type.id}
+                        id={type.id === "cash" ? "account-type" : undefined}
+                        onClick={() => setEditForm({ ...editForm, type: type.id as AccountType })}
+                        className={cn(
+                          "flex flex-col items-center gap-2 rounded-xl p-3 transition-all",
+                          isSelected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        )}
+                      >
+                        <TypeIcon className="h-5 w-5" />
+                        <span className="text-xs font-medium">{type.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="account-currency" className="text-xs font-medium text-muted-foreground">Moneda</label>
+                <div className="mt-1 flex gap-2">
+                  {(["DOP", "USD"] as Currency[]).map((currency) => (
+                    <button type="button"
+                      key={currency}
+                      id={currency === "DOP" ? "account-currency" : undefined}
+                      onClick={() => setEditForm({ ...editForm, currency })}
+                      className={cn(
+                        "flex-1 rounded-xl p-3 text-sm font-medium transition-all",
+                        editForm.currency === currency
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground"
+                      )}
+                    >
+                      {currency}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label htmlFor="account-balance" className="text-xs font-medium text-muted-foreground">Balance inicial</label>
+                <MoneyInput
+                  id="account-balance"
+                  value={editForm.balance}
+                  onValueChange={(value) => setEditForm({ ...editForm, balance: value })}
+                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                />
+              </div>
+              {editForm.type === "credit" && (
+                <>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {editForm.currency !== "USD" && <div>
+                      <label htmlFor="account-credit-limit" className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
+                      <MoneyInput
+                        id="account-credit-limit"
+                        value={editForm.credit_limit}
+                        onValueChange={(value) => setEditForm({ ...editForm, credit_limit: value, credit_limit_dop: value })}
+                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                      />
+                    </div>}
+                    {editForm.currency !== "DOP" && <div>
+                      <label htmlFor="account-credit-limit-usd" className="text-xs font-medium text-muted-foreground">Límite de crédito USD</label>
+                      <MoneyInput
+                        id="account-credit-limit-usd"
+                        value={editForm.credit_limit_usd}
+                        onValueChange={(value) => setEditForm({ ...editForm, credit_limit_usd: value })}
+                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                      />
+                    </div>}
+                  </div>
+                  <div>
+                    <label htmlFor="account-closing-date" className="text-xs font-medium text-muted-foreground">Día de corte</label>
+                    <input
+                      id="account-closing-date"
+                      type="text"
+                      inputMode="numeric"
+                      value={editForm.closing_date}
+                      onChange={(e) => setEditForm({ ...editForm, closing_date: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })}
+                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Fecha de pago automática: corte + 20 días.</p>
+                </>
+              )}
+
+              <div className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4">
+                <p className="text-sm font-semibold text-foreground">Personalización visual</p>
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Tipo visual</p>
+                  <select value={editForm.icon_type} onChange={(e) => setEditForm({ ...editForm, icon_type: e.target.value as "icon" | "image" })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
+                    <option value="icon">Ícono</option>
+                    <option value="image">Logo/Banco</option>
+                  </select>
+                </div>
+
+                {editForm.icon_type === "image" ? (
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">Banco / Logo</p>
+                    <select
+                      value={editForm.bank_logo_key || "none"}
+                      onChange={(e) => {
+                        const selected = getBankLogoByKey(e.target.value)
+                        if (!selected || selected.key === "none") {
+                          setEditForm({ ...editForm, bank_logo_key: "none", bank_name: "", bank_logo_url: "", icon_type: "icon", icon_value: "building-2", icon_url: "" })
+                          return
+                        }
+                        setEditForm({ ...editForm, bank_logo_key: selected.key, bank_name: selected.name, bank_logo_url: selected.logoUrl, icon_type: "image", icon_value: selected.key, icon_url: selected.logoUrl })
+                      }}
+                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                    >
+                      {BANK_LOGO_OPTIONS.map((option) => (
+                        <option key={option.key} value={option.key}>{option.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">Ícono</p>
+                    <select value={editForm.icon_value} onChange={(e) => setEditForm({ ...editForm, icon_value: e.target.value })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
+                      {DETAIL_ICON_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <p className="mb-1 text-xs text-muted-foreground">Número de tarjeta/cuenta (opcional)</p>
+                  <input
+                    value={editForm.account_number}
+                    onChange={(e) => setEditForm({ ...editForm, account_number: e.target.value.replace(/[^0-9]/g, "").slice(0, 24) })}
+                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                    placeholder="1234567890123456"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {DETAIL_COLOR_PRESETS.map((preset) => (
+                    <button type="button"
+                      key={preset.key}
+                      onClick={() => setEditForm({ ...editForm, primary_color: preset.primary, secondary_color: preset.secondary })}
+                      className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", editForm.primary_color === preset.primary && editForm.secondary_color === preset.secondary ? "ring-primary" : "ring-transparent")}
+                      title={preset.name}
+                    >
+                      <span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  {(["gradient", "solid", "glass"] as const).map((style) => (
+                    <button type="button"
+                      key={style}
+                      onClick={() => setEditForm({ ...editForm, background_style: style })}
+                      className={cn("rounded-lg px-2 py-1 text-xs", editForm.background_style === style ? "bg-primary text-primary-foreground" : "bg-muted")}
+                    >
+                      {style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}
+                    </button>
+                  ))}
+                </div>
+
+                <BrandedAccountCard
+                  compact
+                  account={{
+                    ...(rawAccounts.find((a) => a.id === accountId) || rawAccounts[0]),
+                    name: editForm.name,
+                    type: editForm.type,
+                    currency: editForm.currency,
+                    balance: Number(editForm.balance || 0),
+                    credit_limit: editForm.type === "credit" ? Number(editForm.credit_limit || 0) : null,
+                    closing_date: editForm.type === "credit" ? Number(editForm.closing_date || 0) : null,
+                    due_date: editForm.type === "credit" ? Number(editForm.due_date || 0) : null,
+                    icon_url: editForm.icon_url || null,
+                    icon_type: editForm.icon_type,
+                    icon_value: editForm.icon_value,
+                    account_number: editForm.account_number || null,
+                    primary_color: editForm.primary_color,
+                    secondary_color: editForm.secondary_color,
+                    background_style: editForm.background_style,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="sticky bottom-0 z-10 border-t border-border/55 bg-card/92 px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-18px_45px_-34px_rgba(0,0,0,0.38)] backdrop-blur-xl">
+            <Button onClick={handleEditSubmit} disabled={!editForm.name || isEditing} className="h-12 w-full rounded-2xl text-base font-semibold">
+              {isEditing ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="relative overflow-hidden px-6 pb-8 pt-8" style={{ background: headerBackground, color: headerTextColor }}>
         <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-white/14 blur-sm" />
         <div className="pointer-events-none absolute -bottom-24 left-8 h-56 w-56 rounded-full border border-white/18" />
         <div className="pointer-events-none absolute bottom-14 right-4 h-24 w-36 rounded-full bg-black/15 blur-3xl" />
@@ -656,7 +845,11 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <Settings className="h-5 w-5" />
             </button>
             <button type="button"
-              onClick={() => setShowDeleteModal(true)}
+                onClick={() => {
+                  const active = document.activeElement as HTMLElement | null
+                  if (active && typeof active.blur === "function") active.blur()
+                  setShowDeleteModal(true)
+                }}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur transition hover:bg-white/20 active:scale-95"
             >
               <Trash2 className="h-5 w-5" />
@@ -978,40 +1171,23 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 </div>
       </div>
 
-      {editingTxId && (
-        <BaseModalForm
-          title="Editar transacción"
-          onClose={() => setEditingTxId(null)}
-          footer={<Button onClick={saveEditTx} className="h-12 w-full">Guardar cambios</Button>}
-        >
-          <div className="space-y-3 pt-2">
-            <input className="w-full rounded-xl border bg-background px-3 py-3" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Descripción" />
-            <MoneyInput className="w-full rounded-xl border bg-background px-3 py-3" value={editAmount} onValueChange={setEditAmount} placeholder="Monto" />
-            <input className="w-full rounded-xl border bg-background px-3 py-3" type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
-            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editType} onChange={(e) => setEditType(e.target.value as "income" | "expense")}> 
-              <option value="income">Ingreso</option>
-              <option value="expense">Gasto</option>
-            </select>
-            <select className="w-full rounded-xl border bg-background px-3 py-3" value={editCategoryId || ""} onChange={(e) => setEditCategoryId(e.target.value || null)}>
-              <option value="">Sin categoría</option>
-            </select>
-          </div>
-        </BaseModalForm>
-      )}
+      <EditTransactionSheet
+        open={!!editingTx}
+        onOpenChange={(open) => { if (!open) setEditingTx(null) }}
+        transaction={editingTx}
+      />
 
       {deletingTxId && (
-        <BaseModalForm
-          title="Eliminar transacción"
-          onClose={() => setDeletingTxId(null)}
-          footer={
-            <div className="space-y-2">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-foreground">Eliminar transacción</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada. Puedes deshacerla dentro de los próximos 10 segundos.</p>
+            <div className="mt-6 space-y-2">
               <Button variant="destructive" onClick={confirmDeleteTx} className="h-12 w-full">Confirmar eliminación</Button>
               <Button variant="outline" onClick={() => setDeletingTxId(null)} className="h-12 w-full">Cancelar</Button>
             </div>
-          }
-        >
-          <p className="pt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
-        </BaseModalForm>
+          </div>
+        </div>
       )}
 
       {/* Payment Modal */}
@@ -1169,240 +1345,25 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         </BaseModalForm>
       )}
 
-      {/* Edit Modal */}
-      {showEditModal && (
-        <BaseModalForm
-          title="Editar cuenta"
-          onClose={closeEditModal}
-          footer={
-            <Button
-              onClick={handleEditSubmit}
-              disabled={!editForm.name || isEditing}
-              className="h-12 w-full rounded-2xl text-base font-semibold"
-            >
-              {isEditing ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          }
-        >
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="account-name" className="text-xs font-medium text-muted-foreground">Nombre</label>
-                <input
-                  id="account-name"
-                  type="text"
-                  value={editForm.name}
-                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                  placeholder="Ej. Cuenta de Ahorros"
-                />
-              </div>
-              <div>
-                <label htmlFor="account-type" className="text-xs font-medium text-muted-foreground">Tipo</label>
-                <div className="mt-1 grid grid-cols-3 gap-2">
-                  {[
-                    { id: "cash", label: "Efectivo", icon: Banknote },
-                    { id: "debit", label: "Débito", icon: Building2 },
-                    { id: "credit", label: "Crédito", icon: CreditCard },
-                  ].map((type) => {
-                    const TypeIcon = type.icon
-                    const isSelected = editForm.type === type.id
-                    return (
-                      <button type="button"
-                        key={type.id}
-                        id={type.id === "cash" ? "account-type" : undefined}
-                        onClick={() => setEditForm({ ...editForm, type: type.id as AccountType })}
-                        className={cn(
-                          "flex flex-col items-center gap-2 rounded-xl p-3 transition-all",
-                          isSelected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-foreground"
-                        )}
-                      >
-                        <TypeIcon className="h-5 w-5" />
-                        <span className="text-xs font-medium">{type.label}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div>
-                <label htmlFor="account-currency" className="text-xs font-medium text-muted-foreground">Moneda</label>
-                <div className="mt-1 flex gap-2">
-                  {(["DOP", "USD"] as Currency[]).map((currency) => (
-                    <button type="button"
-                      key={currency}
-                      id={currency === "DOP" ? "account-currency" : undefined}
-                      onClick={() => setEditForm({ ...editForm, currency })}
-                      className={cn(
-                        "flex-1 rounded-xl p-3 text-sm font-medium transition-all",
-                        editForm.currency === currency
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-foreground"
-                      )}
-                    >
-                      {currency}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label htmlFor="account-balance" className="text-xs font-medium text-muted-foreground">Balance inicial</label>
-                <MoneyInput
-                  id="account-balance"
-                  value={editForm.balance}
-                  onValueChange={(value) => setEditForm({ ...editForm, balance: value })}
-                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                />
-              </div>
-              {editForm.type === "credit" && (
-                <>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {editForm.currency !== "USD" && <div>
-                      <label htmlFor="account-credit-limit" className="text-xs font-medium text-muted-foreground">Límite de crédito</label>
-                      <MoneyInput
-                        id="account-credit-limit"
-                        value={editForm.credit_limit}
-                        onValueChange={(value) => setEditForm({ ...editForm, credit_limit: value, credit_limit_dop: value })}
-                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                      />
-                    </div>}
-                    {editForm.currency !== "DOP" && <div>
-                      <label htmlFor="account-credit-limit-usd" className="text-xs font-medium text-muted-foreground">Límite de crédito USD</label>
-                      <MoneyInput
-                        id="account-credit-limit-usd"
-                        value={editForm.credit_limit_usd}
-                        onValueChange={(value) => setEditForm({ ...editForm, credit_limit_usd: value })}
-                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                      />
-                    </div>}
-                  </div>
-                  <div>
-                    <label htmlFor="account-closing-date" className="text-xs font-medium text-muted-foreground">Día de corte</label>
-                    <input
-                      id="account-closing-date"
-                      type="text"
-                      inputMode="numeric"
-                      value={editForm.closing_date}
-                      onChange={(e) => setEditForm({ ...editForm, closing_date: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })}
-                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">Fecha de pago automática: corte + 20 días.</p>
-                </>
-              )}
+        </>
 
-              <div className="space-y-3 rounded-2xl border border-border/70 bg-card/70 p-4">
-                <p className="text-sm font-semibold text-foreground">Personalización visual</p>
-                <div>
-                  <p className="mb-1 text-xs text-muted-foreground">Tipo visual</p>
-                  <select value={editForm.icon_type} onChange={(e) => setEditForm({ ...editForm, icon_type: e.target.value as "icon" | "image" })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
-                    <option value="icon">Ícono</option>
-                    <option value="image">Logo/Banco</option>
-                  </select>
-                </div>
+      )}
 
-                {editForm.icon_type === "image" ? (
-                  <div>
-                    <p className="mb-1 text-xs text-muted-foreground">Banco / Logo</p>
-                    <select
-                      value={editForm.bank_logo_key || "none"}
-                      onChange={(e) => {
-                        const selected = getBankLogoByKey(e.target.value)
-                        if (!selected || selected.key === "none") {
-                          setEditForm({ ...editForm, bank_logo_key: "none", bank_name: "", bank_logo_url: "", icon_type: "icon", icon_value: "building-2", icon_url: "" })
-                          return
-                        }
-                        setEditForm({ ...editForm, bank_logo_key: selected.key, bank_name: selected.name, bank_logo_url: selected.logoUrl, icon_type: "image", icon_value: selected.key, icon_url: selected.logoUrl })
-                      }}
-                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
-                    >
-                      {BANK_LOGO_OPTIONS.map((option) => (
-                        <option key={option.key} value={option.key}>{option.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="mb-1 text-xs text-muted-foreground">Ícono</p>
-                    <select value={editForm.icon_value} onChange={(e) => setEditForm({ ...editForm, icon_value: e.target.value })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
-                      {DETAIL_ICON_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-                    </select>
-                  </div>
-                )}
 
-                <div>
-                  <p className="mb-1 text-xs text-muted-foreground">Número de tarjeta/cuenta (opcional)</p>
-                  <input
-                    value={editForm.account_number}
-                    onChange={(e) => setEditForm({ ...editForm, account_number: e.target.value.replace(/[^0-9]/g, "").slice(0, 24) })}
-                    className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm"
-                    placeholder="1234567890123456"
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {DETAIL_COLOR_PRESETS.map((preset) => (
-                    <button type="button"
-                      key={preset.key}
-                      onClick={() => setEditForm({ ...editForm, primary_color: preset.primary, secondary_color: preset.secondary })}
-                      className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", editForm.primary_color === preset.primary && editForm.secondary_color === preset.secondary ? "ring-primary" : "ring-transparent")}
-                      title={preset.name}
-                    >
-                      <span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-3 gap-2">
-                  {(["gradient", "solid", "glass"] as const).map((style) => (
-                    <button type="button"
-                      key={style}
-                      onClick={() => setEditForm({ ...editForm, background_style: style })}
-                      className={cn("rounded-lg px-2 py-1 text-xs", editForm.background_style === style ? "bg-primary text-primary-foreground" : "bg-muted")}
-                    >
-                      {style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}
-                    </button>
-                  ))}
-                </div>
-
-                <BrandedAccountCard
-                  compact
-                  account={{
-                    ...(rawAccounts.find((a) => a.id === accountId) || rawAccounts[0]),
-                    name: editForm.name,
-                    type: editForm.type,
-                    currency: editForm.currency,
-                    balance: Number(editForm.balance || 0),
-                    credit_limit: editForm.type === "credit" ? Number(editForm.credit_limit || 0) : null,
-                    closing_date: editForm.type === "credit" ? Number(editForm.closing_date || 0) : null,
-                    due_date: editForm.type === "credit" ? Number(editForm.due_date || 0) : null,
-                    icon_url: editForm.icon_url || null,
-                    icon_type: editForm.icon_type,
-                    icon_value: editForm.icon_value,
-                    account_number: editForm.account_number || null,
-                    primary_color: editForm.primary_color,
-                    secondary_color: editForm.secondary_color,
-                    background_style: editForm.background_style,
-                  }}
-                />
-              </div>
-            </div>
-          </BaseModalForm>
-        )}
 
         <AlertDialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) } }}>
-          <AlertDialogContent className="max-w-sm p-0 gap-0">
+          <AlertDialogContent className="max-w-sm p-0 gap-0" onCloseAutoFocus={(e) => { e.preventDefault() }}>
             <div className="p-5">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
                 <AlertTriangle className="h-7 w-7" />
               </div>
               <div className="mt-4 text-center">
-                <h2 className="text-lg font-black text-foreground">Eliminar {account.type === "credit" ? "tarjeta" : "cuenta"}</h2>
-                <p className="mt-2 text-sm font-semibold text-foreground">
+                <AlertDialogTitle className="text-lg font-black text-foreground">Eliminar {account.type === "credit" ? "tarjeta" : "cuenta"}</AlertDialogTitle>
+                <AlertDialogDescription className="mt-2 text-sm font-semibold text-foreground">
                   {deleteImpact?.hasMovements
                     ? account.type === "credit" ? "Esta tarjeta tiene movimientos registrados." : "Esta cuenta tiene movimientos registrados."
                     : `¿Eliminar ${account.name}?`}
-                </p>
+                </AlertDialogDescription>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {deleteImpact?.hasMovements
                     ? "Si la eliminas, también se perderán sus movimientos, historial e información asociada. Esta acción no se puede deshacer."
@@ -1424,6 +1385,27 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             </div>
           </AlertDialogContent>
         </AlertDialog>
+
+      {/* Undo bar */}
+      {undoPending && (
+        <div className="fixed bottom-20 left-4 right-4 z-[110] animate-slide-up">
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-lg backdrop-blur-md">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-foreground">Transacción eliminada</p>
+              <p className="text-xs text-muted-foreground">Deshacer en {undoPending.count}s</p>
+            </div>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleUndo}
+              disabled={undoLoading}
+              className="shrink-0"
+            >
+              {undoLoading ? "..." : "Deshacer"}
+            </Button>
+          </div>
+        </div>
+      )}
       </MobilePageShell>
     )
   }
