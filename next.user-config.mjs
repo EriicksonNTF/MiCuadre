@@ -1,5 +1,8 @@
+const isExport = process.env.BUILD_EXPORT === 'true'
+
 export default {
-  output: process.env.BUILD_EXPORT === 'true' ? 'export' : undefined,
+  output: isExport ? 'export' : undefined,
+  typescript: isExport ? { ignoreBuildErrors: true } : undefined,
   logging: {
     fetches: false,
     browserToTerminal: false,

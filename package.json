@@ -23,7 +23,7 @@
     "build": "pnpm next build",
     "build:safe": "pnpm next build",
     "prebuild:mobile": "node scripts/prebuild-export.mjs",
-    "build:mobile": "cross-env BUILD_EXPORT=true NEXT_DISABLE_TURBOPACK=1 next build",
+    "build:mobile": "cross-env BUILD_EXPORT=true next build --webpack",
     "postbuild:mobile": "node scripts/fix-asset-paths.mjs && node scripts/postbuild-export.mjs",
     "start": "pnpm next start",
     "lint": "pnpm eslint .",
