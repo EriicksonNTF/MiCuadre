@@ -6,9 +6,6 @@
   "corepack": {
     "enable": true
   },
-  "pnpm": {
-    "onlyBuiltDependencies": ["sharp", "tesseract.js"]
-  },
   "scripts": {
     "predev": "node scripts/predev.js",
     "dev": "pnpm dev:webpack",

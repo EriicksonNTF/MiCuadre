@@ -1,5 +1,8 @@
 allowBuilds:
-  msgpackr-extract: set this to true or false
-  sharp: set this to true or false
-  tesseract.js: set this to true or false
-  unrs-resolver: set this to true or false
+  sharp: true
+  tesseract.js: true
+onlyBuiltDependencies:
+  - sharp
+  - tesseract.js
+  - msgpackr-extract
+  - unrs-resolver

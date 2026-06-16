@@ -17,8 +17,16 @@ jobs:
         with:
           node-version: 22
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Print versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install pnpm
+        run: npm install -g pnpm@11.4.0
+
+      - name: Print pnpm version
+        run: pnpm --version
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
