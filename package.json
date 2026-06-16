@@ -2,6 +2,7 @@
   "name": "my-project",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.4.0+sha512.e0bfb18cddc922aeadc7be52905c3ee72a8e0a459ca1cf88e8db77047bdd3118b38a29e93b61893337656a6bde4c23914da7dcc7654ed30874e00349ae5cb103",
   "corepack": {
     "enable": true
   },
