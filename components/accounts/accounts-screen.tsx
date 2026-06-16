@@ -12,6 +12,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { notify } from "@/lib/notifications"
+import { triggerHaptic } from "@/lib/haptics"
 import { EventBus } from "@/lib/event-bus"
 import { createTransfer, deleteAccount, getAccountDeletionImpact, reorderAccounts, useAccounts } from "@/hooks/use-data"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
@@ -119,12 +120,6 @@ export function AccountsScreen() {
     return () => document.removeEventListener("pointerdown", onOutside)
   }, [])
 
-
-  const triggerHaptic = () => {
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate(12)
-    }
-  }
 
   const clearLongPressTimer = () => {
     if (longPressTimerRef.current) {

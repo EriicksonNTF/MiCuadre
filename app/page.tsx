@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { Capacitor } from "@capacitor/core"
 import { PublicLanding } from "@/components/landing/public-landing"
 import { createClient } from "@/lib/supabase/client"
 
@@ -17,8 +18,7 @@ export default function RootPage() {
         return
       }
 
-      const ua = navigator.userAgent.toLowerCase()
-      const isCapacitor = ua.includes("capacitor") || ua.includes("micuadrenative")
+      const isCapacitor = typeof Capacitor !== "undefined" && Capacitor.isNativePlatform()
 
       if (isCapacitor) {
         router.replace("/auth/login")

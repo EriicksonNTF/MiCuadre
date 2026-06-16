@@ -3,6 +3,7 @@
   "appName": "MiCuadre",
   "webDir": "out",
   "bundledWebRuntime": false,
+  "scheme": "micuadre",
   "server": {
     "allowNavigation": [
       "*.supabase.co"

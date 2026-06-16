@@ -1,5 +1,8 @@
 "use client"
 
+import { Capacitor } from "@capacitor/core"
+import { Haptics, ImpactStyle } from "@capacitor/haptics"
+
 type HapticStrength = "light" | "medium"
 
 function vibrateFallback(strength: HapticStrength) {
@@ -9,12 +12,8 @@ function vibrateFallback(strength: HapticStrength) {
 
 export async function triggerHaptic(strength: HapticStrength = "light") {
   try {
-    const capacitor = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; Plugins?: { Haptics?: { impact?: (payload: { style: string }) => Promise<void> } } } }).Capacitor
-    const haptics = capacitor?.Plugins?.Haptics
-    const isNative = Boolean(capacitor?.isNativePlatform?.())
-
-    if (isNative && haptics?.impact) {
-      await haptics.impact({ style: strength === "medium" ? "MEDIUM" : "LIGHT" })
+    if (Capacitor.isNativePlatform()) {
+      await Haptics.impact({ style: strength === "medium" ? ImpactStyle.Medium : ImpactStyle.Light })
       return
     }
   } catch {
