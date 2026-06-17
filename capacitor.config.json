@@ -2,8 +2,9 @@
   "appId": "app.micuadre.ios",
   "appName": "MiCuadre",
   "webDir": "out",
-  "bundledWebRuntime": false,
+  "bundledWebRuntime": true,
   "server": {
+    "url": "https://micuadre-five.vercel.app",
     "allowNavigation": [
       "*.supabase.co"
     ]

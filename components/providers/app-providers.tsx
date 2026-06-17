@@ -19,8 +19,12 @@ export function AppProviders({
   toastContainer?: React.ReactNode
 }) {
   useEffect(() => {
-    const { initSyncEngine } = require("@/lib/offline/sync-engine")
-    initSyncEngine()
+    try {
+      const { initSyncEngine } = require("@/lib/offline/sync-engine")
+      initSyncEngine()
+    } catch (e) {
+      console.error("Failed to init sync engine:", e)
+    }
   }, [])
 
   return (

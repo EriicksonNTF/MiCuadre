@@ -11,22 +11,26 @@ export default function RootPage() {
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        router.replace("/dashboard")
-        return
-      }
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        if (session) {
+          router.replace("/dashboard")
+          return
+        }
 
-      const ua = navigator.userAgent.toLowerCase()
-      const isCapacitor = ua.includes("capacitor") || ua.includes("micuadrenative")
+        const ua = navigator.userAgent.toLowerCase()
+        const isCapacitor = ua.includes("capacitor") || ua.includes("micuadrenative")
 
-      if (isCapacitor) {
+        if (isCapacitor) {
+          router.replace("/auth/login")
+          return
+        }
+
+        setShowLanding(true)
+      })
+      .catch(() => {
         router.replace("/auth/login")
-        return
-      }
-
-      setShowLanding(true)
-    })
+      })
   }, [router])
 
   if (!showLanding) return null
