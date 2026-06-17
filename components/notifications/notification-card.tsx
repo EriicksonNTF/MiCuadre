@@ -95,7 +95,7 @@ export const NotificationCard = memo(function NotificationCard({ notification, o
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.625rem] font-bold uppercase tracking-wide ${style.badgeClass}`}>
+              <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide ${style.badgeClass}`}>
                 {style.label}
               </span>
               <time className="shrink-0 text-xs text-muted-foreground">{formatNotificationTime(notification.created_at)}</time>

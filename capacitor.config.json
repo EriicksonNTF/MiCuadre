@@ -9,5 +9,30 @@
     "allowNavigation": [
       "*.supabase.co"
     ]
-  }
+  },
+  "ios": {
+    "scheme": "micuadre"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#ffffff",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "default",
+      "backgroundColor": "#ffffff"
+    },
+    "Network": {
+      "enabled": true
+    }
+  },
+  "packageClassList": [
+    "AppPlugin",
+    "CAPCameraPlugin",
+    "HapticsPlugin",
+    "SplashScreenPlugin",
+    "StatusBarPlugin",
+    "NetworkPlugin"
+  ]
 }

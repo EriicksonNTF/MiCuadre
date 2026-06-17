@@ -194,7 +194,7 @@ export function EditTransactionSheet({ open, onOpenChange, transaction }: EditTr
                     value={form.amount}
                     onValueChange={(v) => handleChange("amount", v)}
                     placeholder="0.00"
-                    className="text-[clamp(2.75rem,15vw,4.5rem)]"
+                    className="text-[clamp(1.75rem,8vw,2.5rem)] tabular-nums"
                   />
                 </div>
 

@@ -329,14 +329,14 @@ export default function SendPage() {
             <div className="flex flex-col items-center pt-4">
               <p className="text-sm text-muted-foreground">Monto a transferir</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-medium text-muted-foreground">{getCurrencySymbol("DOP")}</span>
+                <span className="text-xl font-medium text-muted-foreground">{getCurrencySymbol("DOP")}</span>
                 <MoneyInput
                   value={amount}
                   onValueChange={(value) => {
                     setAmount(value)
                   }}
                   placeholder="0"
-                  className="hero-amount w-full bg-transparent text-center text-[clamp(3.75rem,20vw,6rem)] font-extrabold leading-none text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[120px]"
+                  className="hero-amount w-full bg-transparent text-center text-[clamp(2rem,10vw,2.25rem)] font-extrabold leading-none text-foreground tabular-nums outline-none placeholder:text-muted-foreground/30 min-w-[120px]"
                   autoFocus
                 />
               </div>

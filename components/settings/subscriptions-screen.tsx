@@ -182,7 +182,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
             </label>
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Monto mensual</span>
-              <MoneyInput value={amount} onValueChange={setAmount} placeholder="0.00" className="h-12 w-full rounded-xl border border-border bg-background px-4" />
+              <MoneyInput value={amount} onValueChange={setAmount} placeholder="0.00" className="h-12 w-full rounded-xl border border-border bg-background px-4 tabular-nums" />
             </label>
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Moneda</span>

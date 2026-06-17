@@ -406,7 +406,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
               value={amount}
               onValueChange={handleAmountChange}
               placeholder="0"
-              className="hero-amount w-full bg-transparent text-center text-[clamp(2rem,10vw,3.5rem)] font-extrabold leading-none text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[120px]"
+              className="hero-amount w-full bg-transparent text-center text-[clamp(1.5rem,8vw,2.25rem)] font-extrabold leading-none text-foreground tabular-nums outline-none placeholder:text-muted-foreground/30 min-w-[120px]"
               autoFocus
             />
           </div>

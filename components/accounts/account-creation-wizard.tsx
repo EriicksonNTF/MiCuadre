@@ -446,16 +446,16 @@ export function AccountCreationWizard({ open, onOpenChange }: AccountCreationWiz
                 </div>
 
                 {state.type !== "credit" && (
-                  <MoneyInput value={state.initialBalance} onValueChange={(v) => setState((prev) => ({ ...prev, initialBalance: v }))} placeholder="Balance" className="w-full rounded-xl bg-muted p-3" />
+                  <MoneyInput value={state.initialBalance} onValueChange={(v) => setState((prev) => ({ ...prev, initialBalance: v }))} placeholder="Balance" className="w-full rounded-xl bg-muted p-3 tabular-nums" />
                 )}
 
                 {state.type === "credit" && (
                   <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {state.currency !== "USD" && <MoneyInput value={state.creditLimitDop} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitDop: v }))} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
-                      {state.currency !== "DOP" && <MoneyInput value={state.creditLimitUsd} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitUsd: v }))} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4" />}
+                      {state.currency !== "USD" && <MoneyInput value={state.creditLimitDop} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitDop: v }))} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />}
+                      {state.currency !== "DOP" && <MoneyInput value={state.creditLimitUsd} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitUsd: v }))} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />}
                     </div>
-                    <MoneyInput value={state.creditUsed} onValueChange={(v) => setState((prev) => ({ ...prev, creditUsed: v }))} placeholder="Crédito utilizado" className="w-full rounded-xl border border-border bg-background py-3 px-4" />
+                    <MoneyInput value={state.creditUsed} onValueChange={(v) => setState((prev) => ({ ...prev, creditUsed: v }))} placeholder="Crédito utilizado" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />
                     <input type="text" inputMode="numeric" value={state.closingDate} onChange={(e) => setState((prev) => ({ ...prev, closingDate: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) }))} placeholder="Día de corte" className="w-full rounded-xl border border-border bg-background py-3 px-4 text-foreground" />
                     <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
                   </div>

@@ -101,7 +101,7 @@ export function RotatingUpcomingPaymentsCard({
           <p className="text-sm font-semibold">Proximos pagos</p>
         </div>
         {urgency ? (
-          <span className={`rounded-full px-2 py-1 text-[0.625rem] font-semibold ${isOverdue ? "bg-destructive text-destructive-foreground" : "bg-muted text-foreground"}`}>{urgency}</span>
+          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${isOverdue ? "bg-destructive text-destructive-foreground" : "bg-muted text-foreground"}`}>{urgency}</span>
         ) : null}
       </div>
 
@@ -109,7 +109,7 @@ export function RotatingUpcomingPaymentsCard({
         <p className="text-base font-bold">{active.title}</p>
         <p className="text-xs text-muted-foreground">{formatDueLabel(active)}</p>
         {active.amount ? (
-          <p className={`mt-1 text-xl font-bold ${isOverdue ? "text-destructive" : ""}`}>{formatCurrency(active.amount, active.currency || "DOP")}</p>
+          <p className={`mt-1 text-lg font-bold ${isOverdue ? "text-destructive" : ""}`}>{formatCurrency(active.amount, active.currency || "DOP")}</p>
         ) : null}
         <p className={`text-xs ${isOverdue ? "font-semibold text-destructive" : "text-muted-foreground"}`}>{formatDetail(active)}</p>
       </div>

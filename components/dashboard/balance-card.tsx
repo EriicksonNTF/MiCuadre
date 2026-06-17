@@ -40,7 +40,7 @@ export function BalanceCard() {
           </button>
         </div>
 
-        <h2 className="relative mt-6 overflow-hidden text-ellipsis text-[clamp(1.75rem,8vw,2.75rem)] font-black leading-none tracking-tight text-foreground">
+        <h2 className="relative mt-6 overflow-hidden text-ellipsis text-[clamp(1.75rem,6vw,2.25rem)] font-black leading-none tracking-tight text-foreground">
           {isLoading ? (
             <span className="inline-block h-11 w-52 max-w-full animate-pulse rounded-2xl bg-muted" />
           ) : (
@@ -59,7 +59,7 @@ export function BalanceCard() {
           <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="flex w-full items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">Deuda tarjetas</p>
-            <p className="text-xl font-bold text-foreground tabular-nums">
+            <p className="text-lg font-bold text-foreground tabular-nums">
               {showBalance ? formatCurrency(totalCreditDebt, "DOP") : hiddenText}
             </p>
           </div>

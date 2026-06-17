@@ -18,7 +18,7 @@ export function NotificationBadge({ label, tone = "neutral" }: NotificationBadge
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-1 text-[0.625rem] font-semibold uppercase tracking-wide",
+        "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase tracking-wide",
         toneStyles[tone]
       )}
     >

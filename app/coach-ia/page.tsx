@@ -374,7 +374,7 @@ export default function CoachIAPage() {
             </div>
           </div>
           <div className="mt-4">
-            <p className="mb-2 text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Finanzas generales</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Finanzas generales</p>
             <div className="flex flex-wrap gap-2">
               {GENERAL_PROMPTS.map((prompt) => (
                 <button type="button"
@@ -388,8 +388,8 @@ export default function CoachIAPage() {
               ))}
             </div>
           </div>
-          <div className="mt-3">
-            <p className="mb-2 text-[0.625rem] font-semibold uppercase tracking-wide text-muted-foreground">Tarjetas de credito</p>
+          <div className="mt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tarjetas de credito</p>
             <div className="flex flex-wrap gap-2">
               {CARD_PROMPTS.map((prompt) => (
                 <button type="button"

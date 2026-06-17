@@ -458,7 +458,7 @@ if (!draggedId) return
             </div>
             <div className="mobile-card p-4">
               <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
-              <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-[clamp(1.75rem,8vw,2.75rem)] font-extrabold leading-none min-w-[100px]" />
+              <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-[clamp(1.5rem,6vw,2.25rem)] font-extrabold leading-none tabular-nums min-w-[100px]" />
             </div>
           </div>
         </BaseModalForm>

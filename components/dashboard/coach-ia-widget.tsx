@@ -307,7 +307,7 @@ export function CoachIAWidget() {
                   )}
 
                   {message.disclaimer && (
-                    <p className="mt-1.5 text-[0.625rem] text-muted-foreground">{message.disclaimer}</p>
+                    <p className="mt-1.5 text-xs text-muted-foreground">{message.disclaimer}</p>
                   )}
                 </div>
               </div>

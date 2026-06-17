@@ -41,11 +41,11 @@ export function CalendarEventCard({ event, onAction }: { event: FinancialCalenda
           <p className="text-xs text-muted-foreground">{relativeLabel(event.due_date)}</p>
           <p className="text-sm font-semibold">{event.title}</p>
           {event.detail && <p className="text-xs text-muted-foreground">{event.detail}</p>}
-          {event.amount ? <p className="mt-1 text-xl font-bold">{formatCurrency(event.amount, event.currency || "DOP")}</p> : null}
+          {event.amount ? <p className="mt-1 text-lg font-bold">{formatCurrency(event.amount, event.currency || "DOP")}</p> : null}
           <p className="text-[0.6875rem] text-muted-foreground">{typeLabel(event)}</p>
         </div>
         {urgency ? (
-          <span className={`rounded-full px-2 py-1 text-[0.625rem] font-semibold ${event.status === "overdue" ? "bg-destructive/15 text-destructive" : "bg-muted text-foreground"}`}>
+          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${event.status === "overdue" ? "bg-destructive/15 text-destructive" : "bg-muted text-foreground"}`}>
             {urgency}
           </span>
         ) : null}

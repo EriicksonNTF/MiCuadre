@@ -165,7 +165,7 @@ export function ToastContainer() {
                   })()}
                 </div>
                 <div className="flex-1 min-w-0 pr-2">
-                  <div className="mb-1 inline-flex rounded-full bg-background/70 px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-muted-foreground ring-1 ring-border/60">
+                  <div className="mb-1 inline-flex rounded-full bg-background/70 px-2 py-0.5 text-xs font-semibold tracking-wide text-muted-foreground ring-1 ring-border/60">
                     {accent.badge}
                   </div>
                   <p className="text-[0.875rem] font-semibold leading-tight text-foreground tracking-tight">

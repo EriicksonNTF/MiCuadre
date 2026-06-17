@@ -29,7 +29,7 @@ export function BudgetCard({ budget, onEdit }: { budget: BudgetWithUsage; onEdit
           <p className="text-xs text-muted-foreground">{budget.category_name}</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn("rounded-full px-2 py-1 text-[0.625rem] font-semibold", statusStyle[budget.status])}>
+          <span className={cn("rounded-full px-2 py-1 text-xs font-semibold", statusStyle[budget.status])}>
             {statusCopy[budget.status]}
           </span>
           <button type="button" onClick={onEdit} className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground" aria-label="Editar presupuesto">
@@ -37,7 +37,7 @@ export function BudgetCard({ budget, onEdit }: { budget: BudgetWithUsage; onEdit
           </button>
         </div>
       </div>
-      <p className="mt-3 text-xl font-bold tabular-nums">
+      <p className="mt-3 text-lg font-bold tabular-nums">
         {formatCurrency(budget.spent, budget.currency)} / {formatCurrency(budget.amount, budget.currency)}
       </p>
       <p className="mt-1 text-sm font-semibold text-muted-foreground">Restante: {formatCurrency(Math.max(0, budget.remaining), budget.currency)}</p>

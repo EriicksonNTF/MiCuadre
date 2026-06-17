@@ -12,6 +12,20 @@ const dirsToRestore = [
   { src: "app/api", backup: ".api-backup" },
 ]
 
+function copyRecursiveSync(src, dest) {
+  if (!fs.existsSync(src)) return
+  if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true })
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name)
+    const destPath = path.join(dest, entry.name)
+    if (entry.isDirectory()) {
+      copyRecursiveSync(srcPath, destPath)
+    } else {
+      fs.copyFileSync(srcPath, destPath)
+    }
+  }
+}
+
 function restore(dir) {
   const srcPath = path.join(root, dir.src)
   const backupPath = path.join(root, dir.backup)
@@ -27,7 +41,7 @@ function restore(dir) {
   }
 
   console.log(`[postbuild] Restoring ${dir.backup} → ${dir.src}`)
-  fs.renameSync(backupPath, srcPath)
+  copyRecursiveSync(backupPath, srcPath)
 }
 
 console.log("[postbuild] Restoring server-only files...")

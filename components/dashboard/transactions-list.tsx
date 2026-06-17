@@ -169,7 +169,7 @@ export function TransactionsList() {
 
                     <p
                       className={cn(
-                        "shrink-0 text-right text-xl font-bold",
+                        "shrink-0 text-right text-lg font-bold",
                         isIncome
                           ? "text-emerald-600 dark:text-emerald-400"
                           : accountType === "credit"

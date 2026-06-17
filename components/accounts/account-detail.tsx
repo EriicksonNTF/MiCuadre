@@ -657,7 +657,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   id="account-balance"
                   value={editForm.balance}
                   onValueChange={(value) => setEditForm({ ...editForm, balance: value })}
-                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                  className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none tabular-nums"
                 />
               </div>
               {editForm.type === "credit" && (
@@ -669,7 +669,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                         id="account-credit-limit"
                         value={editForm.credit_limit}
                         onValueChange={(value) => setEditForm({ ...editForm, credit_limit: value, credit_limit_dop: value })}
-                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none tabular-nums"
                       />
                     </div>}
                     {editForm.currency !== "DOP" && <div>
@@ -678,7 +678,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                         id="account-credit-limit-usd"
                         value={editForm.credit_limit_usd}
                         onValueChange={(value) => setEditForm({ ...editForm, credit_limit_usd: value })}
-                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                        className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none tabular-nums"
                       />
                     </div>}
                   </div>
@@ -866,7 +866,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <div className="rounded-[1.45rem] border border-white/15 bg-slate-950/60 p-4 text-sm text-white shadow-[0_22px_60px_-32px_rgba(0,0,0,0.85)] backdrop-blur-md">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold tracking-tight text-white">Resumen de tarjeta</p>
-                  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[0.625rem] font-bold uppercase tracking-wide text-white/70">
+                  <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white/70">
                     Corte y pago
                   </span>
                 </div>
@@ -1144,14 +1144,14 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       </div>
                       <p className="mt-0.5 text-xs text-muted-foreground">{tx.date}</p>
                       {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
-                        <p className="mt-0.5 text-[0.625rem] font-medium text-red-600 dark:text-red-400">
+                        <p className="mt-0.5 text-xs font-medium text-red-600 dark:text-red-400">
                           Error: {tx.metadata.last_error}
                         </p>
                       )}
                     </div>
                     <p
                       className={cn(
-                        "shrink-0 text-xl font-bold tabular-nums",
+                        "shrink-0 text-lg font-bold tabular-nums",
                         tx.type === "income"
                           ? "text-emerald-600 dark:text-emerald-400"
                           : "text-foreground"
@@ -1266,7 +1266,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       setPaymentKind("custom")
                     }}
                     placeholder="0"
-                    className="bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[80px]"
+                    className="bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[80px] tabular-nums"
                     wrapperClassName="flex-1"
                   />
                 </div>

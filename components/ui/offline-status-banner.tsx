@@ -157,7 +157,7 @@ export function OfflineStatusBanner() {
         <button type="button"
           onClick={handleSyncClick}
           className={cn(
-            "ml-2 shrink-0 rounded-md px-2 py-0.5 text-[0.625rem] uppercase tracking-wide font-extrabold shadow-xs transition active:scale-95",
+            "ml-2 shrink-0 rounded-md px-2 py-0.5 text-xs uppercase tracking-wide font-extrabold shadow-xs transition active:scale-95",
             failedCount > 0
               ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
               : "bg-primary text-primary-foreground hover:opacity-90"

@@ -40,15 +40,15 @@ export function PlanningProLockScreen() {
           <div className="mt-5 grid grid-cols-3 gap-2">
             <div className="rounded-2xl bg-background/10 p-3">
               <PiggyBank className="h-4 w-4 text-emerald-200" />
-              <p className="mt-2 text-[0.625rem] font-bold uppercase tracking-wide text-background/60">Presupuestos</p>
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-background/60">Presupuestos</p>
             </div>
             <div className="rounded-2xl bg-background/10 p-3">
               <CalendarDays className="h-4 w-4 text-sky-200" />
-              <p className="mt-2 text-[0.625rem] font-bold uppercase tracking-wide text-background/60">Calendario</p>
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-background/60">Calendario</p>
             </div>
             <div className="rounded-2xl bg-background/10 p-3">
               <CreditCard className="h-4 w-4 text-amber-200" />
-              <p className="mt-2 text-[0.625rem] font-bold uppercase tracking-wide text-background/60">Deudas</p>
+              <p className="mt-2 text-xs font-bold uppercase tracking-wide text-background/60">Deudas</p>
             </div>
           </div>
 
