@@ -3,7 +3,7 @@
   "appName": "MiCuadre",
   "webDir": "out",
   "bundledWebRuntime": false,
-  "scheme": "micuadre"
+  "scheme": "micuadre",
   "server": {
     "url": "https://micuadre-five.vercel.app",
     "allowNavigation": [
