@@ -2,6 +2,7 @@
 
 import { memo, useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
+import { triggerHaptic } from "@/lib/haptics"
 
 type SelectorItem = {
   id: string
@@ -34,9 +35,7 @@ export const AccountCarouselSelector = memo(function AccountCarouselSelector({
 
   const handleSelect = (id: string) => {
     onSelect(id)
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-      navigator.vibrate(8)
-    }
+    triggerHaptic("light")
   }
 
   if (items.length === 0) {
