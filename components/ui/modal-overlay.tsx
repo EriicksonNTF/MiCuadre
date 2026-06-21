@@ -40,7 +40,7 @@ export function ModalOverlay({
   const content = (
     <div
       className={cn(
-        "fixed inset-0 z-[--z-overlay] bg-foreground/18 backdrop-blur-[6px] animate-in fade-in duration-200 dark:bg-black/45",
+        "fixed inset-0 z-[--z-overlay] bg-foreground/40 backdrop-blur-[6px] animate-in fade-in duration-200 dark:bg-black/50",
         className,
       )}
       onClick={blocking ? undefined : onClose}

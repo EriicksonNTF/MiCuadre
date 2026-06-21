@@ -58,11 +58,15 @@ export function RotatingUpcomingPaymentsCard({
     return filtered.sort((a, b) => a.due_date.localeCompare(b.due_date))
   }, [events])
 
+  // React 19: Use useEffect for prev/current comparison instead of render-phase setState
+  useEffect(() => {
+    if (sortedEvents.length !== prevEventsLen.current) {
+      prevEventsLen.current = sortedEvents.length
+      setActiveIndex(0)
+    }
+  }, [sortedEvents.length])
+
   const prevEventsLen = useRef(sortedEvents.length)
-  if (sortedEvents.length !== prevEventsLen.current) {
-    prevEventsLen.current = sortedEvents.length
-    setActiveIndex(0)
-  }
 
   useEffect(() => {
     if (sortedEvents.length <= 1) return

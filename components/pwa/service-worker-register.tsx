@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { showToast } from "@/components/toast/smart-toast"
+import { syncPendingOperations } from "@/lib/offline/sync-engine"
 
 const SW_URL = "/sw.js"
 
@@ -30,6 +31,14 @@ export function ServiceWorkerRegister() {
       window.location.reload()
     }
 
+    // Handle messages from Service Worker (e.g., background sync trigger)
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "BACKGROUND_SYNC_TRIGGER") {
+        syncPendingOperations()
+      }
+    }
+
+    navigator.serviceWorker.addEventListener("message", onMessage)
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange)
 
     navigator.serviceWorker
@@ -62,6 +71,7 @@ export function ServiceWorkerRegister() {
       .catch(() => null)
 
     return () => {
+      navigator.serviceWorker.removeEventListener("message", onMessage)
       navigator.serviceWorker.removeEventListener(
         "controllerchange",
         onControllerChange

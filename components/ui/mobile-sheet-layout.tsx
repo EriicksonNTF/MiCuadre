@@ -19,7 +19,7 @@ export function MobileSheetLayout({ title, children, footer, onClose }: MobileSh
   useModalA11y({ containerRef, onClose, enabled: true, trapFocus: true })
 
   return (
-    <ModalOverlay open={true} onClose={onClose}>
+    <ModalOverlay open={true} onClose={onClose} className="bg-foreground/80 dark:bg-black/80">
       <div data-app-modal="true" className="flex min-h-full items-end">
       <section
         ref={containerRef}

@@ -20,7 +20,7 @@ export function MobileFullscreenForm({
 }) {
   const titleId = React.useId()
   const containerRef = React.useRef<HTMLDivElement | null>(null)
-  useModalA11y({ containerRef, onClose, enabled: true, trapFocus: false })
+  useModalA11y({ containerRef, onClose, enabled: true, trapFocus: true })
 
   React.useEffect(() => {
     document.body.classList.add("modal-open", "mobile-form-open")

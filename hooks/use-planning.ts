@@ -19,14 +19,24 @@ import { getAuthenticatedUser } from "@/lib/supabase/user"
 
 const supabase = createClient()
 
+// React 19: Cached month range to avoid multiple new Date() calls within same tick
+// Since these functions are called in async context, a simple module-level cache works
+let monthRangeCache: { from: string; to: string } | null = null
+let monthRangeCacheMonth: string | null = null
+
 function monthRange() {
   const now = new Date()
+  const monthKey = `${now.getFullYear()}-${now.getMonth()}`
+  if (monthRangeCache && monthRangeCacheMonth === monthKey) return monthRangeCache
+
   const from = new Date(now.getFullYear(), now.getMonth(), 1)
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  return {
+  monthRangeCache = {
     from: getLocalDateString(from),
     to: getLocalDateString(to),
   }
+  monthRangeCacheMonth = monthKey
+  return monthRangeCache
 }
 
 function normalizeAmount(value: unknown) {
@@ -247,15 +257,39 @@ export function useFinancialCalendar() {
 
 export function useFinancialCalendarSummary() {
   const { data: events = [], isLoading } = useFinancialCalendar()
-  const now = new Date()
-  const weekEnd = getLocalDateString(plusDays(now, 7))
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
-  const next7Days = events.filter((event) => event.due_date <= weekEnd && event.due_date >= getLocalDateString(now) && event.status !== "paid")
-  const next7Amount = next7Days.reduce((sum, event) => sum + Number(event.amount || 0), 0)
-  const monthCommitted = events
-    .filter((event) => event.due_date.startsWith(thisMonth) && event.status !== "paid")
-    .reduce((sum, event) => sum + Number(event.amount || 0), 0)
+  // React 19: Use useMemo to avoid new Date() on every render
+  // This prevents unnecessary recalculations when hook consumers re-render
+  const dateKey = useMemo(() => {
+    const now = new Date()
+    return {
+      today: getLocalDateString(now),
+      weekEnd: getLocalDateString(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)),
+      thisMonth: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+    }
+  }, [])
+
+  const next7Days = useMemo(() =>
+    events.filter((event) =>
+      event.due_date <= dateKey.weekEnd &&
+      event.due_date >= dateKey.today &&
+      event.status !== "paid"
+    ),
+    [events, dateKey]
+  )
+
+  const next7Amount = useMemo(() =>
+    next7Days.reduce((sum, event) => sum + Number(event.amount || 0), 0),
+    [next7Days]
+  )
+
+  const monthCommitted = useMemo(() =>
+    events
+      .filter((event) => event.due_date.startsWith(dateKey.thisMonth) && event.status !== "paid")
+      .reduce((sum, event) => sum + Number(event.amount || 0), 0),
+    [events, dateKey]
+  )
+
   const nextEvent = next7Days[0] || events[0] || null
 
   return {

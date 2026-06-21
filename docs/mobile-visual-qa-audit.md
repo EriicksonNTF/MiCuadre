@@ -302,7 +302,7 @@ Por limitaciones del auditor automático, estos formularios necesitan inspecció
 ## Problemas de idioma/texto
 
 No se detectaron automáticamente:
-- Mojibake (caracteres rotos como `dÃ³nde`, `categorÃ­as`)
+- Mojibake (caracteres rotos como `dónde`, `categorías`)
 - Texto en inglés en UI en español
 - Referencias a "Goals"/"Metas" inconsistentes
 - Etiquetas duplicadas

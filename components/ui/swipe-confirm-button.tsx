@@ -111,22 +111,29 @@ export function SwipeConfirmButton({
   }
 
   const prevLoading = useRef(loading)
-  if (prevLoading.current !== loading) {
-    prevLoading.current = loading
-    if (!loading && !isConfirmed) paint(0)
-  }
-
   const prevResetKey = useRef(resetKey)
-  if (resetKey !== prevResetKey.current) {
-    prevResetKey.current = resetKey
-    reset()
-  }
 
   useEffect(() => {
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
     }
   }, [])
+
+  // React 19: Move prev/current comparison logic to useEffect
+  // to avoid reading refs and calling setState during render
+  useEffect(() => {
+    if (prevLoading.current !== loading) {
+      prevLoading.current = loading
+      if (!loading && !isConfirmed) paint(0)
+    }
+  }, [loading, isConfirmed])
+
+  useEffect(() => {
+    if (resetKey !== prevResetKey.current) {
+      prevResetKey.current = resetKey
+      reset()
+    }
+  }, [resetKey])
 
   const processing = Boolean(loading || isConfirmed)
 

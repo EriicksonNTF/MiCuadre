@@ -59,7 +59,7 @@ function DesktopModal({
   useModalA11y({ containerRef, onClose, enabled: true, trapFocus: true })
 
   return (
-    <ModalOverlay open={true} onClose={onClose}>
+    <ModalOverlay open={true} onClose={onClose} className="bg-foreground/80 dark:bg-black/80">
       <div
         ref={containerRef}
         data-app-modal="true"

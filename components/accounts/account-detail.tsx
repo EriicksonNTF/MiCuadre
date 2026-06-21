@@ -508,13 +508,16 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     })
   }, [account, accountId, rawAccounts, searchParams])
 
-  const [prevEditDeps, setPrevEditDeps] = useState("")
-  const currentEditDeps = `${account?.id}-${accountId}-${searchParams}`
-  if (currentEditDeps !== prevEditDeps && searchParams.get("edit") === "1") {
-    setPrevEditDeps(currentEditDeps)
-    setShowEditModal(true)
-  }
+  // React 19: Use useEffect for prev/current comparison instead of render-phase setState
+  useEffect(() => {
+    const currentEditDeps = `${account?.id}-${accountId}-${searchParams}`
+    if (currentEditDeps !== prevEditDeps.current && searchParams.get("edit") === "1") {
+      prevEditDeps.current = currentEditDeps
+      setShowEditModal(true)
+    }
+  }, [searchParams, accountId, account?.id])
 
+  const prevEditDeps = useRef("")
   const parsedAmount = parseFloat(paymentAmount.replace(/[^0-9.]/g, "")) || 0
   const sourceAccount = accounts.find((a) => a.id === paymentSource)
   const currentDebtByCurrency = paymentCurrency === "DOP" ? Number(account?.currentDebtDop || 0) : Number(account?.currentDebtUsd || 0)
@@ -548,15 +551,19 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const totalDebitPay = paymentCalcs?.totalDebit || sourceDebitAmount
   const validRatePay = !conversionAppliesPay || (Number.isFinite(parsedRate) && parsedRate > 0)
 
-  const prevHasUsdOnCard = useRef(hasUsdOnCard)
-  if (prevHasUsdOnCard.current !== hasUsdOnCard) {
-    prevHasUsdOnCard.current = hasUsdOnCard
-    if (!hasUsdOnCard && paymentCurrency === "USD") {
-      setPaymentCurrency("DOP")
-      setPaymentSource("")
-      setPaymentAmount("")
+  // React 19: Use useEffect for prev/current comparison instead of render-phase setState
+  useEffect(() => {
+    if (prevHasUsdOnCard.current !== hasUsdOnCard) {
+      prevHasUsdOnCard.current = hasUsdOnCard
+      if (!hasUsdOnCard && paymentCurrency === "USD") {
+        setPaymentCurrency("DOP")
+        setPaymentSource("")
+        setPaymentAmount("")
+      }
     }
-  }
+  }, [hasUsdOnCard, paymentCurrency])
+
+  const prevHasUsdOnCard = useRef(hasUsdOnCard)
 
   if (!account) {
     return (
@@ -584,7 +591,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       {showEditModal ? (
         <div className="flex min-h-full flex-col">
           <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-5 py-4 pt-[calc(1rem+env(safe-area-inset-top))]">
-            <button type="button" onClick={closeEditModal} className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <button type="button" onClick={closeEditModal} aria-label="Volver" className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <ChevronLeft className="h-5 w-5" />
             </button>
             <h1 className="text-lg font-bold text-foreground">Editar cuenta</h1>

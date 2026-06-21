@@ -327,7 +327,7 @@ export function DashboardContent() {
       </div>
 
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
-        <ModalOverlay open={true} onClose={closeCreditReminder}>
+        <ModalOverlay open={true} onClose={closeCreditReminder} className="bg-foreground/80 dark:bg-black/80">
           <div className="flex min-h-full items-center justify-center p-4">
             <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-300 ease-[var(--ease-sheet-ios)] rounded-[1.6rem] border border-border/70 bg-card/96 p-5 shadow-[var(--shadow-float)] backdrop-blur-2xl">
               <p className="text-sm font-semibold text-foreground">{creditWarnings[activeWarningIndex].title}</p>

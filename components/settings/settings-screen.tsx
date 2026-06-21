@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useReducer } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
@@ -31,7 +31,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
 import { isPasskeyEnabled, verifyPasskeyUnlock } from "@/lib/passkey"
 import { getCurrencySymbol, setPreferredCurrency } from "@/lib/data"
-import type { Theme, Currency } from "@/lib/types/database"
+import type { Theme, Currency, Profile } from "@/lib/types/database"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
 import { PushNotificationCard } from "@/components/pwa/push-notification-card"
@@ -71,6 +71,34 @@ const PLAN_STATUS_LABELS: Record<string, string> = {
   incomplete: "Pendiente",
 }
 
+// React 19: useReducer for profile-synced settings to avoid multiple setState calls in effect
+type SettingsSyncState = {
+  primaryCurrency: Currency
+  currentLanguage: "es" | "en"
+  isLoadingTheme: boolean
+}
+
+function settingsSyncReducer(state: SettingsSyncState, action: { type: string; payload?: Partial<SettingsSyncState> }): SettingsSyncState {
+  switch (action.type) {
+    case "SYNC_FROM_PROFILE":
+      return action.payload ? { ...state, ...action.payload } : state
+    case "SET_CURRENCY":
+      return { ...state, primaryCurrency: action.payload?.primaryCurrency ?? state.primaryCurrency }
+    case "SET_LANGUAGE":
+      return { ...state, currentLanguage: action.payload?.currentLanguage ?? state.currentLanguage }
+    default:
+      return state
+  }
+}
+
+function getInitialSettingsSyncState(profile: Profile | null | undefined): SettingsSyncState {
+  return {
+    primaryCurrency: (profile?.preferred_currency as Currency) || "DOP",
+    currentLanguage: (profile?.language as "es" | "en") || "es",
+    isLoadingTheme: !profile, // true until first sync
+  }
+}
+
 export function SettingsScreen() {
   const router = useRouter()
   const { theme, setTheme, resolvedTheme } = useTheme()
@@ -80,10 +108,15 @@ export function SettingsScreen() {
 
   const [showDebugQa, setShowDebugQa] = useState(false)
   const [authEmail, setAuthEmail] = useState<string | null>(null)
-  const [primaryCurrency, setPrimaryCurrency] = useState<Currency>("DOP")
-  const [currentLanguage, setCurrentLanguage] = useState<"es" | "en">("es")
+
+  // React 19: useReducer for settings synced from profile (avoids 4 setState calls in useEffect)
+  const [settingsSync, dispatchSettingsSync] = useReducer(
+    settingsSyncReducer,
+    profile,
+    getInitialSettingsSyncState
+  )
+
   const [currentTheme, setCurrentTheme] = useState<Theme>(theme)
-  const [isLoadingTheme, setIsLoadingTheme] = useState(true)
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false)
   const [showLanguagePicker, setShowLanguagePicker] = useState(false)
@@ -106,21 +139,22 @@ export function SettingsScreen() {
     })
   }, [])
 
+  // React 19: Single dispatch instead of 4 setState calls
   useEffect(() => {
     if (profile) {
-      if (profile.preferred_currency) {
-        setPrimaryCurrency(profile.preferred_currency)
-        setPreferredCurrency(profile.preferred_currency)
-      }
+      dispatchSettingsSync({
+        type: "SYNC_FROM_PROFILE",
+        payload: {
+          primaryCurrency: (profile.preferred_currency as Currency) || "DOP",
+          currentLanguage: (profile.language as "es" | "en") || "es",
+          isLoadingTheme: false,
+        },
+      })
       if (profile.theme) {
         setCurrentTheme(profile.theme)
       }
-      if (profile.language) {
-        setCurrentLanguage(profile.language === "en" ? "en" : "es")
-      }
-      setIsLoadingTheme(false)
     }
-    }, [profile])
+  }, [profile])
 
   const handleThemeChange = async (newTheme: Theme) => {
     setCurrentTheme(newTheme)
@@ -133,8 +167,7 @@ export function SettingsScreen() {
   }
 
   const handleCurrencyChange = async (newCurrency: Currency) => {
-    setPrimaryCurrency(newCurrency)
-    setPreferredCurrency(newCurrency)
+    dispatchSettingsSync({ type: "SET_CURRENCY", payload: { primaryCurrency: newCurrency } })
     try {
       await updateProfile({ preferred_currency: newCurrency })
     } catch (error) {
@@ -143,7 +176,7 @@ export function SettingsScreen() {
   }
 
   const handleLanguageChange = async (newLanguage: "es" | "en") => {
-    setCurrentLanguage(newLanguage)
+    dispatchSettingsSync({ type: "SET_LANGUAGE", payload: { currentLanguage: newLanguage } })
     try {
       await updateProfile({ language: newLanguage })
     } catch (error) {
@@ -163,6 +196,11 @@ export function SettingsScreen() {
     | "canceled"
     | "incomplete"
   const readablePlanStatus = PLAN_STATUS_LABELS[billingPlanStatus] || "Activo"
+
+  // Derived values from settingsSync reducer state
+  const preferredCurrency = settingsSync.primaryCurrency
+  const currentLanguage = settingsSync.currentLanguage
+  const isLoadingTheme = settingsSync.isLoadingTheme
 
   const openBillingPortal = async () => {
     setIsOpeningPortal(true)
@@ -363,7 +401,7 @@ export function SettingsScreen() {
               icon={DollarSign}
               title="Moneda principal"
               description={
-                primaryCurrency === "DOP" ? `Peso Dominicano (${getCurrencySymbol("DOP")})` : `Dólar (${getCurrencySymbol("USD")})`
+                preferredCurrency === "DOP" ? `Peso Dominicano (${getCurrencySymbol("DOP")})` : `Dólar (${getCurrencySymbol("USD")})`
               }
               onClick={() => setShowCurrencyPicker(true)}
             />
@@ -537,13 +575,13 @@ export function SettingsScreen() {
                 type="button"
                 key={option.value}
                 role="radio"
-                aria-checked={primaryCurrency === option.value}
+                aria-checked={preferredCurrency === option.value}
                 onClick={() => {
                   handleCurrencyChange(option.value)
                   setShowCurrencyPicker(false)
                 }}
                 className={
-                  primaryCurrency === option.value
+                  preferredCurrency === option.value
                     ? "flex w-full items-center justify-between rounded-2xl bg-accent p-4 text-accent-foreground"
                     : "flex w-full items-center justify-between rounded-2xl bg-muted p-4 text-foreground"
                 }

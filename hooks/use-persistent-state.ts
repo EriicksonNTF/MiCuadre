@@ -1,20 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 
 export function usePersistentState<T>(key: string, defaultValue: T) {
-  const [value, setValue] = useState<T>(defaultValue)
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
+  // React 19: Lazy initializer - reads localStorage only once on mount
+  // Avoids flash of default value followed by re-render from useEffect
+  const [value, setValue] = useState<T>(() => {
+    if (typeof window === "undefined") return defaultValue
     const raw = window.localStorage.getItem(key)
-    if (!raw) return
+    if (!raw) return defaultValue
     try {
-      setValue(JSON.parse(raw) as T)
+      return JSON.parse(raw) as T
     } catch {
-      setValue(defaultValue)
+      return defaultValue
     }
-  }, [defaultValue, key])
+  })
 
   useEffect(() => {
     if (typeof window === "undefined") return

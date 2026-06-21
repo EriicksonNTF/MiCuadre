@@ -355,6 +355,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         {onBack && (
           <button type="button"
             onClick={onBack}
+            aria-label="Volver"
             className="flex h-11 w-11 items-center justify-center rounded-full bg-card ring-1 ring-border transition-colors hover:bg-muted"
           >
             <ChevronLeft className="h-5 w-5 text-foreground" />
@@ -683,7 +684,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
 
       {showCategoryModal && (
-        <ModalOverlay open={true} blocking>
+        <ModalOverlay open={true} blocking className="bg-foreground/80 dark:bg-black/80">
           <div className="flex min-h-full items-center justify-center px-6 py-8">
             <div className="w-full max-w-sm rounded-2xl bg-card p-6 shadow-2xl ring-1 ring-border">
             <h2 className="mb-4 text-lg font-extrabold text-foreground">Nueva categoría</h2>

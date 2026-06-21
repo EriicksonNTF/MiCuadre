@@ -606,10 +606,14 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<'div'> & {
   showIcon?: boolean
 }) {
-  // Random width between 50 to 90%.
+  // React 19: Use useId for stable, deterministic width instead of Math.random()
+  // This avoids SSR/CSR hydration mismatch
+  const id = React.useId()
+  // Generate deterministic width from id hash (50-90%)
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  }, [])
+    const hash = Array.from(id).reduce((acc, char) => acc + char.charCodeAt(0), 0)
+    return `${(hash % 41) + 50}%`
+  }, [id])
 
   return (
     <div

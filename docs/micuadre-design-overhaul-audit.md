@@ -41,7 +41,7 @@ En esta sesion, Playwright tambien requirio ejecucion fuera del sandbox porque l
 ### Alta prioridad
 
 - Pay card empieza con mucho espacio muerto cuando solo muestra tarjetas elegibles. La pantalla se siente incompleta y empuja decisiones importantes fuera del contexto.
-- Hay mojibake visible en codigo y textos (`PlanificaciÃ³n`, `prÃ³ximo`, `dÃ­as`, `suscripciÃ³n`). Esto impacta confianza, calidad percibida y consistencia de idioma.
+- Hay mojibake visible en codigo y textos (`Planificación`, `próximo`, `días`, `suscripción`). Esto impacta confianza, calidad percibida y consistencia de idioma.
 - Algunos flujos usan `BaseModalForm`, otros `MobileSheetLayout` y otros layouts manuales. El resultado es parecido, pero no completamente uniforme para formularios largos.
 - El servidor dev/captura puede quedarse esperando indefinidamente si el script usa `networkidle`, lo que dificulta QA repetible.
 

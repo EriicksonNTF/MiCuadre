@@ -220,3 +220,27 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   event.waitUntil(clients.openWindow(event.notification.data));
 });
+
+// Background Sync API — retry pending offline operations when connectivity is restored
+// Registered by lib/offline/sync-engine.ts::registerBackgroundSync()
+self.addEventListener("sync", (event) => {
+  if (event.tag === "micuadre-sync") {
+    event.waitUntil(
+      (async () => {
+        // Import sync engine dynamically to avoid circular deps in SW context
+        // The SW can't import app modules, so we use a lightweight inline approach:
+        // Post a message to all clients to trigger sync, then they call syncPendingOperations()
+        const allClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
+        if (allClients.length > 0) {
+          // Client is open — let it handle sync via the existing online/visibility listeners
+          allClients.forEach((client) => {
+            client.postMessage({ type: "BACKGROUND_SYNC_TRIGGER" });
+          });
+        } else {
+          // No client open — the sync will happen on next page load via initSyncEngine
+          console.log("[sw] Background sync triggered but no active client. Sync will run on next visit.");
+        }
+      })()
+    );
+  }
+});

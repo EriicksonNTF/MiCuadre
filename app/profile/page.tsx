@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useReducer } from "react"
 import Link from "next/link"
 import { ChevronLeft, User, Camera, Save, X, Edit3 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
@@ -10,6 +10,7 @@ import { useTheme } from "@/components/providers/theme-provider"
 import { Button } from "@/components/ui/button"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { useToast } from "@/hooks/use-toast"
+import type { Profile } from "@/lib/types/database"
 
 const supabase = createClient()
 
@@ -22,21 +23,65 @@ function formatDate(value?: string | null) {
   })
 }
 
+// React 19: useReducer for profile form state to avoid 7 separate setState calls
+// in a single useEffect (cascading re-renders)
+type ProfileFormState = {
+  name: string
+  username: string
+  phone: string
+  preferredCurrency: "DOP" | "USD"
+  theme: "light" | "dark" | "system"
+  language: "es" | "en"
+}
+
+function profileFormReducer(state: ProfileFormState, action: { type: string; payload?: ProfileFormState }): ProfileFormState {
+  switch (action.type) {
+    case "UPDATE_FROM_PROFILE":
+      return action.payload ?? state
+    case "RESET":
+      return action.payload ?? state
+    default:
+      return state
+  }
+}
+
+function getInitialFormState(profile: Profile | null | undefined): ProfileFormState {
+  if (!profile) {
+    return {
+      name: "",
+      username: "",
+      phone: "",
+      preferredCurrency: "DOP",
+      theme: "system",
+      language: "es",
+    }
+  }
+  return {
+    name: profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "",
+    username: String((profile as unknown as Record<string, unknown>).username || ""),
+    phone: String((profile as unknown as Record<string, unknown>).phone || ""),
+    preferredCurrency: (profile.preferred_currency as "DOP" | "USD") || "DOP",
+    theme: (profile.theme as "light" | "dark" | "system") || "system",
+    language: (profile.language as "es" | "en") || "es",
+  }
+}
+
 export default function ProfilePage() {
   const { data: profile, isLoading, mutate } = useProfile()
   const { user, loading: authLoading } = useAuth()
+  const { theme: _, setTheme: setAppTheme } = useTheme()
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const [name, setName] = useState("")
-  const [username, setUsername] = useState("")
-  const [phone, setPhone] = useState("")
-  const [preferredCurrency, setPreferredCurrency] = useState<"DOP" | "USD">("DOP")
-  const { setTheme: setAppTheme } = useTheme()
-  const [theme, setLocalTheme] = useState<"light" | "dark" | "system">("system")
-  const [language, setLanguage] = useState<"es" | "en">("es")
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Use useReducer to manage all profile form fields together
+  const [formState, dispatch] = useReducer(
+    profileFormReducer,
+    profile,
+    getInitialFormState
+  )
 
   const displayName = useMemo(() => {
     if (profile?.full_name) return profile.full_name
@@ -47,40 +92,29 @@ export default function ProfilePage() {
     return formatDate(profile?.created_at ?? user?.created_at)
   }, [profile?.created_at, user?.created_at])
 
+  // Sync form state when profile changes (single dispatch instead of 7 setState calls)
   useEffect(() => {
     if (!profile) return
-    setName(profile.full_name || [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "")
-    setUsername(String((profile as unknown as Record<string, unknown>).username || ""))
-    setPhone(String((profile as unknown as Record<string, unknown>).phone || ""))
-    setPreferredCurrency(profile.preferred_currency || "DOP")
-    setLocalTheme(profile.theme || "system")
-    setLanguage(profile.language || "es")
+    dispatch({ type: "UPDATE_FROM_PROFILE", payload: getInitialFormState(profile) })
   }, [profile])
 
   const handleStartEdit = () => {
-    setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
-    setUsername(String(((profile as unknown as Record<string, unknown>)?.username as string) || ""))
-    setPhone(String(((profile as unknown as Record<string, unknown>)?.phone as string) || ""))
-    setPreferredCurrency(profile?.preferred_currency || "DOP")
-    setLocalTheme(profile?.theme || "system")
-    setLanguage(profile?.language || "es")
+    // Form state already synced via useEffect, just enable editing
     setIsEditing(true)
   }
 
   const handleCancel = () => {
     setIsEditing(false)
-    setName(profile?.full_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "")
-    setUsername(String(((profile as unknown as Record<string, unknown>)?.username as string) || ""))
-    setPhone(String(((profile as unknown as Record<string, unknown>)?.phone as string) || ""))
-    setPreferredCurrency(profile?.preferred_currency || "DOP")
-    setLocalTheme(profile?.theme || "system")
-    setLanguage(profile?.language || "es")
+    // Reset form state from current profile
+    if (profile) {
+      dispatch({ type: "RESET", payload: getInitialFormState(profile) })
+    }
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const fullName = name.trim()
+      const fullName = formState.name.trim()
       const nameParts = fullName.split(" ").filter(Boolean)
       const firstName = nameParts[0] || null
       const lastName = nameParts.slice(1).join(" ") || null
@@ -89,12 +123,12 @@ export default function ProfilePage() {
         full_name: fullName || null,
         first_name: firstName,
         last_name: lastName,
-        username: username.trim() || null,
-        phone: phone.trim() || null,
+        username: formState.username.trim() || null,
+        phone: formState.phone.trim() || null,
         email: user?.email ?? null,
-        preferred_currency: preferredCurrency,
-        theme,
-        language,
+        preferred_currency: formState.preferredCurrency,
+        theme: formState.theme,
+        language: formState.language,
       })
 
       await mutate()
@@ -204,6 +238,7 @@ export default function ProfilePage() {
               <button type="button"
                 onClick={handlePhotoClick}
                 disabled={isUploading}
+                aria-label="Cambiar foto de perfil"
                 className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary shadow-lg disabled:opacity-50"
               >
                 <Camera className="h-4 w-4 text-primary-foreground" />
@@ -224,8 +259,8 @@ export default function ProfilePage() {
               <input
                 id="profile-name"
                 type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={formState.name}
+                onChange={(e) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, name: e.target.value } })}
                 className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"
                 placeholder="Tu nombre"
               />
@@ -238,17 +273,17 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-username" className="mb-1 block text-xs font-medium text-muted-foreground">Usuario</label>
               {isEditing ? (
-                <input id="profile-username" type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="nombre de usuario" />
+                <input id="profile-username" type="text" value={formState.username} onChange={(e) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, username: e.target.value } })} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="nombre de usuario" />
               ) : (
-                <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{username || "-"}</p>
+                <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{formState.username || "-"}</p>
               )}
             </div>
             <div>
               <label htmlFor="profile-phone" className="mb-1 block text-xs font-medium text-muted-foreground">Teléfono</label>
               {isEditing ? (
-                <input id="profile-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="809..." />
+                <input id="profile-phone" type="tel" value={formState.phone} onChange={(e) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, phone: e.target.value } })} className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground" placeholder="809..." />
               ) : (
-                <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{phone || "-"}</p>
+                <p className="rounded-xl bg-muted px-4 py-3 text-foreground">{formState.phone || "-"}</p>
               )}
             </div>
           </div>
@@ -257,7 +292,7 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-currency" className="mb-1 block text-xs font-medium text-muted-foreground">Moneda</label>
               {isEditing ? (
-                <select id="profile-currency" value={preferredCurrency} onChange={(e) => setPreferredCurrency(e.target.value as "DOP" | "USD")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                <select id="profile-currency" value={formState.preferredCurrency} onChange={(e) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, preferredCurrency: e.target.value as "DOP" | "USD" } })} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
                   <option value="DOP">DOP</option>
                   <option value="USD">USD</option>
                 </select>
@@ -268,7 +303,7 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-theme" className="mb-1 block text-xs font-medium text-muted-foreground">Tema</label>
               {isEditing ? (
-                <select id="profile-theme" value={theme} onChange={(e) => { const t = e.target.value as "light" | "dark" | "system"; setLocalTheme(t); setAppTheme(t) }} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                <select id="profile-theme" value={formState.theme} onChange={(e) => { const t = e.target.value as "light" | "dark" | "system"; dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, theme: t } }); setAppTheme(t) }} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
                   <option value="system">Sistema</option>
                   <option value="light">Claro</option>
                   <option value="dark">Oscuro</option>
@@ -280,7 +315,7 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-language" className="mb-1 block text-xs font-medium text-muted-foreground">Idioma</label>
               {isEditing ? (
-                <select id="profile-language" value={language} onChange={(e) => setLanguage(e.target.value as "es" | "en")} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
+                <select id="profile-language" value={formState.language} onChange={(e) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, language: e.target.value as "es" | "en" } })} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
                   <option value="es">Español</option>
                   <option value="en">English</option>
                 </select>

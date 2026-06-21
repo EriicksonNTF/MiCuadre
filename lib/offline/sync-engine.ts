@@ -63,6 +63,20 @@ async function processOutboxItem(item: OutboxItem): Promise<boolean> {
 
     case "update_account": {
       const { id, ...updates } = payload
+      // Conflict resolution: check if server version is newer than the local edit
+      const { data: serverVersion } = await supabase
+        .from("accounts")
+        .select("updated_at")
+        .eq("id", id)
+        .maybeSingle()
+      if (serverVersion?.updated_at && updates.updated_at) {
+        const serverTime = new Date(serverVersion.updated_at).getTime()
+        const localTime = new Date(updates.updated_at).getTime()
+        if (serverTime > localTime) {
+          console.warn(`[sync-engine] Conflict on account ${id}: server is newer (${serverVersion.updated_at} > ${updates.updated_at}). Skipping local update.`)
+          return true // Treat as "synced" — don't retry
+        }
+      }
       const { error } = await supabase
         .from("accounts")
         .update(updates)
@@ -461,6 +475,8 @@ export function initSyncEngine() {
   // Sync on online connectivity event
   window.addEventListener("online", () => {
     syncPendingOperations()
+    // Register background sync when coming back online
+    registerBackgroundSync()
   })
 
   // Sync on visibility change (visibilitychange / page focus)
@@ -477,5 +493,24 @@ export function initSyncEngine() {
   // Sync on startup (non-blocking)
   if (navigator.onLine) {
     setTimeout(syncPendingOperations, 2000)
+  }
+}
+
+/**
+ * Register a Background Sync event with the Service Worker.
+ * This allows the SW to retry pending operations even when the
+ * page is closed, as long as the browser supports it.
+ */
+export async function registerBackgroundSync() {
+  if (typeof navigator === "undefined") return
+  if (!("serviceWorker" in navigator)) return
+  if (!("SyncManager" in window)) return
+
+  try {
+    const registration = await navigator.serviceWorker.ready
+    await (registration as any).sync.register("micuadre-sync")
+  } catch (err) {
+    // Background sync registration is best-effort — not critical
+    console.warn("[sync-engine] Background sync registration failed:", err)
   }
 }

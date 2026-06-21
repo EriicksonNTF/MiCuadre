@@ -5,13 +5,15 @@ import { DEFAULT_PLAN } from "@/lib/entitlements/entitlements"
 import { normalizePlanTier } from "@/lib/billing/plans"
 import type { BillingSubscriptionStatus, PlanTier } from "@/types/billing"
 
+// Statuses to consider when looking up a user's latest subscription.
+// Note: "canceled" is intentionally excluded — canceled subs are handled
+// by isSubscriptionEntitled() which correctly denies them entitlement.
 const BILLING_ACTIVE_STATUSES: BillingSubscriptionStatus[] = [
   "active",
   "trialing",
   "past_due",
   "unpaid",
   "incomplete",
-  "canceled",
 ]
 
 function isSubscriptionEntitled(input: {

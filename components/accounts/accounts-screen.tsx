@@ -70,6 +70,7 @@ export function AccountsScreen() {
   const exceedsFromBalance = Boolean(selectedFromAccount && parsedTransferAmount > Number(selectedFromAccount.balance || 0))
 
 // Initialize orderedAccounts when accounts load, sync when accounts change
+  // React 19: Add orderedAccounts to deps to satisfy exhaustive-deps rule
   useEffect(() => {
     if (accounts.length === 0) return
 
@@ -94,7 +95,7 @@ export function AccountsScreen() {
         return [...merged, ...newAccounts]
       })
     }
-  }, [accounts])
+  }, [accounts, orderedAccounts])
 
   // Use orderedAccounts if available, otherwise fall back to accounts
   const displayAccounts = orderedAccounts ?? accounts
@@ -225,7 +226,8 @@ if (!draggedId) return
   }
 
   return (
-    <MobilePageShell fullBleed className="pb-nav-safe">
+    <>
+    <MobilePageShell fullBleed className={cn("pb-nav-safe", showTransfer && "hidden")}>
       <header className="mx-auto max-w-md px-5 pb-4 pt-[calc(1.5rem+env(safe-area-inset-top))]">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -422,46 +424,9 @@ if (!draggedId) return
               </div>
             </div>
           )
-})}
+        })}
       </div>
         </>
-      )}
-
-      {showTransfer && (
-        <BaseModalForm
-          title="Transferir dinero"
-          onClose={() => {
-            setShowTransfer(false)
-            resetTransferForm()
-          }}
-          footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || fromAccount === toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
-        >
-          <div className="space-y-5">
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
-              <AccountCarouselSelector
-                compact
-                items={accounts.filter((a) => a.type !== "credit").map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
-                selectedId={fromAccount}
-                onSelect={setFromAccount}
-              />
-            </div>
-            <div className="flex justify-center"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"><ChevronDown className="h-4 w-4 text-muted-foreground" /></div></div>
-            <div>
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Hacia</p>
-                <AccountCarouselSelector
-                  compact
-                  items={accounts.filter((a) => a.type !== "credit" && a.id !== fromAccount).map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
-                  selectedId={toAccount}
-                  onSelect={setToAccount}
-                />
-            </div>
-            <div className="mobile-card p-4">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
-              <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-[clamp(1.5rem,6vw,2.25rem)] font-extrabold leading-none tabular-nums min-w-[100px]" />
-            </div>
-          </div>
-        </BaseModalForm>
       )}
 
       <AccountCreationWizard open={showCreateAccount} onOpenChange={setShowCreateAccount} />
@@ -494,5 +459,43 @@ if (!draggedId) return
       </AlertDialog>
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </MobilePageShell>
+
+    {showTransfer && (
+      <BaseModalForm
+        title="Transferir dinero"
+        onClose={() => {
+          setShowTransfer(false)
+          resetTransferForm()
+        }}
+        footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || fromAccount === toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
+      >
+        <div className="space-y-5">
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
+            <AccountCarouselSelector
+              compact
+              items={accounts.filter((a) => a.type !== "credit").map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
+              selectedId={fromAccount}
+              onSelect={setFromAccount}
+            />
+          </div>
+          <div className="flex justify-center"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"><ChevronDown className="h-4 w-4 text-muted-foreground" /></div></div>
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Hacia</p>
+                <AccountCarouselSelector
+                  compact
+                  items={accounts.filter((a) => a.type !== "credit" && a.id !== fromAccount).map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
+                  selectedId={toAccount}
+                  onSelect={setToAccount}
+                />
+          </div>
+          <div className="mobile-card p-4">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
+            <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-[clamp(1.5rem,6vw,2.25rem)] font-extrabold leading-none tabular-nums min-w-[100px]" />
+          </div>
+          </div>
+        </BaseModalForm>
+    )}
+    </>
   )
 }

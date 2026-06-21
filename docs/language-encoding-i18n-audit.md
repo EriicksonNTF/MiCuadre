@@ -15,20 +15,20 @@ Se encontraron textos con mojibake UTF-8/Latin-1 en:
 
 Patrones corregidos:
 
-- `Ã¡`, `Ã©`, `Ã­`, `Ã³`, `Ãº`
-- `Ã±`, `Ã‘`, `Ã¼`
-- `Â¿`, `Â¡`, `Â©`, `Â·`
-- `â€œ`, `â€�`, `â€™`, `â€“`, `â€”`, `â€¦`
-- `â¤ï¸`
+- `á`, `é`, `í`, `ó`, `ú`
+- `ñ`, `Ñ`, `ü`
+- `¿`, `¡`, `©`, `·`
+- `"“`, `”`, `’`, `–`, `—`, `…`
+- `❤️`
 
 Ejemplos corregidos:
 
-- `hacia dÃ³nde` -> `hacia dónde`
-- `grÃ¡ficos` -> `gráficos`
-- `resÃºmenes` -> `resúmenes`
-- `Tarjeta de crÃ©dito` -> `Tarjeta de crédito`
-- `Iniciar sesiÃ³n` -> `Iniciar sesión`
-- `Â¿Cerrar sesiÃ³n?` -> `¿Cerrar sesión?`
+- `hacia dónde` -> `hacia dónde`
+- `gráficos` -> `gráficos`
+- `resúmenes` -> `resúmenes`
+- `Tarjeta de crédito` -> `Tarjeta de crédito`
+- `Iniciar sesión` -> `Iniciar sesión`
+- `¿Cerrar sesión?` -> `¿Cerrar sesión?`
 
 ## Textos en inglés
 

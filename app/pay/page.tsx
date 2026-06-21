@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef, Suspense } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, CalendarDays, CreditCard } from "lucide-react"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { payCreditCard, useAccounts, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
@@ -29,16 +29,33 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100
 }
 
+// Lazy initializer for exchangeRate - reads localStorage only once on mount
+function getInitialExchangeRate(): string {
+  if (typeof window === "undefined") return ""
+  const stored = window.localStorage.getItem(LAST_RATE_KEY)
+  return stored || ""
+}
+
 export default function PayPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-accent" /></div>}>
+      <PayPageContent />
+    </Suspense>
+  )
+}
+
+function PayPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { data: accounts = [] } = useAccounts()
+  const preselectedCardHandled = useRef(false)
   const [selectedCard, setSelectedCard] = useState("")
   const [currencyTab, setCurrencyTab] = useState<Currency>("DOP")
   const [sourceAccount, setSourceAccount] = useState("")
   const [paymentMode, setPaymentMode] = useState<PaymentMode>("statement_balance")
   const [customAmount, setCustomAmount] = useState("")
   const [paymentComment, setPaymentComment] = useState("")
-  const [exchangeRate, setExchangeRate] = useState("")
+  const [exchangeRate, setExchangeRate] = useState(getInitialExchangeRate)
   const [isPaying, setIsPaying] = useState(false)
   const [showCustomSheet, setShowCustomSheet] = useState(false)
   const [showConfirmSheet, setShowConfirmSheet] = useState(false)
@@ -91,25 +108,31 @@ export default function PayPage() {
     return currencies.length ? Array.from(new Set(currencies)) : [card.currency || "DOP"]
   }, [card])
 
+  // React 19: Handle URL search params once on mount using useSearchParams
+  // instead of useEffect with window.location.search
   useEffect(() => {
-    if (!card) return
-    const nextCurrency = activeCurrencies.includes(currencyTab) ? currencyTab : activeCurrencies[0]
-    if (nextCurrency !== currencyTab) {
-      setCurrencyTab(nextCurrency)
-      setSourceAccount("")
-      setCustomAmount("")
-      setPaymentMode("statement_balance")
+    if (preselectedCardHandled.current) return
+    const preselectedCardId = searchParams?.get("card")
+    if (!preselectedCardId) {
+      preselectedCardHandled.current = true
+      return
     }
-  }, [activeCurrencies, card, currencyTab])
-
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    const preselectedCardId = new URLSearchParams(window.location.search).get("card")
-    if (!preselectedCardId) return
     if (creditCards.some((cardItem) => cardItem.id === preselectedCardId)) {
       setSelectedCard(preselectedCardId)
     }
+    preselectedCardHandled.current = true
   }, [creditCards])
+
+  // React 19: Handle currency change by deriving state instead of useEffect+setState cascade
+  // The resets are now handled in the currency button onClick (line ~276)
+  // This effect only adjusts currencyTab if it becomes invalid
+  useEffect(() => {
+    if (!card) return
+    const isValid = activeCurrencies.includes(currencyTab)
+    if (!isValid && activeCurrencies.length > 0) {
+      setCurrencyTab(activeCurrencies[0])
+    }
+  }, [activeCurrencies, card])
 
   const balanceToDate = currencyTab === "DOP" ? Number(card?.current_debt_dop || card?.current_debt || 0) : Number(card?.current_debt_usd || 0)
   const statementBalance = currencyTab === "DOP" ? Number(card?.statement_balance_dop || 0) : Number(card?.statement_balance_usd || 0)
@@ -152,11 +175,7 @@ export default function PayPage() {
       ? "Tu balance disponible es insuficiente."
       : null
 
-  useEffect(() => {
-    if (!conversionApplies) return
-    const stored = typeof window !== "undefined" ? window.localStorage.getItem(LAST_RATE_KEY) : null
-    if (stored && !exchangeRate) setExchangeRate(stored)
-  }, [conversionApplies, exchangeRate])
+  // exchangeRate now uses lazy initializer (getInitialExchangeRate) - no effect needed
 
   const selectAmount = (mode: PaymentMode, amount: number) => {
     setPaymentMode(mode)
@@ -183,8 +202,10 @@ export default function PayPage() {
         window.localStorage.setItem(LAST_RATE_KEY, String(parsedRate))
       }
       notify({ title: "Pago registrado", message: "Tu tarjeta y cuenta origen fueron actualizadas." })
+      // Generate transaction ID once per payment (not on every render)
+      const transactionId = Math.random().toString(36).slice(2, 14).toUpperCase()
       setReceipt({
-        id: result?.payment?.id,
+        id: result?.payment?.id || transactionId,
         sourceTxId: result?.sourceTransaction?.id,
         cardTxId: result?.cardTransaction?.id,
         amount: selectedAmount,
@@ -379,7 +400,7 @@ export default function PayPage() {
               { label: "Destino", value: receipt ? `${receipt.cardName} ·-${card?.account_number?.slice(-4) || selectedCardId.slice(-4)}` : "" },
               { label: "Fecha y hora", value: receipt?.date.toLocaleString("es-DO", { day: "2-digit", month: "long", year: "numeric", hour: "numeric", minute: "2-digit" }) },
               ...(receipt?.dgiiAmount ? [{ label: "Impuesto DGII 0.15%", value: formatCurrency(receipt.dgiiAmount, receipt.sourceCurrency) }] : []),
-              { label: "No. Transacción", value: Math.random().toString(36).slice(2, 14).toUpperCase() },
+              { label: "No. Transacción", value: receipt?.id || "—" },
             ],
           },
         ]}

@@ -111,7 +111,7 @@ export function PlanSelectorSheet({
                   : "Empieza gratis y desbloquea todo MiCuadre cuando lo necesites."}
               </DrawerDescription>
             </div>
-            <DrawerClose className="absolute right-0 top-8 flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground">
+            <DrawerClose aria-label="Cerrar" className="absolute right-0 top-8 flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground transition hover:text-foreground">
               <X className="h-5 w-5" />
             </DrawerClose>
           </DrawerHeader>

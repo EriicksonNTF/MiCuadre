@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { Drawer as DrawerPrimitive } from 'vaul'
-
+import { useModalA11y } from '@/lib/a11y/use-modal-a11y'
 import { cn } from '@/lib/utils'
 
 function Drawer({
@@ -48,13 +48,30 @@ function DrawerOverlay({
 function DrawerContent({
   className,
   children,
+  onOpenChange,
   ...props
-}: React.ComponentProps<typeof DrawerPrimitive.Content>) {
+}: React.ComponentProps<typeof DrawerPrimitive.Content> & {
+  onOpenChange?: (open: boolean) => void
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null)
+
+  // React 19: Integrate useModalA11y for focus trap + autoFocus + restoreFocus
+  // This makes the Vaul Drawer accessible (used by ~8 sheets in the app)
+  useModalA11y({
+    containerRef,
+    onClose: onOpenChange ? () => onOpenChange(false) : undefined,
+    enabled: true,
+    trapFocus: true,
+  })
+
   return (
     <DrawerPortal data-slot="drawer-portal">
       <DrawerOverlay />
       <DrawerPrimitive.Content
+        ref={containerRef}
         data-slot="drawer-content"
+        role="dialog"
+        aria-modal="true"
         className={cn(
           'group/drawer-content fixed z-50 flex h-auto flex-col border-border/70 bg-card/96 shadow-[var(--shadow-float)] backdrop-blur-2xl',
           'data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-[2rem] data-[vaul-drawer-direction=top]:border-b',
