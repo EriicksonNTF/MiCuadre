@@ -78,7 +78,7 @@ export function MovementReceipt({
             </div>
 
             <h2 className="mt-[18px] text-sm font-bold text-foreground">{title}</h2>
-            <p className="mt-1 text-[clamp(1.75rem,6vw,2.25rem)] font-extrabold leading-[1.1] tracking-tight text-foreground tabular-nums">{amount}</p>
+            <p className="mt-1 text-display-balance font-extrabold leading-[1.1] tracking-tight text-foreground tabular-nums">{amount}</p>
 
             <div className="mt-6 space-y-3">
               {sections

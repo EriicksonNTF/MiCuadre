@@ -1,530 +1,768 @@
 ﻿"use client"
 
-import Image from "next/image"
-import Link from "next/link"
-import { useEffect, useMemo, useState } from "react"
-import { 
-  AlertCircle, Apple, ArrowRight, CheckCircle2, CircleDollarSign, 
-  CreditCard, Goal, Instagram, Landmark, Menu, Repeat, 
-  ShieldCheck, Wallet, X, ChevronDown, Sparkles, PieChart, TrendingUp,
-  CalendarDays, BadgeDollarSign
-} from "lucide-react"
-import { showToast } from "@/components/toast/smart-toast"
-import { ANNUAL_DISCOUNT_PERCENT, PLAN_CONFIG, PLAN_ORDER, formatPlanPrice, getBillingIntervalSuffix } from "@/lib/billing/plans"
-import type { BillingInterval } from "@/types/billing"
-
-const navItems = [
-  { id: "inicio", label: "Inicio" },
-  { id: "funciones", label: "Funciones" },
-  { id: "reportes", label: "Reportes" },
-  { id: "tarjetas", label: "Tarjetas" },
-  { id: "suscripciones", label: "Suscripciones" },
-  { id: "precios", label: "Precios" },
-  { id: "preguntas", label: "Preguntas" },
-]
-
-function LogoMark({ dark = true }: { dark?: boolean }) {
-  return (
-    <div className="inline-flex items-center gap-3">
-      <Image src="/icono-favicon.png" alt="Icono MiCuadre" width={40} height={40} className="rounded-xl shadow-lg shadow-black/20" />
-      <div>
-        <p className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}>MiCuadre</p>
-        <p className={`text-[0.6875rem] font-medium tracking-wide uppercase ${dark ? "text-emerald-400/80" : "text-emerald-600/80"}`}>Copiloto Financiero</p>
-      </div>
-    </div>
-  )
-}
-
-function PhoneFrame({ children, label }: { children: React.ReactNode; label: string }) {
-  return (
-    <div className="rounded-[2rem] border border-border bg-background p-2 shadow-xl shadow-slate-900/10">
-      <div className="overflow-hidden rounded-[1.5rem] border border-border bg-card text-card-foreground">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div>
-            <p className="text-[0.625rem] font-bold uppercase tracking-wider text-muted-foreground">Planificación</p>
-            <p className="text-sm font-black text-foreground">{label}</p>
-          </div>
-          <span className="h-2.5 w-2.5 rounded-full bg-accent" />
-        </div>
-        <div className="min-h-[270px] p-4">{children}</div>
-      </div>
-    </div>
-  )
-}
-
-function BudgetMockupCard() {
-  const budgets = [
-    { name: "Comida", value: 77, tone: "bg-accent" },
-    { name: "Transporte", value: 52, tone: "bg-sky-500" },
-    { name: "Entretenimiento", value: 112, tone: "bg-destructive" },
-  ]
-
-  return (
-    <PhoneFrame label="Presupuestos">
-      <div className="rounded-2xl bg-muted p-4">
-        <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><BadgeDollarSign className="h-3.5 w-3.5" /> Presupuesto usado</p>
-        <p className="mt-1 text-2xl font-black text-foreground">RD$18,450</p>
-        <p className="text-xs text-muted-foreground">de RD$24,000 este mes</p>
-      </div>
-      <div className="mt-4 space-y-3">
-        {budgets.map((budget) => (
-          <div key={budget.name}>
-            <div className="mb-1 flex items-center justify-between text-xs">
-              <span className="font-semibold text-foreground">{budget.name}</span>
-              <span className={budget.value > 100 ? "font-bold text-destructive" : "text-muted-foreground"}>{budget.value}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div className={`h-full rounded-full ${budget.tone}`} style={{ width: `${Math.min(budget.value, 100)}%` }} />
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
-        Entretenimiento excedido
-      </div>
-    </PhoneFrame>
-  )
-}
-
-function CalendarMockupCard() {
-  const marked = new Set([4, 8, 14, 21, 26])
-  const payments = [
-    { name: "Visa Popular", date: "08 Jun", amount: "RD$18,650" },
-    { name: "Netflix", date: "14 Jun", amount: "RD$450" },
-    { name: "Préstamo personal", date: "21 Jun", amount: "RD$7,200" },
-  ]
-
-  return (
-    <PhoneFrame label="Calendario">
-      <div className="grid grid-cols-7 gap-1.5">
-        {Array.from({ length: 28 }, (_, index) => {
-          const day = index + 1
-          return (
-            <div key={day} className="flex aspect-square flex-col items-center justify-center rounded-lg bg-muted text-[0.625rem] font-semibold text-muted-foreground">
-              {day}
-              {marked.has(day) && <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />}
-            </div>
-          )
-        })}
-      </div>
-      <div className="mt-4 space-y-2">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground"><CalendarDays className="h-3.5 w-3.5" /> Próximos pagos</p>
-        {payments.map((item) => (
-          <div key={item.name} className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2">
-            <div>
-              <p className="text-xs font-bold text-foreground">{item.name}</p>
-              <p className="text-[0.6875rem] text-muted-foreground">{item.date}</p>
-            </div>
-            <p className="text-xs font-bold text-foreground">{item.amount}</p>
-          </div>
-        ))}
-      </div>
-    </PhoneFrame>
-  )
-}
-
-function DebtsMockupCard() {
-  const debts = [
-    { name: "Préstamo personal", paid: 64, next: "15 Jun" },
-    { name: "Tarjeta Visa", paid: 38, next: "08 Jun" },
-  ]
-
-  return (
-    <PhoneFrame label="Deudas">
-      <div className="rounded-2xl bg-primary p-4 text-primary-foreground">
-        <p className="text-xs opacity-75">Total pendiente</p>
-        <p className="mt-1 text-2xl font-black">RD$92,300</p>
-        <p className="mt-2 text-xs opacity-80">Pago próximo: RD$7,200</p>
-      </div>
-      <div className="mt-4 space-y-3">
-        {debts.map((debt) => (
-          <div key={debt.name} className="rounded-xl border border-border bg-background p-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-bold text-foreground">{debt.name}</span>
-              <span className="text-muted-foreground">{debt.paid}% pagado</span>
-            </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-accent" style={{ width: `${debt.paid}%` }} />
-            </div>
-            <p className="mt-2 text-[0.6875rem] text-muted-foreground">Pago próximo: {debt.next}</p>
-          </div>
-        ))}
-      </div>
-    </PhoneFrame>
-  )
-}
-
-function PlanningMockups() {
-  return (
-    <div className="grid gap-5 lg:grid-cols-3">
-      <BudgetMockupCard />
-      <CalendarMockupCard />
-      <DebtsMockupCard />
-    </div>
-  )
-}
+import { useEffect, useRef, useCallback } from "react"
+import "@/app/landing-redesign.css"
 
 export function PublicLanding() {
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [active, setActive] = useState("inicio")
-  const [scrolled, setScrolled] = useState(false)
-  const [billingInterval, setBillingInterval] = useState<BillingInterval>("monthly")
-  const sectionIds = useMemo(() => navItems.map((n) => n.id), [])
+  const rootRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20)
+  const initEffects = useCallback(() => {
+    const root = rootRef.current
+    if (!root) return
+
+    // Custom Cursor
+    const cursorDot = root.querySelector<HTMLElement>("#lCursorDot")
+    const cursorRing = root.querySelector<HTMLElement>("#lCursorRing")
+    let mx = 0, my = 0, rx = 0, ry = 0
+    if (cursorDot && cursorRing && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      const onMouseMove = (e: MouseEvent) => {
+        mx = e.clientX; my = e.clientY
+        cursorDot.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`
+      }
+      window.addEventListener("mousemove", onMouseMove)
+      function cursorLoop() {
+        if (!cursorRing) return
+        rx += (mx - rx) * 0.08
+        ry += (my - ry) * 0.08
+        cursorRing.style.transform = `translate(${rx}px, ${ry}px) translate(-50%, -50%)`
+        requestAnimationFrame(cursorLoop)
+      }
+      cursorLoop()
+      root.querySelectorAll<HTMLElement>("a, button, .magnetic, .l-faq-q, .l-cp-item, .l-bento-tile, .l-mockup, .l-price-card").forEach(el => {
+        el.addEventListener("mouseenter", () => {
+          cursorRing.classList.add("hovering")
+          cursorDot.classList.add("hovering")
+        })
+        el.addEventListener("mouseleave", () => {
+          cursorRing.classList.remove("hovering")
+          cursorDot.classList.remove("hovering")
+        })
+      })
     }
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+
+    // Magnetic Buttons
+    if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+      root.querySelectorAll<HTMLElement>(".magnetic").forEach(btn => {
+        let tx = 0, ty = 0, cx = 0, cy = 0
+        let raf: number | null = null
+        function loop() {
+          cx += (tx - cx) * 0.10
+          cy += (ty - cy) * 0.10
+          btn.style.transform = `translate(${cx.toFixed(2)}px, ${cy.toFixed(2)}px)`
+          if (Math.abs(tx - cx) > 0.05 || Math.abs(ty - cy) > 0.05) {
+            raf = requestAnimationFrame(loop)
+          } else { raf = null }
+        }
+        btn.addEventListener("mousemove", e => {
+          const rect = btn.getBoundingClientRect()
+          tx = (e.clientX - rect.left - rect.width / 2) * 0.25
+          ty = (e.clientY - rect.top - rect.height / 2) * 0.4
+          if (!raf) raf = requestAnimationFrame(loop)
+        })
+        btn.addEventListener("mouseleave", () => {
+          tx = 0; ty = 0
+          if (!raf) raf = requestAnimationFrame(loop)
+        })
+      })
+    }
+
+    // Scroll progress
+    const scrollProgress = root.querySelector<HTMLElement>(".l-scroll-progress")
+    const header = root.querySelector<HTMLElement>("header.l-header")
+
+    const onScroll = () => {
+      const h = document.documentElement
+      const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100
+      if (scrollProgress) scrollProgress.style.width = pct + "%"
+      if (header) {
+        if (window.scrollY > 30) header.classList.add("scrolled")
+        else header.classList.remove("scrolled")
+      }
+    }
+    window.addEventListener("scroll", onScroll)
+
+    // Mobile menu
+    const menuToggle = root.querySelector<HTMLElement>(".l-menu-toggle")
+    const mobileDrawer = root.querySelector<HTMLElement>(".l-mobile-drawer")
+    const backdrop = root.querySelector<HTMLElement>(".l-backdrop")
+    const closeMenu = () => {
+      menuToggle?.classList.remove("open")
+      mobileDrawer?.classList.remove("open")
+      backdrop?.classList.remove("show")
+      menuToggle?.setAttribute("aria-expanded", "false")
+      document.body.style.overflow = ""
+    }
+    menuToggle?.addEventListener("click", () => {
+      const isOpen = menuToggle.classList.contains("open")
+      if (isOpen) closeMenu()
+      else {
+        menuToggle.classList.add("open")
+        mobileDrawer?.classList.add("open")
+        backdrop?.classList.add("show")
+        menuToggle.setAttribute("aria-expanded", "true")
+        document.body.style.overflow = "hidden"
+      }
+    })
+    backdrop?.addEventListener("click", closeMenu)
+    mobileDrawer?.querySelectorAll("a").forEach(a => a.addEventListener("click", closeMenu))
+
+    // Reveal on scroll
+    const revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in-view")
+            entry.target.querySelectorAll<HTMLElement>(".counter").forEach((c) => animateCounter(c))
+            entry.target.querySelectorAll<HTMLElement>("[data-width]").forEach((el) => {
+              el.style.width = el.dataset.width + "%"
+            })
+            entry.target.querySelectorAll<HTMLElement>(".donut-progress[data-offset]").forEach((el) => {
+              el.style.strokeDashoffset = el.dataset.offset!
+            })
+          }
+        })
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -80px 0px" }
+    )
+    root.querySelectorAll<HTMLElement>(".l-reveal, .l-reveal-stagger").forEach((el) =>
+      revealObserver.observe(el)
+    )
+
+    // Counter animation
+    function animateCounter(el: HTMLElement) {
+      if (el.dataset.animated) return
+      el.dataset.animated = "true"
+      const target = parseInt(el.dataset.target || "0")
+      const duration = 3000
+      const start = performance.now()
+      function tick(now: number) {
+        const t = Math.min((now - start) / duration, 1)
+        const eased = 1 - Math.pow(1 - t, 3)
+        const val = Math.floor(target * eased)
+        el.textContent = val.toLocaleString("es-DO")
+        if (t < 1) requestAnimationFrame(tick)
+        else el.textContent = target.toLocaleString("es-DO")
+      }
+      requestAnimationFrame(tick)
+    }
+
+    // Hero card 3D tilt
+    const heroCard = root.querySelector<HTMLElement>(".l-hero-card")
+    if (heroCard && window.matchMedia("(hover: hover)").matches) {
+      const onHeroMove = (e: MouseEvent) => {
+        const rect = heroCard.getBoundingClientRect()
+        const x = (e.clientX - rect.left) / rect.width - 0.5
+        const y = (e.clientY - rect.top) / rect.height - 0.5
+        heroCard.style.transform = `rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateZ(10px)`
+      }
+      const onHeroLeave = () => { heroCard.style.transform = "" }
+      heroCard.addEventListener("mousemove", onHeroMove)
+      heroCard.addEventListener("mouseleave", onHeroLeave)
+    }
+
+    // Credit card 3D tilt
+    const card3d = root.querySelector<HTMLElement>(".l-card-3d")
+    if (card3d && window.matchMedia("(hover: hover)").matches) {
+      const stage = card3d.parentElement!
+      const onCardMove = (e: MouseEvent) => {
+        const rect = stage.getBoundingClientRect()
+        const x = (e.clientX - rect.left) / rect.width - 0.5
+        const y = (e.clientY - rect.top) / rect.height - 0.5
+        card3d.style.transform = `rotateY(${x * 18}deg) rotateX(${-y * 18}deg)`
+      }
+      const onCardLeave = () => { card3d.style.transform = "" }
+      stage.addEventListener("mousemove", onCardMove)
+      stage.addEventListener("mouseleave", onCardLeave)
+    }
+
+    // FAQ accordion
+    root.querySelectorAll<HTMLElement>(".l-faq-item").forEach((item) => {
+      const q = item.querySelector<HTMLElement>(".l-faq-q")
+      const toggle = () => {
+        const isOpen = item.classList.contains("open")
+        root.querySelectorAll<HTMLElement>(".l-faq-item").forEach((i) => {
+          i.classList.remove("open")
+          i.querySelector<HTMLElement>(".l-faq-q")?.setAttribute("aria-expanded", "false")
+        })
+        if (!isOpen) {
+          item.classList.add("open")
+          q?.setAttribute("aria-expanded", "true")
+        }
+      }
+      q?.addEventListener("click", toggle)
+      q?.addEventListener("keydown", (e: KeyboardEvent) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle() }
+      })
+    })
+
+    // Billing toggle
+    const billingToggle = root.querySelector<HTMLElement>(".l-billing-toggle")
+    const billingSlider = root.querySelector<HTMLElement>(".l-billing-toggle .slider")
+    const proPrice = root.querySelector<HTMLElement>("#l-proPrice")
+    const proPeriod = root.querySelector<HTMLElement>("#l-proPeriod")
+    const annualNote = root.querySelector<HTMLElement>("#l-annualNote")
+
+    function setBilling(mode: string) {
+      if (!billingToggle || !billingSlider) return
+      const buttons = billingToggle.querySelectorAll("button")
+      buttons.forEach((b) => b.classList.remove("active"))
+      const activeBtn = billingToggle.querySelector<HTMLButtonElement>(`[data-billing="${mode}"]`)
+      activeBtn?.classList.add("active")
+      if (mode === "monthly") {
+        billingSlider.style.width = (activeBtn?.offsetWidth || 0) + "px"
+        billingSlider.style.left = "6px"
+        if (proPrice) proPrice.textContent = "2.99"
+        if (proPeriod) proPeriod.textContent = "/mes"
+        if (annualNote) annualNote.innerHTML = "&nbsp;"
+      } else {
+        billingSlider.style.width = (activeBtn?.offsetWidth || 0) + "px"
+        billingSlider.style.left = (activeBtn?.offsetLeft || 0) + "px"
+        if (proPrice) proPrice.textContent = "28.70"
+        if (proPeriod) proPeriod.textContent = "/año"
+        if (annualNote) annualNote.textContent = "Equivale a $2.39/mes · Ahorra 20%"
+      }
+    }
+    billingToggle?.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => setBilling(btn.dataset.billing || "monthly"))
+    })
+    setBilling("monthly")
+
+    // Credit card points hover
+    root.querySelectorAll<HTMLElement>(".l-cp-item").forEach((item) => {
+      const activate = () => {
+        root.querySelectorAll<HTMLElement>(".l-cp-item").forEach((i) => i.classList.remove("active"))
+        item.classList.add("active")
+      }
+      item.addEventListener("click", activate)
+      item.addEventListener("mouseenter", activate)
+    })
+
+    // Chapter rail + nav active state
+    const chapters = [
+      { id: "inicio", num: 0 },
+      { id: "filosofia", num: 1 },
+      { id: "funciones", num: 2 },
+      { id: "tarjetas", num: 3 },
+      { id: "planificacion", num: 4 },
+      { id: "precios", num: 5 },
+      { id: "faq", num: 6 },
+    ]
+    const railLinks = root.querySelectorAll<HTMLElement>(".l-chapter-rail a")
+    const navLinks = root.querySelectorAll<HTMLElement>(".l-main-nav a")
+    const chapterObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.id
+            const chapter = chapters.find((c) => c.id === id)
+            if (chapter) {
+              railLinks.forEach((l) => l.classList.remove("active"))
+              navLinks.forEach((l) => l.classList.remove("active"))
+              root.querySelector(`.l-chapter-rail a[data-chapter="${chapter.num}"]`)?.classList.add("active")
+              root.querySelector(`.l-main-nav a[href="#${id}"]`)?.classList.add("active")
+            }
+          }
+        })
+      },
+      { threshold: 0.3 }
+    )
+    chapters.forEach((c) => {
+      const el = document.getElementById(c.id)
+      if (el) chapterObserver.observe(el)
+    })
+
+    // Parallax on floating cards
+    const onMouseMove = (e: MouseEvent) => {
+      const x = e.clientX / window.innerWidth - 0.5
+      const y = e.clientY / window.innerHeight - 0.5
+      root.querySelectorAll<HTMLElement>(".l-float-card-1, .l-float-card-2, .l-float-card-3, .l-card-orbit-1, .l-card-orbit-2").forEach((card, i) => {
+        const factor = (i + 1) * 8
+        card.style.translate = `${x * factor}px ${y * factor}px`
+      })
+    }
+    window.addEventListener("mousemove", onMouseMove)
+
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("mousemove", onMouseMove)
+      revealObserver.disconnect()
+      chapterObserver.disconnect()
+    }
   }, [])
 
   useEffect(() => {
-    const observers: IntersectionObserver[] = []
-    sectionIds.forEach((id) => {
-      const el = document.getElementById(id)
-      if (!el) return
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) setActive(id)
-        })
-      }, { rootMargin: "-32% 0px -55% 0px", threshold: 0.08 })
-      observer.observe(el)
-      observers.push(observer)
-    })
-    return () => observers.forEach((o) => o.disconnect())
-  }, [sectionIds])
-
-  const showComingSoon = () => {
-    showToast({
-      title: "Próximamente disponible",
-      body: "Estamos preparando el lanzamiento para iOS y Android.",
-      type: "info",
-      duration: 2800,
-    })
-  }
-
-  const showInstagramSoon = () => {
-    showToast({
-      title: "Instagram próximamente",
-      body: "Estamos preparando nuestro perfil oficial.",
-      type: "info",
-      duration: 2400,
-    })
-  }
+    const cleanup = initEffects()
+    return cleanup
+  }, [initEffects])
 
   return (
-    <main className="min-h-screen scroll-smooth bg-slate-50 text-slate-900 font-sans selection:bg-teal-500/30">
-      {/* HEADER */}
-      <header className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#020617]/85 backdrop-blur-xl border-b border-white/10 py-3' : 'bg-transparent py-5'}`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <LogoMark dark={true} />
-          
-          <nav className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md xl:flex">
-            {navItems.map((item) => (
-              <a 
-                key={item.id} 
-                href={`#${item.id}`} 
-                className={`inline-flex whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-300 ${active === item.id ? "bg-white/15 text-white shadow-sm" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+    <div ref={rootRef} className="landing-redesign">
+      {/* Custom Cursor */}
+      <div className="l-cursor-dot" id="lCursorDot" />
+      <div className="l-cursor-ring" id="lCursorRing" />
 
-          <div className="hidden items-center gap-4 xl:flex">
-            <Link href="/login" className="text-sm font-semibold text-slate-300 transition-colors hover:text-white">
-              Iniciar sesión
-            </Link>
-            <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-sm font-bold text-slate-950 transition-all hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95">
-              Crear cuenta <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+      {/* Scroll Progress */}
+      <div className="l-scroll-progress" />
 
-          <button type="button" aria-label="Abrir menú" onClick={() => setMobileOpen((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full border border-white/20 bg-white/5 text-white backdrop-blur-md xl:hidden">
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
+      {/* Chapter Rail */}
+      <nav className="l-chapter-rail">
+        <a href="#inicio" data-chapter="0" className="active"><span>Inicio</span></a>
+        <a href="#filosofia" data-chapter="1"><span>Filosofía</span></a>
+        <a href="#funciones" data-chapter="2"><span>Funciones</span></a>
+        <a href="#tarjetas" data-chapter="3"><span>Tarjetas</span></a>
+        <a href="#planificacion" data-chapter="4"><span>Planificación</span></a>
+        <a href="#precios" data-chapter="5"><span>Precios</span></a>
+        <a href="#faq" data-chapter="6"><span>FAQ</span></a>
+      </nav>
 
-        {/* MOBILE MENU */}
-        {mobileOpen && (
-          <div className="absolute inset-x-4 top-[calc(100%+1rem)] flex flex-col gap-4 rounded-3xl border border-white/10 bg-[#07111F]/95 p-5 shadow-2xl backdrop-blur-2xl xl:hidden animate-in slide-in-from-top-4 duration-300">
-            <div className="flex flex-col gap-1">
-              {navItems.map((item) => (
-                <a 
-                  key={item.id} 
-                  href={`#${item.id}`} 
-                  onClick={() => setMobileOpen(false)} 
-                  className="block rounded-xl px-4 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white"
-                >
-                  {item.label}
-                </a>
-              ))}
+      {/* Header */}
+      <header className="l-header">
+        <div className="l-header-inner">
+          <a href="#inicio" className="l-brand">
+            <div className="l-brand-mark">M</div>
+            <div>
+              <div className="l-brand-name">MiCuadre</div>
+              <div className="l-brand-sub">Copiloto Financiero</div>
+            </div>
+          </a>
+          <div className="l-header-right">
+            <nav className="l-main-nav">
+              <a href="#inicio" className="active">Inicio</a>
+              <a href="#filosofia">Filosofía</a>
+              <a href="#funciones">Funciones</a>
+              <a href="#tarjetas">Tarjetas</a>
+              <a href="#planificacion">Planificación</a>
+              <a href="#precios">Precios</a>
+              <a href="#faq">FAQ</a>
+            </nav>
+            <div className="l-header-cta">
+	              <a href="/auth/login" className="l-login-link">Iniciar sesión</a>
+	              <a href="/auth/sign-up" className="l-btn-primary magnetic">Crear cuenta <span className="arrow">→</span></a>
+              <button className="l-menu-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="l-mobile-drawer">
+                <span></span><span></span><span></span>
+              </button>
             </div>
           </div>
-        )}
+        </div>
       </header>
 
-      {/* HERO SECTION */}
-      <section id="inicio" className="relative overflow-hidden bg-[#020617] pt-32 pb-24 lg:pt-40 lg:pb-32">
-        {/* Glow Effects */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[500px] opacity-40 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/30 to-sky-500/30 blur-[100px] rounded-full mix-blend-screen" />
-        </div>
-        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-teal-500/10 blur-[120px] rounded-full pointer-events-none" />
+      {/* Mobile Drawer */}
+      <div className="l-backdrop" />
+      <aside id="l-mobile-drawer" className="l-mobile-drawer" role="dialog" aria-modal="true" aria-label="Menú de navegación">
+        <a href="#inicio">Inicio</a>
+        <a href="#filosofia">Filosofía</a>
+        <a href="#funciones">Funciones</a>
+        <a href="#tarjetas">Tarjetas</a>
+        <a href="#planificacion">Planificación</a>
+        <a href="#precios">Precios</a>
+        <a href="#faq">Preguntas</a>
+        <div className="l-drawer-cta">
+	          <a href="/auth/sign-up" className="primary">Crear cuenta gratis</a>
+	          <a href="/auth/login">Iniciar sesión</a>
+	        </div>
+      </aside>
 
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-16 lg:grid-cols-[1fr_1.1fr]">
-            
-            {/* Hero Content */}
-            <div className="max-w-2xl animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 text-sm font-medium text-emerald-300 backdrop-blur-sm mb-6">
-                <Sparkles className="h-4 w-4" /> La revolución financiera dominicana
+      {/* HERO */}
+      <section id="inicio" className="l-hero">
+        <div className="l-hero-bg">
+          <div className="l-hero-grid" />
+        </div>
+        <div className="l-container">
+          <div className="l-hero-inner">
+            <div className="l-hero-text">
+              <div className="l-hero-eyebrow l-reveal">
+                <span className="pill">✦</span>
+                <span>Hecho en República Dominicana</span>
+                <span className="dot" />
               </div>
-              
-              <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-6xl lg:text-7xl leading-[1.1]">
-                Tu dinero, <br className="hidden sm:block"/>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-sky-400">totalmente claro.</span>
+              <h1 className="l-reveal">
+                Tu dinero,<br />
+                <span className="line-2">totalmente</span> <span className="underline">claro.</span>
               </h1>
-              
-              <p className="mt-6 text-lg leading-relaxed text-slate-300 sm:text-xl">
-                Entiende cuánto tienes, cuánto debes y hacia dónde se va tu dinero. Controla cuentas, tarjetas, presupuestos y suscripciones en una sola app premium.
+              <p className="lead l-reveal">
+                Entiende cuánto tienes, cuánto debes y hacia dónde se va cada peso.
+                Cuentas, tarjetas, presupuestos y suscripciones en una sola experiencia
+                diseñada para dominicanos.
               </p>
-              
-              <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
-                <Link href="/register" className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-full bg-emerald-500 px-8 py-4 text-base font-bold text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.25)] transition-all hover:bg-emerald-400 hover:shadow-[0_0_40px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95">
-                  Crear cuenta gratis <ArrowRight className="h-5 w-5" />
-                </Link>
-                <Link href="/login" className="flex w-full sm:w-auto items-center justify-center rounded-full border border-white/20 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur-md transition-all hover:bg-white/10 hover:border-white/30">
-                  Iniciar sesión
-                </Link>
+              <div className="l-hero-cta-row l-reveal">
+                <a href="/auth/sign-up" className="l-btn-primary-lg magnetic">
+	                  Crear cuenta gratis
+	                  <span className="arrow">→</span>
+	                </a>
+	                <a href="/auth/login" className="l-btn-ghost-lg magnetic">Iniciar sesión</a>
               </div>
-
-              <div className="mt-12 flex flex-col sm:flex-row items-start sm:items-center gap-4 border-t border-white/10 pt-8">
-                <span className="text-sm font-medium text-slate-400 uppercase tracking-wider">Próximamente en</span>
-                <div className="flex gap-3">
-                  <button type="button" onClick={showComingSoon} className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 transition-colors hover:bg-white/10">
-                    <Apple className="h-4 w-4 text-slate-300 group-hover:text-white" />
-                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">App Store</span>
-                  </button>
-                  <button type="button" onClick={showComingSoon} className="group flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 transition-colors hover:bg-white/10">
-                    <ArrowRight className="h-4 w-4 text-slate-300 group-hover:text-white" />
-                    <span className="text-xs font-semibold text-slate-300 group-hover:text-white">Google Play</span>
-                  </button>
+              <div className="l-hero-stats l-reveal-stagger">
+                <div className="l-hero-stat">
+                  <div className="num"><span className="prefix">$</span><span className="counter" data-target="0">0</span><span className="suffix">/mes</span></div>
+                  <div className="label">Plan inicial</div>
+                </div>
+                <div className="l-hero-stat">
+                  <div className="num"><span className="counter" data-target="2">0</span><span className="suffix">monedas</span></div>
+                  <div className="label">DOP &amp; USD</div>
+                </div>
+                <div className="l-hero-stat">
+                  <div className="num"><span className="counter" data-target="100">0</span><span className="suffix">%</span></div>
+                  <div className="label">Privado y manual</div>
                 </div>
               </div>
             </div>
 
-            {/* Hero 3D Mockup with Floating Cards */}
-            <div className="relative mx-auto w-full max-w-[600px] animate-in fade-in slide-in-from-right-8 duration-1000 delay-200 fill-mode-both">
-              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-tr from-emerald-500/20 to-sky-500/20 blur-3xl transform rotate-6 scale-105" />
-              
-              <div className="relative rounded-[2.5rem] border border-white/10 bg-slate-900/50 p-2 shadow-2xl backdrop-blur-xl">
-                <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950">
-                  <Image src="/landing/mockup-dashboard-3d.png" alt="Panel MiCuadre" width={800} height={800} className="w-full h-auto opacity-90 transition-opacity hover:opacity-100" priority />
+            <div className="l-hero-visual l-reveal">
+              <div className="l-float-card l-float-card-1">
+                <div className="fc-label"><span style={{ color: "var(--l-emerald-400)" }}>●</span> Balance</div>
+                <div className="fc-value">RD$152,840</div>
+              </div>
+              <div className="l-float-card l-float-card-2">
+                <div className="fc-label"><span style={{ color: "var(--l-sky-400)" }}>●</span> Disponible</div>
+                <div className="fc-value">RD$75,100</div>
+              </div>
+              <div className="l-float-card l-float-card-3">
+                <div className="fc-label"><span style={{ color: "var(--l-rose-400)" }}>●</span> Gastado hoy</div>
+                <div className="fc-value">RD$3,420</div>
+              </div>
+
+              <div className="l-hero-card">
+                <div className="l-hero-card-header">
+                  <div className="label">Resumen · Mayo 2026</div>
+                  <div className="live"><span className="dot" />En vivo</div>
+                </div>
+                <div className="l-balance-row">
+                  <div>
+                    <div className="balance-label">Balance total</div>
+                    <div className="balance-num">
+                      <span className="currency">RD$</span><span className="counter" data-target="152840">0</span>
+                    </div>
+                    <div className="trend">↑ +12.4% vs abril</div>
+                  </div>
+                </div>
+                <div className="l-mini-chart">
+                  <svg viewBox="0 0 300 80" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="lChartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#34D399" stopOpacity="0.4" />
+                        <stop offset="100%" stopColor="#34D399" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <path className="l-chart-area" d="M0,60 L30,55 L60,58 L90,40 L120,42 L150,30 L180,35 L210,22 L240,28 L270,18 L300,15 L300,80 L0,80 Z" />
+                    <path className="l-chart-line" d="M0,60 L30,55 L60,58 L90,40 L120,42 L150,30 L180,35 L210,22 L240,28 L270,18 L300,15" />
+                    <circle className="l-chart-dot" cx="300" cy="15" r="4" />
+                  </svg>
+                </div>
+                <div className="l-hero-card-tabs">
+                  <div className="l-hero-tab active">
+                    <div className="tab-label">Ingresos</div>
+                    <div className="tab-value">+RD$48K</div>
+                  </div>
+                  <div className="l-hero-tab">
+                    <div className="tab-label">Gastos</div>
+                    <div className="tab-value">−RD$31K</div>
+                  </div>
+                  <div className="l-hero-tab">
+                    <div className="tab-label">Ahorro</div>
+                    <div className="tab-value">RD$17K</div>
+                  </div>
+                </div>
+                <div className="l-hero-transaction">
+                  <div className="icon expense">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M12 3v18" /></svg>
+                  </div>
+                  <div className="info">
+                    <div className="name">Supermercado Nacional</div>
+                    <div className="time">Hoy · 14:32</div>
+                  </div>
+                  <div className="amount expense">−RD$2,840</div>
                 </div>
               </div>
-
-              {/* Floating Cards */}
-              <div className="absolute -left-6 top-12 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
-                <p className="text-[0.625rem] font-bold uppercase tracking-wider text-emerald-400">Balance actual</p>
-                <p className="text-lg font-bold text-white">RD$152,840</p>
-              </div>
-              
-              <div className="absolute -right-4 top-1/3 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
-                <p className="text-[0.625rem] font-bold uppercase tracking-wider text-sky-400">Disponible</p>
-                <p className="text-lg font-bold text-white">RD$75,100</p>
-              </div>
-
-              <div className="absolute left-8 -bottom-6 rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 shadow-2xl backdrop-blur-xl transition-transform hover:-translate-y-1 hidden sm:block">
-                <p className="text-[0.625rem] font-bold uppercase tracking-wider text-rose-400">Gasto del mes</p>
-                <p className="text-lg font-bold text-white">RD$31,120</p>
-              </div>
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* FUNCIONES SECTION */}
-      <section id="funciones" className="relative overflow-hidden bg-white py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid items-center gap-16 lg:grid-cols-[1fr_1.1fr]">
-            
-            <div className="order-2 lg:order-1 relative">
-              <div className="absolute inset-0 rounded-[3rem] bg-emerald-500/10 blur-3xl transform -rotate-6 scale-105" />
-              <div className="relative rounded-[2.5rem] border border-slate-200 bg-white p-2 shadow-xl">
-                <div className="overflow-hidden rounded-[2rem] bg-slate-50">
-                  <Image src="/landing/mockup-transaccion-3d.png" alt="Transacción MiCuadre" width={800} height={800} className="w-full h-auto" />
-                </div>
-              </div>
-            </div>
+      {/* MARQUEE */}
+      <div className="l-marquee" aria-hidden="true">
+        <div className="l-marquee-track">
+          <span className="l-marquee-item">Cuentas sincronizadas <span className="star">✦</span></span>
+          <span className="l-marquee-item" style={{ color: "var(--l-emerald-400)" }}>Tarjetas sin intereses <span className="star">✦</span></span>
+          <span className="l-marquee-item">Presupuestos inteligentes <span className="star">✦</span></span>
+          <span className="l-marquee-item" style={{ color: "var(--l-sky-400)" }}>Reportes visuales <span className="star">✦</span></span>
+          <span className="l-marquee-item">Calendario financiero <span className="star">✦</span></span>
+          <span className="l-marquee-item" style={{ color: "var(--l-emerald-400)" }}>DOP &amp; USD <span className="star">✦</span></span>
+          <span className="l-marquee-item">100% privado <span className="star">✦</span></span>
+          <span className="l-marquee-item">Cuentas sincronizadas <span className="star">✦</span></span>
+          <span className="l-marquee-item" style={{ color: "var(--l-emerald-400)" }}>Tarjetas sin intereses <span className="star">✦</span></span>
+          <span className="l-marquee-item">Presupuestos inteligentes <span className="star">✦</span></span>
+          <span className="l-marquee-item" style={{ color: "var(--l-sky-400)" }}>Reportes visuales <span className="star">✦</span></span>
+          <span className="l-marquee-item">Calendario financiero <span className="star">✦</span></span>
+          <span className="l-marquee-item" style={{ color: "var(--l-emerald-400)" }}>DOP &amp; USD <span className="star">✦</span></span>
+          <span className="l-marquee-item">100% privado <span className="star">✦</span></span>
+        </div>
+      </div>
 
-            <div className="order-1 lg:order-2">
-              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Registros rápidos, precisos y sin fricción.</h2>
-              <p className="mt-6 text-lg text-slate-600 leading-relaxed">
-                Controla montos, cuentas, categorías y detalles del movimiento desde una sola pantalla para mantener tus finanzas actualizadas en tiempo real.
+      {/* FILOSOFÍA */}
+      <section id="filosofia" className="l-philosophy">
+        <div className="l-container">
+          <div className="l-philosophy-grid">
+            <div className="l-philosophy-left l-reveal">
+              <div className="l-section-label">
+                <span className="num">01</span>
+                <span className="line" />
+                Filosofía
+              </div>
+              <h2 className="l-section-title">
+                No es una app más.<br />
+                Es <em>claridad</em> con propósito.
+              </h2>
+              <p className="l-section-lead">
+                Construimos MiCuadre sobre tres principios que cambian cómo te relacionas
+                con tu dinero. Sin promesas vacías, sin conexiones bancarias forzadas,
+                sin venderte productos que no necesitas.
               </p>
-              
-              <div className="mt-10 grid gap-4 sm:grid-cols-2">
-                {[
-                  { icon: Wallet, title: "Cuentas sincronizadas", desc: "Múltiples cuentas en un solo lugar" },
-                  { icon: CircleDollarSign, title: "Control de comisiones", desc: "Calcula impuestos automáticamente" },
-                  { icon: Landmark, title: "Impacto inmediato", desc: "Reflejo instantáneo en balances" },
-                  { icon: Goal, title: "Categorización ágil", desc: "Organiza sin pensar demasiado" }
-                ].map(({ icon: Icon, title, desc }) => (
-                  <article key={title} className="group rounded-3xl border border-slate-100 bg-slate-50 p-6 transition-all hover:bg-white hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1">
-                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 transition-transform group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-white">
-                      <Icon className="h-6 w-6" />
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-                    <p className="mt-1 text-sm text-slate-500">{desc}</p>
-                  </article>
-                ))}
-              </div>
             </div>
-            
+            <div className="l-philosophy-right">
+              <article className="l-principle l-reveal">
+                <div className="l-principle-head">
+                  <span className="l-principle-num">P · 01</span>
+                  <div className="l-principle-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2L3 7v6c0 5 3.5 9 9 11 5.5-2 9-6 9-11V7l-9-5z" /><path d="M9 12l2 2 4-4" /></svg>
+                  </div>
+                </div>
+                <h3>Privacidad primero, siempre.</h3>
+                <p>Tus datos financieros son tuyos. Por eso MiCuadre funciona de forma 100% manual: tú registras, tú decides, tú controlas. No conectamos con tu banco, no vendemos tu información, no accedemos a tus credenciales.</p>
+                <div className="l-principle-tag">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>
+                  Sin integraciones bancarias
+                </div>
+              </article>
+              <article className="l-principle l-reveal">
+                <div className="l-principle-head">
+                  <span className="l-principle-num">P · 02</span>
+                  <div className="l-principle-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></svg>
+                  </div>
+                </div>
+                <h3>Tiempo real, sin esperas.</h3>
+                <p>Cada movimiento que registras se refleja instantáneamente en tus balances, presupuestos y reportes. Sin sincronización lenta, sin &quot;espera 24 horas&quot;, sin sorpresas.</p>
+                <div className="l-principle-tag">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>
+                  Actualización instantánea
+                </div>
+              </article>
+              <article className="l-principle l-reveal">
+                <div className="l-principle-head">
+                  <span className="l-principle-num">P · 03</span>
+                  <div className="l-principle-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 3v18h18" /><path d="M7 14l4-4 4 4 5-5" /></svg>
+                  </div>
+                </div>
+                <h3>Diseñado para dominicanos.</h3>
+                <p>Pensado desde cero para la realidad del país: pesos dominicanos y dólares conviviendo, fechas de corte de tarjetas locales, productos financieros que realmente usas.</p>
+                <div className="l-principle-tag">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6" /></svg>
+                  DOP · USD · RD$ nativo
+                </div>
+              </article>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* REPORTES SECTION */}
-      <section id="reportes" className="bg-slate-50 py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Reportes que hablan por sí solos</h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-600">
-            Convierte tus datos en decisiones. Visualiza hacia dónde se va tu dinero con gráficos interactivos y resúmenes inteligentes de tu salud financiera.
-          </p>
-          
-          <div className="mt-16 grid gap-6 sm:grid-cols-3">
-            <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
-              <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><PieChart className="w-24 h-24 text-emerald-500" /></div>
-              <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Tu mayor gasto</p>
-              <p className="mt-4 text-3xl font-extrabold text-slate-900">Comida</p>
-              <p className="mt-2 text-base font-medium text-rose-500">RD$8,250 este mes</p>
+      {/* FUNCIONES (BENTO) */}
+      <section id="funciones" className="l-bento-section">
+        <div className="l-container">
+          <div className="l-bento-header l-reveal">
+            <div>
+              <div className="l-section-label">
+                <span className="num">02</span>
+                <span className="line" />
+                Funciones
+              </div>
+              <h2 className="l-section-title">
+                Todo lo que necesitas,<br />
+                <em>nada</em> que no uses.
+              </h2>
+            </div>
+            <a href="/auth/sign-up" className="link-cta">Ver demo completa →</a>
+          </div>
+          <div className="l-bento-grid">
+            <article className="l-bento-tile featured l-tile-1 l-reveal">
+              <div className="l-tile-num">F · 01</div>
+              <h3 className="l-tile-title">Cuentas sincronizadas<br />en un solo lugar.</h3>
+              <p className="l-tile-desc">Bancos, efectivo, ahorros y USD. Visualiza cada peso que tienes y dónde está, sin saltar entre apps ni hojas de cálculo.</p>
+              <div className="l-viz-bars">
+                <div className="bar" style={{ height: "70%" }} data-label="Banres" />
+                <div className="bar" style={{ height: "45%" }} data-label="Popular" />
+                <div className="bar" style={{ height: "88%" }} data-label="BHD" />
+                <div className="bar" style={{ height: "30%" }} data-label="Efectivo" />
+                <div className="bar" style={{ height: "60%" }} data-label="USD" />
+                <div className="bar" style={{ height: "22%" }} data-label="Ahorro" />
+              </div>
             </article>
-            
-            <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
-              <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><TrendingUp className="w-24 h-24 text-sky-500" /></div>
-              <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Flujo neto</p>
-              <p className="mt-4 text-3xl font-extrabold text-slate-900">Positivo</p>
-              <p className="mt-2 text-base font-medium text-emerald-500">+ RD$12,400 ahorrados</p>
+            <article className="l-bento-tile l-tile-2 l-reveal">
+              <div className="l-tile-num">F · 02</div>
+              <h3 className="l-tile-title">Registros sin fricción.</h3>
+              <p className="l-tile-desc">Captura montos, categorías y detalles en segundos. Impacto inmediato en balances.</p>
+              <svg className="l-tile-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M3 12h18M12 3v18" /></svg>
             </article>
-            
-            <article className="group relative overflow-hidden rounded-3xl bg-white p-8 shadow-sm border border-slate-200 transition-all hover:shadow-xl hover:-translate-y-1 text-left">
-              <div className="absolute top-0 right-0 p-6 opacity-5 transition-opacity group-hover:opacity-10"><Repeat className="w-24 h-24 text-indigo-500" /></div>
-              <p className="text-sm font-bold uppercase tracking-widest text-slate-400">Suscripciones</p>
-              <p className="mt-4 text-3xl font-extrabold text-slate-900">RD$1,850/mes</p>
-              <p className="mt-2 text-base font-medium text-slate-500">6 pagos automáticos</p>
+            <article className="l-bento-tile l-tile-3 l-reveal">
+              <div className="l-tile-num">F · 03</div>
+              <h3 className="l-tile-title">Presupuestos vivos.</h3>
+              <div className="l-viz-progress">
+                <div className="vp-row">
+                  <div className="vp-head"><span className="name">Comida</span><span className="pct">77%</span></div>
+                  <div className="vp-track"><div className="vp-fill" data-width="77" /></div>
+                </div>
+                <div className="vp-row">
+                  <div className="vp-head"><span className="name">Transporte</span><span className="pct">52%</span></div>
+                  <div className="vp-track"><div className="vp-fill sky" data-width="52" /></div>
+                </div>
+                <div className="vp-row">
+                  <div className="vp-head"><span className="name">Ocio</span><span className="pct">112%</span></div>
+                  <div className="vp-track"><div className="vp-fill rose" data-width="100" /></div>
+                </div>
+              </div>
+            </article>
+            <article className="l-bento-tile dark l-tile-4 l-reveal">
+              <div className="l-tile-num">F · 04</div>
+              <h3 className="l-tile-title">DOP<br />&amp; USD.</h3>
+              <div className="l-currency-convert">
+                <div className="l-cc-row">
+                  <span className="cc-amount">RD$1,000</span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                  <span className="cc-result">$16.85</span>
+                </div>
+                <div className="l-cc-rate">Tasa · 1 USD = RD$59.35</div>
+              </div>
+            </article>
+            <article className="l-bento-tile l-tile-5 l-reveal">
+              <div className="l-tile-num">F · 05</div>
+              <h3 className="l-tile-title">Reportes que hablan.</h3>
+              <div className="l-viz-donut">
+                <svg viewBox="0 0 100 100">
+                  <circle className="l-donut-center" cx="50" cy="50" r="40" />
+                  <circle className="l-donut-progress" cx="50" cy="50" r="40" strokeDasharray="251.2" strokeDashoffset="251.2" data-offset="62.8" />
+                </svg>
+                <div>
+                  <div className="l-donut-label">Comida</div>
+                  <div className="l-donut-value">75%</div>
+                </div>
+              </div>
+            </article>
+            <article className="l-bento-tile l-tile-6 l-reveal">
+              <div className="l-tile-num">F · 06</div>
+              <h3 className="l-tile-title">Suscripciones bajo control.</h3>
+              <p className="l-tile-desc">Netflix, Spotify, iCloud, gimnasio. Ve todas tus suscripciones, cuánto suman y cuándo cobran.</p>
+              <div className="l-viz-circles">
+                <div className="vc active">NFLX</div>
+                <div className="vc active">SPOT</div>
+                <div className="vc active">iCLD</div>
+                <div className="vc active">GYM</div>
+                <div className="vc">+2</div>
+              </div>
+            </article>
+            <article className="l-bento-tile l-tile-7 l-reveal">
+              <div className="l-tile-num">F · 07</div>
+              <h3 className="l-tile-title">Control de comisiones e impuestos.</h3>
+              <p className="l-tile-desc">Calcula automáticamente ITBIS y comisiones bancarias para que sepas el costo real de cada transacción.</p>
+              <svg className="l-tile-icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 10h8M8 14h5" /></svg>
             </article>
           </div>
         </div>
       </section>
 
-      {/* TARJETAS SECTION */}
-      <section id="tarjetas" className="relative overflow-hidden bg-[#020617] py-32 text-white">
-        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-full max-w-[800px] h-[600px] bg-sky-500/10 blur-[150px] rounded-full pointer-events-none" />
-        
-        <div className="relative mx-auto grid max-w-7xl gap-16 px-4 sm:px-6 lg:grid-cols-2 lg:px-8 items-center">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-1.5 text-sm font-medium text-sky-300 backdrop-blur-sm mb-6">
-              <CreditCard className="h-4 w-4" /> Tarjetas de crédito
+      {/* TARJETAS 3D */}
+      <section id="tarjetas" className="l-cards-section">
+        <div className="l-container">
+          <div className="l-cards-grid">
+            <div className="l-cards-text l-reveal">
+              <div className="l-section-label">
+                <span className="num">03</span>
+                <span className="line" />
+                Tarjetas de crédito
+              </div>
+              <h2 className="l-section-title">
+                Domina los ciclos.<br />
+                <em>Cero</em> intereses.
+              </h2>
+              <p className="l-section-lead">
+                No pagues ni un peso en intereses. MiCuadre está diseñado para que tengas
+                control absoluto de tus fechas de corte, fechas de pago y separes tu balance
+                actual del balance que debes pagar.
+              </p>
+              <div className="l-cards-points">
+                <div className="l-cp-item active">
+                  <div className="l-cp-num">01</div>
+                  <div className="l-cp-content">
+                    <h4 className="l-cp-title">Domina las fechas.</h4>
+                    <p className="l-cp-desc">Alertas tempranas de cuándo cierra tu ciclo (corte) y cuál es el último día para pagar sin penalidad.</p>
+                  </div>
+                </div>
+                <div className="l-cp-item">
+                  <div className="l-cp-num">02</div>
+                  <div className="l-cp-content">
+                    <h4 className="l-cp-title">Claridad en balances.</h4>
+                    <p className="l-cp-desc">Separa el balance al corte (lo que debes pagar ahora) del balance actual (lo que llevas consumido en el ciclo nuevo).</p>
+                  </div>
+                </div>
+                <div className="l-cp-item">
+                  <div className="l-cp-num">03</div>
+                  <div className="l-cp-content">
+                    <h4 className="l-cp-title">Límite inteligente.</h4>
+                    <p className="l-cp-desc">Conoce exactamente cuánto te queda disponible para gastar sin sobregirarte ni afectar tu buró de crédito.</p>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h2 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Domina los ciclos de tus tarjetas de crédito.</h2>
-            <p className="mt-6 text-lg leading-relaxed text-slate-300">
-              No pagues ni un peso en intereses. MiCuadre está diseñado para que tengas el control absoluto de tus fechas de corte, fechas de pago y separes mentalmente tu balance actual del balance que debes pagar.
-            </p>
-            <div className="mt-10 grid gap-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-sky-500/20 text-sky-400">
-                  <span className="font-bold text-xl">1</span>
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-white">Domina las Fechas</h4>
-                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Alertas tempranas de cuándo cierra tu ciclo (Corte) y cuál es el último día para pagar sin penalidad.</p>
-                </div>
+            <div className="l-card-stage l-reveal">
+              <div className="l-card-orbit l-card-orbit-1">
+                <div className="label"><span style={{ color: "var(--l-emerald-400)" }}>●</span> Disponible</div>
+                <div className="val">RD$75,100</div>
               </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400">
-                  <span className="font-bold text-xl">2</span>
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-white">Claridad en tus Balances</h4>
-                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">No te confundas. Separa el <strong>balance al corte</strong> (lo que debes pagar ahora) del <strong>balance actual</strong> (lo que has consumido en total).</p>
-                </div>
+              <div className="l-card-orbit l-card-orbit-2">
+                <div className="label"><span style={{ color: "var(--l-rose-400)" }}>●</span> Al corte</div>
+                <div className="val">RD$18,650</div>
               </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400">
-                  <span className="font-bold text-xl">3</span>
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-white">Límite Inteligente</h4>
-                  <p className="text-sm text-slate-400 mt-1 leading-relaxed">Conoce exactamente cuánto dinero te queda disponible para gastar sin sobregirarte ni afectar tu buró de crédito.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="relative rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-8 backdrop-blur-3xl shadow-[0_0_80px_rgba(14,165,233,0.15)]">
-            <div className="absolute top-0 right-10 w-32 h-32 bg-sky-500/30 blur-[80px] rounded-full" />
-            <div className="absolute bottom-0 left-10 w-40 h-40 bg-emerald-500/20 blur-[80px] rounded-full" />
-            
-            <div className="relative z-10 overflow-hidden rounded-[1.5rem] bg-[#0B132B]/90 p-6 border border-white/10 shadow-2xl">
-              <div className="flex justify-between items-start mb-8">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-5 bg-gradient-to-tr from-slate-300 to-white rounded-sm flex items-center justify-end px-1 shadow-sm">
-                      <div className="w-3 h-3 bg-red-500 rounded-full opacity-80 mix-blend-multiply" />
-                      <div className="w-3 h-3 bg-amber-500 rounded-full opacity-80 mix-blend-multiply -ml-1.5" />
+              <div className="l-card-3d">
+                <div className="l-card-face">
+                  <div className="l-card-shine" />
+                  <div className="l-card-top">
+                    <div className="l-card-brand">
+                      <div className="l-card-chip" />
+                      <div>
+                        <div className="l-card-issuer">Platinum Rewards</div>
+                        <div className="l-card-issuer-sub">MiCuadre · Visa</div>
+                      </div>
                     </div>
-                    <p className="text-sm font-semibold text-slate-300">Platinum Rewards</p>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">**** **** **** 8421</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[0.625rem] font-bold uppercase tracking-wider text-sky-400">Límite Total</p>
-                  <p className="text-sm font-semibold text-slate-300">RD$100,000</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
-                  <p className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1"><AlertCircle className="w-3 h-3 text-rose-400" /> Al Corte</p>
-                  <p className="mt-1 text-2xl font-bold text-white tracking-tight">RD$18,650</p>
-                  <p className="text-xs text-rose-400 font-medium mt-1">Pagar antes del 08 Jun</p>
-                </div>
-                
-                <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-4 border border-white/5 shadow-inner">
-                  <p className="text-[0.625rem] font-bold uppercase tracking-wider text-slate-400">Balance Actual</p>
-                  <p className="mt-1 text-2xl font-bold text-slate-300 tracking-tight">RD$24,900</p>
-                  <p className="text-xs text-slate-500 mt-1">Incluye ciclo nuevo</p>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-xs font-medium mb-1.5">
-                    <span className="text-slate-400">Disponible para compras</span>
-                    <span className="text-emerald-400">RD$75,100</span>
-                  </div>
-                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-800 flex">
-                    <div className="h-full bg-gradient-to-r from-rose-500 to-rose-400 w-[24.9%] rounded-full shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[0.625rem] uppercase font-bold text-amber-500 tracking-wider">Próximo Corte</span>
-                    <div className="flex items-center gap-2 text-slate-300 font-medium bg-white/5 rounded-lg p-2 border border-white/5">
-                      <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> 24 de Mayo
+                    <div className="l-card-limit">
+                      <div className="label">Límite total</div>
+                      <div className="val">RD$100,000</div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[0.625rem] uppercase font-bold text-emerald-500 tracking-wider">Fecha de Pago</span>
-                    <div className="flex items-center gap-2 text-slate-300 font-medium bg-white/5 rounded-lg p-2 border border-white/5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" /> 08 de Junio
+                  <div className="l-card-middle">
+                    <div className="l-card-stat danger">
+                      <div className="label">⚠ Al corte</div>
+                      <div className="val">RD$18,650</div>
+                      <div className="sub">Pagar antes 08 Jun</div>
+                    </div>
+                    <div className="l-card-stat">
+                      <div className="label">Balance actual</div>
+                      <div className="val">RD$24,900</div>
+                      <div className="sub">Incluye ciclo nuevo</div>
+                    </div>
+                  </div>
+                  <div className="l-card-bottom">
+                    <div className="l-card-date amber">
+                      <span className="dot" />
+                      <div className="info">
+                        <div className="label">Próx. corte</div>
+                        <div className="val">24 Mayo</div>
+                      </div>
+                    </div>
+                    <div className="l-card-date green">
+                      <span className="dot" />
+                      <div className="info">
+                        <div className="label">Fecha pago</div>
+                        <div className="val">08 Junio</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -534,209 +772,333 @@ export function PublicLanding() {
         </div>
       </section>
 
-      {/* SUSCRIPCIONES Y PLANIFICACION SECTION */}
-      <section id="suscripciones" className="overflow-hidden bg-white py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-50 px-4 py-1.5 text-sm font-bold text-emerald-700">
-              <Goal className="h-4 w-4" /> Planificación financiera
+      {/* PLANIFICACIÓN */}
+      <section id="planificacion" className="l-planning-section">
+        <div className="l-container">
+          <div className="l-planning-header l-reveal">
+            <div className="l-section-label">
+              <span className="num">04</span>
+              <span className="line" />
+              Planificación
             </div>
-            <h2 className="mt-6 text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">Planifica tu mes antes de gastar</h2>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
-              Presupuestos, calendario y deudas trabajan juntos para que sepas cuánto puedes gastar, qué pagos vienen y qué compromisos siguen pendientes.
-            </p>
-          </div>
-
-          <div className="mt-14">
-            <PlanningMockups />
-          </div>
-
-          <div className="mx-auto mt-12 grid max-w-5xl gap-4 md:grid-cols-3">
-            {[
-              { title: "Presupuestos inteligentes", desc: "Define límites por categoría y recibe alertas antes de pasarte." },
-              { title: "Calendario financiero", desc: "Visualiza tarjetas, suscripciones y deudas antes de que se te pasen." },
-              { title: "Deudas y pagos", desc: "Controla préstamos, cuotas y tarjetas con seguimiento claro." }
-            ].map((item, i) => (
-              <div key={item.title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 transition-colors hover:border-emerald-200 hover:bg-white hover:shadow-sm">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-                  <span className="font-bold text-sm">{i + 1}</span>
-                </div>
-                <h4 className="mt-4 font-bold text-slate-900">{item.title}</h4>
-                <p className="mt-1 text-sm text-slate-600">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-            <Link href="/register" className="inline-flex h-11 items-center justify-center rounded-full bg-emerald-500 px-5 text-sm font-bold text-slate-950 transition hover:bg-emerald-400">
-              Comenzar gratis
-            </Link>
-            <Link href="/register" className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 px-5 text-sm font-bold text-slate-700 transition hover:bg-slate-100">
-              Ver Pro
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* PRECIOS SECTION */}
-      <section id="precios" className="bg-[#020617] py-28 text-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-4 py-1.5 text-sm font-bold text-emerald-300">
-              <ShieldCheck className="h-4 w-4" />
-              Pago seguro con Stripe
-            </div>
-            <h2 className="mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl">
-              Empieza gratis. Mejora cuando necesites control total.
+            <h2 className="l-section-title">
+              Planifica tu mes <em>antes</em><br />de gastar.
             </h2>
-            <p className="mt-5 text-lg leading-relaxed text-slate-300">
-              Organiza tus cuentas, presupuestos, tarjetas, gastos y suscripciones desde una experiencia simple y móvil.
+            <p className="l-section-lead">
+              Presupuestos, calendario y deudas trabajan juntos para que sepas cuánto puedes
+              gastar, qué pagos vienen y qué compromisos siguen pendientes.
             </p>
           </div>
-
-          <div className="mx-auto mt-8 max-w-sm rounded-2xl border border-white/10 bg-white/5 p-1.5">
-            <div className="grid grid-cols-2 gap-1">
-              {(["monthly", "yearly"] as BillingInterval[]).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setBillingInterval(value)}
-                  className={`h-11 rounded-xl text-sm font-black transition-all active:scale-[0.98] ${billingInterval === value ? "bg-emerald-400 text-slate-950" : "text-slate-300 hover:bg-white/10"}`}
-                >
-                  {value === "monthly" ? "Mensual" : `Anual · Ahorra ${ANNUAL_DISCOUNT_PERCENT}%`}
-                </button>
-              ))}
+          <div className="l-planning-grid l-reveal-stagger">
+            <div className="l-mockup">
+              <div className="l-mockup-head">
+                <div><div className="label">Planificación</div><div className="title">Presupuestos</div></div>
+                <span className="dot emerald" />
+              </div>
+              <div className="l-budget-summary">
+                <div className="label">💰 Presupuesto usado</div>
+                <div className="val">RD$18,450</div>
+                <div className="sub">de RD$24,000 este mes</div>
+              </div>
+              <div className="l-budget-list">
+                <div className="l-budget-row">
+                  <div className="head"><span className="name">Comida</span><span className="pct">77%</span></div>
+                  <div className="l-budget-track"><div className="l-budget-fill" data-width="77" /></div>
+                </div>
+                <div className="l-budget-row">
+                  <div className="head"><span className="name">Transporte</span><span className="pct">52%</span></div>
+                  <div className="l-budget-track"><div className="l-budget-fill sky" data-width="52" /></div>
+                </div>
+                <div className="l-budget-row">
+                  <div className="head"><span className="name">Entretenimiento</span><span className="pct danger">112%</span></div>
+                  <div className="l-budget-track"><div className="l-budget-fill rose" data-width="100" /></div>
+                </div>
+              </div>
+              <div className="l-budget-alert">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                Entretenimiento excedido
+              </div>
+            </div>
+            <div className="l-mockup">
+              <div className="l-mockup-head">
+                <div><div className="label">Planificación</div><div className="title">Calendario</div></div>
+                <span className="dot sky" />
+              </div>
+              <div className="l-cal-grid">
+                <div className="l-cal-cell">1</div><div className="l-cal-cell">2</div><div className="l-cal-cell">3</div>
+                <div className="l-cal-cell has-event">4<span className="event-dot" /></div>
+                <div className="l-cal-cell">5</div><div className="l-cal-cell">6</div><div className="l-cal-cell">7</div>
+                <div className="l-cal-cell has-event">8<span className="event-dot" /></div>
+                <div className="l-cal-cell">9</div><div className="l-cal-cell">10</div><div className="l-cal-cell">11</div>
+                <div className="l-cal-cell today">12</div>
+                <div className="l-cal-cell">13</div>
+                <div className="l-cal-cell has-event has-event-amber">14<span className="event-dot" /></div>
+                <div className="l-cal-cell">15</div><div className="l-cal-cell">16</div><div className="l-cal-cell">17</div>
+                <div className="l-cal-cell">18</div><div className="l-cal-cell">19</div><div className="l-cal-cell">20</div>
+                <div className="l-cal-cell">21</div>
+              </div>
+              <div className="l-cal-events">
+                <div className="l-cal-event">
+                  <div><div className="name">Visa Popular</div><div className="date">08 Jun</div></div>
+                  <div className="amt" style={{ color: "var(--l-rose-400)" }}>RD$18,650</div>
+                </div>
+                <div className="l-cal-event">
+                  <div><div className="name">Netflix</div><div className="date">14 Jun</div></div>
+                  <div className="amt">RD$450</div>
+                </div>
+              </div>
+            </div>
+            <div className="l-mockup">
+              <div className="l-mockup-head">
+                <div><div className="label">Planificación</div><div className="title">Deudas</div></div>
+                <span className="dot amber" />
+              </div>
+              <div className="l-debt-summary">
+                <div className="label">Total pendiente</div>
+                <div className="val">RD$92,300</div>
+                <div className="sub">Pago próximo: RD$7,200</div>
+              </div>
+              <div className="l-debt-list">
+                <div className="l-debt-row">
+                  <div className="head"><span className="name">Préstamo personal</span><span className="pct">64% pagado</span></div>
+                  <div className="l-debt-track"><div className="l-debt-fill" data-width="64" /></div>
+                  <div className="sub">Pago próximo · 15 Jun</div>
+                </div>
+                <div className="l-debt-row">
+                  <div className="head"><span className="name">Tarjeta Visa</span><span className="pct">38% pagado</span></div>
+                  <div className="l-debt-track"><div className="l-debt-fill" data-width="38" /></div>
+                  <div className="sub">Pago próximo · 08 Jun</div>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
-            {PLAN_ORDER.map((tier) => {
-              const plan = PLAN_CONFIG[tier]
-              const highlighted = tier === "pro"
-              return (
-                <article
-                  key={tier}
-                  className={`relative overflow-hidden rounded-[2rem] border p-6 transition-all hover:-translate-y-1 ${
-                    highlighted
-                      ? "border-emerald-400/50 bg-emerald-400/10 shadow-[0_20px_60px_rgba(16,185,129,0.14)]"
-                      : "border-white/10 bg-white/[0.04]"
-                  }`}
-                >
-                  {plan.badge && (
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-black ${highlighted ? "bg-emerald-400 text-slate-950" : "bg-amber-400/15 text-amber-200"}`}>
-                      {plan.badge}
-                    </span>
-                  )}
-                  <h3 className="mt-4 text-2xl font-black">{plan.label}</h3>
-                  <p className="mt-2 min-h-10 text-sm leading-relaxed text-slate-300">{plan.audience}</p>
-                  <div className="mt-5">
-                    <span className="text-4xl font-black">{formatPlanPrice(tier, billingInterval)}</span>
-                    <span className="ml-1 text-sm font-bold text-slate-400">{getBillingIntervalSuffix(billingInterval)}</span>
-                  </div>
-                  {billingInterval === "yearly" && tier !== "free" && (
-                    <p className="mt-1 text-xs font-bold text-emerald-300">
-                      Equivale a ${plan.price.yearlyMonthlyEquivalent.toFixed(2)}/mes
-                    </p>
-                  )}
-                  <div className="mt-6 space-y-2 text-sm text-slate-300">
-                    {plan.benefits.slice(0, 4).map((benefit) => (
-                      <p key={benefit} className="flex items-start gap-2">
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
-                        {benefit}
-                      </p>
-                    ))}
-                  </div>
-                  <Link
-                    href={tier === "free" ? "/register" : "/register"}
-                    className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full text-sm font-black transition-all active:scale-[0.98] ${
-                      highlighted ? "bg-emerald-400 text-slate-950 hover:bg-emerald-300" : "border border-white/15 bg-white/5 text-white hover:bg-white/10"
-                    }`}
-                  >
-                  {tier === "free" ? "Comenzar gratis" : "Ver Pro"}
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </article>
-              )
-            })}
-          </div>
-
-          <div className="mt-8 grid gap-3 text-center text-sm text-slate-400 sm:grid-cols-3">
-            <p>Pago seguro con Stripe.</p>
-            <p>Puedes cancelar cuando quieras.</p>
-            <p>Sin conexión bancaria obligatoria.</p>
+          <div className="l-planning-features l-reveal-stagger">
+            <div className="l-pf-item"><span className="num">01</span><h4>Presupuestos inteligentes</h4><p>Define límites por categoría y recibe alertas antes de pasarte.</p></div>
+            <div className="l-pf-item"><span className="num">02</span><h4>Calendario financiero</h4><p>Visualiza tarjetas, suscripciones y deudas antes de que se te pasen.</p></div>
+            <div className="l-pf-item"><span className="num">03</span><h4>Deudas y pagos</h4><p>Controla préstamos, cuotas y tarjetas con seguimiento claro.</p></div>
           </div>
         </div>
       </section>
 
-      {/* PREGUNTAS SECTION */}
-      <section id="preguntas" className="bg-slate-50 py-32">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">Preguntas frecuentes</h2>
-            <p className="mt-4 text-slate-600">Todo lo que necesitas saber sobre MiCuadre.</p>
+      {/* PRECIOS */}
+      <section id="precios" className="l-pricing-section">
+        <div className="l-container">
+          <div className="l-pricing-header l-reveal">
+            <div className="l-section-label">
+              <span className="num">05</span>
+              <span className="line" />
+              Precios
+            </div>
+            <h2 className="l-section-title">
+              Empieza gratis.<br />
+              Mejora cuando <em>necesites</em> control total.
+            </h2>
+            <p className="l-section-lead">
+              Organiza tus cuentas, presupuestos, tarjetas, gastos y suscripciones desde
+              una experiencia simple y móvil.
+            </p>
           </div>
-          
-          <div className="space-y-4">
-            {[
-              ["¿MiCuadre se conecta automáticamente con mis bancos?", "Por ahora funciona de forma manual para garantizar tu privacidad y darte control total sin depender de integraciones bancarias complejas."],
-              ["¿Soporta pesos dominicanos (DOP) y dólares (USD)?", "Sí. MiCuadre soporta múltiples monedas, permitiendo registrar cuentas tanto en DOP como en USD sin confusiones."],
-              ["¿Puedo registrar mis tarjetas de crédito?", "Absolutamente. Puedes controlar tu balance actual, balance al corte, monto disponible y mantener a la vista tus fechas de corte y de pago."],
-              ["¿Hay una aplicación móvil disponible?", "Actualmente puedes usarla desde tu navegador web móvil o instalarla como PWA (Añadir a la pantalla de inicio). Muy pronto lanzaremos versiones nativas para iOS y Android."],
-            ].map(([q, a]) => (
-              <details key={String(q)} className="group rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all open:ring-2 open:ring-emerald-500/20">
-                <summary className="flex cursor-pointer items-center justify-between text-lg font-semibold text-slate-900 list-none [&::-webkit-details-marker]:hidden">
-                  {q}
-                  <ChevronDown className="h-5 w-5 text-slate-400 transition-transform group-open:rotate-180 shrink-0 ml-4" />
-                </summary>
-                <p className="mt-4 text-base text-slate-600 leading-relaxed animate-in fade-in slide-in-from-top-2">{a}</p>
-              </details>
-            ))}
+          <div className="l-billing-toggle-wrap l-reveal">
+            <div className="l-billing-toggle" role="radiogroup" aria-label="Tipo de facturación">
+              <div className="slider" />
+              <button className="active" data-billing="monthly" role="radio" aria-checked="true">Mensual</button>
+              <button data-billing="yearly" role="radio" aria-checked="false">Anual · Ahorra 20%</button>
+            </div>
+          </div>
+          <div className="l-annual-note">&nbsp;</div>
+          <div className="l-pricing-grid">
+            <article className="l-price-card l-reveal">
+              <div className="tier-name">Free</div>
+              <p className="tier-desc">Para empezar a organizar tus finanzas.</p>
+              <div className="l-price-display">
+                <span className="currency">$</span>
+                <span className="amount">0</span>
+                <span className="period">/mes</span>
+              </div>
+              <ul className="l-price-features">
+                <li><span className="check">✓</span> 3 cuentas</li>
+                <li><span className="check">✓</span> 10 transacciones por día</li>
+                <li><span className="check">✓</span> Historial básico</li>
+                <li><span className="check">✓</span> 1 suscripción financiera</li>
+              </ul>
+	              <a href="/auth/sign-up" className="l-price-cta ghost magnetic">Comenzar gratis →</a>
+            </article>
+            <article className="l-price-card featured l-reveal">
+              <span className="badge">Recomendado</span>
+              <div className="tier-name">Pro</div>
+              <p className="tier-desc">Para controlar tu dinero sin límites.</p>
+              <div className="l-price-display">
+                <span className="currency">$</span>
+                <span className="amount" id="l-proPrice">2.99</span>
+                <span className="period" id="l-proPeriod">/mes</span>
+              </div>
+              <ul className="l-price-features">
+                <li><span className="check">✓</span> Cuentas ilimitadas</li>
+                <li><span className="check">✓</span> Transacciones ilimitadas</li>
+                <li><span className="check">✓</span> Historial completo</li>
+                <li><span className="check">✓</span> Presupuestos ilimitados</li>
+              </ul>
+	              <a href="/auth/sign-up?plan=pro" className="l-price-cta primary magnetic">Ver Pro →</a>
+            </article>
+          </div>
+          <div className="l-price-foot">
+            <div className="l-price-foot-item">Pago seguro con Stripe</div>
+            <div className="l-price-foot-item">Cancela cuando quieras</div>
+            <div className="l-price-foot-item">Sin conexión bancaria</div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="l-faq-section">
+        <div className="l-container">
+          <div className="l-faq-grid">
+            <div className="l-faq-left l-reveal">
+              <div className="l-section-label">
+                <span className="num">06</span>
+                <span className="line" />
+                Preguntas
+              </div>
+              <h2 className="l-section-title">
+                Todo lo que<br />necesitas <em>saber.</em>
+              </h2>
+              <p className="l-section-lead">
+                Si tienes otra duda que no está aquí, escríbenos. Respondemos rápido.
+              </p>
+            </div>
+            <div className="l-faq-list">
+              <div className="l-faq-item l-reveal">
+                <div className="l-faq-q" role="button" tabIndex={0} aria-expanded="false">
+                  ¿MiCuadre se conecta automáticamente con mis bancos?
+                  <span className="icon" />
+                </div>
+                <div className="l-faq-a" role="region">
+                  <div className="l-faq-a-inner">
+                    Por ahora funciona de forma manual para garantizar tu privacidad y darte
+                    control total sin depender de integraciones bancarias complejas. Tú registras
+                    cada movimiento — tus credenciales nunca salen de tus manos.
+                  </div>
+                </div>
+              </div>
+              <div className="l-faq-item l-reveal">
+                <div className="l-faq-q" role="button" tabIndex={0} aria-expanded="false">
+                  ¿Soporta pesos dominicanos (DOP) y dólares (USD)?
+                  <span className="icon" />
+                </div>
+                <div className="l-faq-a" role="region">
+                  <div className="l-faq-a-inner">
+                    Sí. MiCuadre soporta múltiples monedas, permitiendo registrar cuentas tanto
+                    en DOP como en USD sin confusiones.
+                  </div>
+                </div>
+              </div>
+              <div className="l-faq-item l-reveal">
+                <div className="l-faq-q" role="button" tabIndex={0} aria-expanded="false">
+                  ¿Puedo registrar mis tarjetas de crédito?
+                  <span className="icon" />
+                </div>
+                <div className="l-faq-a" role="region">
+                  <div className="l-faq-a-inner">
+                    Absolutamente. Puedes controlar tu balance actual, balance al corte, monto
+                    disponible y mantener a la vista tus fechas de corte y de pago.
+                  </div>
+                </div>
+              </div>
+              <div className="l-faq-item l-reveal">
+                <div className="l-faq-q" role="button" tabIndex={0} aria-expanded="false">
+                  ¿Hay una aplicación móvil disponible?
+                  <span className="icon" />
+                </div>
+                <div className="l-faq-a" role="region">
+                  <div className="l-faq-a-inner">
+                    Actualmente puedes usarla desde tu navegador web móvil o instalarla como PWA.
+                    Muy pronto lanzaremos versiones nativas para iOS y Android.
+                  </div>
+                </div>
+              </div>
+              <div className="l-faq-item l-reveal">
+                <div className="l-faq-q" role="button" tabIndex={0} aria-expanded="false">
+                  ¿Cómo manejan mis datos financieros?
+                  <span className="icon" />
+                </div>
+                <div className="l-faq-a" role="region">
+                  <div className="l-faq-a-inner">
+                    Tus datos se almacenan de forma segura y nunca se comparten con terceros.
+                    No vendemos información, no mostramos publicidad, no usamos tus números para
+                    perfiles comerciales.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section className="l-final-cta">
+        <div className="l-container">
+          <div className="l-final-cta-inner l-reveal">
+            <h2>Tu dinero,<br /><em>claro.</em> Hoy.</h2>
+            <p>Crea tu cuenta gratis en menos de un minuto. Sin tarjeta, sin compromisos, sin letra pequeña.</p>
+            <div className="cta-row">
+              <a href="/auth/sign-up" className="l-btn-primary-lg magnetic">
+	                Crear cuenta gratis
+	                <span className="arrow">→</span>
+	              </a>
+	              <a href="/auth/login" className="l-btn-ghost-lg magnetic">Hablar con nosotros</a>
+            </div>
           </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-200 bg-white pt-16 pb-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4 lg:gap-8 mb-12">
-            <div className="lg:col-span-2">
-              <LogoMark dark={false} />
-              <p className="mt-6 max-w-xs text-sm text-slate-500 leading-relaxed">
-                El copiloto financiero diseñado para revolucionar cómo los dominicanos controlan su dinero.
-              </p>
-              <div className="mt-6 flex gap-4">
-                <button type="button" onClick={showInstagramSoon} aria-label="Instagram" className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-emerald-500 hover:text-white">
-                  <Instagram className="h-5 w-5" />
-                </button>
-              </div>
+      <footer className="l-footer">
+        <div className="l-container">
+          <div className="l-footer-grid">
+            <div className="l-footer-brand">
+              <a href="#inicio" className="l-brand">
+                <div className="l-brand-mark">M</div>
+                <div>
+                  <div className="l-brand-name">MiCuadre</div>
+                  <div className="l-brand-sub">Copiloto Financiero</div>
+                </div>
+              </a>
+              <h3>Hecho con <em>cariño</em><br />en República Dominicana.</h3>
+              <p>El copiloto financiero diseñado para revolucionar cómo los dominicanos controlan su dinero.</p>
             </div>
-            
-            <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Producto</h3>
-              <ul className="mt-4 space-y-3 text-sm text-slate-500">
-                <li><a href="#funciones" className="hover:text-emerald-600 transition-colors">Funciones</a></li>
-                <li><a href="#reportes" className="hover:text-emerald-600 transition-colors">Reportes</a></li>
-                <li><a href="#tarjetas" className="hover:text-emerald-600 transition-colors">Tarjetas</a></li>
+            <div className="l-footer-col">
+              <h4>Producto</h4>
+              <ul>
+                <li><a href="#funciones">Funciones</a></li>
+                <li><a href="#tarjetas">Tarjetas</a></li>
+                <li><a href="#planificacion">Planificación</a></li>
+                <li><a href="#precios">Precios</a></li>
               </ul>
             </div>
-            
-            <div>
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900">Legal</h3>
-              <ul className="mt-4 space-y-3 text-sm text-slate-500">
-                <li><Link href="/legal/privacidad" className="hover:text-emerald-600 transition-colors">Privacidad</Link></li>
-                <li><Link href="/legal/terminos" className="hover:text-emerald-600 transition-colors">Términos</Link></li>
-                <li><Link href="/legal/aviso-legal" className="hover:text-emerald-600 transition-colors">Aviso Legal</Link></li>
-              </ul>
-            </div>
+	            <div className="l-footer-col">
+	              <h4>Empresa</h4>
+	              <ul>
+	                <li><a href="#inicio">Sobre nosotros</a></li>
+	                <li><a href="#inicio">Blog</a></li>
+	                <li><a href="#inicio">Contacto</a></li>
+	              </ul>
+	            </div>
+	            <div className="l-footer-col">
+	              <h4>Legal</h4>
+	              <ul>
+	                <li><a href="/legal/privacidad">Privacidad</a></li>
+	                <li><a href="/legal/terminos">Términos</a></li>
+	                <li><a href="/legal/aviso-legal">Aviso legal</a></li>
+	              </ul>
+	            </div>
           </div>
-          
-          <div className="border-t border-slate-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-slate-400">© {new Date().getFullYear()} MiCuadre. Todos los derechos reservados.</p>
-            <div className="text-sm font-medium text-slate-400">Hecho con ❤️ en República Dominicana</div>
+          <div className="l-footer-bottom">
+            <p>© 2026 MiCuadre · Todos los derechos reservados</p>
+            <div className="l-footer-marquee">República Dominicana ✦</div>
+            <p>v1.0 · Santo Domingo</p>
           </div>
         </div>
       </footer>
-    </main>
+    </div>
   )
 }
-

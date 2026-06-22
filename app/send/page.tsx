@@ -336,7 +336,7 @@ export default function SendPage() {
                     setAmount(value)
                   }}
                   placeholder="0"
-                  className="hero-amount w-full bg-transparent text-center text-[clamp(2rem,10vw,2.25rem)] font-extrabold leading-none text-foreground tabular-nums outline-none placeholder:text-muted-foreground/30 min-w-[120px]"
+                  className="hero-amount w-full bg-transparent text-center text-input-hero font-extrabold leading-none text-foreground tabular-nums outline-none placeholder:text-muted-foreground/30 min-w-[120px]"
                   autoFocus
                 />
               </div>

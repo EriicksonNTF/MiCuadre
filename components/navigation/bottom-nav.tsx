@@ -13,7 +13,7 @@ const navItems = [
   { href: "/accounts", icon: Wallet, label: "Cuentas" },
   { href: "/expense", icon: Plus, label: "Agregar", isAction: true },
   { href: "/history", icon: Clock, label: "Historial" },
-  { href: "/planning", icon: CalendarCog, label: "Planificación" },
+  { href: "/planning", icon: CalendarCog, label: "Plan" },
 ]
 
 export function BottomNav() {
@@ -53,8 +53,9 @@ export function BottomNav() {
 
   const isAuthPage = pathname.startsWith('/auth')
   const isOnboardingPage = pathname.startsWith('/onboarding')
+  const isLandingPage = pathname === '/'
 
-  if (isAuthPage || isOnboardingPage || !user || isMobileFormOpen) return null
+  if (isAuthPage || isOnboardingPage || isLandingPage || !user || isMobileFormOpen) return null
 
   return (
     <>
@@ -157,7 +158,7 @@ export function BottomNav() {
                   "relative transition-all duration-200 ease-[var(--ease-out-ios)]",
                   isActive ? "h-5 w-5 scale-110 drop-shadow-sm" : "h-5 w-5"
                 )} />
-                <span className={cn("relative max-w-full truncate text-xs font-semibold")}>{item.label}</span>
+                <span className={cn("relative max-w-full whitespace-nowrap font-medium", "text-nav-label")}>{item.label}</span>
               </Link>
             )
           })}

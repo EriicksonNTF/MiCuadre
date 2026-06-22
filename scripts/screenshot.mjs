@@ -47,8 +47,24 @@ const needsAuth = (route) => {
 async function login(page) {
   console.log(`Logging in as ${EMAIL}...`);
   await page.goto(`${BASE_URL}/auth/login`, { waitUntil, timeout: 60000 });
-  await page.waitForTimeout(1000);
-  await page.fill('input[type="email"]', EMAIL);
+  await page.waitForTimeout(1500);
+
+  // The auth page starts on a "choice" screen (Iniciar sesión / Crear cuenta / Google).
+  // The email/password inputs only appear after clicking the "Iniciar sesión" button.
+  // Handle both cases: if the inputs are already visible, skip the click.
+  let emailInput = await page.$('input[type="email"]');
+  if (!emailInput) {
+    console.log("Auth choice screen detected — clicking 'Iniciar sesión'…");
+    await page.locator('button', { hasText: 'Iniciar sesión' }).first().click();
+    await page.waitForTimeout(1200);
+    emailInput = await page.$('input[type="email"]');
+  }
+
+  if (!emailInput) {
+    throw new Error("Could not find the email input on the login page.");
+  }
+
+  await emailInput.fill(EMAIL);
   await page.fill('input[type="password"]', PASSWORD);
   await page.click('button[type="submit"]');
   await page.waitForURL((url) => !url.pathname.includes("/auth/login"), { timeout: 30000 });

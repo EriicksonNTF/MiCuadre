@@ -47,8 +47,9 @@ export function SideNav() {
 
   const isAuthPage = pathname.startsWith("/auth")
   const isOnboardingPage = pathname.startsWith("/onboarding")
+  const isLandingPage = pathname === "/"
 
-  if (isAuthPage || isOnboardingPage) return null
+  if (isAuthPage || isOnboardingPage || isLandingPage) return null
 
   return (
     <>

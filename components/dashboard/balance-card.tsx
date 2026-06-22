@@ -40,7 +40,7 @@ export function BalanceCard() {
           </button>
         </div>
 
-        <h2 className="relative mt-6 overflow-hidden text-ellipsis text-[clamp(1.75rem,6vw,2.25rem)] font-black leading-none tracking-tight text-foreground">
+        <h2 className="relative mt-6 overflow-hidden text-ellipsis text-display-balance font-black leading-none tracking-tight text-foreground">
           {isLoading ? (
             <span className="inline-block h-11 w-52 max-w-full animate-pulse rounded-2xl bg-muted" />
           ) : (

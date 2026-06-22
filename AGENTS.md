@@ -175,6 +175,17 @@ pnpm run dev:reset
 - **Rule:** All amount inputs/display fields must be at least `text-xl font-bold` (20px).
 - **Reference standard:** Expense form uses `text-[clamp(2.75rem,15vw,4.5rem)]` for primary transaction flows.
 
+### Account cards visible through modal overlays (stacking context leak)
+- **Symptom:** When a `BaseModalForm` opens (transfer, create account, etc.), the `BrandedAccountCard` components remain visible through the modal, appearing on top of or behind the modal content.
+- **Root cause:** `BrandedAccountCard` uses `relative` + large `shadow-[0_22px_54px_-26px_rgba(0,0,0,0.62)]` + wrapper with `z-10`. Combined with `<main>` having `overflow-y: auto` (from `app-scroll` class), this creates stacking contexts that leak through the `MobileFullscreenForm` portal (`createPortal` to `document.body`).
+- **Fix:** Hide the `MobilePageShell` when the modal is open by conditionally adding `hidden` class:
+  ```tsx
+  <MobilePageShell fullBleed className={cn("pb-nav-safe", showTransfer && "hidden")}>
+  ```
+- **Affected:** `accounts-screen.tsx` (transfer modal). Same pattern needed for any screen where portal-based modals overlap persistent card lists.
+- **Why `hidden` works:** Removes the cards from the DOM entirely (`display: none`), preventing any stacking context interference. The modal renders as a sibling in the fragment, portaled to body level.
+- **Don't use `invisible`:** It keeps the element in the layout and stacking context — cards would still interfere with z-index.
+
 ## Contrast Ratio Verification (COMPLETED)
 - Script at `scripts/check-contrast.mjs` (uses `culori` — installed via `pnpm add culori`).
 - **All text-on-background pairs pass WCAG AA (4.5:1) in both modes.** Most pass AAA (7:1).

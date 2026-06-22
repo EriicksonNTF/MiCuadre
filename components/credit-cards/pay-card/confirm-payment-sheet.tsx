@@ -32,7 +32,7 @@ export function ConfirmPaymentSheet({ amount, taxAmount = 0, totalDebit, currenc
         <section className="overflow-hidden rounded-[24px] border border-border bg-card">
           <div className="p-5 text-center">
             <p className="text-sm text-muted-foreground">Monto a acreditar</p>
-            <p className="mt-1 text-4xl font-extrabold text-foreground">{currencySymbol}{amount.toFixed(2)}</p>
+            <p className="mt-1 text-display-balance font-extrabold text-foreground">{currencySymbol}{amount.toFixed(2)}</p>
             {conversionSummary ? <p className="mt-1 text-xs text-muted-foreground">{conversionSummary}</p> : null}
           </div>
           <div className="border-t border-border px-5 py-4">

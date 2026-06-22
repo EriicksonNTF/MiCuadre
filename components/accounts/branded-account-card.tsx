@@ -124,7 +124,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
             <div className="mt-1 space-y-0.5">
               {isMultiCurrency ? (
                 <div className="flex items-baseline gap-4">
-                  <span className={cn("font-black tabular-nums tracking-tight", compact ? "text-xl" : "text-[clamp(1.25rem,4vw,1.75rem)]")}>
+                  <span className={cn("font-black tabular-nums tracking-tight", compact ? "text-xl" : "text-display-secondary")}>
                     {formatCurrency(debtDop, "DOP")}
                   </span>
                   <span className={cn("font-black tabular-nums tracking-tight text-white/70", compact ? "text-base" : "text-[1.125rem]")}>
@@ -132,7 +132,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
                   </span>
                 </div>
               ) : (
-                <p className={cn("font-black tabular-nums tracking-tight", compact ? "text-xl" : "text-[clamp(1.25rem,4vw,1.75rem)]")}>
+                <p className={cn("font-black tabular-nums tracking-tight", compact ? "text-xl" : "text-display-secondary")}>
                   {formatCurrency(debtDop || debtUsd || Math.abs(Number(account.current_debt || 0)), hasDopLimit ? "DOP" : "USD")}
                 </p>
               )}
@@ -179,7 +179,7 @@ export function BrandedAccountCard({ account, compact = false, className }: Bran
               <p className="text-xs opacity-80">Balance disponible</p>
               {hasPending && <span className="animate-pulse text-[0.5625rem] font-medium text-amber-200">(Tiene pendientes)</span>}
             </div>
-            <p className="mt-1 text-[clamp(1.25rem,4vw,1.75rem)] font-black tabular-nums tracking-tight">{formatCurrency(Number(account.balance || 0), account.currency)}</p>
+            <p className="mt-1 text-display-secondary font-black tabular-nums tracking-tight">{formatCurrency(Number(account.balance || 0), account.currency)}</p>
           </>
         )}
       </div>
