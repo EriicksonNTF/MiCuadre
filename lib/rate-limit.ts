@@ -74,4 +74,8 @@ export const API_RATE_LIMIT = {
     maxRequests: 30,
     windowMs: 60_000,
   }),
+  ocr: createRateLimiter({
+    maxRequests: Number(process.env.OCR_RATE_LIMIT_PER_MINUTE) || 10,
+    windowMs: 60_000,
+  }),
 }
