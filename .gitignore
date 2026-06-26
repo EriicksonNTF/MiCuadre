@@ -36,3 +36,6 @@ screenshots/
 
 # Captured site artifacts
 captured-site/
+
+# iOS build cache (Capacitor copies web assets here)
+ios/App/App/public/

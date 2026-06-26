@@ -21,15 +21,26 @@
     "audit:visual-deep": "node scripts/audit-visual-deep.mjs",
     "build": "pnpm next build",
     "build:safe": "pnpm next build",
-
     "start": "pnpm next start",
     "lint": "pnpm eslint .",
     "typecheck": "tsc --noEmit",
     "doctor": "npx react-doctor@latest",
-    "check:connections": "node scripts/check-connections.mjs"
+    "check:connections": "node scripts/check-connections.mjs",
+    "build:mobile": "pnpm build && npx cap copy ios && npx cap sync ios",
+    "cap:open": "npx cap open ios",
+    "cap:sync": "npx cap sync ios",
+    "cap:copy": "npx cap copy ios"
   },
   "dependencies": {
-
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/camera": "^7.0.5",
+    "@capacitor/cli": "^7.6.7",
+    "@capacitor/core": "^7.6.7",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/ios": "^7.6.7",
+    "@capacitor/network": "^7.0.4",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6",
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "@hookform/resolvers": "^3.9.1",
@@ -91,7 +102,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.0",

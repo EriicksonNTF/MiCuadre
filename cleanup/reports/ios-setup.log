@@ -1,0 +1,29 @@
+# iOS Setup Log — 2026-06-25
+
+## Steps executed
+
+[1] Created branch: cleanup/ios-config-micuadre ✓
+[2] Installed Capacitor 7.x packages (10 packages) ✓
+[3] Created capacitor.config.json with server.url -> https://micuadre-five.vercel.app ✓
+[4] npx cap init MiCuadre app.micuadre.ios --web-dir out ✓
+[5] Installed CocoaPods via Homebrew ✓
+[6] npx cap add ios ✓
+[7] npx cap sync ios (DEVELOPER_DIR set) ✓
+
+## Plugin summary
+- @capacitor/app@7.1.2
+- @capacitor/camera@7.0.5
+- @capacitor/haptics@7.0.5
+- @capacitor/network@7.0.4
+- @capacitor/splash-screen@7.0.5
+- @capacitor/status-bar@7.0.6
+
+## Domain verification
+- https://micuadre-five.vercel.app → HTTP 200 ✓
+- https://micuadre-five.vercel.app/auth/login → HTTP 200 ✓
+- CORS: access-control-allow-origin: * ✓
+
+## Notes
+- Sync completed without errors (31.5s)
+- WebDir warning is expected (out/ not needed with server.url)
+- No code signing configured — developer must set Team in Xcode
