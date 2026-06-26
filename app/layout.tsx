@@ -9,6 +9,7 @@ import { BodyCleanup } from '@/components/providers/body-cleanup'
 import { OfflineStatusBanner } from '@/components/ui/offline-status-banner'
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
 import { ThemeColor } from '@/components/providers/theme-color'
+import { MainContent } from '@/components/providers/main-content'
 import './globals.css'
 
 const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -95,9 +96,9 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
         <AppProviders bodyCleanup={<BodyCleanup />} offlineBanner={<OfflineStatusBanner />} toastContainer={<ToastContainer />}>
           <SideNav />
-          <div className="main-content">
+          <MainContent>
             {children}
-          </div>
+          </MainContent>
         </AppProviders>
         <BottomNav />
         {process.env.NODE_ENV === 'production' && <ServiceWorkerRegister />}
