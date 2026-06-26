@@ -21,11 +21,7 @@
     "audit:visual-deep": "node scripts/audit-visual-deep.mjs",
     "build": "pnpm next build",
     "build:safe": "pnpm next build",
-    "prebuild:mobile": "node scripts/prebuild-export.mjs",
-    "build:mobile": "cross-env BUILD_EXPORT=true NEXT_DISABLE_TURBOPACK=1 next build",
-    "postbuild:mobile": "node scripts/fix-asset-paths.mjs && node scripts/postbuild-export.mjs",
-    "sync:mobile": "npx cap sync ios",
-    "build:mobile:full": "pnpm run build:mobile && pnpm run postbuild:mobile && pnpm run sync:mobile",
+
     "start": "pnpm next start",
     "lint": "pnpm eslint .",
     "typecheck": "tsc --noEmit",
@@ -33,14 +29,7 @@
     "check:connections": "node scripts/check-connections.mjs"
   },
   "dependencies": {
-    "@capacitor/app": "^8.1.0",
-    "@capacitor/camera": "^8.2.0",
-    "@capacitor/core": "^8.3.4",
-    "@capacitor/haptics": "^8.0.2",
-    "@capacitor/ios": "^8.4.0",
-    "@capacitor/network": "^8.0.1",
-    "@capacitor/splash-screen": "^8.0.1",
-    "@capacitor/status-bar": "^8.0.2",
+
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "@hookform/resolvers": "^3.9.1",
@@ -102,8 +91,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.3.4",
+
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.0",

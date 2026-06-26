@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { getAuthRedirectUrl } from "@/lib/auth-redirect"
 import { loginSchema, signupSchema, type LoginInput, type SignupInput } from "@/lib/validations/auth"
 import { requestPrecacheAfterLogin } from "@/lib/pwa/precache-routes"
 import Image from "next/image"
@@ -37,12 +38,7 @@ export function AuthEntry({ initialMode = "choice" }: { initialMode?: AuthMode }
   })
 
   const getAuthRedirectTo = () => {
-    const baseRedirect =
-      process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-      `${window.location.origin}/auth/callback`
-
-    const separator = baseRedirect.includes("?") ? "&" : "?"
-    return `${baseRedirect}${separator}next=${encodeURIComponent("/")}`
+    return getAuthRedirectUrl("/")
   }
 
   const handleOAuth = async (provider: "google" | "apple") => {
@@ -121,9 +117,7 @@ export function AuthEntry({ initialMode = "choice" }: { initialMode?: AuthMode }
         email: data.email.trim().toLowerCase(),
         password: data.password,
         options: {
-          emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-            `${window.location.origin}/auth/callback`,
+          emailRedirectTo: getAuthRedirectUrl("/"),
           data: { first_name: data.firstName.trim() },
         },
       })

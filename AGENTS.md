@@ -24,7 +24,9 @@
 - Open in Xcode: `npx cap open ios` (requires user interaction to select simulator and run).
 
 ## Capacitor / Path Resolution
-- `capacitor.config.json`: `webDir: "out"`, no `server.url` (loads from local filesystem).
+- `capacitor.config.json`: `webDir: "out"`, `scheme: "micuadre"`.
+- **Current version:** Capacitor **7.6.7** line (all packages at 7.x — see "Capacitor 8 plugin incompatibility" in Known Fix Patterns). Do NOT upgrade to 8.x until Ionic publishes compatible Swift sources.
+- `server.url` may be set to `"https://micuadre-five.vercel.app"` for production builds. For local testing, temporarily remove `server.url` and run `npx cap sync ios` (see Known Fix Patterns).
 - Next.js 16 static export uses absolute paths (`/_next/static/...`) which break under `file://` protocol in WKWebView.
 - `scripts/fix-asset-paths.mjs` fixes this by converting to relative paths via regex matching `"`/`'`/`\"` followed by `/_next/`, `/favicon`, `/manifest.json`, `/apple-touch-icon`, `/icon-*`, `/placeholder-*`, `/micuadre-logo`, `/icono-favicon`, `/background_music.m4a`, `/offline`.
 - The script handles all depths (root → `./`, one level → `../`, two levels → `../../`).
@@ -185,6 +187,90 @@ pnpm run dev:reset
 - **Affected:** `accounts-screen.tsx` (transfer modal). Same pattern needed for any screen where portal-based modals overlap persistent card lists.
 - **Why `hidden` works:** Removes the cards from the DOM entirely (`display: none`), preventing any stacking context interference. The modal renders as a sibling in the fragment, portaled to body level.
 - **Don't use `invisible`:** It keeps the element in the layout and stacking context — cards would still interfere with z-index.
+
+## iOS Simulator Build & Run (Verified 2026-06-22)
+
+### Prerequisites
+- Xcode must be installed (found at `/Users/papolo/Downloads/Xcode.app` — **NOT** in `/Applications/`).
+- If `xcrun simctl` gives "unable to find utility", set `DEVELOPER_DIR`:
+  ```bash
+  export DEVELOPER_DIR=/Users/papolo/Downloads/Xcode.app/Contents/Developer
+  ```
+- This is required for **all** `xcrun`, `xcodebuild`, and `simctl` commands in the session.
+- To make it permanent: `sudo xcode-select --switch /Users/papolo/Downloads/Xcode.app/Contents/Developer`
+
+### Full build → simulator pipeline
+```bash
+# 1. Build web bundle
+npm run build:mobile
+
+# 2. Sync to iOS (copies out/ → ios/App/App/public/, regenerates Package.swift)
+export DEVELOPER_DIR=/Users/papolo/Downloads/Xcode.app/Contents/Developer
+npx cap sync ios
+
+# 3. Build native app for simulator
+xcrun xcodebuild \
+  -project ios/App/App.xcodeproj \
+  -scheme App \
+  -configuration Debug \
+  -sdk iphonesimulator \
+  -destination 'platform=iOS Simulator,id=672AB44F-A760-4AB6-9126-4D3853254F5A' \
+  -derivedDataPath /tmp/micuadre-dd \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+
+# 4. Boot simulator, install and launch
+xcrun simctl boot 672AB44F-A760-4AB6-9126-4D3853254F5A   # "iPhone 16 Pro"
+xcrun simctl install 672AB44F-A760-4AB6-9126-4D3853254F5A /tmp/micuadre-dd/Build/Products/Debug-iphonesimulator/App.app
+xcrun simctl launch 672AB44F-A760-4AB6-9126-4D3853254F5A app.micuadre.ios
+open /Users/papolo/Downloads/Xcode.app/Contents/Developer/Applications/Simulator.app
+```
+
+### Available simulator devices
+| Device | UUID |
+|--------|------|
+| iPhone 16 Pro | `672AB44F-A760-4AB6-9126-4D3853254F5A` |
+| iPhone 16 Pro Max | `EBA46CA1-F4D0-497B-BD06-68E2352C6DAA` |
+| iPhone 16 | `2517F99F-174A-48D4-B2B0-1581237E6563` |
+| iPhone SE (3rd gen) | `9767878D-41FA-456A-9F09-954E4E7D6947` |
+
+## Known Fix Patterns (recurring issues — remember these)
+
+### Capacitor 8 plugin incompatibility — MUST use 7.x line
+- **Root cause:** Capacitor 8.4 changed Swift APIs (`PluginConfig.getString` removed, `UIColor.capacitor.color(fromHex:)` signature changed to `color(argb: UInt32)`). Several plugins published as "8.0.x" (status-bar 8.0.2, haptics 8.0.2, splash-screen 8.0.1) contain Capacitor 7-era Swift source code that is incompatible with the `capacitor-swift-pm` 8.4.0 binary framework.
+- **Symptoms:** Build errors like `value of type 'PluginConfig' has no member 'getString'` and `incorrect argument label in call (have 'fromHex:', expected 'argb:')` in `StatusBarPlugin.swift`.
+- **Fix:** Use Capacitor **7.6.7** line where all packages are consistent. Current installed versions:
+  ```
+  @capacitor/core@7.6.7, @capacitor/ios@7.6.7, @capacitor/cli@7.6.7
+  @capacitor/app@7.1.2, @capacitor/camera@7.0.5, @capacitor/haptics@7.0.5
+  @capacitor/network@7.0.4, @capacitor/splash-screen@7.0.5, @capacitor/status-bar@7.0.6
+  ```
+- **DO NOT** upgrade to Capacitor 8.x until Ionic publishes fully compatible Swift sources for ALL plugins.
+- **After any `pnpm add` of capacitor packages:** Run `npx cap sync ios` to regenerate `CapApp-SPM/Package.swift`.
+
+### SPM Package.swift with Windows backslashes
+- **Root cause:** Some versions of Capacitor CLI (likely running on Windows or a buggy version) generated `ios/App/CapApp-SPM/Package.swift` with Windows-style backslash paths (`..\..\..\node_modules\...`) instead of Unix forward slashes (`../../../node_modules/...`).
+- **Symptoms:** `xcodebuild` fails with `Invalid escape sequence in literal` and `missing argument for parameter 'path' in call` — because Swift parses `\n`, `\@`, `\.` etc. as escape sequences.
+- **Fix:** Run `npx cap sync ios` — Capacitor 7.x CLI generates correct forward-slash paths. If paths get corrupted again, manually replace `\\` with `/` in the `path:` strings of `CapApp-SPM/Package.swift`.
+
+### `cross-env` missing from node_modules
+- **Root cause:** `cross-env@^10.1.0` listed in `devDependencies` but not installed in `node_modules/` (pnpm resolution inconsistency or fresh install skip).
+- **Symptoms:** `npm run build:mobile` fails with `Cannot find module '.../cross-env/dist/bin/cross-env.js'`. The `prebuild:mobile` step runs first (moving `app/api/` to `.api-backup/`) but `postbuild:mobile` never runs because the build step fails, leaving `app/api/` missing.
+- **Fix:** `pnpm add -D cross-env@^10.1.0`. If `app/api/` was already moved to `.api-backup/`, restore it with `node scripts/postbuild-export.mjs` before retrying.
+
+### `prebuild:mobile` leaves repo in broken state on build failure
+- **Root cause:** `prebuild:mobile` moves `app/api/` → `.api-backup/` BEFORE the build runs. If the build fails, `postbuild:mobile` (which restores `app/api/`) never executes.
+- **Fix:** Always run `node scripts/postbuild-export.mjs` manually after a failed `build:mobile` to restore `app/api/`.
+
+### `capacitor.config.json` `server.url` overrides local bundle
+- **Root cause:** When `server.url` is set (e.g. `"https://micuadre-five.vercel.app"`), the WKWebView loads that URL instead of the local `out/` bundle, showing the production deployment instead of the current code.
+- **Fix for local development:** Temporarily remove the `"url"` key from `capacitor.config.json` and run `npx cap copy ios` or `npx cap sync ios`. Remember to **restore** it before committing if the project uses it for production builds.
+- **Note:** `allowNavigation` must remain for Supabase auth to work from `micuadre://` scheme.
+
+### Stale git rebase state (macOS file duplication)
+- **Root cause:** macOS sometimes creates duplicate files with ` 2` suffix (e.g. `.git/rebase-merge/head-name 2`) during file operations. Git interprets these as a rebase-in-progress even though no real rebase is active.
+- **Symptoms:** `git status` reports "You are currently rebasing" but `git log` shows the correct HEAD. The rebase state files all have ` 2` suffix.
+- **Fix:** This is a cosmetic issue — doesn't affect builds. Can be cleaned by removing the `.git/rebase-merge/` directory if no real rebase is in progress.
 
 ## Contrast Ratio Verification (COMPLETED)
 - Script at `scripts/check-contrast.mjs` (uses `culori` — installed via `pnpm add culori`).
