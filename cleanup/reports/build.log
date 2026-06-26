@@ -1,0 +1,17 @@
+npm warn Unknown project config "minimumReleaseAge". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "only-built-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> my-project@0.1.0 build
+> pnpm next build
+
+▲ Next.js 16.2.9 (Turbopack)
+- Environments: .env.local
+- Experiments (use with caution):
+  · optimizePackageImports
+  · serverActions
+  ✓ transitionIndicator
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 55s
+  Running TypeScript ...
