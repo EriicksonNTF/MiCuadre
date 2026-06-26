@@ -1,0 +1,27 @@
+{
+  "generated": "2026-06-25T20:30:00-04:00",
+  "total_candidates": 13,
+  "estimated_reclaimable_bytes": 16600000,
+  "sections": {
+    "safe_to_remove": [
+      {"path": "dev-server.log", "size": 0, "tracked": true, "confidence": "high"},
+      {"path": "dev-server-err.log", "size": 0, "tracked": true, "confidence": "high"},
+      {"path": "tsconfig.tsbuildinfo", "size": 876312, "tracked": true, "confidence": "high", "note": "Already in .gitignore but tracked; use git rm --cached"},
+      {"path": "public/Mockup 3D/Mockup 3D Dashboard.png", "size": 1493731, "tracked": true, "confidence": "high"},
+      {"path": "public/Mockup 3D/Mockup 3D Transaccion.png", "size": 1272297, "tracked": true, "confidence": "high"},
+      {"path": "public/landing/mockup-dashboard-3d.png", "size": 1400000, "tracked": true, "confidence": "high"},
+      {"path": "public/landing/mockup-metas-3d.png", "size": 1505205, "tracked": true, "confidence": "high"},
+      {"path": "public/landing/mockup-transaccion-3d.png", "size": 1200000, "tracked": true, "confidence": "high"},
+      {"path": "docs/Referencia diseño.png", "size": 290819, "tracked": true, "confidence": "high"},
+      {"path": "assets/icon.png", "size": 38418, "tracked": true, "confidence": "high"},
+      {"path": "assets/splash.png", "size": 163623, "tracked": true, "confidence": "high"},
+      {"path": "compositions/renders/micuadre-promo-real-ui.mp4", "size": 6590324, "tracked": true, "confidence": "high"},
+      {"path": "compositions/renders/compositions_2026-05-07_15-16-59.mp4", "size": 1422788, "tracked": true, "confidence": "high"}
+    ],
+    "needs_review": [
+      {"path": "landing-redesign.html", "size": 107072, "tracked": true, "confidence": "medium", "note": "Standalone HTML, not imported by Next.js app but related to landing page"},
+      {"path": "public/bank-logos/* 2..7.svg", "size": 4800000, "count": 25, "tracked": true, "confidence": "medium", "note": "All exact duplicates but need to verify no component references ' 2.svg' paths"}
+    ],
+    "do_not_touch": ["scripts/*", ".agents/", "compositions/index.html", "compositions/assets/app-shots/*", "docs/*.md", "next.user-config.mjs"]
+  }
+}

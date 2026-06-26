@@ -1,0 +1,40 @@
+# Actions executed during cleanup
+# Date: 2026-06-25
+
+[1/9] CREATE BRANCH: git checkout -b cleanup/remove-junk-files
+  → SUCCESS
+
+[2/9] CREATE BACKUP DIRS: mkdir -p cleanup/backups cleanup/reports
+  → SUCCESS
+
+[3/9] MOVE FILES TO BACKUPS:
+  → dev-server.log → cleanup/backups/ ✓
+  → dev-server-err.log → cleanup/backups/ ✓
+  → public/Mockup 3D/* → cleanup/backups/mockup-3d/ ✓ (2 files)
+  → public/landing/mockup-*.png → cleanup/backups/ ✓ (3 files)
+  → docs/Referencia diseño.png → cleanup/backups/ ✓
+  → assets/icon.png, assets/splash.png → cleanup/backups/ ✓
+  → compositions/renders/*.mp4 → cleanup/backups/ ✓ (2 files)
+  → landing-redesign.html → cleanup/backups/ ✓
+
+[4/9] REMOVE DUPLICATE BANK LOGOS:
+  → 25 numbered SVGs removed via git rm ✓
+  → Canonical copies in collection-data/ untouched
+
+[5/9] TSBUILDINFO:
+  → git rm --cached tsconfig.tsbuildinfo ✓
+  → Already in .gitignore (line 32) ✓
+
+[6/9] WRITE REPORTS:
+  → cleanup/reports/candidates.json ✓
+  → cleanup/REPORT.md ✓
+  → cleanup/reports/actions.txt ✓
+
+[7/9] COMMIT:
+  → git add -A && git commit (pending after reports)
+
+[8/9] BUILD VERIFICATION:
+  → npm run build (pending)
+
+[9/9] LINT VERIFICATION:
+  → npm run lint (pending)
