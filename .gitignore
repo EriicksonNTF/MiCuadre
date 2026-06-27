@@ -41,4 +41,6 @@ captured-site/
 ios/App/App.xcodeproj/xcuserdata/
 ios/App/App.xcworkspace/xcuserdata/
 ios/capacitor-cordova-ios-plugins/
+ios/App/Pods/
+ios/App/App/public/
 ios.bak/

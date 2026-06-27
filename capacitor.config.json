@@ -1,0 +1,38 @@
+{
+  "appId": "app.micuadre.ios",
+  "appName": "MiCuadre",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "scheme": "micuadre",
+  "server": {
+    "url": "https://micuadre-five.vercel.app",
+    "allowNavigation": [
+      "*.supabase.co"
+    ]
+  },
+  "ios": {
+    "scheme": "micuadre"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#ffffff",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "default",
+      "backgroundColor": "#ffffff"
+    },
+    "Network": {
+      "enabled": true
+    }
+  },
+  "packageClassList": [
+    "AppPlugin",
+    "CAPCameraPlugin",
+    "HapticsPlugin",
+    "CAPNetworkPlugin",
+    "SplashScreenPlugin",
+    "StatusBarPlugin"
+  ]
+}
