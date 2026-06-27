@@ -1,7 +1,11 @@
-import type { ComponentType, HTMLAttributes, ReactNode } from "react"
+import { useRef, type ComponentType, type HTMLAttributes, type ReactNode } from "react"
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
+import { mutate } from "swr"
 
 import { cn } from "@/lib/utils"
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh"
+import { PullToRefreshIndicator } from "@/components/pull-to-refresh"
+import { useIsMobile } from "@/components/ui/use-mobile"
 
 type MobilePageShellProps = HTMLAttributes<HTMLElement> & {
   children: ReactNode
@@ -20,11 +24,50 @@ function MobilePageShell({
   noBottomNav,
   ...props
 }: MobilePageShellProps) {
+  const scrollRef = useRef<HTMLElement>(null)
+  const isMobile = useIsMobile()
+
+  async function refreshAllData() {
+    const stringKeys = [
+      "accounts",
+      "profile",
+      "goals",
+      "categories",
+      "notifications",
+      "beneficiaries",
+      "financial_subscriptions",
+      "notification_preferences",
+      "planning_budgets_with_usage",
+      "planning_calendar_events",
+      "planning_debts",
+      "planning_debt_payments_month",
+      "planning_credit_card_debts",
+      "billing_status",
+    ]
+    await Promise.all([
+      ...stringKeys.map((key) => mutate(key, undefined, { revalidate: true })),
+      mutate(
+        (key: unknown) => Array.isArray(key) && (key[0] === "transactions" || key[0] === "transfers"),
+        undefined,
+        { revalidate: true },
+      ),
+    ])
+  }
+
+  const { distance, status } = usePullToRefresh(scrollRef, {
+    onRefresh: refreshAllData,
+    enabled: isMobile,
+    threshold: 70,
+    maxPull: 100,
+  })
+
   return (
     <Comp
+      ref={scrollRef as React.RefObject<HTMLDivElement>}
       className={cn("app-scroll min-h-[100dvh] overflow-y-auto bg-background", className)}
       {...props}
     >
+      {isMobile && <PullToRefreshIndicator distance={distance} status={status} threshold={70} />}
       {fullBleed ? children : (
         <div className={cn("mobile-page", noBottomNav && "mobile-page--no-nav")}>
           {children}
