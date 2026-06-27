@@ -36,3 +36,9 @@ screenshots/
 
 # Captured site artifacts
 captured-site/
+
+# iOS/Capacitor generated build artifacts
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/App.xcworkspace/xcuserdata/
+ios/capacitor-cordova-ios-plugins/
+ios.bak/
