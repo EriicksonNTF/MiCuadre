@@ -1,6 +1,7 @@
 ---
 name: ocr-document-processor
 description: Extract text and structure from scans, images, and scanned PDFs. Use for OCR, searchable PDFs, table extraction, receipt parsing, and business card parsing.
+allowed-tools: Bash(python3 scripts/*.py *)
 ---
 
 # OCR Document Processor
