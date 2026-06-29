@@ -37,21 +37,4 @@ export default {
       "@radix-ui/react-tooltip",
     ],
   },
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.cache = false
-
-      config.watchOptions = {
-        ...(config.watchOptions ?? {}),
-        ignored: [
-          "**/.git/**",
-          "**/.next/**",
-          "**/coverage/**",
-          "**/dist/**",
-        ],
-      }
-    }
-
-    return config
-  },
 }

@@ -6,11 +6,11 @@
     "enable": true
   },
   "scripts": {
-    "predev": "node scripts/predev.js",
-    "dev": "pnpm dev:webpack",
+    "predev": "node scripts/predev.mjs",
+    "dev": "next dev --turbo -p 3000",
     "dev:turbo": "cross-env TURBOPACK_PERSISTENT_CACHE=0 next dev --turbopack -p 3000",
     "dev:webpack": "cross-env NEXT_DISABLE_TURBOPACK=1 next dev --webpack -p 3000",
-    "dev:reset": "node scripts/predev.js && node -e \"const fs = require('fs'); fs.rmSync('.next', {recursive: true, force: true})\" && pnpm dev",
+    "dev:reset": "node scripts/predev.mjs && node -e \"const fs = require('fs'); fs.rmSync('.next', {recursive: true, force: true})\" && pnpm dev",
     "dev:fallback": "pnpm run dev || pnpm run dev:webpack",
     "dev:preview": "pnpm build && pnpm start",
     "audit:card-payments": "node scripts/audit-card-payment-integrity.mjs",

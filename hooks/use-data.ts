@@ -1362,7 +1362,7 @@ export async function createAccount(account: NewAccountInput) {
     message: `Se creo la cuenta ${account.name}.`,
     actionUrl: "/accounts",
   })
-  mutate("notifications")
+  await mutate("notifications")
   return data
 }
 
@@ -1575,13 +1575,13 @@ export async function createTransaction(
       }
     } catch (impactError) {
       if (commissionTxId) {
-        await supabase.from("transactions").delete().eq("id", commissionTxId)
-      }
-      await supabase.from("transactions").delete().eq("id", data.id)
-      throw impactError
-    }
+    await supabase.from("transactions").delete().eq("id", commissionTxId)
+  }
+  await supabase.from("transactions").delete().eq("id", data.id)
+  throw impactError
+}
 
-    try {
+try {
       const ledger = LedgerService.create()
       if (transactionToInsert.type === "expense") {
         await ledger.recordExpense(user.id, transactionToInsert.account_id, transactionToInsert.amount, transactionToInsert.currency as any, transactionToInsert.description || undefined, data.id, "transactions")
@@ -1597,8 +1597,8 @@ export async function createTransaction(
 
     await syncAccountBalance(transactionToInsert.account_id, transactionToInsert.currency)
 
-    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-    mutate("accounts")
+    await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    await mutate("accounts")
 
     const notificationMetadata = transactionToInsert.metadata as Record<string, unknown> | null
     const isCreditCardIncome = notificationMetadata?.kind === "credit_card_income"
@@ -1618,7 +1618,7 @@ export async function createTransaction(
       message: `${transactionToInsert.description || "Movimiento"}: ${transactionToInsert.currency} ${roundCurrencyAmount(transactionToInsert.amount).toFixed(2)}`,
       actionUrl: "/history",
     })
-    mutate("notifications")
+    await mutate("notifications")
 
     return data
   } catch (err: any) {
@@ -1724,8 +1724,8 @@ export async function updateTransaction(
     throw rpcError
   }
 
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  mutate("accounts")
+  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await mutate("accounts")
   return result
 }
 
@@ -1761,18 +1761,18 @@ export async function deleteTransaction(id: string) {
     throw rpcError
   }
 
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  mutate("accounts")
+  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await mutate("accounts")
 
   if (existingMeta.kind === "transfer") {
-    mutate(["transfers", 100])
+    await mutate(["transfers", 100])
   }
   if (existingMeta.kind === "debt_payment") {
-    mutate("planning_debts")
-    mutate("planning_debt_payments_month")
+    await mutate("planning_debts")
+    await mutate("planning_debt_payments_month")
   }
   if (existingMeta.kind === "credit_payment") {
-    mutate("notifications")
+    await mutate("notifications")
   }
 
   return result
@@ -1848,9 +1848,9 @@ async function deleteCreditCardPaymentGroup(params: {
     })
   }
 
-  mutate("accounts")
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  mutate("notifications")
+  await mutate("accounts")
+  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await mutate("notifications")
 }
 
 export async function updateProfile(updates: Partial<Profile> & { username?: string | null; phone?: string | null }) {
@@ -2302,9 +2302,9 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
 
   await syncAccountBalance(contribution.account_id, accountCurrency)
 
-  mutate("goals")
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  mutate("accounts")
+  await mutate("goals")
+  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await mutate("accounts")
 
   await createNotification({
     userId: user.id,
@@ -2313,7 +2313,7 @@ export async function addGoalContribution(contribution: Omit<GoalContribution, "
     message: `Registraste un aporte de ${formatCurrency(Number(contribution.amount || 0))}.`,
     actionUrl: `/goals/${contribution.goal_id}`,
   })
-  mutate("notifications")
+  await mutate("notifications")
 
   return newContribution
 }
@@ -2378,9 +2378,9 @@ export async function createTransfer(transfer: {
     await syncAccountBalance(transfer.to_account_id, sourceCurrency)
   }
 
-  mutate("accounts")
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  mutate(["transfers", 100])
+  await mutate("accounts")
+  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await mutate(["transfers", 100])
 
   await createNotification({
     userId: user.id,
@@ -2389,7 +2389,7 @@ export async function createTransfer(transfer: {
     message: `Transferiste ${sourceCurrency} ${roundCurrencyAmount(transfer.amount).toFixed(2)}.`,
     actionUrl: "/history",
   })
-  mutate("notifications")
+  await mutate("notifications")
   
   return result
 }
@@ -2834,14 +2834,14 @@ export async function payCreditCard(payment: {
         credit_card_id: payment.credit_account_id,
       },
     })
-    mutate("notifications")
+    await mutate("notifications")
 
-    mutate("accounts")
-    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-    mutate("planning_calendar_events")
-    mutate("planning_debts")
-    mutate("planning_debt_payments_month")
-    mutate("planning_budgets_with_usage")
+    await mutate("accounts")
+    await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    await mutate("planning_calendar_events")
+    await mutate("planning_debts")
+    await mutate("planning_debt_payments_month")
+    await mutate("planning_budgets_with_usage")
 
     try {
       const ledger = LedgerService.create()
@@ -2991,14 +2991,16 @@ export function validateCreditCardPayment(input: {
   return true
 }
 
-export function applyCreditCardPaymentRevalidation() {
-  mutate("accounts")
-  mutate("notifications")
-  mutate("planning_calendar_events")
-  mutate("planning_debts")
-  mutate("planning_debt_payments_month")
-  mutate("planning_budgets_with_usage")
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+export async function applyCreditCardPaymentRevalidation() {
+  await Promise.all([
+    mutate("accounts"),
+    mutate("notifications"),
+    mutate("planning_calendar_events"),
+    mutate("planning_debts"),
+    mutate("planning_debt_payments_month"),
+    mutate("planning_budgets_with_usage"),
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions"),
+  ])
 }
 
 export async function createCreditCardPayment(input: Parameters<typeof payCreditCard>[0]) {
@@ -3420,10 +3422,12 @@ export async function processDueFinancialSubscriptions() {
     }
   }
 
-  mutate("financial_subscriptions")
-  mutate("notifications")
-  mutate("accounts")
-  mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await Promise.all([
+    mutate("financial_subscriptions"),
+    mutate("notifications"),
+    mutate("accounts"),
+    mutate((key: any) => Array.isArray(key) && key[0] === "transactions"),
+  ])
 }
 
 // Account updates
