@@ -47,6 +47,7 @@ export const transferSchema = z.object({
     { message: "El monto debe ser mayor a 0" }
   ),
   description: z.string().max(100, "Máximo 100 caracteres").optional(),
+  date: z.string().optional(),
 }).refine(
   (data) => data.fromAccountId !== data.toAccountId,
   { message: "La cuenta de origen y destino deben ser diferentes", path: ["toAccountId"] }

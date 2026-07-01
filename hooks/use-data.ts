@@ -2328,6 +2328,7 @@ export async function createTransfer(transfer: {
   description?: string
   apply_commission?: boolean
   exchange_rate?: number
+  local_date?: string
 }) {
   const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
@@ -2352,6 +2353,7 @@ export async function createTransfer(transfer: {
     p_description: transfer.description || null,
     p_apply_commission: Boolean(transfer.apply_commission),
     p_exchange_rate: transfer.exchange_rate || null,
+    p_local_date: transfer.local_date || null,
   })
 
   if (rpcError) {

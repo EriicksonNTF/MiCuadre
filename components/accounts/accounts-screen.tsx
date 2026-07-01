@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, ArrowRightLeft, ChevronDown, Pencil, Plus, Trash2 } from "lucide-react"
+import { AlertTriangle, ArrowRightLeft, ChevronDown, Pencil, Plus, Trash2, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
@@ -19,6 +19,10 @@ import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
 import type { Account } from "@/lib/types/database"
 import { AccountCreationWizard } from "@/components/accounts/account-creation-wizard"
 import { useEntitlements } from "@/hooks/use-entitlements"
@@ -57,12 +61,15 @@ export function AccountsScreen() {
   const [toAccount, setToAccount] = useState("")
   const [transferAmount, setTransferAmount] = useState("")
   const [isTransferring, setIsTransferring] = useState(false)
+  const [transferDate, setTransferDate] = useState<Date>(new Date())
+  const [transferDatePickerOpen, setTransferDatePickerOpen] = useState(false)
 
   
   const resetTransferForm = () => {
     setFromAccount("")
     setToAccount("")
     setTransferAmount("")
+    setTransferDate(new Date())
   }
 
   const parsedTransferAmount = parseFloat(transferAmount.replace(/[^0-9.]/g, "")) || 0
@@ -215,7 +222,8 @@ if (!draggedId) return
 
     setIsTransferring(true)
     try {
-      await createTransfer({ from_account_id: fromAccount, to_account_id: toAccount, amount, currency: source.currency, apply_commission: false })
+      const localDate = format(transferDate, "yyyy-MM-dd")
+      await createTransfer({ from_account_id: fromAccount, to_account_id: toAccount, amount, currency: source.currency, apply_commission: false, local_date: localDate !== format(new Date(), "yyyy-MM-dd") ? localDate : undefined })
       notify({ title: "Transferencia exitosa", message: "Se han transferido los fondos." })
       EventBus.emit({ type: "transfer_completed" })
       resetTransferForm()
@@ -492,6 +500,28 @@ if (!draggedId) return
           <div className="mobile-card p-4">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
             <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-input-hero font-extrabold leading-none tabular-nums min-w-[100px]" />
+          </div>
+          <div className="flex justify-center">
+            <Popover open={transferDatePickerOpen} onOpenChange={setTransferDatePickerOpen}>
+              <PopoverTrigger asChild>
+                <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">{format(transferDate, "d MMM yyyy", { locale: es })}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="center">
+                <Calendar
+                  mode="single"
+                  selected={transferDate}
+                  onSelect={(d) => {
+                    if (!d) return
+                    setTransferDate(d)
+                    setTransferDatePickerOpen(false)
+                  }}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           </div>
         </BaseModalForm>
