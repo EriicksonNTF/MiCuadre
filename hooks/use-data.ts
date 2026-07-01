@@ -390,7 +390,7 @@ async function getUserPlanAndLimits(userId: string, email?: string | null) {
   return { plan, limits }
 }
 
-async function syncCreditAccountCycle(creditAccountId: string) {
+export async function syncCreditAccountCycle(creditAccountId: string) {
   const schema = await ensureCreditSchemas()
   if (!schema.hasCreditCycleSchema) return
 
@@ -469,7 +469,7 @@ async function syncCreditAccountCycle(creditAccountId: string) {
 
   const { data: existingCycles } = await supabase
     .from("credit_card_cycles")
-    .select("id, cycle_start_date, cycle_end_date, due_date, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, financed_amount_dop, financed_amount_usd, interest_amount_dop, interest_amount_usd, status")
+    .select("id, cycle_start_date, cycle_end_date, due_date, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, financed_amount_dop, financed_amount_usd, interest_amount_dop, interest_amount_usd, status, is_finalized")
     .eq("account_id", account.id)
     .order("cycle_end_date", { ascending: true })
 
@@ -494,6 +494,7 @@ async function syncCreditAccountCycle(creditAccountId: string) {
           paid_amount_dop: 0,
           paid_amount_usd: 0,
           status: grouped.cycleEndDate <= getLocalDateString() ? "closed" : "open",
+          is_finalized: grouped.cycleEndDate <= getLocalDateString(),
         })
         .select("id")
         .single()
@@ -505,15 +506,17 @@ async function syncCreditAccountCycle(creditAccountId: string) {
       continue
     }
 
-    await supabase
-      .from("credit_card_cycles")
-      .update({
-        cycle_start_date: grouped.cycleStartDate,
-        due_date: grouped.dueDate,
-        statement_balance_dop: Math.max(0, grouped.statement_balance_dop),
-        statement_balance_usd: Math.max(0, grouped.statement_balance_usd),
-      })
-      .eq("id", existing.id)
+    if (!existing.is_finalized) {
+      await supabase
+        .from("credit_card_cycles")
+        .update({
+          cycle_start_date: grouped.cycleStartDate,
+          due_date: grouped.dueDate,
+          statement_balance_dop: Math.max(0, grouped.statement_balance_dop),
+          statement_balance_usd: Math.max(0, grouped.statement_balance_usd),
+        })
+        .eq("id", existing.id)
+    }
 
     if (grouped.txIds.length > 0) {
       await supabase.from("transactions").update({ billing_cycle_id: existing.id }).in("id", grouped.txIds)
@@ -522,7 +525,7 @@ async function syncCreditAccountCycle(creditAccountId: string) {
 
   const { data: refreshedCycles } = await supabase
     .from("credit_card_cycles")
-    .select("id, cycle_start_date, cycle_end_date, due_date, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, financed_amount_dop, financed_amount_usd, interest_amount_dop, interest_amount_usd, status")
+    .select("id, cycle_start_date, cycle_end_date, due_date, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, financed_amount_dop, financed_amount_usd, interest_amount_dop, interest_amount_usd, status, is_finalized")
     .eq("account_id", account.id)
     .order("cycle_end_date", { ascending: true })
 
@@ -537,6 +540,7 @@ async function syncCreditAccountCycle(creditAccountId: string) {
   let totalFinancedUsd = 0
 
   for (const row of refreshedCycles || []) {
+    const isFinalized = !!row.is_finalized
     const dueDate = toDateOnly(row.due_date)
     const isOverdue = now.getTime() > dueDate.getTime()
     const statementPendingDop = Math.max(0, roundCurrencyAmount(Number(row.statement_balance_dop || 0) - Number(row.paid_amount_dop || 0)))
@@ -547,43 +551,70 @@ async function syncCreditAccountCycle(creditAccountId: string) {
     let interestDop = Number(row.interest_amount_dop || 0)
     let interestUsd = Number(row.interest_amount_usd || 0)
     let status: "open" | "closed" | "paid" | "partial" | "overdue" | "financed" = row.status
+    let makeFinalized = false
 
-    if (isOverdue && (statementPendingDop > 0 || statementPendingUsd > 0)) {
-      financedDop = statementPendingDop
-      financedUsd = statementPendingUsd
-      status = "financed"
+    if (isFinalized) {
+      if (isOverdue && (statementPendingDop > 0 || statementPendingUsd > 0)) {
+        financedDop = statementPendingDop
+        financedUsd = statementPendingUsd
+        status = "financed"
 
-      const monthlyRate = getMonthlyInterestRate(account.annual_interest_rate)
-      if (interestDop <= 0 && financedDop > 0) {
-        interestDop = roundCurrencyAmount(financedDop * monthlyRate)
+        const monthlyRate = getMonthlyInterestRate(account.annual_interest_rate)
+        if (financedDop > 0) {
+          interestDop = roundCurrencyAmount(interestDop + financedDop * monthlyRate)
+        }
+        if (financedUsd > 0) {
+          interestUsd = roundCurrencyAmount(interestUsd + financedUsd * monthlyRate)
+        }
+      } else if (statementPendingDop <= 0 && statementPendingUsd <= 0) {
+        financedDop = 0
+        financedUsd = 0
+        status = "paid"
+      } else if (Number(row.paid_amount_dop || 0) > 0 || Number(row.paid_amount_usd || 0) > 0) {
+        status = "partial"
+      } else {
+        status = "financed"
       }
-      if (interestUsd <= 0 && financedUsd > 0) {
-        interestUsd = roundCurrencyAmount(financedUsd * monthlyRate)
-      }
-    } else if (statementPendingDop <= 0 && statementPendingUsd <= 0) {
-      financedDop = 0
-      financedUsd = 0
-      status = "paid"
-    } else if (Number(row.paid_amount_dop || 0) > 0 || Number(row.paid_amount_usd || 0) > 0) {
-      status = "partial"
-    } else if (row.cycle_end_date <= getLocalDateString()) {
-      status = "closed"
     } else {
-      status = "open"
+      if (isOverdue && (statementPendingDop > 0 || statementPendingUsd > 0)) {
+        financedDop = statementPendingDop
+        financedUsd = statementPendingUsd
+        status = "financed"
+
+        const monthlyRate = getMonthlyInterestRate(account.annual_interest_rate)
+        interestDop = roundCurrencyAmount(financedDop * monthlyRate)
+        interestUsd = roundCurrencyAmount(financedUsd * monthlyRate)
+      } else if (statementPendingDop <= 0 && statementPendingUsd <= 0) {
+        financedDop = 0
+        financedUsd = 0
+        status = "paid"
+      } else if (Number(row.paid_amount_dop || 0) > 0 || Number(row.paid_amount_usd || 0) > 0) {
+        status = "partial"
+      } else if (row.cycle_end_date <= getLocalDateString()) {
+        status = "closed"
+        makeFinalized = true
+      } else {
+        status = "open"
+      }
     }
 
     totalFinancedDop += financedDop + interestDop
     totalFinancedUsd += financedUsd + interestUsd
 
+    const cycleUpdates: Record<string, unknown> = {
+      financed_amount_dop: financedDop,
+      financed_amount_usd: financedUsd,
+      interest_amount_dop: interestDop,
+      interest_amount_usd: interestUsd,
+      status,
+    }
+    if (makeFinalized) {
+      cycleUpdates.is_finalized = true
+    }
+
     await supabase
       .from("credit_card_cycles")
-      .update({
-        financed_amount_dop: financedDop,
-        financed_amount_usd: financedUsd,
-        interest_amount_dop: interestDop,
-        interest_amount_usd: interestUsd,
-        status,
-      })
+      .update(cycleUpdates)
       .eq("id", row.id)
   }
 
@@ -686,6 +717,13 @@ async function refreshAllCreditCycles() {
 async function maybeRefreshCreditCycles() {
   const today = getLocalDateString()
   if (lastCreditSyncDay === today) return
+
+  await supabase
+    .from("credit_card_cycles")
+    .update({ status: "closed", is_finalized: true })
+    .lt("cycle_end_date", today)
+    .eq("status", "open")
+
   await refreshAllCreditCycles()
   lastCreditSyncDay = today
 }
@@ -2631,7 +2669,7 @@ export async function payCreditCard(payment: {
       .from("credit_card_cycles")
       .select("id, cycle_end_date, due_date, paid_amount_dop, paid_amount_usd, statement_balance_dop, statement_balance_usd, financed_amount_dop, financed_amount_usd, status")
       .eq("account_id", payment.credit_account_id)
-      .order("cycle_end_date", { ascending: true })
+      .order("due_date", { ascending: true })
 
     if (openCycles && openCycles.length > 0) {
       let remainingToApply = payment.amount

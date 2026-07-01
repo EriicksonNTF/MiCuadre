@@ -37,7 +37,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
-import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountDeletionImpact, payCreditCard, updateTransaction, deleteTransaction, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
+import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountDeletionImpact, payCreditCard, updateTransaction, deleteTransaction, calculateCreditCardPaymentAmounts, syncCreditAccountCycle } from "@/hooks/use-data"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getCurrencySymbol, getLocalDateString, getReadableTextColor } from "@/lib/data"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
@@ -211,6 +211,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       minimumPaymentPercentage: acc.minimum_payment_percentage,
       cutoffDate: acc.closing_date,
       dueDate: acc.due_date,
+      cycleEndDate: acc.cycle_end_date,
     }))
   }, [rawAccounts])
 
@@ -406,6 +407,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       const parsedCreditLimitDop = Number(editForm.credit_limit_dop || 0)
       const parsedCreditLimitUsd = Number(editForm.credit_limit_usd || 0)
       const parsedClosingDate = editForm.type === "credit" && editForm.closing_date ? Number(editForm.closing_date) : null
+      const parsedDueDate = editForm.type === "credit" && editForm.due_date ? Number(editForm.due_date) : null
+      const computedDueDays = parsedClosingDate && parsedDueDate
+        ? (parsedDueDate - parsedClosingDate + 30) % 30
+        : null
 
       await updateAccount(accountId, {
         name: editForm.name,
@@ -416,8 +421,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         credit_limit_dop: editForm.type === "credit" ? parsedCreditLimitDop : null,
         credit_limit_usd: editForm.type === "credit" ? parsedCreditLimitUsd : null,
         closing_date: parsedClosingDate,
-        due_date: null,
-        due_days_after_cutoff: editForm.type === "credit" ? 20 : null,
+        closing_day: parsedClosingDate,
+        due_date: parsedDueDate,
+        due_days_after_cutoff: computedDueDays,
         icon_url: editForm.icon_url || null,
         icon_type: editForm.icon_type,
         icon_value: editForm.icon_value,
@@ -430,6 +436,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         background_style: editForm.background_style,
       })
       mutate("accounts")
+      if (editForm.type === "credit") {
+        syncCreditAccountCycle(accountId)
+      }
       notify({ title: "Cuenta actualizada", message: "Los cambios fueron guardados exitosamente." })
       EventBus.emit({ type: "account_updated", payload: { name: editForm.name } })
       setShowEditModal(false)
@@ -882,7 +891,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     <p className="mb-2 text-[0.6875rem] text-white/70">DOP</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtDop || 0), "DOP")}</p></div>
-                      <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p></div>
+                      <div><p className="text-white/60">Pendiente del corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)), "DOP")}</p></div>
                       <div><p className="text-white/60">Pago mínimo</p><p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementDop || 0) - Number(account.paidStatementDop || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "DOP")}</p></div>
                     </div>
                   </div>
@@ -890,12 +899,13 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     <p className="mb-2 text-[0.6875rem] text-white/70">USD</p>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><p className="text-white/60">Balance actual</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Number(account.currentDebtUsd || 0), "USD")}</p></div>
-                      <div><p className="text-white/60">Balance al corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p></div>
+                      <div><p className="text-white/60">Pendiente del corte</p><p className="mt-0.5 font-semibold text-white">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)), "USD")}</p></div>
                       <div><p className="text-white/60">Pago mínimo</p><p className="mt-0.5 font-semibold text-amber-300">{formatCurrency(Math.max(0, Number(account.statementUsd || 0) - Number(account.paidStatementUsd || 0)) * Number(account.minimumPaymentPercentage || 0.0278), "USD")}</p></div>
                     </div>
                   </div> : null}
                 </div>
                 <p className="mt-3 rounded-full bg-white/10 px-3 py-2 text-xs text-white/70">Pagar antes del {account.statementDueDate ? formatDate(account.statementDueDate) : "-"}</p>
+                <p className="mt-1.5 text-center text-[0.625rem] text-white/45">Próximo corte: {account.cycleEndDate ? formatDate(account.cycleEndDate) : "-"}</p>
               </div>
             
             {/* Pay button */}
