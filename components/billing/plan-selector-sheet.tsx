@@ -24,6 +24,7 @@ import {
 import { BILLING_COPY } from "@/lib/entitlements/entitlement-copy"
 import { notify } from "@/lib/notifications"
 import { cn } from "@/lib/utils"
+import { formatAmount } from "@/lib/data"
 import type { BillingInterval, PaidPlanTier } from "@/types/billing"
 
 type PlanSelectorSheetProps = {
@@ -186,7 +187,7 @@ export function PlanSelectorSheet({
                     <span className="ml-1 text-xs font-semibold text-muted-foreground">{getBillingIntervalSuffix(interval)}</span>
                     {paid && interval === "yearly" && (
                       <p className="mt-1 text-[0.625rem] font-semibold text-emerald-600 dark:text-emerald-400">
-                        Equivale a ${config.price.yearlyMonthlyEquivalent.toFixed(2)}/mes
+                        Equivale a ${formatAmount(config.price.yearlyMonthlyEquivalent)}/mes
                       </p>
                     )}
                   </div>

@@ -47,7 +47,8 @@ import type { Transaction } from "@/lib/types/database"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
 import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
-import { EditTransactionSheet } from "@/components/transactions"
+import { EditTransactionSheet, TransactionRow, TransactionGroup } from "@/components/transactions"
+import type { TransactionRowData } from "@/components/transactions"
 import { useUndoDelete } from "@/hooks/use-undo-delete"
 
 
@@ -966,10 +967,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <p className="truncate text-[0.6875rem] text-muted-foreground">Ingresos</p>
+              <p className="text-reflow-1 text-[0.6875rem] text-muted-foreground">Ingresos</p>
             </div>
-            <p className="mt-2 truncate text-xl font-bold text-emerald-600 dark:text-emerald-400">
-              +{formatCurrency(monthlyIncome)}
+            <p className="mt-2 amount-secondary font-bold text-income">
+              {formatCurrency(monthlyIncome)}
             </p>
           </div>
 
@@ -978,9 +979,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                 <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
               </div>
-              <p className="truncate text-[0.6875rem] text-muted-foreground">Gastos</p>
+              <p className="text-reflow-1 text-[0.6875rem] text-muted-foreground">Gastos</p>
             </div>
-            <p className="mt-2 truncate text-xl font-bold text-red-600 dark:text-red-400">
+            <p className="mt-2 amount-secondary font-bold text-expense">
               -{formatCurrency(monthlyExpenses)}
             </p>
           </div>
@@ -1008,19 +1009,19 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   )}
                 />
               </div>
-              <p className="truncate text-[0.6875rem] text-muted-foreground">Neto</p>
+              <p className="text-reflow-1 text-[0.6875rem] text-muted-foreground">Neto</p>
             </div>
             <p
               className={cn(
-                "mt-2 truncate text-xl font-bold",
+                "mt-2 amount-secondary font-bold",
                 netFlow > 0
-                  ? "text-emerald-600 dark:text-emerald-400"
+                  ? "text-income"
                   : netFlow < 0
-                  ? "text-red-600 dark:text-red-400"
+                  ? "text-expense"
                   : "text-foreground"
               )}
             >
-              {netFlow > 0 ? "+" : ""}
+              {netFlow < 0 ? "-" : ""}
               {formatCurrency(netFlow)}
             </p>
           </div>
@@ -1066,7 +1067,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         </div>
 
         {/* Transaction List */}
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 flex flex-col gap-4">
           {groupedTransactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
@@ -1075,117 +1076,65 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             </div>
           ) : (
             groupedTransactions.map((group) => (
-              <div key={group.date.toISOString()}>
-                <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">{group.label}</p>
-                <div className="space-y-2">
-                  {group.items.map((tx) => {
-              const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
-              const isOpen = openSwipeId === tx.id
-              const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
+              <TransactionGroup key={group.date.toISOString()} label={group.label}>
+                {group.items.map((tx) => {
+                  const row: TransactionRowData = {
+                    id: tx.id,
+                    title: tx.title,
+                    category: tx.category,
+                    amount: tx.amount,
+                    type: tx.type,
+                    currency: tx.currency,
+                    time: tx.date,
+                    metadata: tx.metadata as Record<string, any>,
+                  }
 
-              return (
-                <div key={tx.id} data-account-tx-row="true" className="relative overflow-hidden rounded-[1.35rem]">
-                  <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
-                    <button type="button"
-                      aria-label="Editar transacción"
-                      onClick={() => openEditTx(tx.id)}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button type="button"
-                      aria-label="Eliminar transacción"
-                      onClick={() => setDeletingTxId(tx.id)}
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive text-destructive-foreground"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <div
-                    className="relative z-10 flex items-center gap-3 rounded-[1.35rem] border border-border/55 bg-card p-4 shadow-sm transition-transform duration-200"
-                    style={{ transform: `translateX(${currentOffset}px)` }}
-                    onPointerDown={(event) => {
-                      const target = event.target as HTMLElement
-                      if (target.closest("button") || target.closest("a")) return
-                      pointerRef.current = { id: tx.id, startX: event.clientX, startY: event.clientY, swiping: false }
-                    }}
-                    onPointerMove={(event) => {
-                      const pointer = pointerRef.current
-                      if (!pointer || pointer.id !== tx.id) return
-                      const dx = event.clientX - pointer.startX
-                      const dy = event.clientY - pointer.startY
-                      if (Math.abs(dx) <= Math.abs(dy) || (dx >= 0 && !isOpen)) return
-                      pointer.swiping = true
-                      setOpenSwipeId(tx.id)
-                      const base = isOpen ? -108 : 0
-                      setSwipeOffset({ id: tx.id, offset: Math.min(0, Math.max(-108, base + dx)) })
-                    }}
-                    onPointerUp={() => {
-                      const pointer = pointerRef.current
-                      if (!pointer || pointer.id !== tx.id) return
-                      if (pointer.swiping) {
-                        const finalOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : 0
-                        if (finalOffset < -54) {
+                  return (
+                    <TransactionRow
+                      key={tx.id}
+                      tx={row}
+                      showAccount={false}
+                      showTime={false}
+                      showDate
+                      actions={{ onEdit: () => openEditTx(tx.id), onDelete: () => setDeletingTxId(tx.id) }}
+                      swipe={{
+                        isOpen: openSwipeId === tx.id,
+                        offset: swipeOffset?.id === tx.id ? swipeOffset.offset : openSwipeId === tx.id ? -108 : 0,
+                        onPointerDown: (event: React.PointerEvent) => {
+                          const target = event.target as HTMLElement
+                          if (target.closest("button") || target.closest("a")) return
+                          pointerRef.current = { id: tx.id, startX: event.clientX, startY: event.clientY, swiping: false }
+                        },
+                        onPointerMove: (event: React.PointerEvent) => {
+                          const pointer = pointerRef.current
+                          if (!pointer || pointer.id !== tx.id) return
+                          const dx = event.clientX - pointer.startX
+                          const dy = event.clientY - pointer.startY
+                          if (Math.abs(dx) <= Math.abs(dy) || (dx >= 0 && openSwipeId !== tx.id)) return
+                          pointer.swiping = true
                           setOpenSwipeId(tx.id)
-                          setSwipeOffset({ id: tx.id, offset: -108 })
-                        } else {
-                          setOpenSwipeId(null)
-                          setSwipeOffset(null)
-                        }
-                      }
-                      pointerRef.current = null
-                    }}
-                    onPointerCancel={() => {
-                      pointerRef.current = null
-                    }}
-                  >
-                    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl", categoryColors[tx.category] || categoryColors.other)}>
-                      <CategoryIcon className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className="truncate font-medium text-foreground">{tx.title}</p>
-                        {tx.metadata?.kind === "offline_pending" && (
-                          <span className={cn(
-                            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[0.5rem] font-extrabold uppercase tracking-wide border shrink-0",
-                            tx.metadata.sync_status === "failed"
-                              ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50"
-                              : tx.metadata.sync_status === "syncing"
-                                ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 animate-pulse"
-                                : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50"
-                          )}>
-                            {tx.metadata.sync_status === "failed" ? "Error" : tx.metadata.sync_status === "syncing" ? "Subiendo..." : "Pendiente"}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-xs text-muted-foreground">{tx.date}</p>
-                      {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
-                        <p className="mt-0.5 text-xs font-medium text-red-600 dark:text-red-400">
-                          Error: {tx.metadata.last_error}
-                        </p>
-                      )}
-                    </div>
-                    <p
-                      className={cn(
-                        "shrink-0 text-lg font-bold tabular-nums",
-                        tx.type === "income"
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-foreground"
-                      )}
-                    >
-                      {tx.type === "income" ? "+" : "-"}
-                      {formatCurrency(tx.amount, tx.currency)}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                          const base = openSwipeId === tx.id ? -108 : 0
+                          setSwipeOffset({ id: tx.id, offset: Math.min(0, Math.max(-108, base + dx)) })
+                        },
+                        onPointerUp: () => {
+                          const pointer = pointerRef.current
+                          if (!pointer || pointer.id !== tx.id) return
+                          if (pointer.swiping) {
+                            const finalOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : 0
+                            if (finalOffset < -54) { setOpenSwipeId(tx.id); setSwipeOffset({ id: tx.id, offset: -108 }) }
+                            else { setOpenSwipeId(null); setSwipeOffset(null) }
+                          }
+                          pointerRef.current = null
+                        },
+                        onPointerCancel: () => { pointerRef.current = null },
+                      }}
+                    />
+                  )
+                })}
+              </TransactionGroup>
+            ))
+          )}
         </div>
-      ))
-    )}
-</div>
       </div>
 
       <EditTransactionSheet
@@ -1232,7 +1181,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         >
             <div className="rounded-2xl bg-muted p-4">
               <p className="text-xs text-muted-foreground">Balance actual ({paymentCurrency})</p>
-              <p className="mt-1 text-2xl font-bold text-foreground">
+              <p className="mt-1 amount-secondary font-bold text-foreground">
                 {formatCurrency(currentDebtByCurrency, paymentCurrency)}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">Balance al corte: {formatCurrency(pendingStatementByCurrency, paymentCurrency)} · Pago mínimo: {formatCurrency(minPaymentByCurrency, paymentCurrency)}</p>
@@ -1275,7 +1224,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                   Monto a pagar
                 </p>
                 <div className="flex items-center gap-2 rounded-xl bg-muted p-4 overflow-x-auto scrollbar-none">
-                    <span className="shrink-0 text-lg font-medium text-muted-foreground">{getCurrencySymbol(paymentCurrency)}</span>
+                    <span className="shrink-0 amount-inline font-medium text-muted-foreground">{getCurrencySymbol(paymentCurrency)}</span>
                   <MoneyInput
                     value={paymentAmount}
                     onValueChange={(value) => {
@@ -1283,7 +1232,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                       setPaymentKind("custom")
                     }}
                     placeholder="0"
-                    className="bg-transparent text-2xl font-bold text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[80px] tabular-nums"
+                    className="bg-transparent amount-hero font-bold text-foreground outline-none placeholder:text-muted-foreground/30 min-w-[80px] tabular-nums"
                     wrapperClassName="flex-1"
                   />
                 </div>

@@ -20,7 +20,7 @@
   --l-rose-400: #FB7185;
   --l-text: #F8FAFC;
   --l-text-muted: #94A3B8;
-  --l-text-dim: #64748B;
+  --l-text-dim: #94A3B8;
   --l-serif: 'Inter', system-ui, sans-serif;
   --l-sans: 'Inter', system-ui, sans-serif;
   --l-mono: 'Inter', system-ui, sans-serif;
@@ -34,9 +34,9 @@
   color: var(--l-text);
   overflow-x: hidden;
   line-height: 1.5;
-  cursor: none;
+  cursor: auto !important;
 }
-@media (max-width: 768px) { .landing-redesign { cursor: auto; } }
+.landing-redesign * { cursor: auto !important; }
 .landing-redesign ::selection { background: var(--l-emerald-500); color: #02110A; }
 
 /* Noise overlay */
@@ -50,36 +50,6 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   mix-blend-mode: overlay;
 }
-
-/* Custom Cursor */
-.l-cursor-dot, .l-cursor-ring {
-  position: fixed;
-  top: 0; left: 0;
-  pointer-events: none;
-  z-index: 9999;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  mix-blend-mode: difference;
-}
-.l-cursor-dot {
-  width: 6px; height: 6px;
-  background: #fff;
-  transition: transform 0.30s ease-out, width 0.50s, height 0.50s;
-}
-.l-cursor-ring {
-  width: 36px; height: 36px;
-  border: 1px solid rgba(255,255,255,0.4);
-  transition: transform 0.50s cubic-bezier(0.16, 1, 0.3, 1), width 0.50s, height 0.50s, border-color 0.50s, background 0.50s;
-}
-.l-cursor-ring.hovering {
-  width: 64px; height: 64px;
-  border-color: var(--l-emerald-400);
-  background: rgba(52,211,153,0.08);
-}
-.l-cursor-dot.hovering {
-  width: 0; height: 0;
-}
-@media (max-width: 768px) { .l-cursor-dot, .l-cursor-ring { display: none; } }
 
 /* Scroll Progress */
 .landing-redesign .l-scroll-progress {
@@ -443,6 +413,11 @@
   font-family: var(--l-sans); font-size: 30px;
   font-weight: 800; letter-spacing: -0.02em; color: var(--l-text);
   display: flex; align-items: baseline; gap: 0;
+}
+.landing-redesign .counter {
+  display: inline-block;
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
 }
 .landing-redesign .l-hero-stat .num .suffix {
   font-family: var(--l-sans); font-size: 16px; color: var(--l-emerald-400);

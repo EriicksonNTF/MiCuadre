@@ -117,7 +117,7 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
       <div className="mx-auto max-w-md space-y-4 px-6 pt-6">
         <div className="rounded-2xl bg-card p-4">
           <p className="text-xs text-muted-foreground">Total mensual</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">{formatCurrency(monthlyTotal)}</p>
+          <p className="mt-1 amount-secondary font-bold text-foreground">{formatCurrency(monthlyTotal)}</p>
           <p className="mt-2 text-xs text-muted-foreground">Activas: {active.length}</p>
         </div>
 

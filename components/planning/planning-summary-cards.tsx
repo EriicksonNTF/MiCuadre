@@ -81,11 +81,11 @@ export function PlanningSummaryCards({
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-2xl bg-muted/60 p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">DOP</p>
-            <p className="mt-1 text-xl font-bold tabular-nums">{formatCurrency(debtPendingDop, "DOP")}</p>
+            <p className="mt-1 amount-secondary font-bold tabular-nums">{formatCurrency(debtPendingDop, "DOP")}</p>
           </div>
           <div className="rounded-2xl bg-muted/60 p-3">
             <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">USD</p>
-            <p className="mt-1 text-xl font-bold tabular-nums">{debtPendingUsd > 0 ? formatCurrency(debtPendingUsd, "USD") : "$0.00"}</p>
+            <p className="mt-1 amount-secondary font-bold tabular-nums">{debtPendingUsd > 0 ? formatCurrency(debtPendingUsd, "USD") : "$0.00"}</p>
           </div>
         </div>
       </article>

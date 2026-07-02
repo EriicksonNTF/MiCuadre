@@ -259,72 +259,61 @@ export function DashboardContent() {
     <><MobilePageShell>
         <Header />
 
-        <div className="motion-list">
-        <div className="mt-6">
+        <div className="motion-list mt-5 flex flex-col gap-5">
           <BalanceCard />
-        </div>
-
-        <div className="mt-5">
           <QuickActions />
-        </div>
 
-        {accounts.length === 0 && recentTransactions.length === 0 && (
-          <ActivationPanel />
-        )}
-
-        <div className="mt-6">
-          {isPro ? (
-            <PlanningSummaryCard />
-          ) : (
-            <section className="relative overflow-hidden rounded-[1.65rem] border border-accent/20 bg-accent/8 p-5 shadow-sm">
-              <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-accent/12" />
-              <p className="section-kicker">Planificación</p>
-              <p className="mt-2 text-sm font-black text-foreground">Controla tu mes con Pro</p>
-              <p className="mt-1 text-xs text-muted-foreground">Presupuestos, deudas y pagos próximos en un solo lugar.</p>
-              <button
-                type="button"
-                onClick={() => setPlanningUpsellOpen(true)}
-                className="tap-lift mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)]"
-              >
-                Ver planes
-              </button>
-            </section>
+          {accounts.length === 0 && recentTransactions.length === 0 && (
+            <ActivationPanel />
           )}
-        </div>
 
-        <div className="mt-6">
-          <AccountsList />
-        </div>
-
-        {isPro ? (
-          <div className="mt-6">
-            <CalendarPreviewCard />
+          <div>
+            {isPro ? (
+              <PlanningSummaryCard />
+            ) : (
+              <section className="relative overflow-hidden rounded-[1.65rem] border border-accent/20 bg-accent/8 p-5 shadow-sm">
+                <div className="pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full bg-accent/12" />
+                <p className="section-kicker">Planificación</p>
+                <p className="mt-2 text-sm font-black text-foreground">Controla tu mes con Pro</p>
+                <p className="mt-1 text-xs text-muted-foreground">Presupuestos, deudas y pagos próximos en un solo lugar.</p>
+                <button
+                  type="button"
+                  onClick={() => setPlanningUpsellOpen(true)}
+                  className="tap-lift mt-4 inline-flex h-11 items-center justify-center rounded-2xl bg-primary px-5 text-sm font-bold text-primary-foreground shadow-[var(--shadow-lift)]"
+                >
+                  Ver planes
+                </button>
+              </section>
+            )}
           </div>
-        ) : null}
 
-        <div className="mt-6">
+          <AccountsList />
+
+          {isPro ? (
+            <CalendarPreviewCard />
+          ) : null}
+
           <TransactionsList />
-        </div>
 
-        {dashboardInsights.length > 0 && (
-          <div className="mt-6 space-y-2">
-            {dashboardInsights.map((insight, index) => {
-              const Icon = insightIcon[insight.type]
-              return (
-                <div key={`${insight.title}-${index}`} className={`rounded-2xl border p-3 ${insightStyles[insight.type]}`}>
-                  <div className="flex items-start gap-3">
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold">{insight.title}</p>
-                      <p className="text-xs leading-relaxed opacity-90">{insight.message}</p>
+          {dashboardInsights.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {dashboardInsights.map((insight, index) => {
+                const Icon = insightIcon[insight.type]
+                return (
+                  <div key={`${insight.title}-${index}`} className={`rounded-2xl border p-3 ${insightStyles[insight.type]}`}>
+                    <div className="flex items-start gap-3">
+                      <Icon className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">{insight.title}</p>
+                        <p className="text-xs leading-relaxed opacity-90">{insight.message}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
         <ModalOverlay open={true} onClose={closeCreditReminder} className="bg-foreground/80 dark:bg-black/80">

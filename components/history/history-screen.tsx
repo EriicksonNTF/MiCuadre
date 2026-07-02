@@ -1,101 +1,20 @@
 "use client"
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
-import {
-  Banknote,
-  Building2,
-  Car,
-  ChevronDown,
-  CreditCard,
-  Film,
-  GraduationCap,
-  Heart,
-  MoreHorizontal,
-  Pencil,
-  Plane,
-  Search,
-  ShoppingBag,
-  SlidersHorizontal,
-  Trash2,
-  TrendingDown,
-  TrendingUp,
-  Utensils,
-  X,
-  Zap,
-} from "lucide-react"
+import { ChevronDown, Search, SlidersHorizontal, TrendingDown, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { notify } from "@/lib/notifications"
-import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions } from "@/hooks/use-data"
 import { mutate } from "swr"
-import { EditTransactionSheet } from "@/components/transactions"
+import { EditTransactionSheet, TransactionRow, TransactionGroup } from "@/components/transactions"
+import type { TransactionRowData } from "@/components/transactions"
 import { useUndoDelete } from "@/hooks/use-undo-delete"
-import type { Transaction } from "@/lib/types/database"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { isExcludedFromRealIncome } from "@/lib/transactions/reporting"
-import type { AccountType } from "@/lib/types/database"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
-
-const categoryIcons: Record<string, typeof Utensils> = {
-  food: Utensils,
-  transport: Car,
-  utilities: Zap,
-  entertainment: Film,
-  shopping: ShoppingBag,
-  health: Heart,
-  education: GraduationCap,
-  travel: Plane,
-  income: TrendingUp,
-  other: MoreHorizontal,
-}
-
-const categoryColors: Record<string, string> = {
-  food: "bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400",
-  transport: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-  utilities: "bg-yellow-100/30 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
-  entertainment: "bg-purple-100/30 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-  shopping: "bg-pink-100/30 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
-  health: "bg-red-100/30 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-  education: "bg-indigo-100/30 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
-  travel: "bg-cyan-100/30 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400",
-  income: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
-  other: "bg-muted/50 text-muted-foreground",
-}
-
-const accountIcons: Record<AccountType, typeof Banknote> = {
-  cash: Banknote,
-  debit: Building2,
-  credit: CreditCard,
-}
-
-const nameToSlug: Record<string, string> = {
-  Comida: "food",
-  Transporte: "transport",
-  Entretenimiento: "entertainment",
-  Compras: "shopping",
-  Servicios: "utilities",
-  Salud: "health",
-  Educacion: "education",
-  Hogar: "other",
-  Supermercado: "shopping",
-  Suscripciones: "utilities",
-  "Otros Gastos": "other",
-  Salario: "income",
-  Freelance: "income",
-  Inversiones: "income",
-  Regalos: "other",
-  Reembolsos: "income",
-  "Otros Ingresos": "income",
-}
-
-const creditCardIncomeLabels: Record<string, string> = {
-  card_payment: "Abono a tarjeta",
-  card_refund: "Reembolso en tarjeta",
-  card_adjustment: "Ajuste positivo",
-  card_cashback: "Cashback",
-}
+import type { Transaction } from "@/lib/types/database"
 
 type DatePreset = "today" | "week" | "month" | "custom"
 
@@ -139,6 +58,26 @@ function formatTime(value: string, createdAt?: string) {
   return date.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
 }
 
+const nameToSlug: Record<string, string> = {
+  Comida: "food",
+  Transporte: "transport",
+  Entretenimiento: "entertainment",
+  Compras: "shopping",
+  Servicios: "utilities",
+  Salud: "health",
+  Educacion: "education",
+  Hogar: "other",
+  Supermercado: "shopping",
+  Suscripciones: "utilities",
+  "Otros Gastos": "other",
+  Salario: "income",
+  Freelance: "income",
+  Inversiones: "income",
+  Regalos: "other",
+  Reembolsos: "income",
+  "Otros Ingresos": "income",
+}
+
 export function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
@@ -152,7 +91,6 @@ export function HistoryScreen() {
 
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [undoLoading, setUndoLoading] = useState(false)
 
   const { pending: undoPending, deleteWithUndo, undo } = useUndoDelete(() => {
     mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
@@ -167,12 +105,7 @@ export function HistoryScreen() {
   const { data: rawTransactions = [] } = useTransactions(300)
 
   const accounts = useMemo(
-    () =>
-      rawAccounts.map((acc) => ({
-        id: acc.id,
-        name: acc.name,
-        type: acc.type,
-      })),
+    () => rawAccounts.map((acc) => ({ id: acc.id, name: acc.name, type: acc.type })),
     [rawAccounts]
   )
 
@@ -201,12 +134,11 @@ export function HistoryScreen() {
   useEffect(() => {
     const closeOnOutside = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null
-      if (target?.closest("[data-history-row='true']") || target?.closest("[data-account-menu='true']")) return
+      if (target?.closest("[data-tx-row='true']") || target?.closest("[data-account-menu='true']")) return
       setOpenSwipeId(null)
       setSwipeOffset(null)
       setAccountMenuOpen(false)
     }
-
     document.addEventListener("pointerdown", closeOnOutside)
     return () => document.removeEventListener("pointerdown", closeOnOutside)
   }, [])
@@ -214,38 +146,27 @@ export function HistoryScreen() {
   const applyPreset = (preset: DatePreset) => {
     const today = new Date()
     const end = getLocalDateString(today)
-    if (preset === "today") {
-      setStartDate(end)
-      setEndDate(end)
-      return
-    }
+    if (preset === "today") { setStartDate(end); setEndDate(end); return }
     if (preset === "week") {
-      const start = new Date(today)
-      start.setDate(today.getDate() - 6)
-      setStartDate(getLocalDateString(start))
-      setEndDate(end)
-      return
+      const start = new Date(today); start.setDate(today.getDate() - 6)
+      setStartDate(getLocalDateString(start)); setEndDate(end); return
     }
     if (preset === "month") {
       const start = new Date(today.getFullYear(), today.getMonth(), 1)
-      setStartDate(getLocalDateString(start))
-      setEndDate(end)
+      setStartDate(getLocalDateString(start)); setEndDate(end)
     }
   }
 
   useEffect(() => {
     if (datePreset !== "custom") applyPreset(datePreset)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datePreset])
 
   const filteredTransactions = useMemo(() => {
     const search = deferredSearchQuery.trim().toLowerCase()
-
     return transactions
       .filter((tx) => {
         if (search && !tx.title.toLowerCase().includes(search)) return false
         if (accountFilter !== "all" && tx.accountId !== accountFilter) return false
-
         const txDate = getLocalDateString(parseTxDate(tx.date))
         if (startDate && txDate < startDate) return false
         if (endDate && txDate > endDate) return false
@@ -260,28 +181,22 @@ export function HistoryScreen() {
 
   const groupedTransactions = useMemo(() => {
     const groups = new Map<string, { label: string; date: Date; items: HistoryTx[] }>()
-
     for (const tx of filteredTransactions) {
       const date = parseTxDate(tx.date)
       const key = getLocalDateString(date)
-      if (!groups.has(key)) {
-        groups.set(key, { label: formatDateLabel(date), date, items: [] })
-      }
+      if (!groups.has(key)) groups.set(key, { label: formatDateLabel(date), date, items: [] })
       groups.get(key)!.items.push(tx)
     }
-
     return Array.from(groups.entries())
       .sort((a, b) => b[1].date.getTime() - a[1].date.getTime())
       .map(([key, value]) => ({ key, ...value }))
   }, [filteredTransactions])
 
   const totals = useMemo(() => {
-    let income = 0
-    let expenses = 0
+    let income = 0, expenses = 0
     for (const tx of filteredTransactions) {
       if (tx.isTransfer || isExcludedFromRealIncome(tx.metadata)) continue
-      if (tx.type === "income") income += tx.amount
-      else expenses += tx.amount
+      if (tx.type === "income") income += tx.amount; else expenses += tx.amount
     }
     return { income, expenses, net: income - expenses }
   }, [filteredTransactions])
@@ -310,15 +225,40 @@ export function HistoryScreen() {
     }
   }
 
-  const handleUndo = async () => {
-    setUndoLoading(true)
-    await undo()
-    setUndoLoading(false)
-  }
-
   const selectedAccountLabel = accountFilter === "all" ? "Todas" : accounts.find((a) => a.id === accountFilter)?.name || "Todas"
-
   const filteredAccounts = accounts.filter((account) => account.name.toLowerCase().includes(accountSearch.toLowerCase().trim()))
+
+  const makeSwipeHandlers = (txId: string) => ({
+    isOpen: openSwipeId === txId,
+    offset: swipeOffset?.id === txId ? swipeOffset.offset : openSwipeId === txId ? -108 : 0,
+    onPointerDown: (event: React.PointerEvent) => {
+      const target = event.target as HTMLElement
+      if (target.closest("button") || target.closest("a")) return
+      pointerRef.current = { id: txId, startX: event.clientX, startY: event.clientY, swiping: false }
+    },
+    onPointerMove: (event: React.PointerEvent) => {
+      const pointer = pointerRef.current
+      if (!pointer || pointer.id !== txId) return
+      const dx = event.clientX - pointer.startX
+      const dy = event.clientY - pointer.startY
+      if (Math.abs(dx) <= Math.abs(dy) || (dx >= 0 && openSwipeId !== txId)) return
+      pointer.swiping = true
+      setOpenSwipeId(txId)
+      const base = openSwipeId === txId ? -108 : 0
+      setSwipeOffset({ id: txId, offset: Math.min(0, Math.max(-108, base + dx)) })
+    },
+    onPointerUp: () => {
+      const pointer = pointerRef.current
+      if (!pointer || pointer.id !== txId) return
+      if (pointer.swiping) {
+        const finalOffset = swipeOffset?.id === txId ? swipeOffset.offset : 0
+        if (finalOffset < -54) { setOpenSwipeId(txId); setSwipeOffset({ id: txId, offset: -108 }) }
+        else { setOpenSwipeId(null); setSwipeOffset(null) }
+      }
+      pointerRef.current = null
+    },
+    onPointerCancel: () => { pointerRef.current = null },
+  })
 
   return (
     <MobilePageShell fullBleed className="pb-nav-safe">
@@ -335,16 +275,16 @@ export function HistoryScreen() {
               <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <TrendingUp className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[0.6875rem] font-semibold text-muted-foreground truncate">Ingresos</span>
+                  <span className="text-[0.6875rem] font-semibold text-muted-foreground text-reflow-1">Ingresos</span>
                 </div>
-                <p className="mt-1 text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400 truncate">+{formatCurrency(totals.income)}</p>
+                <p className="mt-1 amount-fluid font-bold tabular-nums text-income">{formatCurrency(totals.income)}</p>
               </div>
               <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <TrendingDown className="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" />
-                  <span className="text-[0.6875rem] font-semibold text-muted-foreground truncate">Gastos</span>
+                  <span className="text-[0.6875rem] font-semibold text-muted-foreground text-reflow-1">Gastos</span>
                 </div>
-                <p className="mt-1 text-base font-bold tabular-nums text-red-600 dark:text-red-400 truncate">-{formatCurrency(totals.expenses)}</p>
+                <p className="mt-1 amount-fluid font-bold tabular-nums text-expense">-{formatCurrency(totals.expenses)}</p>
               </div>
             </div>
           </div>
@@ -378,7 +318,7 @@ export function HistoryScreen() {
       </div>
 
       {showFilters && (
-        <div className="mx-6 mt-4 space-y-4 rounded-[1.45rem] border border-border/60 bg-card/76 p-4 shadow-sm backdrop-blur">
+        <div className="mx-6 mt-4 flex flex-col gap-4 rounded-[1.45rem] border border-border/60 bg-card/76 p-4 shadow-sm backdrop-blur">
           <div>
             <p className="mb-2 text-xs font-medium text-muted-foreground">Fecha</p>
             <div className="grid grid-cols-4 gap-2">
@@ -409,10 +349,9 @@ export function HistoryScreen() {
               onClick={() => setAccountMenuOpen((prev) => !prev)}
               className="flex h-11 w-full items-center justify-between rounded-xl border border-input bg-card px-3 text-sm"
             >
-              <span className="truncate">{selectedAccountLabel}</span>
+              <span className="text-reflow-1">{selectedAccountLabel}</span>
               <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", accountMenuOpen && "rotate-180")} />
             </button>
-
             {accountMenuOpen && (
               <div className="absolute z-20 mt-2 w-full rounded-xl border border-border bg-popover p-2 shadow-lg">
                 <div className="relative mb-2">
@@ -424,12 +363,9 @@ export function HistoryScreen() {
                     className="h-9 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs"
                   />
                 </div>
-                <div className="max-h-44 space-y-1 overflow-y-auto">
+                <div className="max-h-44 flex flex-col gap-1 overflow-y-auto">
                   <button type="button"
-                    onClick={() => {
-                      setAccountFilter("all")
-                      setAccountMenuOpen(false)
-                    }}
+                    onClick={() => { setAccountFilter("all"); setAccountMenuOpen(false) }}
                     className={cn("w-full rounded-lg px-2 py-2 text-left text-xs", accountFilter === "all" ? "bg-primary/10 text-primary" : "hover:bg-muted")}
                   >
                     Todas
@@ -437,10 +373,7 @@ export function HistoryScreen() {
                   {filteredAccounts.map((account) => (
                     <button type="button"
                       key={account.id}
-                      onClick={() => {
-                        setAccountFilter(account.id)
-                        setAccountMenuOpen(false)
-                      }}
+                      onClick={() => { setAccountFilter(account.id); setAccountMenuOpen(false) }}
                       className={cn("w-full rounded-lg px-2 py-2 text-left text-xs", accountFilter === account.id ? "bg-primary/10 text-primary" : "hover:bg-muted")}
                     >
                       {account.name}
@@ -459,151 +392,43 @@ export function HistoryScreen() {
           <span className="text-xs text-muted-foreground">{filteredTransactions.length} resultados</span>
         </div>
 
-        <div className="motion-list mt-4 space-y-4">
+        <div className="motion-list mt-4 flex flex-col gap-4">
           {groupedTransactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">No se encontraron transacciones</p>
             </div>
           ) : (
             groupedTransactions.map((group) => (
-              <div key={group.key} className="space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{group.label}</p>
-
+              <TransactionGroup key={group.key} label={group.label}>
                 {group.items.map((tx) => {
-                  const CategoryIcon = categoryIcons[tx.category] || categoryIcons.other
                   const account = accounts.find((a) => a.id === tx.accountId)
-                  const AccountIcon = account ? accountIcons[account.type] : Banknote
-                  const isOpen = openSwipeId === tx.id
-                  const currentOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : isOpen ? -108 : 0
+                  const row: TransactionRowData = {
+                    id: tx.id,
+                    title: tx.title,
+                    category: tx.category,
+                    categoryName: tx.categoryName,
+                    amount: tx.amount,
+                    type: tx.type,
+                    currency: tx.currency,
+                    accountName: account?.name || "Cuenta",
+                    accountType: account?.type || "cash",
+                    time: formatTime(tx.date, tx.createdAt),
+                    isCommission: tx.isCommission,
+                    isTransfer: tx.isTransfer,
+                    metadata: tx.metadata,
+                  }
 
                   return (
-                    <div key={tx.id} data-history-row="true" className="relative overflow-hidden rounded-[1.35rem]">
-                      <div className="absolute inset-y-0 right-0 flex w-28 items-center justify-end gap-1 pr-2">
-                        <button type="button"
-                          aria-label="Editar transacción"
-                          onClick={() => openEdit(tx.id)}
-                          className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button type="button"
-                          aria-label="Eliminar transacción"
-                          onClick={() => setDeletingId(tx.id)}
-                          className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-destructive text-destructive-foreground"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div
-                        className="relative z-10 rounded-[1.35rem] border border-border/55 bg-card p-4 shadow-sm transition-transform duration-200 ease-[var(--ease-out-ios)]"
-                        style={{ transform: `translateX(${currentOffset}px)` }}
-                        onPointerDown={(event) => {
-                          const target = event.target as HTMLElement
-                          if (target.closest("button") || target.closest("a")) return
-                          pointerRef.current = {
-                            id: tx.id,
-                            startX: event.clientX,
-                            startY: event.clientY,
-                            swiping: false,
-                          }
-                        }}
-                        onPointerMove={(event) => {
-                          const pointer = pointerRef.current
-                          if (!pointer || pointer.id !== tx.id) return
-
-                          const dx = event.clientX - pointer.startX
-                          const dy = event.clientY - pointer.startY
-                          if (Math.abs(dx) <= Math.abs(dy) || (dx >= 0 && !isOpen)) return
-
-                          pointer.swiping = true
-                          setOpenSwipeId(tx.id)
-                          const base = isOpen ? -108 : 0
-                          setSwipeOffset({ id: tx.id, offset: Math.min(0, Math.max(-108, base + dx)) })
-                        }}
-                        onPointerUp={() => {
-                          const pointer = pointerRef.current
-                          if (!pointer || pointer.id !== tx.id) return
-                          if (pointer.swiping) {
-                            const finalOffset = swipeOffset?.id === tx.id ? swipeOffset.offset : 0
-                            if (finalOffset < -54) {
-                              setOpenSwipeId(tx.id)
-                              setSwipeOffset({ id: tx.id, offset: -108 })
-                            } else {
-                              setOpenSwipeId(null)
-                              setSwipeOffset(null)
-                            }
-                          }
-                          pointerRef.current = null
-                        }}
-                        onPointerCancel={() => {
-                          pointerRef.current = null
-                        }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={cn("mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full", categoryColors[tx.category] || categoryColors.other)}>
-                            <CategoryIcon className="h-4 w-4" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <p className="truncate text-sm font-medium text-foreground">{tx.title}</p>
-                                  {tx.metadata?.kind === "offline_pending" && (
-                                    <span className={cn(
-                                      "inline-flex items-center rounded-full px-1.5 py-0.5 text-[0.5rem] font-extrabold uppercase tracking-wide border shrink-0",
-                                      tx.metadata.sync_status === "failed"
-                                        ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-400 dark:border-red-900/50"
-                                        : tx.metadata.sync_status === "syncing"
-                                          ? "bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-900/50 animate-pulse"
-                                          : "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-900/50"
-                                    )}>
-                                      {tx.metadata.sync_status === "failed"
-                                        ? "Error"
-                                        : tx.metadata.sync_status === "syncing"
-                                          ? "Subiendo..."
-                                          : "Pendiente"}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                                  <AccountIcon className="h-3 w-3 shrink-0" />
-                                  <span className="truncate">{account?.name || "Cuenta"}</span>
-                                  <span>·</span>
-                                  <span className="truncate">{tx.categoryName}</span>
-                                </div>
-                                {tx.metadata?.kind === "credit_card_income" && (
-                                  <span className="mt-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[0.625rem] font-semibold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                                    {creditCardIncomeLabels[String(tx.metadata.movement_kind || "")] || "Movimiento positivo de tarjeta"}
-                                  </span>
-                                )}
-                                {tx.metadata?.kind === "offline_pending" && tx.metadata?.sync_status === "failed" && tx.metadata?.last_error && (
-                                  <p className="mt-1 text-[0.625rem] font-medium text-red-600 dark:text-red-400">
-                                    Error: {tx.metadata.last_error}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="shrink-0 text-right">
-                                <p className={cn("text-lg font-bold tabular-nums", tx.type === "income" ? "text-emerald-600 dark:text-emerald-400" : tx.isCommission ? "text-amber-700 dark:text-amber-400" : "text-foreground")}>
-                                  {tx.type === "income" ? "+" : "-"}
-                                  {formatCurrency(tx.amount, tx.currency)}
-                                </p>
-                                <p className="mt-1 text-[0.6875rem] text-muted-foreground">{formatTime(tx.date, tx.createdAt)}</p>
-                              </div>
-                            </div>
-
-                            {tx.isCommission && (
-                              <span className="mt-2 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[0.625rem] font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Comisión 0.15%</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <TransactionRow
+                      key={tx.id}
+                      tx={row}
+                      showCategory
+                      actions={{ onEdit: () => openEdit(tx.id), onDelete: () => setDeletingId(tx.id) }}
+                      swipe={makeSwipeHandlers(tx.id)}
+                    />
                   )
                 })}
-              </div>
+              </TransactionGroup>
             ))
           )}
         </div>
@@ -620,7 +445,7 @@ export function HistoryScreen() {
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
             <h3 className="text-lg font-bold text-foreground">Eliminar transacción</h3>
             <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada. Puedes deshacerla dentro de los próximos 10 segundos.</p>
-            <div className="mt-6 space-y-2">
+            <div className="mt-6 flex flex-col gap-2">
               <Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminación</Button>
               <Button variant="outline" onClick={() => setDeletingId(null)} className="h-12 w-full">Cancelar</Button>
             </div>
@@ -628,7 +453,6 @@ export function HistoryScreen() {
         </div>
       )}
 
-      {/* Undo bar */}
       {undoPending && (
         <div className="fixed bottom-20 left-4 right-4 z-[110] animate-slide-up">
           <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-lg backdrop-blur-md">
@@ -636,14 +460,8 @@ export function HistoryScreen() {
               <p className="text-sm font-medium text-foreground">Transacción eliminada</p>
               <p className="text-xs text-muted-foreground">Deshacer en {undoPending.count}s</p>
             </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleUndo}
-              disabled={undoLoading}
-              className="shrink-0"
-            >
-              {undoLoading ? "..." : "Deshacer"}
+            <Button variant="default" size="sm" onClick={async () => { await undo() }} disabled={false} className="shrink-0">
+              Deshacer
             </Button>
           </div>
         </div>

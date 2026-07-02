@@ -23,10 +23,9 @@ export function getLocalDateString(date = new Date()): string {
 
 export function formatAmount(value: number): string {
   const safeValue = Number(value || 0)
-  const hasDecimals = Math.abs(safeValue % 1) > 0
   const formatter = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: hasDecimals ? 2 : 0,
-    maximumFractionDigits: hasDecimals ? 2 : 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   })
   return formatter.format(safeValue)
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { formatAmount } from "@/lib/data"
 
 type CustomAmountSheetProps = {
   currencySymbol: "RD$" | "US$"
@@ -37,7 +38,7 @@ export function CustomAmountSheet({ currencySymbol, maxAmount, open, onOpenChang
               <input value={rawAmount} onChange={(event) => setRawAmount(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" autoFocus className="min-w-0 flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground" />
             </div>
           </label>
-          <p className="text-sm text-muted-foreground">Ingresa un monto entre {currencySymbol}1.00 y {currencySymbol}{maxAmount.toFixed(2)}</p>
+          <p className="text-sm text-muted-foreground">Ingresa un monto entre {currencySymbol}1.00 y {currencySymbol}{formatAmount(maxAmount)}</p>
           {error ? <p className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">{error}</p> : null}
         </div>
 

@@ -14,7 +14,7 @@ export function AccountsList() {
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         {[1, 2].map((item) => (
           <div key={item} className="h-32 animate-pulse rounded-[1.6rem] bg-card/80 shadow-sm" />
         ))}
@@ -45,7 +45,7 @@ export function AccountsList() {
   const cashDebitAccounts = accounts.filter((account) => account.type !== "credit")
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <AccountSectionHeader
         eyebrow="Tarjetas"
         title="Crédito y cortes"
@@ -53,7 +53,7 @@ export function AccountsList() {
         expanded={showAllCredit}
         onToggle={creditAccounts.length > 1 ? () => setShowAllCredit((value) => !value) : undefined}
       />
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         {(showAllCredit ? creditAccounts : creditAccounts.slice(0, 1)).map((account) => (
           <Link key={account.id} href={`/accounts/${account.id}`} className="group block">
             <BrandedAccountCard account={account} compact />
@@ -73,7 +73,7 @@ export function AccountsList() {
         expanded={showAllCashDebit}
         onToggle={cashDebitAccounts.length > 1 ? () => setShowAllCashDebit((value) => !value) : undefined}
       />
-      <div className="space-y-3">
+      <div className="flex flex-col gap-3">
         {(showAllCashDebit ? cashDebitAccounts : cashDebitAccounts.slice(0, 1)).map((account) => (
           <Link key={account.id} href={`/accounts/${account.id}`} className="group block">
             <BrandedAccountCard account={account} compact />

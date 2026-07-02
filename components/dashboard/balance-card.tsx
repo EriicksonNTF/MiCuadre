@@ -40,11 +40,11 @@ export function BalanceCard() {
           </button>
         </div>
 
-        <h2 className="relative mt-6 overflow-hidden text-ellipsis text-display-balance font-black leading-none tracking-tight text-foreground">
+        <h2 className="relative mt-6 text-display-balance font-black leading-none tracking-tight text-foreground">
           {isLoading ? (
             <span className="inline-block h-11 w-52 max-w-full animate-pulse rounded-2xl bg-muted" />
           ) : (
-            <span className="block truncate">{balanceText}</span>
+            <span className="block tabular-nums">{balanceText}</span>
           )}
         </h2>
 
@@ -57,9 +57,9 @@ export function BalanceCard() {
 
         <div className="mt-5 flex items-center gap-3 rounded-2xl bg-muted/50 px-4 py-3">
           <CreditCard className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <div className="flex w-full items-center justify-between gap-2">
+          <div className="flex w-full min-w-0 items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">Deuda tarjetas</p>
-            <p className="text-lg font-bold text-foreground tabular-nums">
+            <p className="amount-secondary font-bold text-foreground tabular-nums">
               {showBalance ? formatCurrency(totalCreditDebt, "DOP") : hiddenText}
             </p>
           </div>

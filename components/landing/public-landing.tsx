@@ -10,36 +10,6 @@ export function PublicLanding() {
     const root = rootRef.current
     if (!root) return
 
-    // Custom Cursor
-    const cursorDot = root.querySelector<HTMLElement>("#lCursorDot")
-    const cursorRing = root.querySelector<HTMLElement>("#lCursorRing")
-    let mx = 0, my = 0, rx = 0, ry = 0
-    if (cursorDot && cursorRing && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
-      const onMouseMove = (e: MouseEvent) => {
-        mx = e.clientX; my = e.clientY
-        cursorDot.style.transform = `translate(${mx}px, ${my}px) translate(-50%, -50%)`
-      }
-      window.addEventListener("mousemove", onMouseMove)
-      function cursorLoop() {
-        if (!cursorRing) return
-        rx += (mx - rx) * 0.08
-        ry += (my - ry) * 0.08
-        cursorRing.style.transform = `translate(${rx}px, ${ry}px) translate(-50%, -50%)`
-        requestAnimationFrame(cursorLoop)
-      }
-      cursorLoop()
-      root.querySelectorAll<HTMLElement>("a, button, .magnetic, .l-faq-q, .l-cp-item, .l-bento-tile, .l-mockup, .l-price-card").forEach(el => {
-        el.addEventListener("mouseenter", () => {
-          cursorRing.classList.add("hovering")
-          cursorDot.classList.add("hovering")
-        })
-        el.addEventListener("mouseleave", () => {
-          cursorRing.classList.remove("hovering")
-          cursorDot.classList.remove("hovering")
-        })
-      })
-    }
-
     // Magnetic Buttons
     if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
       root.querySelectorAll<HTMLElement>(".magnetic").forEach(btn => {
@@ -297,9 +267,6 @@ export function PublicLanding() {
 
   return (
     <div ref={rootRef} className="landing-redesign">
-      {/* Custom Cursor */}
-      <div className="l-cursor-dot" id="lCursorDot" />
-      <div className="l-cursor-ring" id="lCursorRing" />
 
       {/* Scroll Progress */}
       <div className="l-scroll-progress" />
@@ -692,21 +659,21 @@ export function PublicLanding() {
                 <div className="l-cp-item active">
                   <div className="l-cp-num">01</div>
                   <div className="l-cp-content">
-                    <h4 className="l-cp-title">Domina las fechas.</h4>
+                    <h3 className="l-cp-title">Domina las fechas.</h3>
                     <p className="l-cp-desc">Alertas tempranas de cuándo cierra tu ciclo (corte) y cuál es el último día para pagar sin penalidad.</p>
                   </div>
                 </div>
                 <div className="l-cp-item">
                   <div className="l-cp-num">02</div>
                   <div className="l-cp-content">
-                    <h4 className="l-cp-title">Claridad en balances.</h4>
+                    <h3 className="l-cp-title">Claridad en balances.</h3>
                     <p className="l-cp-desc">Separa el balance al corte (lo que debes pagar ahora) del balance actual (lo que llevas consumido en el ciclo nuevo).</p>
                   </div>
                 </div>
                 <div className="l-cp-item">
                   <div className="l-cp-num">03</div>
                   <div className="l-cp-content">
-                    <h4 className="l-cp-title">Límite inteligente.</h4>
+                    <h3 className="l-cp-title">Límite inteligente.</h3>
                     <p className="l-cp-desc">Conoce exactamente cuánto te queda disponible para gastar sin sobregirarte ni afectar tu buró de crédito.</p>
                   </div>
                 </div>
@@ -873,9 +840,9 @@ export function PublicLanding() {
             </div>
           </div>
           <div className="l-planning-features l-reveal-stagger">
-            <div className="l-pf-item"><span className="num">01</span><h4>Presupuestos inteligentes</h4><p>Define límites por categoría y recibe alertas antes de pasarte.</p></div>
-            <div className="l-pf-item"><span className="num">02</span><h4>Calendario financiero</h4><p>Visualiza tarjetas, suscripciones y deudas antes de que se te pasen.</p></div>
-            <div className="l-pf-item"><span className="num">03</span><h4>Deudas y pagos</h4><p>Controla préstamos, cuotas y tarjetas con seguimiento claro.</p></div>
+            <div className="l-pf-item"><span className="num">01</span><h3>Presupuestos inteligentes</h3><p>Define límites por categoría y recibe alertas antes de pasarte.</p></div>
+            <div className="l-pf-item"><span className="num">02</span><h3>Calendario financiero</h3><p>Visualiza tarjetas, suscripciones y deudas antes de que se te pasen.</p></div>
+            <div className="l-pf-item"><span className="num">03</span><h3>Deudas y pagos</h3><p>Controla préstamos, cuotas y tarjetas con seguimiento claro.</p></div>
           </div>
         </div>
       </section>

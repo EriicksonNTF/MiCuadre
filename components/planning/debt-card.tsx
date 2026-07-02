@@ -24,7 +24,7 @@ export function DebtCard({ debt, onPay }: { debt: DebtWithProgress; onPay: (debt
         </button>
       </div>
 
-      <p className="mt-3 text-lg font-bold">Pendiente {formatCurrency(debt.current_balance, debt.currency)}</p>
+      <p className="mt-3 amount-secondary font-bold">Pendiente {formatCurrency(debt.current_balance, debt.currency)}</p>
       <p className="text-xs text-muted-foreground">
         {debt.fixed_payment_amount ? `Cuota ${formatCurrency(debt.fixed_payment_amount, debt.currency)} ${debt.payment_frequency}` : "Sin cuota fija"}
       </p>

@@ -1,54 +1,12 @@
 "use client"
 
-import {
-  ArrowDownLeft,
-  Banknote,
-  Book,
-  Briefcase,
-  Building2,
-  Car,
-  Circle,
-  CreditCard,
-  Film,
-  Heart,
-  Home,
-  Laptop,
-  MinusCircle,
-  Plus,
-  PlusCircle,
-  ShoppingBag,
-  TrendingUp,
-  Utensils,
-  Zap,
-} from "lucide-react"
+import { ArrowDownLeft, Plus } from "lucide-react"
 import Link from "next/link"
-import { cn } from "@/lib/utils"
 import { useTransactions } from "@/hooks/use-data"
-import { formatCurrency, getLocalDateString } from "@/lib/data"
-import type { AccountType, Transaction } from "@/lib/types/database"
-
-const categoryIcons: Record<string, typeof Circle> = {
-  utensils: Utensils,
-  car: Car,
-  "shopping-bag": ShoppingBag,
-  zap: Zap,
-  film: Film,
-  heart: Heart,
-  book: Book,
-  home: Home,
-  briefcase: Briefcase,
-  laptop: Laptop,
-  "trending-up": TrendingUp,
-  "plus-circle": PlusCircle,
-  "minus-circle": MinusCircle,
-  circle: Circle,
-}
-
-const accountIconsSmall: Record<AccountType, typeof Banknote> = {
-  cash: Banknote,
-  debit: Building2,
-  credit: CreditCard,
-}
+import { getLocalDateString } from "@/lib/data"
+import { TransactionRow, TransactionGroup } from "@/components/transactions"
+import type { TransactionRowData } from "@/components/transactions"
+import type { Transaction } from "@/lib/types/database"
 
 export function TransactionsList() {
   const { data: transactions, isLoading } = useTransactions(10)
@@ -85,9 +43,9 @@ export function TransactionsList() {
 
   if (isLoading) {
     return (
-      <section className="space-y-4">
+      <section className="flex flex-col gap-4">
         <SectionHeader />
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {[1, 2, 3, 4].map((item) => (
             <div key={item} className="h-16 animate-pulse rounded-2xl bg-card/80 shadow-sm" />
           ))}
@@ -98,7 +56,7 @@ export function TransactionsList() {
 
   if (!transactions || transactions.length === 0) {
     return (
-      <section className="space-y-4">
+      <section className="flex flex-col gap-4">
         <SectionHeader hideAction />
         <div className="mobile-card p-5 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/12 text-accent">
@@ -119,69 +77,34 @@ export function TransactionsList() {
   }
 
   return (
-    <section className="space-y-4">
+    <section className="flex flex-col gap-4">
       <SectionHeader />
 
       <div className="overflow-hidden rounded-[1.65rem] border border-border/65 bg-card shadow-sm">
         {groups.map((group, groupIndex) => (
-          <div key={group.key} className={cn(groupIndex > 0 && "border-t border-border/60")}>
+          <div key={group.key} className={groupIndex > 0 ? "border-t border-border/60" : undefined}>
             <div className="flex items-center justify-between bg-muted/45 px-4 py-2.5">
               <p className="text-[0.6875rem] font-black uppercase tracking-[0.16em] text-muted-foreground">{group.label}</p>
               <p className="text-[0.6875rem] font-semibold text-muted-foreground">{group.items.length} mov.</p>
             </div>
             <div>
-              {group.items.map((transaction, index) => {
-                const categoryIcon = transaction.category?.icon || "circle"
-                const Icon = categoryIcons[categoryIcon] || Circle
-                const categoryColor = transaction.category?.color || "#64748b"
-                const accountType = transaction.account?.type || "cash"
-                const AccountIcon = accountIconsSmall[accountType]
+              {group.items.map((transaction) => {
                 const txDate = transaction.created_at ? new Date(transaction.created_at) : parseTxDate(transaction.date)
                 const txTime = txDate.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
-                const isIncome = transaction.type === "income"
 
-                return (
-                  <div
-                    key={transaction.id}
-                    className={cn("flex items-center gap-3 px-4 py-3", index > 0 && "border-t border-border/50")}
-                  >
-                    <div
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl"
-                      style={{
-                        backgroundColor: `${categoryColor}16`,
-                        color: categoryColor,
-                      }}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </div>
+                const row: TransactionRowData = {
+                  id: transaction.id,
+                  title: transaction.description || transaction.category?.name || "Transacción",
+                  category: transaction.category?.icon || "circle",
+                  amount: transaction.amount,
+                  type: transaction.type,
+                  currency: transaction.currency,
+                  accountName: transaction.account?.name || "Cuenta",
+                  accountType: transaction.account?.type || "cash",
+                  time: txTime,
+                }
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-foreground">
-                        {transaction.description || transaction.category?.name || "Transacción"}
-                      </p>
-                      <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-                        <AccountIcon className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{transaction.account?.name || "Cuenta"}</span>
-                        <span className="shrink-0">·</span>
-                        <span className="shrink-0">{txTime}</span>
-                      </div>
-                    </div>
-
-                    <p
-                      className={cn(
-                        "shrink-0 text-right text-lg font-bold",
-                        isIncome
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : accountType === "credit"
-                            ? "text-orange-600 dark:text-orange-400"
-                            : "text-foreground",
-                      )}
-                    >
-                      {isIncome ? "+" : "-"}
-                      {formatCurrency(transaction.amount, transaction.currency)}
-                    </p>
-                  </div>
-                )
+                return <TransactionRow key={transaction.id} tx={row} />
               })}
             </div>
           </div>

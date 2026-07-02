@@ -37,7 +37,7 @@ export function BudgetCard({ budget, onEdit }: { budget: BudgetWithUsage; onEdit
           </button>
         </div>
       </div>
-      <p className="mt-3 text-lg font-bold tabular-nums">
+      <p className="mt-3 amount-secondary font-bold tabular-nums">
         {formatCurrency(budget.spent, budget.currency)} / {formatCurrency(budget.amount, budget.currency)}
       </p>
       <p className="mt-1 text-sm font-semibold text-muted-foreground">Restante: {formatCurrency(Math.max(0, budget.remaining), budget.currency)}</p>

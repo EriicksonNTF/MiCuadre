@@ -2,6 +2,7 @@
 
 import { MobileSheetLayout } from "@/components/ui/mobile-sheet-layout"
 import { SwipeConfirmButton } from "@/components/ui/swipe-confirm-button"
+import { formatAmount } from "@/lib/data"
 
 type ConfirmPaymentSheetProps = {
   amount: number
@@ -32,16 +33,16 @@ export function ConfirmPaymentSheet({ amount, taxAmount = 0, totalDebit, currenc
         <section className="overflow-hidden rounded-[24px] border border-border bg-card">
           <div className="p-5 text-center">
             <p className="text-sm text-muted-foreground">Monto a acreditar</p>
-            <p className="mt-1 text-display-balance font-extrabold text-foreground">{currencySymbol}{amount.toFixed(2)}</p>
+            <p className="mt-1 text-display-balance font-extrabold text-foreground">{currencySymbol}{formatAmount(amount)}</p>
             {conversionSummary ? <p className="mt-1 text-xs text-muted-foreground">{conversionSummary}</p> : null}
           </div>
           <div className="border-t border-border px-5 py-4">
             {taxAmount > 0 ? (
-              <div className="flex items-center justify-between gap-4"><p className="text-base text-foreground">Impuesto DGII 0.15%</p><p className="font-semibold text-foreground">{sym} {taxAmount.toFixed(2)}</p></div>
+              <div className="flex items-center justify-between gap-4"><p className="text-base text-foreground">Impuesto DGII 0.15%</p><p className="font-semibold text-foreground">{sym} {formatAmount(taxAmount)}</p></div>
             ) : null}
             <div className={taxAmount > 0 ? "mt-4 flex items-center justify-between gap-4" : "flex items-center justify-between gap-4"}>
               <p className="text-base font-semibold text-foreground">Total a debitar</p>
-              <p className="font-bold text-foreground">{sym} {totalDebit.toFixed(2)}</p>
+              <p className="font-bold text-foreground">{sym} {formatAmount(totalDebit)}</p>
             </div>
           </div>
         </section>
