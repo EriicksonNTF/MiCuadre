@@ -20,8 +20,10 @@
     "audit:visual": "node scripts/audit-visual.mjs",
     "audit:visual-deep": "node scripts/audit-visual-deep.mjs",
     "build": "pnpm next build",
+    "prebuild:mobile": "node scripts/prebuild-mobile.mjs",
+    "build:mobile": "cross-env BUILD_EXPORT=true next build",
+    "postbuild:mobile": "node scripts/fix-asset-paths.mjs && node scripts/postbuild-export.mjs",
     "build:safe": "pnpm next build",
-
     "start": "pnpm next start",
     "lint": "pnpm eslint .",
     "typecheck": "tsc --noEmit",
@@ -29,7 +31,6 @@
     "check:connections": "node scripts/check-connections.mjs"
   },
   "dependencies": {
-
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@ffprobe-installer/ffprobe": "^2.1.2",
     "@hookform/resolvers": "^3.9.1",
@@ -62,6 +63,8 @@
     "@radix-ui/react-tooltip": "1.2.8",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "@vercel/analytics": "^2.0.1",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
@@ -91,7 +94,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.0",

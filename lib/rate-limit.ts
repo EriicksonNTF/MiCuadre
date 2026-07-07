@@ -1,5 +1,8 @@
 import "server-only"
 
+import { Ratelimit } from "@upstash/ratelimit"
+import { getRedis } from "@/lib/upstash"
+
 type RateLimitConfig = {
   maxRequests: number
   windowMs: number
@@ -11,31 +14,25 @@ type RateLimitResult = {
   remaining: number
 }
 
-type TokenBucketEntry = {
-  count: number
-  resetAt: number
-}
+/* ── In-memory fallback (when Upstash is not configured) ─────────── */
 
-const stores = new Map<string, TokenBucketEntry>()
+type TokenBucketEntry = { count: number; resetAt: number }
+const memoryStores = new Map<string, TokenBucketEntry>()
 
 function createMemoryLimiter(config: RateLimitConfig) {
   return function check(key: string): RateLimitResult {
     const now = Date.now()
-
-    let entry = stores.get(key)
+    let entry = memoryStores.get(key)
     if (entry && now >= entry.resetAt) {
-      stores.delete(key)
+      memoryStores.delete(key)
       entry = undefined
     }
-
     if (!entry) {
       entry = { count: 0, resetAt: now + config.windowMs }
-      stores.set(key, entry)
+      memoryStores.set(key, entry)
     }
-
     entry.count += 1
     const allowed = entry.count <= config.maxRequests
-
     return {
       allowed,
       retryAfterSeconds: allowed
@@ -46,15 +43,43 @@ function createMemoryLimiter(config: RateLimitConfig) {
   }
 }
 
+/* ── Upstash-backed limiter ──────────────────────────────────────── */
+
+function createUpstashLimiter(config: RateLimitConfig) {
+  const redis = getRedis()
+  if (!redis) return createMemoryLimiter(config)
+
+  const windowSeconds = Math.ceil(config.windowMs / 1000)
+  const limiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(config.maxRequests, `${windowSeconds} s`),
+    analytics: false,
+    prefix: "micuadre:rl",
+  })
+
+  return async function check(key: string): Promise<RateLimitResult> {
+    const result = await limiter.limit(key)
+    return {
+      allowed: result.success,
+      retryAfterSeconds: result.success
+        ? 0
+        : Math.max(1, Math.ceil((result.reset - Date.now()) / 1000)),
+      remaining: result.remaining,
+    }
+  }
+}
+
 function createNoopLimiter() {
   return function check(_key: string): RateLimitResult {
     return { allowed: true, retryAfterSeconds: 0, remaining: Infinity }
   }
 }
 
+/* ── Public API ──────────────────────────────────────────────────── */
+
 export function createRateLimiter(config: RateLimitConfig) {
   if (config.maxRequests <= 0) return createNoopLimiter()
-  return createMemoryLimiter(config)
+  return createUpstashLimiter(config)
 }
 
 export const API_RATE_LIMIT = {

@@ -121,5 +121,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  if (user && !isEmailVerified && !isPublicRoute && pathname !== '/verify-email') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/verify-email'
+    return NextResponse.redirect(url)
+  }
+
   return supabaseResponse
 }

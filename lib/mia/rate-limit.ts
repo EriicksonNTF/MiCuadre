@@ -1,31 +1,15 @@
 import "server-only"
 
+import { Ratelimit } from "@upstash/ratelimit"
+import { getRedis } from "@/lib/upstash"
+
 /*
- * In-memory per-user rate limiter for MIA.
+ * Per-user rate limiter for MIA (persistent via Upstash, in-memory fallback).
  *
  * Limits (per user.id from session):
  *   - 15 requests / minute   (MIA_RATE_LIMIT_PER_MINUTE, default 15)
  *   - 200 requests / day     (MIA_RATE_LIMIT_PER_DAY, default 200)
- *
- * Scope:
- *   - This is a BEST-EFFORT per-instance limiter. In Vercel serverless
- *     the in-memory state resets on cold start, so this does NOT replace
- *     an edge / distributed limiter (e.g. Upstash, Vercel Edge Config).
- *     For production hardening, add a distributed limiter behind the
- *     same checkRateLimit signature.
- *
- * Memory:
- *   - Expired buckets are reaped on the next checkRateLimit call for
- *     that user, so the map size is bounded by active user count per
- *     instance lifetime.
  */
-
-type Bucket = {
-  perMinute: { count: number; resetAt: number }
-  perDay: { count: number; resetAt: number }
-}
-
-const buckets = new Map<string, Bucket>()
 
 const MINUTE_MS = 60_000
 const DAY_MS = 24 * 60 * 60_000
@@ -39,15 +23,21 @@ export type RateLimitResult = {
   retryAfterSeconds: number
 }
 
-export function checkRateLimit(userId: string): RateLimitResult {
-  const now = Date.now()
+/* ── In-memory fallback ──────────────────────────────────────────── */
 
+type Bucket = {
+  perMinute: { count: number; resetAt: number }
+  perDay: { count: number; resetAt: number }
+}
+const buckets = new Map<string, Bucket>()
+
+function checkMemory(userId: string): RateLimitResult {
+  const now = Date.now()
   let bucket = buckets.get(userId)
   if (bucket && now >= bucket.perMinute.resetAt && now >= bucket.perDay.resetAt) {
     buckets.delete(userId)
     bucket = undefined
   }
-
   if (!bucket) {
     bucket = {
       perMinute: { count: 0, resetAt: now + MINUTE_MS },
@@ -55,14 +45,12 @@ export function checkRateLimit(userId: string): RateLimitResult {
     }
     buckets.set(userId, bucket)
   }
-
   if (now >= bucket.perMinute.resetAt) {
     bucket.perMinute = { count: 0, resetAt: now + MINUTE_MS }
   }
   if (now >= bucket.perDay.resetAt) {
     bucket.perDay = { count: 0, resetAt: now + DAY_MS }
   }
-
   bucket.perMinute.count += 1
   bucket.perDay.count += 1
 
@@ -70,21 +58,83 @@ export function checkRateLimit(userId: string): RateLimitResult {
   const overDay = bucket.perDay.count > PER_DAY
   const allowed = !overMinute && !overDay
 
-  const retryAfterSeconds = allowed
-    ? 0
-    : Math.max(
-        Math.ceil((bucket.perMinute.resetAt - now) / 1000),
-        Math.ceil((bucket.perDay.resetAt - now) / 1000),
-      )
-
   return {
     allowed,
     remaining: {
       perMinute: Math.max(0, PER_MINUTE - bucket.perMinute.count),
       perDay: Math.max(0, PER_DAY - bucket.perDay.count),
     },
-    retryAfterSeconds,
+    retryAfterSeconds: allowed
+      ? 0
+      : Math.max(
+          Math.ceil((bucket.perMinute.resetAt - now) / 1000),
+          Math.ceil((bucket.perDay.resetAt - now) / 1000),
+        ),
   }
+}
+
+/* ── Upstash-backed limiter ──────────────────────────────────────── */
+
+let minuteLimiter: Ratelimit | null = null
+let dayLimiter: Ratelimit | null = null
+
+function getLimiters() {
+  if (minuteLimiter) return { minuteLimiter, dayLimiter: dayLimiter! }
+
+  const redis = getRedis()
+  if (!redis) return null
+
+  minuteLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(PER_MINUTE, "60 s"),
+    analytics: false,
+    prefix: "micuadre:mia:min",
+  })
+  dayLimiter = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(PER_DAY, "86400 s"),
+    analytics: false,
+    prefix: "micuadre:mia:day",
+  })
+  return { minuteLimiter, dayLimiter }
+}
+
+async function checkUpstash(userId: string): Promise<RateLimitResult> {
+  const limiters = getLimiters()
+  if (!limiters) return checkMemory(userId)
+
+  const [minuteResult, dayResult] = await Promise.all([
+    limiters.minuteLimiter.limit(userId),
+    limiters.dayLimiter.limit(userId),
+  ])
+
+  const allowed = minuteResult.success && dayResult.success
+
+  return {
+    allowed,
+    remaining: {
+      perMinute: minuteResult.remaining,
+      perDay: dayResult.remaining,
+    },
+    retryAfterSeconds: allowed
+      ? 0
+      : Math.max(
+          minuteResult.success
+            ? 0
+            : Math.ceil((minuteResult.reset - Date.now()) / 1000),
+          dayResult.success
+            ? 0
+            : Math.ceil((dayResult.reset - Date.now()) / 1000),
+        ),
+  }
+}
+
+/* ── Public API ──────────────────────────────────────────────────── */
+
+export async function checkRateLimit(userId: string): Promise<RateLimitResult> {
+  const redis = getRedis()
+  if (!redis) return checkMemory(userId)
+  return checkUpstash(userId)
 }
 
 export const MIA_RATE_LIMITED_RESPONSE = {
