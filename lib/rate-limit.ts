@@ -19,6 +19,16 @@ type RateLimitResult = {
 type TokenBucketEntry = { count: number; resetAt: number }
 const memoryStores = new Map<string, TokenBucketEntry>()
 
+// Periodic cleanup of expired entries to prevent memory leak
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, entry] of memoryStores) {
+      if (now >= entry.resetAt) memoryStores.delete(key)
+    }
+  }, 60_000)
+}
+
 function createMemoryLimiter(config: RateLimitConfig) {
   return function check(key: string): RateLimitResult {
     const now = Date.now()

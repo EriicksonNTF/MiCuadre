@@ -172,8 +172,8 @@ export async function POST(request: Request) {
     }
 
     const [{ data: accountsRaw }, { data: goalsRaw }, { data: transactionsRaw }] = await Promise.all([
-      supabase.from("accounts").select("*").eq("user_id", user.id),
-      supabase.from("goals").select("*").eq("user_id", user.id),
+      supabase.from("accounts").select("id, name, type, currency, balance, current_debt_dop, current_debt_usd, is_active").eq("user_id", user.id),
+      supabase.from("goals").select("id, name, target_amount, current_amount, currency, target_date, is_completed").eq("user_id", user.id),
       supabase
         .from("transactions")
         .select("*, category:categories(name)")

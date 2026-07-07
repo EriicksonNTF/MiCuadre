@@ -23,22 +23,34 @@ export function getLocalDateString(date = new Date()): string {
 
 export function formatAmount(value: number): string {
   const safeValue = Number(value || 0)
-  const formatter = new Intl.NumberFormat("en-US", {
+  const formatter = new Intl.NumberFormat("es-DO", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
   return formatter.format(safeValue)
 }
 
-// Utility functions
-export function getCurrencySymbol(currency?: Currency): "RD$" | "US$" {
+export function getCurrencySymbol(currency?: Currency): string {
   const c = currency ?? preferredDisplayCurrency
-  return c === "DOP" ? "RD$" : "US$"
+  return new Intl.NumberFormat("es-DO", {
+    style: "currency",
+    currency: c,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })
+    .format(0)
+    .replace(/[\d\s]/g, "")
+    .trim()
 }
 
 export function formatCurrency(amount: number, currency?: Currency) {
   const displayCurrency = currency ?? preferredDisplayCurrency
-  return `${getCurrencySymbol(displayCurrency)}${formatAmount(amount)}`
+  return new Intl.NumberFormat("es-DO", {
+    style: "currency",
+    currency: displayCurrency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
 }
 
 export function calculateNetBalance(accounts: Account[]): number {

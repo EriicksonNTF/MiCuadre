@@ -26,6 +26,11 @@ import type { PlanTier } from "@/types/billing"
 import { LedgerService } from "@/lib/ledger/ledger-service"
 import { getAuthenticatedUser } from "@/lib/supabase/user"
 
+function extractMissingAccountColumn(message: string) {
+  const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"accounts"\s+does\s+not\s+exist/i)
+  return match?.[1] || null
+}
+
 type CreditAccountState = {
   id: string
   user_id: string
@@ -411,6 +416,8 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
     .from("transactions")
     .select("id, amount, type, currency, date, billing_cycle_id, metadata")
     .eq("account_id", account.id)
+    .order("date", { ascending: false })
+    .limit(2000)
 
   const cycleMap = new Map<string, {
     cycleStartDate: string
@@ -453,6 +460,7 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
     .from("credit_payments")
     .select("amount,currency")
     .eq("credit_account_id", account.id)
+    .limit(2000)
 
   let totalPaidDop = 0
   let totalPaidUsd = 0
@@ -472,62 +480,80 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
     .select("id, cycle_start_date, cycle_end_date, due_date, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, financed_amount_dop, financed_amount_usd, interest_amount_dop, interest_amount_usd, status, is_finalized")
     .eq("account_id", account.id)
     .order("cycle_end_date", { ascending: true })
+    .limit(500)
 
   const existingByEndDate = new Map<string, any>()
   for (const cycleRow of existingCycles || []) {
     existingByEndDate.set(cycleRow.cycle_end_date, cycleRow)
   }
 
+  const cyclePromises: Promise<any>[] = []
+
   for (const grouped of cycleMap.values()) {
     const existing = existingByEndDate.get(grouped.cycleEndDate)
     if (!existing) {
-      const { data: inserted } = await supabase
-        .from("credit_card_cycles")
-        .insert({
-          user_id: account.user_id,
-          account_id: account.id,
-          cycle_start_date: grouped.cycleStartDate,
-          cycle_end_date: grouped.cycleEndDate,
-          due_date: grouped.dueDate,
-          statement_balance_dop: Math.max(0, grouped.statement_balance_dop),
-          statement_balance_usd: Math.max(0, grouped.statement_balance_usd),
-          paid_amount_dop: 0,
-          paid_amount_usd: 0,
-          status: grouped.cycleEndDate <= getLocalDateString() ? "closed" : "open",
-          is_finalized: grouped.cycleEndDate <= getLocalDateString(),
-        })
-        .select("id")
-        .single()
+      cyclePromises.push(
+        (async () => {
+          const { data: inserted } = await supabase
+            .from("credit_card_cycles")
+            .insert({
+              user_id: account.user_id,
+              account_id: account.id,
+              cycle_start_date: grouped.cycleStartDate,
+              cycle_end_date: grouped.cycleEndDate,
+              due_date: grouped.dueDate,
+              statement_balance_dop: Math.max(0, grouped.statement_balance_dop),
+              statement_balance_usd: Math.max(0, grouped.statement_balance_usd),
+              paid_amount_dop: 0,
+              paid_amount_usd: 0,
+              status: grouped.cycleEndDate <= getLocalDateString() ? "closed" : "open",
+              is_finalized: grouped.cycleEndDate <= getLocalDateString(),
+            })
+            .select("id")
+            .single()
 
-      const newCycleId = inserted?.id
-      if (newCycleId && grouped.txIds.length > 0) {
-        await supabase.from("transactions").update({ billing_cycle_id: newCycleId }).in("id", grouped.txIds)
-      }
+          const newCycleId = inserted?.id
+          if (newCycleId && grouped.txIds.length > 0) {
+            await supabase.from("transactions").update({ billing_cycle_id: newCycleId }).in("id", grouped.txIds)
+          }
+        })()
+      )
       continue
     }
 
     if (!existing.is_finalized) {
-      await supabase
-        .from("credit_card_cycles")
-        .update({
-          cycle_start_date: grouped.cycleStartDate,
-          due_date: grouped.dueDate,
-          statement_balance_dop: Math.max(0, grouped.statement_balance_dop),
-          statement_balance_usd: Math.max(0, grouped.statement_balance_usd),
-        })
-        .eq("id", existing.id)
+      cyclePromises.push(
+        (async () => {
+          await supabase
+            .from("credit_card_cycles")
+            .update({
+              cycle_start_date: grouped.cycleStartDate,
+              due_date: grouped.dueDate,
+              statement_balance_dop: Math.max(0, grouped.statement_balance_dop),
+              statement_balance_usd: Math.max(0, grouped.statement_balance_usd),
+            })
+            .eq("id", existing.id)
+        })()
+      )
     }
 
     if (grouped.txIds.length > 0) {
-      await supabase.from("transactions").update({ billing_cycle_id: existing.id }).in("id", grouped.txIds)
+      cyclePromises.push(
+        (async () => {
+          await supabase.from("transactions").update({ billing_cycle_id: existing.id }).in("id", grouped.txIds)
+        })()
+      )
     }
   }
+
+  await Promise.all(cyclePromises)
 
   const { data: refreshedCycles } = await supabase
     .from("credit_card_cycles")
     .select("id, cycle_start_date, cycle_end_date, due_date, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, financed_amount_dop, financed_amount_usd, interest_amount_dop, interest_amount_usd, status, is_finalized")
     .eq("account_id", account.id)
     .order("cycle_end_date", { ascending: true })
+    .limit(500)
 
   let latestClosedCycle: any = null
   for (const row of refreshedCycles || []) {
@@ -538,6 +564,8 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
 
   let totalFinancedDop = 0
   let totalFinancedUsd = 0
+
+  const refreshUpdates: Array<{ id: string; updates: Record<string, unknown> }> = []
 
   for (const row of refreshedCycles || []) {
     const isFinalized = !!row.is_finalized
@@ -612,10 +640,15 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
       cycleUpdates.is_finalized = true
     }
 
-    await supabase
-      .from("credit_card_cycles")
-      .update(cycleUpdates)
-      .eq("id", row.id)
+    refreshUpdates.push({ id: row.id, updates: cycleUpdates })
+  }
+
+  if (refreshUpdates.length > 0) {
+    await Promise.all(
+      refreshUpdates.map(({ id, updates }) =>
+        supabase.from("credit_card_cycles").update(updates).eq("id", id)
+      )
+    )
   }
 
   const statementDop = Number(latestClosedCycle?.statement_balance_dop || 0)
@@ -808,22 +841,13 @@ async function fetchAccounts(): Promise<Account[]> {
     if (!userId) return []
     const { data, error } = await supabase
       .from("accounts")
-      .select("*")
+      .select("id, user_id, name, type, currency, balance, credit_limit, current_debt, closing_date, due_date, minimum_payment, color, icon, is_active, created_at, updated_at, statement_balance, pending_amount, paid_amount, cycle_start_date, cycle_end_date, sort_order, is_favorite, icon_url, icon_type, icon_value, primary_color, secondary_color, background_style, credit_limit_dop, credit_limit_usd, current_debt_dop, current_debt_usd, statement_balance_dop, statement_balance_usd, paid_statement_amount_dop, paid_statement_amount_usd, pending_transit_dop, pending_transit_usd, closing_day, due_days_after_cutoff, minimum_payment_percentage, last_statement_cutoff_date, statement_due_date, late_fee_applied_cycle_dop, late_fee_applied_cycle_usd, current_balance_dop, current_balance_usd, financed_balance_dop, financed_balance_usd, available_credit_dop, available_credit_usd, payment_due_day, annual_interest_rate, bank_name, bank_logo_key, bank_logo_url, account_number")
       .eq("user_id", userId)
       .eq("is_active", true)
       .order("created_at", { ascending: true })
 
     if (error) throw error
     accounts = sortAccountsList(data || [])
-    
-    // Save to offline cache
-    if (userId) {
-      for (const account of accounts) {
-        await offlineDB.put("accounts_cache", account)
-      }
-    }
-    
-    void maybeRefreshCreditCycles()
   } catch (err) {
     console.warn("fetchAccounts failed, trying offline cache:", err)
     const cached = await offlineDB.getAll<Account>("accounts_cache")
@@ -986,7 +1010,7 @@ async function fetchCategories(): Promise<Category[]> {
 
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
+    .select("id, user_id, name, icon, color, type, is_default, created_at, is_subscription")
     .or(`user_id.eq.${user.id},is_default.eq.true`)
     .order("is_default", { ascending: false })
     .order("name", { ascending: true })
@@ -1009,7 +1033,7 @@ async function fetchGoals(): Promise<Goal[]> {
 
   const { data, error } = await supabase
     .from("goals")
-    .select("*")
+    .select("id, user_id, name, target_amount, current_amount, currency, target_date, color, icon, is_completed, created_at, updated_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 
@@ -1034,7 +1058,7 @@ async function fetchNotifications(): Promise<Notification[]> {
 
   const { data, error } = await supabase
     .from("notifications")
-    .select("*")
+    .select("id, user_id, title, message, type, read, action_url, created_at, metadata")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
     .limit(20)
@@ -1057,7 +1081,7 @@ async function fetchProfile(): Promise<Profile | null> {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select("id, first_name, last_name, preferred_currency, language, theme, notifications_enabled, created_at, updated_at, onboarding_completed, provider, email, full_name, avatar_url, username, phone, plan_tier, plan_status, stripe_customer_id, billing_ready")
     .eq("id", user.id)
     .single()
 
@@ -1079,7 +1103,7 @@ async function fetchBeneficiaries(): Promise<Beneficiary[]> {
 
   const { data, error } = await supabase
     .from("beneficiaries")
-    .select("*")
+    .select("id, user_id, name, account_reference, bank_name, notes, is_favorite, created_at")
     .eq("user_id", user.id)
     .order("is_favorite", { ascending: false })
     .order("name", { ascending: true })
@@ -1339,12 +1363,45 @@ export async function createAccount(account: NewAccountInput) {
     }
   }
 
-  const extractMissingAccountColumn = (message: string) => {
-    const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"accounts"\s+does\s+not\s+exist/i)
-    return match?.[1] || null
+  // -- Field validations --
+  const name = account.name?.trim()
+  if (!name) {
+    throw new Error("El nombre de la cuenta no puede estar vacío")
+  }
+  if (name.length > 100) {
+    throw new Error("El nombre de la cuenta no puede exceder 100 caracteres")
   }
 
-  let payload: Record<string, unknown> = { ...account, user_id: user.id }
+  const validTypes = ["cash", "debit", "credit"]
+  if (!account.type || !validTypes.includes(account.type)) {
+    throw new Error(`El tipo de cuenta debe ser: ${validTypes.join(", ")}`)
+  }
+
+  const validCurrencies = ["DOP", "USD"]
+  if (!account.currency || !validCurrencies.includes(account.currency)) {
+    throw new Error(`La moneda debe ser: ${validCurrencies.join(", ")}`)
+  }
+
+  const initialBalance = account.balance !== undefined ? roundCurrencyAmount(Number(account.balance)) : 0
+  if (initialBalance < 0) {
+    throw new Error("El saldo inicial no puede ser negativo")
+  }
+
+  if (account.type === "credit") {
+    if (!account.credit_limit || Number(account.credit_limit) <= 0) {
+      throw new Error("El límite de crédito debe ser mayor a 0 para cuentas de crédito")
+    }
+    if (initialBalance > 0) {
+      console.warn("[createAccount] Credit card with positive initial balance — setting to 0")
+    }
+  }
+
+  let payload: Record<string, unknown> = {
+    ...account,
+    name,
+    balance: account.type === "credit" ? 0 : initialBalance,
+    user_id: user.id,
+  }
   let data: Account | null = null
   let finalError: any = null
 
@@ -1410,6 +1467,33 @@ export async function createTransaction(
 ) {
   const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
+
+  // -- Validation: amount --
+  if (!transaction.amount || transaction.amount <= 0) {
+    throw new Error("El monto debe ser mayor a 0")
+  }
+
+  // Round amount to 2 decimal places
+  const roundedAmount = roundCurrencyAmount(transaction.amount)
+  if (roundedAmount !== transaction.amount) {
+    console.warn(`[createTransaction] Amount rounded: ${transaction.amount} → ${roundedAmount}`)
+  }
+  transaction = { ...transaction, amount: roundedAmount }
+
+  // -- Validation: date --
+  if (transaction.date) {
+    const txDate = new Date(transaction.date)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    if (txDate > today) {
+      throw new Error("La fecha de la transacción no puede ser futura")
+    }
+  }
+
+  // -- Validation: type --
+  if (transaction.type && !["income", "expense"].includes(transaction.type)) {
+    throw new Error("El tipo debe ser 'income' o 'expense'")
+  }
 
   const idempotencyKey = options?.idempotencyKey || `idem_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
   const localId = `local_tx_${Math.random().toString(36).substring(2, 15)}`
@@ -1619,7 +1703,7 @@ export async function createTransaction(
   throw impactError
 }
 
-try {
+    try {
       const ledger = LedgerService.create()
       if (transactionToInsert.type === "expense") {
         await ledger.recordExpense(user.id, transactionToInsert.account_id, transactionToInsert.amount, transactionToInsert.currency as any, transactionToInsert.description || undefined, data.id, "transactions")
@@ -1630,7 +1714,13 @@ try {
         await ledger.recordCommission(user.id, transactionToInsert.account_id, commissionAmount, transactionToInsert.currency as any, "Comisión por transacción")
       }
     } catch (e) {
-      console.error("Ledger write failed (non-blocking):", e)
+      console.error("[createTransaction] Ledger write failed, rolling back transaction:", e)
+      // Rollback: delete transaction and commission
+      if (commissionTxId) {
+        await supabase.from("transactions").delete().eq("id", commissionTxId)
+      }
+      await supabase.from("transactions").delete().eq("id", data.id)
+      throw new Error("Error al registrar la transacción en el libro contable. La operación fue revertida. Intenta de nuevo.")
     }
 
     await syncAccountBalance(transactionToInsert.account_id, transactionToInsert.currency)
@@ -1764,6 +1854,21 @@ export async function updateTransaction(
 
   await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   await mutate("accounts")
+
+  // Sync credit card cycles if account is a credit card
+  try {
+    const { data: acct } = await supabase
+      .from("accounts")
+      .select("type")
+      .eq("id", updates.account_id || existing.account_id)
+      .maybeSingle()
+    if (acct?.type === "credit") {
+      await syncCreditAccountCycle(updates.account_id || existing.account_id)
+    }
+  } catch (cycleErr) {
+    console.error("[updateTransaction] Sync cycle error:", cycleErr)
+  }
+
   return result
 }
 
@@ -1813,6 +1918,25 @@ export async function deleteTransaction(id: string) {
     await mutate("notifications")
   }
 
+  // Sync credit card cycles if the deleted transaction belongs to a credit account
+  if (result) {
+    try {
+      const accountId = (result as any)?.account_id
+      if (accountId) {
+        const { data: acct } = await supabase
+          .from("accounts")
+          .select("type")
+          .eq("id", accountId)
+          .maybeSingle()
+        if (acct?.type === "credit") {
+          await syncCreditAccountCycle(accountId)
+        }
+      }
+    } catch (cycleErr) {
+      console.error("[deleteTransaction] Sync cycle error:", cycleErr)
+    }
+  }
+
   return result
 }
 
@@ -1825,7 +1949,7 @@ async function deleteCreditCardPaymentGroup(params: {
 
   const { data: groupedByNew } = await supabase
     .from("transactions")
-    .select("*")
+    .select("id, account_id, type, amount, currency")
     .eq("user_id", userId)
     .eq("metadata->>payment_group_id", paymentLinkId)
 
@@ -1833,7 +1957,7 @@ async function deleteCreditCardPaymentGroup(params: {
     ? groupedByNew
     : (await supabase
         .from("transactions")
-        .select("*")
+        .select("id, account_id, type, amount, currency")
         .eq("user_id", userId)
         .eq("metadata->>payment_id", paymentLinkId)).data || []
 
@@ -1841,15 +1965,17 @@ async function deleteCreditCardPaymentGroup(params: {
     throw new Error("No se encontró el pago de tarjeta vinculado.")
   }
 
-  for (const tx of groupedTxs) {
-    await applyAccountImpact({
-      accountId: tx.account_id,
-      type: tx.type,
-      amount: Number(tx.amount),
-      direction: -1,
-      currency: tx.currency,
-    })
-  }
+  await Promise.all(
+    groupedTxs.map((tx) =>
+      applyAccountImpact({
+        accountId: tx.account_id,
+        type: tx.type,
+        amount: Number(tx.amount),
+        direction: -1,
+        currency: tx.currency,
+      })
+    )
+  )
 
   const txIds = groupedTxs.map((tx) => tx.id)
   if (txIds.length > 0) {
@@ -2096,6 +2222,27 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
   const user = await getAuthenticatedUser()
   if (!user) throw new Error("No autenticado")
 
+  // -- Field validations --
+  if (!goal.name?.trim()) {
+    throw new Error("El nombre de la meta no puede estar vacío")
+  }
+  if (!goal.target_amount || goal.target_amount <= 0.01) {
+    throw new Error("El monto objetivo debe ser mayor a 0.01")
+  }
+  if (!["DOP", "USD"].includes(goal.currency)) {
+    throw new Error("La moneda debe ser DOP o USD")
+  }
+  if (goal.target_date) {
+    const targetDate = new Date(goal.target_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (targetDate <= today) {
+      throw new Error("La fecha objetivo debe estar en el futuro")
+    }
+  }
+
+  const roundedAmount = roundCurrencyAmount(goal.target_amount)
+
   const outboxItem = buildOutboxItem({
     userId: user.id, operation: "create_goal", entity: "goals",
     payload: { ...goal },
@@ -2125,7 +2272,7 @@ export async function createGoal(goal: Omit<Goal, "id" | "user_id" | "created_at
   try {
     const { data, error } = await supabase
       .from("goals")
-      .insert({ ...goal, user_id: user.id, current_amount: 0, is_completed: false })
+      .insert({ ...goal, target_amount: roundedAmount, user_id: user.id, current_amount: 0, is_completed: false })
       .select()
       .single()
 
@@ -2673,6 +2820,7 @@ export async function payCreditCard(payment: {
 
     if (openCycles && openCycles.length > 0) {
       let remainingToApply = payment.amount
+      const cycleUpdateBatch: Array<{ id: string; updates: Record<string, unknown> }> = []
       for (const cycleRow of openCycles) {
         if (remainingToApply <= 0) break
         const statement = payment.currency === "USD"
@@ -2688,31 +2836,35 @@ export async function payCreditCard(payment: {
         remainingToApply = roundCurrencyAmount(remainingToApply - applied)
 
         const nextPaid = roundCurrencyAmount(paid + applied)
-        const cycleUpdates: Record<string, unknown> = {}
-        if (payment.currency === "USD") cycleUpdates.paid_amount_usd = nextPaid
-        else cycleUpdates.paid_amount_dop = nextPaid
+        const updates: Record<string, unknown> = {}
+        if (payment.currency === "USD") updates.paid_amount_usd = nextPaid
+        else updates.paid_amount_dop = nextPaid
 
         const pendingAfter = Math.max(0, roundCurrencyAmount(statement - nextPaid))
         if (pendingAfter <= 0) {
-          cycleUpdates.status = "paid"
+          updates.status = "paid"
         } else if (nextPaid > 0) {
           const isOverdue = new Date(`${cycleRow.due_date}T12:00:00`).getTime() < Date.now()
-          cycleUpdates.status = isOverdue ? "financed" : "partial"
+          updates.status = isOverdue ? "financed" : "partial"
         }
 
-        const originalCycleUpdates: Record<string, unknown> = {
+        const originalUpdates: Record<string, unknown> = {
           status: cycleRow.status,
         }
-        if (payment.currency === "USD") originalCycleUpdates.paid_amount_usd = cycleRow.paid_amount_usd
-        else originalCycleUpdates.paid_amount_dop = cycleRow.paid_amount_dop
-        updatedCyclesToRollback.push({ id: cycleRow.id, updates: originalCycleUpdates })
+        if (payment.currency === "USD") originalUpdates.paid_amount_usd = cycleRow.paid_amount_usd
+        else originalUpdates.paid_amount_dop = cycleRow.paid_amount_dop
+        updatedCyclesToRollback.push({ id: cycleRow.id, updates: originalUpdates })
 
-        const { error: cycleUpdateError } = await supabase
-          .from("credit_card_cycles")
-          .update(cycleUpdates)
-          .eq("id", cycleRow.id)
+        cycleUpdateBatch.push({ id: cycleRow.id, updates })
+      }
 
-        if (cycleUpdateError) throw cycleUpdateError
+      const cycleResults = await Promise.all(
+        cycleUpdateBatch.map(({ id, updates }) =>
+          supabase.from("credit_card_cycles").update(updates).eq("id", id)
+        )
+      )
+      for (const result of cycleResults) {
+        if (result.error) throw result.error
       }
     }
 
@@ -2921,12 +3073,11 @@ export async function payCreditCard(payment: {
         .update({ balance: originalSourceBalance })
         .eq("id", payment.source_account_id)
 
-      for (const cycleToRollback of updatedCyclesToRollback) {
-        await supabase
-          .from("credit_card_cycles")
-          .update(cycleToRollback.updates)
-          .eq("id", cycleToRollback.id)
-      }
+      await Promise.all(
+        updatedCyclesToRollback.map(({ id, updates }) =>
+          supabase.from("credit_card_cycles").update(updates).eq("id", id)
+        )
+      )
 
       await supabase
         .from("accounts")
@@ -3338,7 +3489,7 @@ export async function processDueFinancialSubscriptions() {
 
   const { data: subscriptions, error } = await supabase
     .from("subscriptions")
-    .select("*")
+    .select("id, user_id, name, amount, currency, account_id, category_id, billing_day, next_payment_date, auto_record_enabled, last_processed_at, retry_count")
     .eq("user_id", user.id)
     .eq("status", "active")
     .lte("next_payment_date", today)
@@ -3351,57 +3502,72 @@ export async function processDueFinancialSubscriptions() {
     .eq("user_id", user.id)
     .eq("status", "active")
 
-  if (upcomingSubscriptions?.length) {
-    for (const item of upcomingSubscriptions) {
-      const daysUntil = Math.ceil((new Date(`${item.next_payment_date}T12:00:00`).getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-      if (daysUntil === 1) {
-        if (schema.hasNotificationMetadataSchema) {
-          const { data: existingUpcoming } = await supabase
-            .from("notifications")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("type", "subscription")
-            .contains("metadata", { kind: "subscription_pre_alert", subscription_id: item.id, date: today })
-            .limit(1)
+  if (upcomingSubscriptions?.length && schema.hasNotificationMetadataSchema) {
+    const upcomingDueTomorrow = upcomingSubscriptions.filter(item => {
+      const daysUntil = Math.ceil((new Date(`${item.next_payment_date}T12:00:00`).getTime() - now.getTime()) / oneDayMs)
+      return daysUntil === 1
+    })
 
-          if (existingUpcoming && existingUpcoming.length > 0) {
-            continue
-          }
-        }
+    if (upcomingDueTomorrow.length > 0) {
+      const ids = upcomingDueTomorrow.map(i => i.id)
+      const { data: existingUpcoming } = await supabase
+        .from("notifications")
+        .select("metadata->>subscription_id")
+        .eq("user_id", user.id)
+        .eq("type", "subscription")
+        .contains("metadata", { kind: "subscription_pre_alert", date: today })
 
-        await createNotification({
-          userId: user.id,
-          type: "subscription",
-          title: "Recordatorio de suscripción",
-          message: `Mañana se registrará ${item.name}.`,
-          actionUrl: "/settings/subscriptions",
-          metadata: { kind: "subscription_pre_alert", subscription_id: item.id, date: today },
-        })
+      const existingIds = new Set(existingUpcoming?.map(n => n.subscription_id) ?? [])
+
+      const toNotify = upcomingDueTomorrow.filter(item => !existingIds.has(item.id))
+
+      if (toNotify.length > 0) {
+        await supabase.from("notifications").insert(
+          toNotify.map(item => ({
+            user_id: user.id,
+            type: "subscription",
+            title: "Recordatorio de suscripción",
+            message: `Mañana se registrará ${item.name}.`,
+            action_url: "/settings/subscriptions",
+            metadata: { kind: "subscription_pre_alert", subscription_id: item.id, date: today },
+          }))
+        )
       }
     }
   }
 
   if (!subscriptions?.length) return
 
-  for (const subscription of subscriptions) {
-    if (!(subscription as any).auto_record_enabled) continue
-    const lastProcessedAt = (subscription as any).last_processed_at as string | null
-    const retryCount = Number((subscription as any).retry_count || 0)
-    if (lastProcessedAt && lastProcessedAt >= today) {
-      continue
+  const dueForProcessing = subscriptions.filter(s => {
+    if (!s.auto_record_enabled) return false
+    const lastProcessedAt = s.last_processed_at
+    if (lastProcessedAt && lastProcessedAt >= today) return false
+    return true
+  })
+
+  if (dueForProcessing.length === 0) return
+
+  const cycleKeys = dueForProcessing.map(s => `${s.id}:${s.next_payment_date}`)
+
+  const { data: existingTxData } = await supabase
+    .from("transactions")
+    .select("subscription_id, metadata")
+    .eq("user_id", user.id)
+    .in("subscription_id", dueForProcessing.map(s => s.id))
+    .contains("metadata", { kind: "subscription_auto_charge" })
+
+  const processedSubscriptionIds = new Set<string>()
+  for (const tx of existingTxData ?? []) {
+    const meta = tx.metadata as Record<string, unknown> | null
+    const key = meta?.cycle_key as string | undefined
+    if (key && cycleKeys.includes(key)) {
+      processedSubscriptionIds.add(tx.subscription_id)
     }
+  }
 
-    const cycleKey = `${subscription.id}:${subscription.next_payment_date}`
-    const { data: existingCycleTx } = await supabase
-      .from("transactions")
-      .select("id")
-      .eq("user_id", user.id)
-      .eq("subscription_id", subscription.id)
-      .contains("metadata", { kind: "subscription_auto_charge", cycle_key: cycleKey })
-      .limit(1)
-
-    if (existingCycleTx && existingCycleTx.length > 0) {
-      const nextDate = getNextFinancialBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
+  for (const subscription of dueForProcessing) {
+    if (processedSubscriptionIds.has(subscription.id)) {
+      const nextDate = getNextFinancialBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), subscription.billing_day)
       await updateSubscriptionProcessingMeta(subscription.id, {
         last_charged_date: today,
         next_payment_date: getLocalDateString(nextDate),
@@ -3410,6 +3576,8 @@ export async function processDueFinancialSubscriptions() {
       })
       continue
     }
+
+    const cycleKey = `${subscription.id}:${subscription.next_payment_date}`
 
     try {
       await createTransaction({
@@ -3429,7 +3597,7 @@ export async function processDueFinancialSubscriptions() {
         subscription_id: subscription.id,
       })
 
-      const nextDate = getNextFinancialBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), Number(subscription.billing_day))
+      const nextDate = getNextFinancialBillingDateFrom(new Date(`${subscription.next_payment_date}T12:00:00`), subscription.billing_day)
       await updateSubscriptionProcessingMeta(subscription.id, {
         last_charged_date: today,
         next_payment_date: getLocalDateString(nextDate),
@@ -3449,7 +3617,7 @@ export async function processDueFinancialSubscriptions() {
       await updateSubscriptionProcessingMeta(subscription.id, {
         next_payment_date: tomorrow,
         last_processed_at: today,
-        retry_count: retryCount + 1,
+        retry_count: Number(subscription.retry_count || 0) + 1,
       })
 
       await createNotification({
@@ -3600,19 +3768,66 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
   })
   if (await tryEnqueueOffline(outboxItem, ["accounts"])) return { id, ...updates } as Account
 
-  // Capture previous balance for ledger recording
-  const { data: prevAccount } = await supabase
+  // Get current account state for validations
+  const { data: currentAccount, error: fetchError } = await supabase
     .from("accounts")
-    .select("id, type, balance, currency")
+    .select("id, user_id, type, currency, balance, credit_limit, current_debt, current_debt_dop, current_debt_usd")
     .eq("id", id)
+    .eq("user_id", user.id)
     .single()
 
-  const extractMissingAccountColumn = (message: string) => {
-    const match = message.match(/column\s+"?([a-zA-Z0-9_]+)"?\s+of\s+relation\s+"accounts"\s+does\s+not\s+exist/i)
-    return match?.[1] || null
+  if (fetchError || !currentAccount) {
+    throw new Error("Cuenta no encontrada o acceso no autorizado")
   }
 
-  let payload: Record<string, unknown> = { ...updates }
+  // Validate credit_limit change for credit accounts
+  if (updates.credit_limit !== undefined && currentAccount.type === "credit") {
+    const newLimit = Number(updates.credit_limit)
+    if (newLimit <= 0) {
+      throw new Error("El límite de crédito debe ser mayor a 0")
+    }
+    const currentDebt = Math.max(
+      Number(currentAccount.current_debt || 0),
+      Number(currentAccount.current_debt_dop || 0),
+      Number(currentAccount.current_debt_usd || 0)
+    )
+    if (newLimit < currentDebt) {
+      throw new Error(
+        `No se puede reducir el límite a ${formatCurrency(newLimit, currentAccount.currency)} ` +
+        `mientras la deuda actual es ${formatCurrency(currentDebt, currentAccount.currency)}. ` +
+        `Paga el saldo primero.`
+      )
+    }
+  }
+
+  // Validate currency change
+  if (updates.currency !== undefined && updates.currency !== currentAccount.currency) {
+    const newCurrency = updates.currency
+    if (!["DOP", "USD"].includes(newCurrency)) {
+      throw new Error("La moneda debe ser DOP o USD")
+    }
+    const hasBalance = currentAccount.type === "credit"
+      ? (Number(currentAccount.current_debt || 0) > 0.01)
+      : (Number(currentAccount.balance || 0) > 0.01)
+    if (hasBalance) {
+      throw new Error(
+        `No se puede cambiar la moneda con saldo activo. ` +
+        `Saldo actual: ${formatCurrency(currentAccount.balance || currentAccount.current_debt, currentAccount.currency)}. ` +
+        `Deja la cuenta en cero primero.`
+      )
+    }
+  }
+
+  // Validate name
+  if (updates.name !== undefined) {
+    const trimmed = String(updates.name).trim()
+    if (!trimmed) {
+      throw new Error("El nombre de la cuenta no puede estar vacío")
+    }
+    updates.name = trimmed
+  }
+
+  const payload: Record<string, unknown> = { ...updates }
   let data: Account | null = null
   let finalError: any = null
 
@@ -3650,12 +3865,12 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
 
   // Record balance change in ledger for non-credit accounts
   if (
-    prevAccount &&
-    prevAccount.type !== "credit" &&
+    currentAccount &&
+    currentAccount.type !== "credit" &&
     updates.balance !== undefined &&
-    Number(updates.balance) !== Number(prevAccount.balance)
+    Number(updates.balance) !== Number(currentAccount.balance)
   ) {
-    const prevBalance = Number(prevAccount.balance || 0)
+    const prevBalance = Number(currentAccount.balance || 0)
     const newBalance = Number(updates.balance || 0)
     const delta = newBalance - prevBalance
 
@@ -3664,10 +3879,8 @@ export async function updateAccount(id: string, updates: Partial<Account>) {
         const ledger = LedgerService.create()
         const currency = (data.currency || "DOP") as "DOP" | "USD"
         if (delta > 0) {
-          // Balance increased: record as income (account credited)
           await ledger.recordIncome(user.id, id, Math.abs(delta), currency, "Ajuste manual de saldo", data.id, "accounts")
         } else {
-          // Balance decreased: record as expense (account debited)
           await ledger.recordExpense(user.id, id, Math.abs(delta), currency, "Ajuste manual de saldo", data.id, "accounts")
         }
       } catch (e) {

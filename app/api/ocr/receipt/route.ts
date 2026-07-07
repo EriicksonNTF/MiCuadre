@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { API_RATE_LIMIT } from "@/lib/rate-limit";
 import { extractReceiptData } from "@/lib/ocr/receipt-extractor";
 import type { ExtractedReceipt } from "@/lib/ocr/types";
 
@@ -34,6 +36,31 @@ function generateCacheKey(buffer: Buffer): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const rateLimitResult = await API_RATE_LIMIT.ocr(`ocr:${user.id}`);
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Demasiadas solicitudes. Intenta de nuevo en un momento.",
+          retryAfter: rateLimitResult.retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(rateLimitResult.retryAfterSeconds) },
+        }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get("image") as File | null;
 

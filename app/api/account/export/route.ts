@@ -34,6 +34,8 @@ function toCsvRow(values: unknown[]): string {
   return values.map(escapeCsvField).join(",")
 }
 
+const CHUNK_SIZE = 2000
+
 export async function GET() {
   try {
     const supabase = await createClient()
@@ -60,39 +62,48 @@ export async function GET() {
       }
     }
 
-    const { data, error } = await supabase
+    const selectColumns = "id, date, type, amount, currency, amount_base, exchange_rate, account_id, category_id, description, notes, is_recurring, created_at"
+
+    const { count } = await supabase
       .from("transactions")
-      .select(
-        "id, date, type, amount, currency, amount_base, exchange_rate, account_id, category_id, description, notes, is_recurring, created_at"
-      )
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
-      .order("date", { ascending: false })
-      .order("created_at", { ascending: false })
 
-    if (error) {
-      return NextResponse.json({ error: "No se pudieron leer las transacciones" }, { status: 500 })
-    }
-
-    const rows = data || []
+    const totalRows = count ?? 0
     const lines: string[] = [toCsvRow([...CSV_HEADERS])]
-    for (const row of rows) {
-      lines.push(
-        toCsvRow([
-          (row as { id: string }).id,
-          (row as { date: string }).date,
-          (row as { type: string }).type,
-          (row as { amount: number }).amount,
-          (row as { currency: string }).currency,
-          (row as { amount_base: number | null }).amount_base ?? "",
-          (row as { exchange_rate: number | null }).exchange_rate ?? "",
-          (row as { account_id: string }).account_id,
-          (row as { category_id: string | null }).category_id ?? "",
-          (row as { description: string | null }).description ?? "",
-          (row as { notes: string | null }).notes ?? "",
-          (row as { is_recurring: boolean | null }).is_recurring ?? "",
-          (row as { created_at: string }).created_at,
-        ])
-      )
+
+    for (let offset = 0; offset < totalRows; offset += CHUNK_SIZE) {
+      const { data: chunk, error } = await supabase
+        .from("transactions")
+        .select(selectColumns)
+        .eq("user_id", user.id)
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .range(offset, offset + CHUNK_SIZE - 1)
+
+      if (error) {
+        return NextResponse.json({ error: "No se pudieron leer las transacciones" }, { status: 500 })
+      }
+
+      for (const row of chunk || []) {
+        lines.push(
+          toCsvRow([
+            row.id,
+            row.date,
+            row.type,
+            row.amount,
+            row.currency,
+            row.amount_base ?? "",
+            row.exchange_rate ?? "",
+            row.account_id,
+            row.category_id ?? "",
+            row.description ?? "",
+            row.notes ?? "",
+            row.is_recurring ?? "",
+            row.created_at,
+          ])
+        )
+      }
     }
 
     const csv = lines.join("\r\n")

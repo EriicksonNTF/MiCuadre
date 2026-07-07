@@ -19,6 +19,10 @@ import { getAuthenticatedUser } from "@/lib/supabase/user"
 
 const supabase = createClient()
 
+function roundCurrencyAmount(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
 // React 19: Cached month range to avoid multiple new Date() calls within same tick
 // Since these functions are called in async context, a simple module-level cache works
 let monthRangeCache: { from: string; to: string } | null = null
@@ -72,10 +76,14 @@ async function fetchBudgets(): Promise<Budget[]> {
 }
 
 async function fetchBudgetUsageRows() {
+  const userData = await getAuthenticatedUser()
+  if (!userData) return []
+
   const { from, to } = monthRange()
   const { data, error } = await supabase
     .from("transactions")
     .select("amount, category_id, category:categories(name)")
+    .eq("user_id", userData.id)
     .eq("type", "expense")
     .gte("date", from)
     .lte("date", to)
@@ -366,6 +374,19 @@ export async function createBudget(input: {
   if (!userData) throw new Error("No autenticado")
   const userId = userData.id
 
+  // -- Field validations --
+  if (!input.name?.trim()) {
+    throw new Error("El nombre del presupuesto no puede estar vacío")
+  }
+  if (!input.amount || input.amount <= 0.01) {
+    throw new Error("El límite del presupuesto debe ser mayor a 0.01")
+  }
+  if (!input.category_id && !input.category_name?.trim()) {
+    throw new Error("El presupuesto debe estar asignado a una categoría")
+  }
+
+  const roundedAmount = roundCurrencyAmount(input.amount)
+
   const outboxItem = buildOutboxItem({
     userId, operation: "create_budget", entity: "budgets",
     payload: input,
@@ -405,7 +426,7 @@ export async function createBudget(input: {
       category_id: input.category_id || null,
       category_name: input.category_name,
       name: input.name,
-      amount: input.amount,
+      amount: roundedAmount,
       currency: input.currency,
       period: "monthly",
       alert_threshold: input.alert_threshold,
@@ -595,7 +616,7 @@ export async function payDebt(input: {
   if (amount <= 0) throw new Error("Monto invalido")
 
   const [{ data: debt, error: debtError }, { data: sourceAccount, error: sourceError }] = await Promise.all([
-    supabase.from("debts").select("*").eq("id", input.debt_id).eq("user_id", userId).single(),
+    supabase.from("debts").select("id, name, current_balance, currency, linked_account_id, fixed_payment_amount, payment_frequency, payment_day, is_active").eq("id", input.debt_id).eq("user_id", userId).single(),
     supabase.from("accounts").select("id,name,balance,currency,type,user_id").eq("id", input.source_account_id).eq("user_id", userId).single(),
   ])
 

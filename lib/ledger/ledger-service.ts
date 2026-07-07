@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { GLOBAL_ACCOUNTS } from "./constants"
 import type { EntryType, Currency } from "./constants"
 
@@ -15,7 +16,11 @@ type LedgerEntryInput = {
 }
 
 export class LedgerService {
-  private supabase = createClient()
+  private supabase: SupabaseClient
+
+  constructor(existingClient?: SupabaseClient) {
+    this.supabase = existingClient || createClient()
+  }
 
   async recordEntry(input: LedgerEntryInput) {
     const { error } = await this.supabase.from("ledger_entries").insert({
@@ -225,25 +230,29 @@ export class LedgerService {
   async reverseTransactionEntries(referenceId: string, referenceTable: string, userId: string) {
     const { data: entries, error } = await this.supabase
       .from("ledger_entries")
-      .select("*")
+      .select("id, debit_account_id, credit_account_id, amount, currency, description, entry_type, reference_id, reference_table")
       .eq("reference_id", referenceId)
       .eq("reference_table", referenceTable)
 
     if (error || !entries?.length) return
 
-    for (const entry of entries) {
-      await this.recordEntry({
-        userId,
-        debitAccountId: entry.credit_account_id,
-        creditAccountId: entry.debit_account_id,
-        amount: entry.amount,
-        currency: entry.currency as Currency,
-        description: `Reversión: ${entry.description || ""}`,
-        entryType: entry.entry_type as EntryType,
-        referenceId: entry.reference_id,
-        referenceTable: `reversed_${entry.reference_table}`,
-      })
-    }
+    const reversalEntries = entries.map((entry) => ({
+      user_id: userId,
+      debit_account_id: entry.credit_account_id,
+      credit_account_id: entry.debit_account_id,
+      amount: entry.amount,
+      currency: entry.currency,
+      description: `Reversión: ${entry.description || ""}`,
+      entry_type: entry.entry_type,
+      reference_id: entry.reference_id,
+      reference_table: `reversed_${entry.reference_table}`,
+    }))
+
+    const { error: insertError } = await this.supabase
+      .from("ledger_entries")
+      .insert(reversalEntries)
+
+    if (insertError) throw insertError
   }
 
   async calcBalance(accountId: string): Promise<number> {
@@ -329,7 +338,7 @@ export class LedgerService {
     return Number(data.value)
   }
 
-  static create(): LedgerService {
-    return new LedgerService()
+  static create(client?: SupabaseClient): LedgerService {
+    return new LedgerService(client)
   }
 }

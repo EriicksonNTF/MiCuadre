@@ -67,7 +67,7 @@ export async function getSpendingByCategory(supabase: SupabaseClient, userId: st
 export async function getRecurringExpenseSummary(supabase: SupabaseClient, userId: string) {
   const { data: subs } = await supabase
     .from("subscriptions")
-    .select("*")
+    .select("name, amount, currency, next_payment_date")
     .eq("user_id", userId)
     .eq("status", "active")
 

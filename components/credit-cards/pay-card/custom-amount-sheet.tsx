@@ -5,7 +5,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { formatAmount } from "@/lib/data"
 
 type CustomAmountSheetProps = {
-  currencySymbol: "RD$" | "US$"
+  currencySymbol: string
   maxAmount: number
   open: boolean
   onOpenChange: (open: boolean) => void

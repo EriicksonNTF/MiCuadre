@@ -8,8 +8,8 @@ type ConfirmPaymentSheetProps = {
   amount: number
   taxAmount?: number
   totalDebit: number
-  currencySymbol: "RD$" | "US$"
-  sourceCurrencySymbol?: "RD$" | "US$"
+  currencySymbol: string
+  sourceCurrencySymbol?: string
   sourceAccountName: string
   sourceAvailable: string
   cardName: string

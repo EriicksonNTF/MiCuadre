@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Especially important if using Fluid compute: Don't put this client in a
@@ -31,4 +32,27 @@ export async function createClient() {
       },
     },
   )
+}
+
+const AUTH_TIMEOUT_MS = 8000
+
+export async function getServerUserWithTimeout(supabase: SupabaseClient) {
+  try {
+    const result = await Promise.race([
+      supabase.auth.getUser(),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Auth timeout after 8s")),
+          AUTH_TIMEOUT_MS,
+        ),
+      ),
+    ])
+    return result
+  } catch (err) {
+    if (err instanceof Error && err.message.includes("Auth timeout")) {
+      console.error("[Auth] Timeout fetching user")
+      return { data: { user: null }, error: err }
+    }
+    throw err
+  }
 }

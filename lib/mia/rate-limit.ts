@@ -31,6 +31,18 @@ type Bucket = {
 }
 const buckets = new Map<string, Bucket>()
 
+// Periodic cleanup of expired entries to prevent memory leak
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, bucket] of buckets) {
+      if (now >= bucket.perMinute.resetAt && now >= bucket.perDay.resetAt) {
+        buckets.delete(key)
+      }
+    }
+  }, 60_000)
+}
+
 function checkMemory(userId: string): RateLimitResult {
   const now = Date.now()
   let bucket = buckets.get(userId)

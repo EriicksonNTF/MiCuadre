@@ -1,232 +1,491 @@
-# MiCuadre Agent Notes
+# MiCuadre — Documentación Técnica Completa
 
-## Stack and Entry Points
-- App is a single Next.js App Router project (Next 16, React 19, TypeScript strict).
-- Main authenticated home/dashboard UI is `app/page.tsx` (not `app/dashboard/page.tsx`).
-- `app/dashboard/page.tsx` is only a redirect shim to `/`.
-- Auth callback entrypoint is `app/auth/callback/route.ts`.
+Esta guía contiene tanto la **arquitectura conceptual** del proyecto como las **instrucciones operativas** para el agente.
+Toda pregunta, implementación o decisión debe basarse en esta información.
 
-## Commands (verified from `package.json`)
-- `npm run dev` -> starts Next dev server.
-- `npm run build` -> production build (SSR).
-- `npm run build:mobile` -> mobile static export build (runs prebuild:mobile → build:mobile → postbuild:mobile).
-  - `prebuild:mobile` -> moves `app/api/` to `.api-backup/` (static export doesn't support API routes).
-  - `build:mobile` -> runs `next build` with `BUILD_EXPORT=true`.
-  - `postbuild:mobile` -> runs `fix-asset-paths.mjs && postbuild-export.mjs`.
-- `npm run start` -> start built app.
-- `npm run lint` -> runs `eslint .`, but currently fails in this repo because `eslint` is not installed in `devDependencies`.
+---
 
-## Mobile Build Pipeline (Static Export + Capacitor)
-- Build: `npm run build:mobile` — generates all pages as flat `.html` files in `out/`.
-- Post-build step 1 (`scripts/fix-asset-paths.mjs`): converts absolute `/_next/...` and public asset paths to relative paths (e.g. `./_next/...`, `../_next/...`, `../../_next/...` depending on file depth inside `out/`). Also fixes `manifest.json` (scope/start_url/icon paths) and `sw.js` (precache URLs, routing regex).
-- Post-build step 2 (`scripts/postbuild-export.mjs`): restores `app/api/` from `.api-backup/`.
-- Copy to iOS: `npx cap copy` (copies `out/` contents to `ios/App/public/`).
-- Open in Xcode: `npx cap open ios` (requires user interaction to select simulator and run).
+## 1. OBJETIVO DEL PROYECTO Y PROPÓSITO
 
-## Capacitor / Path Resolution
-- `capacitor.config.json`: `webDir: "out"`, `scheme: "micuadre"`.
-- **Current version:** Capacitor **7.6.7** line (all packages at 7.x — see "Capacitor 8 plugin incompatibility" in Known Fix Patterns). Do NOT upgrade to 8.x until Ionic publishes compatible Swift sources.
-- `server.url` may be set to `"https://micuadre-five.vercel.app"` for production builds. For local testing, temporarily remove `server.url` and run `npx cap sync ios` (see Known Fix Patterns).
-- Next.js 16 static export uses absolute paths (`/_next/static/...`) which break under `file://` protocol in WKWebView.
-- `scripts/fix-asset-paths.mjs` fixes this by converting to relative paths via regex matching `"`/`'`/`\"` followed by `/_next/`, `/favicon`, `/manifest.json`, `/apple-touch-icon`, `/icon-*`, `/placeholder-*`, `/micuadre-logo`, `/icono-favicon`, `/background_music.m4a`, `/offline`.
-- The script handles all depths (root → `./`, one level → `../`, two levels → `../../`).
+**MiCuadre** es una **aplicación PWA financiera para el mercado dominicano** diseñada como control holístico de finanzas personales con inteligencia artificial integrada.
 
-## Routing/Auth Guard Behavior
-- Request auth protection is implemented in `middleware.ts` via `lib/supabase/middleware.ts`.
-- `lib/supabase/middleware.ts` treats `/` and key app routes as protected; unauthenticated users are redirected to `/auth/login`.
-- Authenticated users visiting `/auth/*` are redirected back to `/`.
-- Onboarding flow currently uses client-side `localStorage` key `onboarding_completed` in:
-  - `app/page.tsx` (gate before rendering dashboard)
-  - `app/onboarding/page.tsx` (skip if already completed; set to `true` on finish)
-  - `app/auth/login/page.tsx` and `app/auth/sign-up/page.tsx` (post-auth redirect decision)
+### Problema que resuelve
+- **Fragmentación financiera:** Múltiples cuentas (efectivo, débito, crédito), suscripciones recurrentes y deudas sin visión consolidada.
+- **Falta de presupuestación:** Sin herramientas accesibles para planificar gastos y metas de ahorro.
+- **Deuda de tarjeta de crédito no gestionada:** Gestión manual de ciclos de pago, intereses y comisiones.
+- **Asesoría financiera inaccesible:** Recomendaciones personalizadas sin pagar asesor.
 
-## Supabase/Data Layer
-- Supabase browser client: `lib/supabase/client.ts`.
-- Supabase server client: `lib/supabase/server.ts` (create per request; do not globalize).
-- Most client data reads/writes are centralized in `hooks/use-data.ts` using SWR + `mutate`.
+### Flujo principal del usuario
+1. **Autenticación** → Onboarding → Gestión de perfiles
+2. **Ingesta de datos** → Agregar cuentas (efectivo, débito, crédito), transacciones manuales u OCR
+3. **Análisis** → Dashboard con resumen, historial, insights automáticos
+4. **Planificación** → Presupuestos, metas de ahorro, deuda tracking, suscripciones recurrentes
+5. **Copiloto IA (MIA)** → Consultas, análisis de tendencias, recomendaciones
+6. **Acciones** → Transferencias, pagos de tarjeta, confirmación con undo-delete
 
-## Config Gotchas
-- `next.config.mjs` is generated by v0; do not edit directly.
-- Put Next config changes in `next.user-config.mjs`.
-- There are both `package-lock.json` and `pnpm-lock.yaml`; prefer the package manager already used in the session and avoid lockfile churn unless asked.
-- SQL scripts live in `scripts/*.sql` (schema/seed/manual sync); no migration runner is wired in npm scripts.
+### Propuesta de valor
+- **Consolidación 360°** de todas las finanzas
+- **Automatización inteligente** (ciclos de crédito, alertas de suscripción)
+- **IA conversacional (MIA)** para decisiones financieras
+- **Offline-first** para acceso sin conexión
+- **Móvil nativo** (iOS vía Capacitor) + web responsive
+- **Monetización** Free/Pro basada en límites de uso
 
-## Visual Screenshot Debugging (Agent UI Access)
-- I can take Playwright screenshots of any page to visualize the app:
-  ```bash
-  # Single page (default desktop viewport)
-  npm run screenshot -- --route=dashboard
-  
-  # Mobile viewport (430x932, iPhone-like)
-  npm run screenshot -- --route=dashboard --mobile
-  
-  # Full page screenshot (scroll capture)
-  npm run screenshot -- --route=dashboard --fullpage
-  
-  # All protected pages (takes a while)
-  npm run screenshot:all
-  
-  # Combine mobile + all
-  npm run screenshot:all -- --mobile
-  ```
-- Available routes: dashboard, accounts, pay, expense, history, goals, planning, coach-ia, notifications, profile, settings, settings-plan, settings-categories, settings-security, onboarding, login, signup
-- Screenshots save to `screenshots/` directory.
-- I can read the resulting PNG files to "see" the UI and diagnose visual bugs.
-- Credentials must be set via env vars `TEST_EMAIL` and `TEST_PASSWORD` (all scripts require them; no hardcoded fallbacks).
-- The script works against `http://localhost:3000` by default; override with `BASE_URL` env var.
+---
 
-## Visual QA Audit
-- Full mobile audit: `npm run audit:visual` (runs `scripts/audit-visual.mjs`)
-- Deep form audit (opens modals/sheets/drawers): `npm run audit:visual-deep` (runs `scripts/audit-visual-deep.mjs`)
-- Captures 50+ screenshots across 17 modules in `screenshots/audit/`
-- Captures console errors, HTTP errors, page errors per module
-- Saves audit logs to `screenshots/audit/logs/audit-log.json` and `audit-log-deep.json`
-- Generates report in `docs/mobile-visual-qa-audit.md`
-- Known limitation: I cannot view images. Screenshots must be reviewed manually by the user.
+## 2. ARQUITECTURA Y STACK TECNOLÓGICO
 
-## UI/Project Conventions Observed
-- Path alias `@/*` is enabled in `tsconfig.json`.
-- UI uses shadcn-style structure (`components/ui`) with Tailwind v4 (`@tailwindcss/postcss`).
-- Bottom nav visibility is centralized in `components/navigation/bottom-nav.tsx` and already hides on `/auth*` and `/onboarding*`.
-- Every `components/*/` directory has a barrel file (`index.ts`) that re-exports all public components. Use these for clean imports: `import { AccountsScreen } from "@/components/accounts"`. The barrel is the single source of truth for each module's public API — check it first when looking for a component.
+| Componente | Tecnología | Versión | Rol |
+|-----------|-----------|---------|-----|
+| Frontend Framework | Next.js App Router | 16.2.4 | SSR + Rutas dinámicas + API routes |
+| Runtime JS | React | 19 | Componentes + Hooks custom |
+| Lenguaje | TypeScript | 5.7.3 | Type safety (strict mode) |
+| Styling | Tailwind CSS | 4.2.0 | Utility-first + dark mode |
+| BaaS / Auth | Supabase | 2.105.1 | PostgreSQL + Auth + RLS |
+| Estado del cliente | SWR | 2.4.1 | Data fetching con caché |
+| Almacenamiento offline | IndexedDB | Nativo | Cache local + Outbox para sync |
+| Componentes UI | Radix UI | Latest | Accesibilidad + primitivos |
+| Forms | React Hook Form + Zod | 7.54.1 + 3.24.1 | Validación + tipos |
+| Notificaciones | Web Push API + Sonner | 1.7.1 | Push + toasts |
+| Gráficos | Recharts | 2.15.0 | Visualización |
+| OCR | Tesseract.js | 7.0.0 | Escaneo de recibos (cliente) |
+| Pagos | Stripe | 22.1.1 | Suscripciones Free/Pro |
+| Rate Limiting | Upstash (Redis) | 1.38.0 | Protección de APIs |
+| Mobile | Capacitor | 7.6.7 | Web → iOS (static export) |
+| Build | Turbopack | Integrado | Empaquetado rápido |
 
-## Dark Mode Rules (CRITICAL — no regressions)
-- **NEVER** use hardcoded colors like `bg-white`, `bg-black`, `bg-gray-*`, `text-white`, `text-gray-*`, `bg-*-50` for UI containers, backgrounds, or text that should adapt to theme.
-- **ALWAYS** use semantic CSS variables: `bg-background`, `bg-card`, `text-foreground`, `text-muted-foreground`, `bg-muted`, `border-border`, `bg-destructive`, `text-destructive-foreground`, etc.
-- Category/identity colors (food=orange, transport=blue, etc.) MUST use dark-mode-aware variants: `bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400`
-- Modal overlays MUST use `bg-foreground/20 backdrop-blur-sm` (not `bg-black/*`)
-- Destructive buttons MUST use `bg-destructive text-destructive-foreground` (not `bg-red-500 text-white`)
-- Exception: Branded card gradient headers (account-detail.tsx) use custom `primaryColor`/`secondaryColor` — those are intentional and exempt.
+### Interacción entre componentes
 
-## Expense Form (add transaction) Design Rules
-- The "Nueva" (add category) `+` button MUST appear **first** (leftmost) in the category list, before all category icons.
-- The amount section has **no card wrapper** (`mobile-card` removed) — it sits directly in the scroll flow to save vertical space.
-- Currency selector and commission toggle are **inline** on the same row, not stacked vertically.
-- The bottom navbar MUST remain visible when the form is open (`bottom-nav.tsx` hides only on `/auth*` and `/onboarding*`).
-- Header shows "Nueva transacción" with back chevron button on the left.
-
-## Troubleshooting
-
-### `ENOENT: .next/dev/routes-manifest.json` (Dev Server → Build Switch)
-
-If you run `npm run build` and then `npm run dev` without clearing `.next`, the
-dev server fails with:
 ```
-Error: ENOENT: no such file or directory, open '.../.next/dev/routes-manifest.json'
+┌─────────────────────────────────────────────────────────────────┐
+│                         USUARIO (Web/iOS)                        │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ HTTP/HTTPS (SSR + Hydration)
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Next.js 16 (App Router) — /app/* pages + API routes             │
+│  ├─ Client Components (React 19 + Hooks)                         │
+│  │  ├─ useAuth() → Supabase client auth                         │
+│  │  ├─ useData() → SWR + Supabase queries                       │
+│  │  ├─ useEntitlements() → Plan tier logic                      │
+│  │  └─ Custom hooks (use-planning, use-billing-status, etc.)    │
+│  ├─ Server Components (API routes)                               │
+│  │  ├─ /api/billing/* → Stripe sync + rate limit                │
+│  │  ├─ /api/mia/* → Coach IA                                   │
+│  │  ├─ /api/ocr/* → Tesseract OCR processing                   │
+│  │  └─ Middleware: Auth guard + Route protection               │
+│  └─ Offline Support                                              │
+│     └─ Service Worker (public/sw.js)                            │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │ CRUD
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│         Supabase (PostgreSQL + Auth + Real-time)                 │
+│  ├─ Tables:                                                      │
+│  │  ├─ profiles (user_id, plan_tier, onboarding_completed)      │
+│  │  ├─ accounts (cash/debit/credit)                             │
+│  │  ├─ transactions (income/expense, metadata)                  │
+│  │  ├─ categories (user categories)                             │
+│  │  ├─ budgets (monthly limits by category)                     │
+│  │  ├─ goals (savings targets)                                  │
+│  │  ├─ financial_subscriptions (Netflix, Spotify, etc.)         │
+│  │  ├─ debts (credit card cycles + payments)                    │
+│  │  ├─ beneficiaries (transfer recipients)                      │
+│  │  ├─ credit_card_cycles (statement + payment tracking)        │
+│  │  └─ notifications (system + user alerts)                     │
+│  └─ RLS Policies (Row-Level Security)                           │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+        ┌──────────────────┼──────────────────┐
+        ▼                  ▼                  ▼
+   ┌─────────┐        ┌─────────┐      ┌──────────┐
+   │IndexedDB│        │ Stripe  │      │  z-ai-  │
+   │(Offline)│        │ Billing │      │  web-dev│
+   │Outbox   │        │         │      │  SDK    │
+   └─────────┘       └─────────┘      └──────────┘
 ```
 
-**Root cause:** `npm run build` writes production artifacts to `.next/`. When the
-dev server starts next, it reads stale files from the same directory.
+---
 
-**Permanent fix:** `scripts/predev.js` only kills processes on port 3000 (does
-NOT delete `.next/`). This prevents ENOENT errors during HMR while the dev
-server is running.
+## 3. ESTRUCTURA DE DIRECTORIOS
 
-**If you need a full reset (e.g. switching from build to dev):**
+```
+MiCuadre/
+├── app/                                 # Next.js App Router (SSR + API routes)
+│   ├── page.tsx                         # "/" → Landing o redirect según auth
+│   ├── dashboard/                       # Dashboard principal
+│   ├── accounts/
+│   │   ├── page.tsx
+│   │   └── [id]/                        # Detalle de cuenta individual
+│   ├── history/                         # Lista de transacciones + filtros
+│   ├── goals/
+│   │   ├── page.tsx
+│   │   └── [id]/                        # Detalle de meta individual
+│   ├── planning/                        # Presupuestos + deudas + calendario
+│   ├── expense/                         # Detalle de gasto
+│   ├── pay/                             # Flujo de pago de tarjeta
+│   ├── coach-ia/                        # Interfaz de MIA
+│   ├── send/                            # Transferencias
+│   ├── scan/                            # Escaneo OCR
+│   ├── profile/                         # Perfil de usuario
+│   ├── notifications/                   # Centro de notificaciones
+│   ├── settings/                        # Perfil + preferencias
+│   │   ├── page.tsx
+│   │   ├── categories/
+│   │   ├── notifications/
+│   │   ├── plan/
+│   │   ├── reports/
+│   │   ├── security/
+│   │   ├── security-privacy/
+│   │   ├── subscriptions/
+│   │   ├── about/
+│   │   └── help/
+│   ├── auth/
+│   │   ├── login/ sign-up/ callback/    # Auth entry components
+│   │   ├── forgot-password/
+│   │   └── error/ sign-up-success/
+│   ├── onboarding/                      # Flujo de primera vez
+│   ├── legal/                           # términos, privacidad, aviso-legal
+│   ├── inicio/  login/  register/       # Rutas alternas de landing/auth
+│   ├── forgot-password/  reset-password/  verify-email/
+│   ├── offline/                         # Offline fallback page
+│   ├── qa/                              # QA testing page
+│   ├── error/                           # Error boundary
+│   └── api/                             # API routes
+│       ├── billing/ (status, checkout, portal)
+│       ├── mia/chat/
+│       ├── coach-ia/
+│       ├── ocr/receipt/
+│       ├── webhooks/stripe/
+│       ├── push/send/
+│       ├── user/coach-ia-check/
+│       ├── profile/notification-preferences/
+│       ├── auth/sync-profile/
+│       ├── account/ (export, delete)
+│       └── cron/process-subscriptions/
+│
+├── components/                          # Componentes React reutilizables (25 módulos)
+│   ├── accounts/  auth/  billing/
+│   ├── credit-cards/ (incl. pay-card/)
+│   ├── dashboard/  entitlements/  expense/
+│   ├── history/  landing/  legal/
+│   ├── navigation/  notifications/  ocr/
+│   ├── payment-slider/  planning/  providers/
+│   ├── pull-to-refresh/  pwa/  receipts/
+│   ├── security/  settings/  swipe-actions/
+│   ├── toast/  transactions/
+│   └── ui/                              # ~68 shadcn-style primitives
+│
+├── hooks/                               # Custom hooks (12 total)
+│   ├── use-auth.ts  use-data.ts  use-planning.ts
+│   ├── use-entitlements.ts  use-entitlement-blocked.ts
+│   ├── use-billing-status.ts  use-pull-to-refresh.ts
+│   ├── use-undo-delete.ts  use-mobile.ts  use-toast.ts
+│   ├── use-persistent-state.ts          # No documentado
+│   └── use-swipe.ts                     # No documentado
+│
+├── lib/                                 # Lógica de negocio pura (36+ archivos)
+│   ├── supabase/ (client, server, middleware, admin, user)
+│   ├── offline/ (db, outbox, sync-engine)
+│   ├── entitlements/ (entitlements, test-user, server, copy, check)
+│   ├── billing/ (plans, sync-billing-state)
+│   ├── mia/ (access, agent, tools, schemas, snapshots, prompts)
+│   ├── planning/ (budgets, calendar, debts)
+│   ├── transactions/ (reporting)
+│   ├── ledger/ (ledger-service, constants)
+│   ├── notifications/ (push-dispatcher, format, type-map)
+│   ├── ocr/ (receipt-extractor, types, validate, vision-client)
+│   ├── a11y/ (use-modal-a11y)
+│   ├── i18n/ (translations, use-translations)
+│   ├── pwa/ (precache-routes)
+│   ├── validations/ (auth, billing, notifications)
+│   ├── env/ (server)
+│   ├── types/ (database.ts)
+│   └── (+ root files: data, coach-ia, credit-cycle, fin-score, insights, etc.)
+│
+├── types/                               # Shared TypeScript interfaces
+│   ├── billing.ts
+│   └── planning.ts
+│
+├── public/                              # Static assets
+│   ├── manifest.json                    # PWA manifest
+│   ├── sw.js                            # Service Worker
+│   └── (iconos, audio, fallbacks)
+│
+├── docs/                                # Documentación + auditorías (38 archivos)
+│
+├── scripts/                             # Build + utilidades
+│   ├── fix-asset-paths.mjs / postbuild-export.mjs / prebuild-mobile.mjs
+│   ├── screenshot.mjs / audit-visual.mjs / audit-visual-deep.mjs
+│   ├── check-connections.mjs
+│   └── (*.sql migrations, ~40+ scripts)
+│
+├── ios/                                 # Capacitor iOS
+│   └── App/
+│
+├── .api-backup/                         # Backup de API routes para mobile build
+├── compositions/                        # HyperFrames assets
+├── icons/                               # WebP icons
+├── templates/                           # Agent docs templates
+├── screenshots/                         # Playwright screenshots
+│
+├── next.config.mjs                      # v0-generated (NO EDITAR)
+├── next.user-config.mjs                 # Overrides de configuración
+├── middleware.ts                        # ❌ NO EXISTE EN RAÍZ (ver sección 10)
+├── tsconfig.json                        # TypeScript strict
+├── postcss.config.mjs
+├── eslint.config.mjs                    # ESLint v9 flat config
+├── components.json                      # shadcn/ui registry
+├── capacitor.config.json
+├── package.json
+└── pnpm-lock.yaml
+```
+
+### Notas sobre la estructura real vs documentada
+- `app/transactions/` **no existe** — solo existe `app/history/` (el middleware referencia `/transactions` como ruta protegida pero la página no está)
+- `middleware.ts` **no existe en la raíz** — está en `lib/supabase/middleware.ts` pero Next.js no lo detecta automáticamente ahí
+- `tailwind.config.ts` **no existe** — Tailwind v4 usa configuración CSS nativa en `app/globals.css`
+- Los paquetes `@capacitor/*` **no están en package.json** — existen `capacitor.config.json` y `ios/` pero los npm packages no están instalados
+- Hay **16 rutas de página no documentadas** en `app/` (send, scan, profile, legal/*, offline, qa, etc.)
+
+---
+
+## 4. MOTORES CRÍTICOS DEL PROYECTO (4 PILARES)
+
+### 🔴 Motor 1: `hooks/use-data.ts` — SWR + Offline Hybrid
+
+**Responsabilidad:** Gestión centralizada de TODAS las lecturas/escrituras con soporte offline-first.
+
+```typescript
+// Lectura
+useAccounts() → SWR("accounts", fetchAccounts)
+useTransactions() → SWR("transactions", fetchTransactions)
+useProfile() → SWR("profile", fetchProfile)
+useFinancialSubscriptions() → SWR(...)
+
+// Escritura
+createTransaction(payload)
+  ├─ Online → Supabase insert
+  └─ Offline → offlineDB.put("offline_outbox", item) + idempotency key
+
+createAccount(name, type, currency)
+deleteTransaction(id) → { pending, undo } via useUndoDelete
+
+// Helpers
+applyAccountImpact(transaction) → Actualiza balance
+syncAccountBalance() → Recalcula deuda de tarjeta
+```
+
+**Por qué es crítico:** Fuente única de verdad, tolerancia offline, idempotencia, performance (SWR dedup).
+
+### 🔴 Motor 2: `lib/offline/db.ts` — IndexedDB Wrapper
+
+**Estructura:** Singleton con 3 stores: caches de lectura, outbox de escritura, sync errors log.
+
+**Operaciones Outbox (33 total):**
+`create_transaction | update_transaction | delete_transaction | create_account | update_account | delete_account | create_budget | pay_credit_card | create_goal | add_goal_contribution | create_subscription | create_beneficiary | ...`
+
+**Por qué es crítico:** Backbone de offline-first, idempotency keys previenen duplicados, error tracking, background sync.
+
+### 🔴 Motor 3: `lib/supabase/middleware.ts` — Auth Guard + Routing
+
+**Middleware server-side que:**
+1. Crea Supabase server client
+2. Obtiene usuario + verifica onboarding_completed
+3. Aplica reglas de enrutamiento (protegidas ↔ públicas)
+4. Maneja email verification
+
+**Rutas protegidas:**
+```
+/dashboard, /accounts, /transactions, /history, /goals, /planning,
+/settings, /expense, /notifications, /onboarding, /send, /pay, /profile, /scan
+```
+
+**Rutas públicas:**
+```
+/, /auth/login, /auth/sign-up, /auth/callback, /auth/forgot-password,
+/auth/error, /auth/sign-up-success, /verify-email
+```
+
+**Por qué es crítico:** Seguridad server-side, onboarding flow forzado, session management, email verification.
+
+### 🔴 Motor 4: `lib/entitlements/entitlements.ts` — Feature Gating Matrix
+
+**Matriz Free vs Pro:**
+| Feature | Free | Pro |
+|---------|------|-----|
+| max_accounts | 3 | unlimited |
+| max_daily_transactions | 10 | unlimited |
+| max_goals | 2 | unlimited |
+| max_budgets | 0 | unlimited |
+| max_active_debts | 0 | unlimited |
+| planning_full | ❌ | ✓ |
+| advanced_reports | ❌ | ✓ |
+| exports | ❌ | ✓ |
+| mia_advanced | ❌ | ✓ |
+| financial_subscriptions | 1 | unlimited |
+
+**Por qué es crítico:** Monetización centralizada, fácil de escalar, checks server + client, UX consistente.
+
+---
+
+## 5. FLUJOS DE DATOS E INTEGRACIONES
+
+### 5.1 Autenticación
+```
+User → [/auth/login] → Supabase Auth → middleware.ts (JWT check)
+→ useAuth() (session browser) → Dashboard o redirect
+```
+
+### 5.2 Lectura de datos (SWR)
+```
+useSWR("accounts", fetch) → Cache hit? → Render → Background mutate
+```
+
+### 5.3 Escritura (Offline Outbox)
+```
+Submit → Online? → Supabase INSERT + mutate()
+       → Offline? → IndexedDB outbox → Background sync cuando online
+```
+
+### 5.4 Feature gating (Entitlements)
+```
+useEntitlements() → plan_tier → ENTITLEMENTS_BY_PLAN → allowed? → UI
+```
+
+### 5.5 Stripe (Suscripción)
+```
+PlanSelectorSheet → /api/billing/checkout → Stripe Checkout
+→ Webhook → UPDATE profiles.plan_tier → mutate("profile")
+```
+
+### 5.6 Coach IA (MIA)
+```
+User query → detectIntent() → POST /api/mia/query → rate-limit → assertMiaAccess()
+→ Snapshot datos → LLM (z-ai-web-dev-sdk) → CoachResponse → UI
+```
+
+### 5.7 OCR (Escaneo de recibos)
+```
+ReceiptScanner → Tesseract.js (cliente) → POST /api/ocr/process → LLM post-processing
+→ structured JSON → User review → createTransaction()
+```
+
+### 5.8 Notificaciones push
+```
+PushNotificationCard → requestPermission() → Subscribe SW → Backend
+→ web-push → Browser → SW display → Click → redirect
+```
+
+---
+
+## 6. COMANDOS VERIFICADOS
+
 ```bash
-pnpm run dev:reset
+npm run dev              # Dev server Next.js
+npm run build            # Producción SSR
+npm run build:mobile     # Static export + Capacitor
+npm run start            # Iniciar build
+npm run lint             # ESLint (falla: eslint no está en devDependencies)
+
+# Mobile pipeline
+npm run build:mobile     # prebuild → build → postbuild
+npx cap copy ios         # Copiar out/ → ios/App/public/
+npx cap sync ios         # Sync + regenerar Package.swift
 ```
 
-## Known Fix Patterns (recurring issues — remember these)
+### Mobile Build Pipeline
+1. `prebuild:mobile` → mueve `app/api/` → `.api-backup/`
+2. `build:mobile` → `next build` con `BUILD_EXPORT=true`
+3. `postbuild:mobile` → `fix-asset-paths.mjs && postbuild-export.mjs`
+   - `fix-asset-paths.mjs`: convierte rutas absolutas `/_next/...` a relativas
+   - `postbuild-export.mjs`: restaura `app/api/` desde `.api-backup/`
 
-### `position: fixed` breaks inside `.mobile-page`
-- **Root cause:** The `page-enter` CSS keyframe animation on `.mobile-page` applies `transform: translateY(0) scale(1)` with `animation-fill-mode: both`, which creates a CSS containing block. Any `position: fixed` child inside `.mobile-page` is fixed to the animation transform origin, not the viewport.
-- **Fix:** Move the fixed element OUTSIDE `MobilePageShell` as a sibling of `<main>`. Do NOT place fixed elements inside `.mobile-page` unless using `fullBleed` mode (which skips the `.mobile-page` wrapper).
-- **Affected:** `CoachIAWidget` (moved to sibling of `<main>` in `dashboard-content.tsx`)
+---
 
-### CoachIAWidget overlaps with plan selector sheets
-- **Rule:** The MIA chat bubble (`z-[60]`) must be hidden whenever `PlanSelectorSheet` or any full-screen upsell drawer is open.
-- **Fix:** Conditional render: `{!showWelcomePlanPrompt && !planningUpsellOpen && <CoachIAWidget />}`
+## 7. REGLAS DE UI Y DISEÑO
+
+### Dark Mode (CRÍTICO — sin regresiones)
+- NUNCA usar colores hardcodeados (`bg-white`, `bg-black`, `bg-gray-*`, `text-white`, `text-gray-*`)
+- SIEMPRE usar variables semánticas: `bg-background`, `text-foreground`, `bg-card`, `text-muted-foreground`, `border-border`
+- Colores de categoría: `bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400`
+- Modales overlay: `bg-foreground/20 backdrop-blur-sm`
+- Botones destructivos: `bg-destructive text-destructive-foreground`
+
+### Convenciones del proyecto
+- Path alias `@/*` habilitado
+- UI shadcn-style (`components/ui`) con Tailwind v4
+- Bottom nav visible en toda la app excepto `/auth*` y `/onboarding*`
+- Cada `components/*/` tiene barrel file (`index.ts`) → importar desde ahí
+- `next.config.mjs` es generado por v0 → NO EDITAR. Usar `next.user-config.mjs`
+
+### Expense Form (Nueva transacción)
+- Botón "+" (Nueva categoría) PRIMERO en la lista
+- Amount sin `mobile-card` wrapper
+- Currency selector y commission toggle en la misma fila
+- Bottom navbar visible
+- Header: "Nueva transacción" con chevron de retroceso
+
+---
+
+## 8. PATRONES DE CORRECCIÓN CONOCIDOS
+
+### `position: fixed` dentro de `.mobile-page`
+- **Causa:** CSS keyframe en `.mobile-page` crea containing block
+- **Fix:** Mover elemento fixed FUERA de `MobilePageShell` como sibling de `<main>`
+
+### CoachIAWidget solapado con plan selector sheets
+- **Fix:** `{!showWelcomePlanPrompt && !planningUpsellOpen && <CoachIAWidget />}`
 
 ### Welcome plan prompt gates
-- **Rule:** Free users see the prompt exactly once (per account). Pro users NEVER see it.
-- **Fix:** Check `!isPro` before setting `showWelcomePlanPrompt` + localStorage flag. localStorage key: `micuadre_plan_prompt_seen_{profile_id}`.
+- **Regla:** Free users → 1 vez. Pro → nunca.
+- **Fix:** Check `!isPro` + localStorage `micuadre_plan_prompt_seen_{profile_id}`
 
-### iOS Safari auto-zoom on input focus
-- **Root cause:** iOS Safari zooms the page when an `<input>` with `font-size < 16px` receives focus.
-- **Fix:** Globals CSS rule: `@media (hover: none) and (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }`
+### iOS Safari auto-zoom en inputs
+- **Fix:** `@media (hover: none) and (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }`
 
-### Bottom nav redesign rules
-- Flat bar (not floating pill): `bg-card`, `border-t`, `h-[4.5rem]`.
-- Active indicator: `scale-110 drop-shadow-sm` (not pill background).
-- No `backdrop-blur`, no `mx-4`.
-- FAB and long-press menu preserved.
+### Bottom nav (rediseño actual)
+- Flat bar: `bg-card`, `border-t`, `h-[4.5rem]`
+- Active: `scale-110 drop-shadow-sm` (no pill background)
+- Sin `backdrop-blur`, sin `mx-4`
 
-### MovementReceipt is the single shared centered receipt
-- **Rule:** ALL transaction types (transfers, card payments, debt payments) must use `MovementReceipt` component.
-- **Position:** `fixed inset-0 flex items-center justify-center p-4` (centered on all screen sizes).
-- **Backdrop:** `bg-black/50` (covers navbar too).
-- **Missing implementations:** `quick-pay-card-sheet.tsx`, `expense-form.tsx`.
+### MovementReceipt (recibo centrado compartido)
+- **Regla:** TODOS los tipos de transacción usan `MovementReceipt`
+- **Posición:** `fixed inset-0 flex items-center justify-center p-4`
+- **Backdrop:** `bg-black/50`
+- **Faltantes:** `quick-pay-card-sheet.tsx`, `expense-form.tsx`
 
-### Planning action buttons must open in-app sheets, not navigate away
-- **Rule:** ALL payment action buttons ("Pagar tarjeta", "Pagar cuota", "Pagar") must open the Vaul bottom drawer sheet (`QuickPayCardSheet` or `PayDebtSheet`), not navigate to a different page via `<Link>`.
-- **Fix:** Use `<button type="button" onClick={() => onAction?.(event)}>` with an `onAction` callback prop. The parent component passes `navigateFromEvent` which opens the correct sheet.
-- **Affected:** `calendar-event-card.tsx:64` (fixed), `rotating-upcoming-payments-card.tsx:112` (fixed).
-- **Parent handling:** `financial-calendar-tab.tsx` has `navigateFromEvent()` that builds the correct `QuickCardTarget` or finds the debt object and opens the appropriate drawer.
+### Planning action buttons → in-app sheets
+- **Regla:** "Pagar tarjeta", "Pagar cuota", "Pagar" → Vaul bottom drawer (no `<Link>`)
+- **Fix:** `<button onClick={() => onAction?.(event)}>` con callback `navigateFromEvent`
 
-### Form validation must always show a toast
-- **Rule:** Every form validation failure should show BOTH an inline error AND a toast notification, so the user sees feedback even if they've scrolled past the inline error.
-- **Fix:** Add `notify({ title: "Validación", message: "..." })` alongside each `setFormError(...)` call.
-- **Affected:** `debt-form-sheet.tsx` (fixed — 6 validation blocks).
+### Form validation → toast siempre
+- **Regla:** Todo error de validación muestra inline error + toast
+- **Fix:** `notify({ title: "Validación", message: "..." })` junto a `setFormError()`
 
 ### Credit-card payment receipt — field reduction
-- **DO include:** Title, large amount, transaction type, origin (name + last-4), destination (name + last-4), date/time, DGII tax, random transaction number (max 12 digits).
-- **DO NOT include:** Balance antes/después, reference numbers, NCF, conceptos.
+- **Incluir:** Title, large amount, transaction type, origin (name + last-4), destination (name + last-4), date/time, DGII tax, random transaction number (max 12 dígitos)
+- **NO incluir:** Balance antes/después, reference numbers, NCF, conceptos
 
-### Amount input font-size minimum
-- **Rule:** All amount inputs/display fields must be at least `text-xl font-bold` (20px).
-- **Reference standard:** Expense form uses `text-[clamp(2.75rem,15vw,4.5rem)]` for primary transaction flows.
+### Amount input font-size
+- Mínimo: `text-xl font-bold` (20px)
+- Primary flow: `text-[clamp(2.75rem,15vw,4.5rem)]`
 
-### Account cards visible through modal overlays (stacking context leak)
-- **Symptom:** When a `BaseModalForm` opens (transfer, create account, etc.), the `BrandedAccountCard` components remain visible through the modal, appearing on top of or behind the modal content.
-- **Root cause:** `BrandedAccountCard` uses `relative` + large `shadow-[0_22px_54px_-26px_rgba(0,0,0,0.62)]` + wrapper with `z-10`. Combined with `<main>` having `overflow-y: auto` (from `app-scroll` class), this creates stacking contexts that leak through the `MobileFullscreenForm` portal (`createPortal` to `document.body`).
-- **Fix:** Hide the `MobilePageShell` when the modal is open by conditionally adding `hidden` class:
-  ```tsx
-  <MobilePageShell fullBleed className={cn("pb-nav-safe", showTransfer && "hidden")}>
-  ```
-- **Affected:** `accounts-screen.tsx` (transfer modal). Same pattern needed for any screen where portal-based modals overlap persistent card lists.
-- **Why `hidden` works:** Removes the cards from the DOM entirely (`display: none`), preventing any stacking context interference. The modal renders as a sibling in the fragment, portaled to body level.
-- **Don't use `invisible`:** It keeps the element in the layout and stacking context — cards would still interfere with z-index.
+### Account cards visibles a través de modales (stacking context leak)
+- **Síntoma:** `BrandedAccountCard` visible detrás del modal portaleado
+- **Fix:** `hidden` en `MobilePageShell` cuando modal abierto (no `invisible`)
+- **Ejemplo:** `className={cn("pb-nav-safe", showTransfer && "hidden")}`
 
-## iOS Simulator Build & Run (Verified 2026-06-22)
+---
 
-### Prerequisites
-- Xcode must be installed (found at `/Users/papolo/Downloads/Xcode.app` — **NOT** in `/Applications/`).
-- If `xcrun simctl` gives "unable to find utility", set `DEVELOPER_DIR`:
-  ```bash
-  export DEVELOPER_DIR=/Users/papolo/Downloads/Xcode.app/Contents/Developer
-  ```
-- This is required for **all** `xcrun`, `xcodebuild`, and `simctl` commands in the session.
-- To make it permanent: `sudo xcode-select --switch /Users/papolo/Downloads/Xcode.app/Contents/Developer`
+## 9. CAPACITOR / iOS
 
-### Full build → simulator pipeline
-```bash
-# 1. Build web bundle
-npm run build:mobile
+### Requisitos
+- Capacitor **7.6.7** — NO usar 8.x (incompatible con Swift sources de plugins)
+- `capacitor.config.json`: `webDir: "out"`, `scheme: "micuadre"`
+- `server.url` puede estar seteado a producción; quitarlo para local testing
 
-# 2. Sync to iOS (copies out/ → ios/App/App/public/, regenerates Package.swift)
-export DEVELOPER_DIR=/Users/papolo/Downloads/Xcode.app/Contents/Developer
-npx cap sync ios
-
-# 3. Build native app for simulator
-xcrun xcodebuild \
-  -project ios/App/App.xcodeproj \
-  -scheme App \
-  -configuration Debug \
-  -sdk iphonesimulator \
-  -destination 'platform=iOS Simulator,id=672AB44F-A760-4AB6-9126-4D3853254F5A' \
-  -derivedDataPath /tmp/micuadre-dd \
-  CODE_SIGNING_ALLOWED=NO \
-  build
-
-# 4. Boot simulator, install and launch
-xcrun simctl boot 672AB44F-A760-4AB6-9126-4D3853254F5A   # "iPhone 16 Pro"
-xcrun simctl install 672AB44F-A760-4AB6-9126-4D3853254F5A /tmp/micuadre-dd/Build/Products/Debug-iphonesimulator/App.app
-xcrun simctl launch 672AB44F-A760-4AB6-9126-4D3853254F5A app.micuadre.ios
-open /Users/papolo/Downloads/Xcode.app/Contents/Developer/Applications/Simulator.app
-```
-
-### Available simulator devices
+### Simuladores disponibles
 | Device | UUID |
 |--------|------|
 | iPhone 16 Pro | `672AB44F-A760-4AB6-9126-4D3853254F5A` |
@@ -234,53 +493,95 @@ open /Users/papolo/Downloads/Xcode.app/Contents/Developer/Applications/Simulator
 | iPhone 16 | `2517F99F-174A-48D4-B2B0-1581237E6563` |
 | iPhone SE (3rd gen) | `9767878D-41FA-456A-9F09-954E4E7D6947` |
 
-## Known Fix Patterns (recurring issues — remember these)
+### Build completo (Web → iOS Simulator)
+```bash
+npm run build:mobile
+export DEVELOPER_DIR=/Users/papolo/Downloads/Xcode.app/Contents/Developer
+npx cap sync ios
+xcrun xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,id=672AB44F-...' \
+  -derivedDataPath /tmp/micuadre-dd CODE_SIGNING_ALLOWED=NO build
+xcrun simctl boot <UUID>
+xcrun simctl install <UUID> /tmp/micuadre-dd/Build/Products/Debug-iphonesimulator/App.app
+xcrun simctl launch <UUID> app.micuadre.ios
+```
 
-### Capacitor 8 plugin incompatibility — MUST use 7.x line
-- **Root cause:** Capacitor 8.4 changed Swift APIs (`PluginConfig.getString` removed, `UIColor.capacitor.color(fromHex:)` signature changed to `color(argb: UInt32)`). Several plugins published as "8.0.x" (status-bar 8.0.2, haptics 8.0.2, splash-screen 8.0.1) contain Capacitor 7-era Swift source code that is incompatible with the `capacitor-swift-pm` 8.4.0 binary framework.
-- **Symptoms:** Build errors like `value of type 'PluginConfig' has no member 'getString'` and `incorrect argument label in call (have 'fromHex:', expected 'argb:')` in `StatusBarPlugin.swift`.
-- **Fix:** Use Capacitor **7.6.7** line where all packages are consistent. Current installed versions:
-  ```
-  @capacitor/core@7.6.7, @capacitor/ios@7.6.7, @capacitor/cli@7.6.7
-  @capacitor/app@7.1.2, @capacitor/camera@7.0.5, @capacitor/haptics@7.0.5
-  @capacitor/network@7.0.4, @capacitor/splash-screen@7.0.5, @capacitor/status-bar@7.0.6
-  ```
-- **DO NOT** upgrade to Capacitor 8.x until Ionic publishes fully compatible Swift sources for ALL plugins.
-- **After any `pnpm add` of capacitor packages:** Run `npx cap sync ios` to regenerate `CapApp-SPM/Package.swift`.
+---
 
-### SPM Package.swift with Windows backslashes
-- **Root cause:** Some versions of Capacitor CLI (likely running on Windows or a buggy version) generated `ios/App/CapApp-SPM/Package.swift` with Windows-style backslash paths (`..\..\..\node_modules\...`) instead of Unix forward slashes (`../../../node_modules/...`).
-- **Symptoms:** `xcodebuild` fails with `Invalid escape sequence in literal` and `missing argument for parameter 'path' in call` — because Swift parses `\n`, `\@`, `\.` etc. as escape sequences.
-- **Fix:** Run `npx cap sync ios` — Capacitor 7.x CLI generates correct forward-slash paths. If paths get corrupted again, manually replace `\\` with `/` in the `path:` strings of `CapApp-SPM/Package.swift`.
+## 10. GOTCHAS Y DEUDA TÉCNICA
 
-### `cross-env` missing from node_modules
-- **Root cause:** `cross-env@^10.1.0` listed in `devDependencies` but not installed in `node_modules/` (pnpm resolution inconsistency or fresh install skip).
-- **Symptoms:** `npm run build:mobile` fails with `Cannot find module '.../cross-env/dist/bin/cross-env.js'`. The `prebuild:mobile` step runs first (moving `app/api/` to `.api-backup/`) but `postbuild:mobile` never runs because the build step fails, leaving `app/api/` missing.
-- **Fix:** `pnpm add -D cross-env@^10.1.0`. If `app/api/` was already moved to `.api-backup/`, restore it with `node scripts/postbuild-export.mjs` before retrying.
+### Config Gotchas
+- `next.config.mjs` = v0-generated → NO EDITAR. Usar `next.user-config.mjs`
+- `package-lock.json` y `pnpm-lock.yaml` coexisten; preferir pnpm
+- SQL scripts en `scripts/*.sql` sin migration runner
 
-### `prebuild:mobile` leaves repo in broken state on build failure
-- **Root cause:** `prebuild:mobile` moves `app/api/` → `.api-backup/` BEFORE the build runs. If the build fails, `postbuild:mobile` (which restores `app/api/`) never executes.
-- **Fix:** Always run `node scripts/postbuild-export.mjs` manually after a failed `build:mobile` to restore `app/api/`.
+### Problemas conocidos
+- Capacitor 7.6.7 en línea (8.x incompatible con Swift sources)
+- ESLint no instalado en devDependencies (`npm run lint` falla)
+- Static export requiere post-procesamiento de paths (`fix-asset-paths.mjs`)
+- No hay migration runner (SQL scripts manuales)
+- `prebuild:mobile` deja repo en estado roto si build falla → `node scripts/postbuild-export.mjs` para restaurar
+- `cross-env` puede faltar en node_modules → `pnpm add -D cross-env@^10.1.0`
+- `capacitor.config.json` `server.url` sobreescribe bundle local
+- SPM Package.swift puede generar backslashes en Windows
+- Stale git rebase state (archivos con " 2" en `.git/rebase-merge/`)
 
-### `capacitor.config.json` `server.url` overrides local bundle
-- **Root cause:** When `server.url` is set (e.g. `"https://micuadre-five.vercel.app"`), the WKWebView loads that URL instead of the local `out/` bundle, showing the production deployment instead of the current code.
-- **Fix for local development:** Temporarily remove the `"url"` key from `capacitor.config.json` and run `npx cap copy ios` or `npx cap sync ios`. Remember to **restore** it before committing if the project uses it for production builds.
-- **Note:** `allowNavigation` must remain for Supabase auth to work from `micuadre://` scheme.
+### Troubleshooting
+- `ENOENT: .next/dev/routes-manifest.json` → `pnpm run dev:reset` (después de `npm run build`)
+- iOS simulator no encuentra Xcode → `export DEVELOPER_DIR=/Users/papolo/Downloads/Xcode.app/Contents/Developer`
 
-### Stale git rebase state (macOS file duplication)
-- **Root cause:** macOS sometimes creates duplicate files with ` 2` suffix (e.g. `.git/rebase-merge/head-name 2`) during file operations. Git interprets these as a rebase-in-progress even though no real rebase is active.
-- **Symptoms:** `git status` reports "You are currently rebasing" but `git log` shows the correct HEAD. The rebase state files all have ` 2` suffix.
-- **Fix:** This is a cosmetic issue — doesn't affect builds. Can be cleaned by removing the `.git/rebase-merge/` directory if no real rebase is in progress.
+---
 
-## Contrast Ratio Verification (COMPLETED)
-- Script at `scripts/check-contrast.mjs` (uses `culori` — installed via `pnpm add culori`).
-- **All text-on-background pairs pass WCAG AA (4.5:1) in both modes.** Most pass AAA (7:1).
-- Light mode results:
-  - `background--foreground`: 18.06:1 ✅ AAA
-  - `muted--muted-foreground`: 5.16:1 ✅ AA (predicted failure was wrong — actual passes)
-  - `surface--surface-raised`: 1.03:1 ❌ (expected — two background surfaces, not text)
-- Dark mode results:
-  - `background--foreground`: 18.09:1 ✅ AAA
-  - `muted--muted-foreground`: 6.74:1 ✅ AA
-  - `surface--surface-raised`: 1.07:1 ❌ (expected)
-- **No changes needed** — all foreground/text contrast is compliant.
+## 11. DISCREPANCIAS CONOCIDAS (DOC VS REALIDAD)
+
+### 🔴 Críticas
+1. **`middleware.ts` no está en la raíz** — está en `lib/supabase/middleware.ts`. Next.js NO lo detecta automáticamente. El auth guard server-side no funciona hasta que se cree un re-export en `middleware.ts` en la raíz.
+2. **`app/transactions/` no existe** — el middleware la lista como ruta protegida pero el directorio no existe. Solo existe `app/history/`.
+3. **Paquetes `@capacitor/*` ausentes en package.json** — `capacitor.config.json` y `ios/` existen pero los npm packages no están instalados. El pipeline mobile fallaría en un checkout fresco.
+
+### ⚠️ Moderadas
+4. **No hay `tailwind.config.ts`** — Tailwind v4 usa configuración CSS nativa en `app/globals.css`, no archivo JS/TS de configuración.
+5. **16 rutas de página no documentadas** en `app/` (send, scan, profile, legal/*, offline, qa, settings/*, goals/[id], etc.)
+6. **2 hooks no documentados**: `use-persistent-state.ts` y `use-swipe.ts`
+7. **6 subdirectorios de `lib/` no documentados**: `a11y/`, `i18n/`, `notifications/`, `ocr/`, `pwa/`, `validations/`
+8. **`docs/` no mencionado** en la estructura de directorios — contiene 38 archivos de diseño y auditoría
+
+### 📝 Menores
+9. **`.api-backup/`** documentado solo en el pipeline mobile pero no en el árbol de directorios
+10. **40+ scripts SQL** en `scripts/` sin migration runner
+11. **`upstash/ratelimit`** documentado como `1.38.0` pero instalado como `^2.0.8`
+
+---
+
+## 12. VISUAL SCREENSHOT DEBUGGING
+
+```bash
+npm run screenshot -- --route=dashboard        # Desktop viewport
+npm run screenshot -- --route=dashboard --mobile  # Mobile (430x932)
+npm run screenshot -- --route=dashboard --fullpage # Scroll capture
+npm run screenshot:all                          # Todas las rutas protegidas
+```
+
+- Rutas disponibles: dashboard, accounts, pay, expense, history, goals, planning, coach-ia, notifications, profile, settings, settings-plan, settings-categories, settings-security, onboarding, login, signup
+- Requiere `TEST_EMAIL` y `TEST_PASSWORD` en env vars
+- Screenshots en `screenshots/`
+- Funciona contra `http://localhost:3000` (override con `BASE_URL`)
+
+### Visual QA Audit
+```bash
+npm run audit:visual       # Full mobile audit (50+ screenshots)
+npm run audit:visual-deep  # Deep form audit (modals/sheets/drawers)
+```
+- Captura errores de consola, HTTP, página
+- Logs en `screenshots/audit/logs/audit-log.json`
+- Reporte en `docs/mobile-visual-qa-audit.md`
+
+---
+
+## 13. VERIFICACIÓN DE CONTRASTE (COMPLETADO)
+
+- Script: `scripts/check-contrast.mjs`
+- **Todos los pares texto-sobre-fondo pasan WCAG AA (4.5:1) en ambos modos**
+- Light: background–foreground 18.06:1 ✅
+- Dark: background–foreground 18.09:1 ✅
+- Sin cambios necesarios

@@ -275,6 +275,9 @@ async function callOpenAIChatCompletion(params: {
 
   for (const model of modelsToTry) {
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000)
+
       const url = `${baseUrl}/chat/completions`
       const response = await fetch(url, {
         method: "POST",
@@ -292,7 +295,10 @@ async function callOpenAIChatCompletion(params: {
           temperature: 0.2,
           max_tokens: 1000,
         }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         console.warn(`[mia/llm] provider error for ${model}`, { status: response.status })
@@ -851,9 +857,10 @@ export async function GET() {
     // Get active conversation
     const { data: conversations } = await supabase
       .from("mia_conversations")
-      .select("*")
+      .select("id, user_id, title, updated_at")
       .eq("user_id", user.id)
       .order("updated_at", { ascending: false })
+      .limit(50)
 
     if (!conversations || conversations.length === 0) {
       return NextResponse.json({
@@ -868,10 +875,11 @@ export async function GET() {
     // Fetch messages for active conversation
     const { data: messagesRaw } = await supabase
       .from("mia_messages")
-      .select("*")
+      .select("id, role, content, metadata, created_at")
       .eq("conversation_id", activeId)
       .eq("user_id", user.id)
       .order("created_at", { ascending: true })
+      .limit(200)
 
     const messages = (messagesRaw || []).map((m: any) => ({
       id: m.id,

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getServerUserWithTimeout } from './server'
 
 const publicRoutes = [
   '/',
@@ -69,9 +70,11 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await getServerUserWithTimeout(supabase)
+  if (authError && authError.message.includes("Auth timeout")) {
+    console.warn("[Middleware] Auth timeout, allowing request to proceed")
+    return supabaseResponse
+  }
 
   const pathname = request.nextUrl.pathname
   const isPublicRoute = matchesRoute(pathname, publicRoutes)

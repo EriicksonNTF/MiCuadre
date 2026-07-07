@@ -81,7 +81,7 @@ export async function buildCardSnapshot(
 ): Promise<CardFinancialSnapshot> {
   const { data: accounts } = await supabase
     .from("accounts")
-    .select("*")
+    .select("id, user_id, name, type, currency, balance, credit_limit_dop, credit_limit_usd, current_debt_dop, current_debt_usd, statement_balance_dop, statement_balance_usd, paid_statement_amount_dop, paid_statement_amount_usd, closing_day, due_days_after_cutoff, last_statement_cutoff_date, statement_due_date, annual_interest_rate, minimum_payment_percentage, current_balance_dop, current_balance_usd, financed_balance_dop, financed_balance_usd, available_credit_dop, available_credit_usd, payment_due_day, bank_name, is_active")
     .eq("user_id", userId)
     .eq("type", "credit")
     .eq("is_active", true)
@@ -94,9 +94,10 @@ export async function buildCardSnapshot(
   if (accountIds.length > 0) {
     const { data: cycleData } = await supabase
       .from("credit_card_cycles")
-      .select("*")
+      .select("id, account_id, cycle_start_date, cycle_end_date, due_date, statement_balance_dop, statement_balance_usd, paid_amount_dop, paid_amount_usd, financed_amount_dop, financed_amount_usd, interest_amount_dop, interest_amount_usd, status, is_finalized, created_at")
       .in("account_id", accountIds)
       .order("created_at", { ascending: false })
+      .limit(500)
 
     if (cycleData) {
       cycles.push(...(cycleData as CreditCardCycle[]))
