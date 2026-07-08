@@ -1,14 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 export async function proxy(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
 
   const cspHeader = [
     "default-src 'self'",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
-    `style-src 'self' 'nonce-${nonce}'`,
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data: https://*.supabase.co https://*.supabase.in",
     "font-src 'self' data:",
     "connect-src 'self' https://*.supabase.co https://*.supabase.in https://api.stripe.com https://js.stripe.com https://vitals.vercel-insights.com",
@@ -21,13 +20,7 @@ export async function proxy(request: NextRequest) {
     "upgrade-insecure-requests",
   ].join('; ')
 
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-nonce', nonce)
-  requestHeaders.set('Content-Security-Policy', cspHeader)
-
-  const requestWithNonce = new NextRequest(request, { headers: requestHeaders })
-
-  const response = await updateSession(requestWithNonce)
+  const response = await updateSession(request)
 
   const pathname = request.nextUrl.pathname
   const isStaticAsset = pathname.startsWith('/_next/static/') || pathname.startsWith('/_next/image')
