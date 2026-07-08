@@ -64,7 +64,7 @@ function MobilePageShell({
   return (
     <Comp
       ref={scrollRef as React.RefObject<HTMLDivElement>}
-      className={cn("app-scroll min-h-[100dvh] overflow-y-auto bg-background", className)}
+      className={cn("app-scroll h-[100dvh] overflow-y-auto bg-background", className)}
       {...props}
     >
       {isMobile && <PullToRefreshIndicator distance={distance} status={status} threshold={70} />}
