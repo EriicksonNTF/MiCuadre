@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useRef } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { MoneyInput } from "@/components/ui/money-input"
 import { useAccounts } from "@/hooks/use-data"
 import { payDebt } from "@/hooks/use-planning"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
@@ -159,7 +160,7 @@ export function PayDebtSheet({
                 </button>
               </div>
               {mode === "custom" && (
-                <input type="number" inputMode="decimal" className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} />
+                <MoneyInput value={customAmount} onValueChange={setCustomAmount} className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3" />
               )}
             </div>
 

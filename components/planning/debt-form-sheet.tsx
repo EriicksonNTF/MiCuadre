@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { MoneyInput } from "@/components/ui/money-input"
 import { useAccounts } from "@/hooks/use-data"
 import { createDebt } from "@/hooks/use-planning"
 import { notify } from "@/lib/notifications"
@@ -154,11 +155,11 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Monto original</span>
-                <input type="number" inputMode="decimal" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={originalAmount} onChange={(e) => setOriginalAmount(e.target.value)} />
+                <MoneyInput value={originalAmount} onValueChange={setOriginalAmount} className="h-12 w-full rounded-xl border border-border bg-background px-3" />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Monto pendiente</span>
-                <input type="number" inputMode="decimal" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={currentBalance} onChange={(e) => setCurrentBalance(e.target.value)} />
+                <MoneyInput value={currentBalance} onValueChange={setCurrentBalance} className="h-12 w-full rounded-xl border border-border bg-background px-3" />
               </label>
             </div>
 
@@ -184,7 +185,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Cuota fija</span>
-                <input type="number" inputMode="decimal" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={fixedPayment} onChange={(e) => setFixedPayment(e.target.value)} />
+                <MoneyInput value={fixedPayment} onValueChange={setFixedPayment} className="h-12 w-full rounded-xl border border-border bg-background px-3" />
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Frecuencia</span>

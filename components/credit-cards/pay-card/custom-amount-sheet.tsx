@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { MoneyInput } from "@/components/ui/money-input"
 import { formatAmount } from "@/lib/data"
 
 type CustomAmountSheetProps = {
@@ -35,7 +36,7 @@ export function CustomAmountSheet({ currencySymbol, maxAmount, open, onOpenChang
             <span className="text-sm text-muted-foreground">Monto a transferir</span>
             <div className="mt-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
               <span className="shrink-0 text-2xl font-bold text-foreground">{currencySymbol}</span>
-              <input value={rawAmount} onChange={(event) => setRawAmount(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="0.00" autoFocus className="min-w-0 flex-1 bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground" />
+              <MoneyInput value={rawAmount} onValueChange={setRawAmount} placeholder="0.00" autoFocus wrapperClassName="flex-1 min-w-0" className="w-full bg-transparent text-3xl font-bold text-foreground outline-none placeholder:text-muted-foreground" />
             </div>
           </label>
           <p className="text-sm text-muted-foreground">Ingresa un monto entre {currencySymbol}1.00 y {currencySymbol}{formatAmount(maxAmount)}</p>

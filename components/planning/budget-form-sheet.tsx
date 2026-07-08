@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { MoneyInput } from "@/components/ui/money-input"
 import { useCategories } from "@/hooks/use-data"
 import { createBudget, deactivateBudget, updateBudget } from "@/hooks/use-planning"
 import { notify } from "@/lib/notifications"
@@ -129,7 +130,7 @@ export function BudgetFormSheet({
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Monto mensual</span>
-            <input type="number" inputMode="decimal" className="h-11 w-full rounded-xl border border-border bg-background px-3" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <MoneyInput value={amount} onValueChange={setAmount} className="h-11 w-full rounded-xl border border-border bg-background px-3" />
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Moneda</span>
