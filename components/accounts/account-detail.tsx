@@ -366,7 +366,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     .filter((tx) => tx.type === "expense" && isReportableExpense(tx.metadata))
     .reduce((sum, tx) => sum + tx.amount, 0)
 
-  const netFlow = monthlyIncome - monthlyExpenses
+
 
   const handlePayment = async () => {
     if (!paymentSource || !paymentAmount || isPaying) return
@@ -961,7 +961,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </div>
         )}
 
-        <div className="mt-3 grid max-h-[128px] grid-cols-3 overflow-hidden rounded-[1.45rem] border border-border/60 bg-card/82 shadow-sm backdrop-blur">
+        <div className="mt-3 grid grid-cols-2 rounded-[1.45rem] border border-border/60 bg-card/82 shadow-sm backdrop-blur">
           <div className="min-w-0 border-r border-border/60 px-3 py-3.5">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
@@ -969,60 +969,20 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
               </div>
               <p className="text-reflow-1 text-[0.6875rem] text-muted-foreground">Ingresos</p>
             </div>
-            <p className="mt-2 amount-secondary font-bold text-income">
+            <p className="mt-2 amount-secondary font-bold text-income overflow-wrap-anywhere">
               {formatCurrency(monthlyIncome)}
             </p>
           </div>
 
-          <div className="min-w-0 border-r border-border/60 px-3 py-3.5">
+          <div className="min-w-0 px-3 py-3.5">
             <div className="flex items-center gap-2">
               <div className="flex h-6 w-6 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
                 <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
               </div>
               <p className="text-reflow-1 text-[0.6875rem] text-muted-foreground">Gastos</p>
             </div>
-            <p className="mt-2 amount-secondary font-bold text-expense">
+            <p className="mt-2 amount-secondary font-bold text-expense overflow-wrap-anywhere">
               -{formatCurrency(monthlyExpenses)}
-            </p>
-          </div>
-
-          <div className="min-w-0 px-3 py-3.5">
-            <div className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "flex h-6 w-6 items-center justify-center rounded-full",
-                  netFlow > 0
-                    ? "bg-emerald-100 dark:bg-emerald-900/30"
-                    : netFlow < 0
-                    ? "bg-red-100 dark:bg-red-900/30"
-                    : "bg-muted"
-                )}
-              >
-                <Minus
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    netFlow > 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : netFlow < 0
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-muted-foreground"
-                  )}
-                />
-              </div>
-              <p className="text-reflow-1 text-[0.6875rem] text-muted-foreground">Neto</p>
-            </div>
-            <p
-              className={cn(
-                "mt-2 amount-secondary font-bold",
-                netFlow > 0
-                  ? "text-income"
-                  : netFlow < 0
-                  ? "text-expense"
-                  : "text-foreground"
-              )}
-            >
-              {netFlow < 0 ? "-" : ""}
-              {formatCurrency(netFlow)}
             </p>
           </div>
         </div>

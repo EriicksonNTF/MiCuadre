@@ -550,11 +550,13 @@ body.modal-open {
   font-feature-settings: "tnum" 1;
 }
 
-.amount-secondary {
+ .amount-secondary {
   font-size: clamp(1.125rem, 3.5vw, 1.5rem);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
   min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Inline amounts in transaction rows — compact but readable */
@@ -572,6 +574,12 @@ body.modal-open {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
   min-width: 0;
+}
+
+/* Overflow prevention for financial amounts */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ============================================================================

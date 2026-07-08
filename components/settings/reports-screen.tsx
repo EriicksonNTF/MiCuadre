@@ -227,19 +227,19 @@ export function ReportsScreen() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.income}</p><p className="amount-inline font-bold text-income">{formatCurrency(totals.income)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.expense}</p><p className="amount-inline font-bold text-expense">{formatCurrency(totals.expense)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.netBalance}</p><p className="amount-inline font-bold text-foreground">{formatCurrency(totals.net)}</p></div>
-          <div className="rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.subscriptions}</p><p className="amount-inline font-bold text-amber-600">{formatCurrency(subscriptionTotal)}</p></div>
+          <div className="min-w-0 rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.income}</p><p className="amount-sm font-bold text-income overflow-wrap-anywhere">{formatCurrency(totals.income)}</p></div>
+          <div className="min-w-0 rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.common.expense}</p><p className="amount-sm font-bold text-expense overflow-wrap-anywhere">{formatCurrency(totals.expense)}</p></div>
+          <div className="min-w-0 rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.netBalance}</p><p className="amount-sm font-bold text-foreground overflow-wrap-anywhere">{formatCurrency(totals.net)}</p></div>
+          <div className="min-w-0 rounded-2xl bg-card p-4"><p className="text-xs text-muted-foreground">{t.reports.subscriptions}</p><p className="amount-sm font-bold text-amber-600 overflow-wrap-anywhere">{formatCurrency(subscriptionTotal)}</p></div>
         </div>
 
         <section className="rounded-2xl border border-border bg-card p-4">
           <p className="text-sm font-semibold text-foreground">Resumen del mes</p>
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div><p className="text-xs text-muted-foreground">Ingreso total</p><p className="amount-inline font-bold text-income">{formatCurrency(totals.income)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Gasto total</p><p className="amount-inline font-bold text-expense">{formatCurrency(totals.expense)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Balance neto</p><p className="amount-inline font-bold text-foreground">{formatCurrency(totals.net)}</p></div>
-            <div><p className="text-xs text-muted-foreground">Tasa de ahorro</p><p className="amount-sm font-semibold text-foreground">{Number.isFinite(savingsRate) ? `${savingsRate.toFixed(1)}%` : "0%"}</p></div>
+            <div className="min-w-0"><p className="text-xs text-muted-foreground">Ingreso total</p><p className="amount-sm font-bold text-income overflow-wrap-anywhere">{formatCurrency(totals.income)}</p></div>
+            <div className="min-w-0"><p className="text-xs text-muted-foreground">Gasto total</p><p className="amount-sm font-bold text-expense overflow-wrap-anywhere">{formatCurrency(totals.expense)}</p></div>
+            <div className="min-w-0"><p className="text-xs text-muted-foreground">Balance neto</p><p className="amount-sm font-bold text-foreground overflow-wrap-anywhere">{formatCurrency(totals.net)}</p></div>
+            <div className="min-w-0"><p className="text-xs text-muted-foreground">Tasa de ahorro</p><p className="amount-sm font-semibold text-foreground">{Number.isFinite(savingsRate) ? `${savingsRate.toFixed(1)}%` : "0%"}</p></div>
           </div>
           <p className="mt-3 text-xs text-muted-foreground">{netVsPrevious >= 0 ? `Este mes vas ${formatCurrency(Math.abs(netVsPrevious))} por encima del mes anterior.` : `Este mes vas ${formatCurrency(Math.abs(netVsPrevious))} por debajo del mes anterior.`}</p>
         </section>
