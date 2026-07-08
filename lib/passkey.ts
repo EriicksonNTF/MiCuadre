@@ -1,7 +1,29 @@
 "use client"
 
+import {
+  startRegistration,
+  startAuthentication,
+  browserSupportsWebAuthn,
+} from "@simplewebauthn/browser"
+
 const PASSKEY_CREDENTIAL_ID_KEY = "micuadre_passkey_credential_id"
 const PASSKEY_ENABLED_KEY = "micuadre_passkey_enabled"
+
+function getRpId(): string {
+  if (typeof window === "undefined") return "localhost"
+  try {
+    return window.location.hostname
+  } catch {
+    return "localhost"
+  }
+}
+
+function randomChallengeBase64(): string {
+  const challenge = new Uint8Array(32)
+  crypto.getRandomValues(challenge)
+  const binary = String.fromCharCode(...challenge)
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "")
+}
 
 function bytesToBase64Url(bytes: Uint8Array): string {
   const binary = String.fromCharCode(...bytes)
@@ -14,14 +36,13 @@ function base64UrlToBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0))
 }
 
-function randomChallenge(length = 32): Uint8Array {
-  const challenge = new Uint8Array(length)
-  crypto.getRandomValues(challenge)
-  return challenge
+function userIdToBase64(userId: string): string {
+  const bytes = new TextEncoder().encode(userId.slice(0, 32))
+  return bytesToBase64Url(bytes)
 }
 
 export function isPasskeySupported() {
-  return typeof window !== "undefined" && "PublicKeyCredential" in window && !!navigator.credentials
+  return browserSupportsWebAuthn()
 }
 
 export function isPasskeyEnabled() {
@@ -34,13 +55,15 @@ export async function registerPasskey(userId: string, userName: string) {
     throw new Error("Tu dispositivo no soporta Passkeys.")
   }
 
-  const userBytes = new TextEncoder().encode(userId.slice(0, 32))
-  const credential = await navigator.credentials.create({
-    publicKey: {
-      challenge: randomChallenge(),
-      rp: { name: "MiCuadre" },
+  const credential = await startRegistration({
+    optionsJSON: {
+      challenge: randomChallengeBase64(),
+      rp: {
+        id: getRpId(),
+        name: "MiCuadre",
+      },
       user: {
-        id: userBytes,
+        id: userIdToBase64(userId),
         name: userName,
         displayName: userName,
       },
@@ -57,11 +80,7 @@ export async function registerPasskey(userId: string, userName: string) {
     },
   })
 
-  if (!credential || !(credential instanceof PublicKeyCredential)) {
-    throw new Error("No se pudo crear la Passkey.")
-  }
-
-  const idBytes = new Uint8Array(credential.rawId)
+  const idBytes = base64UrlToBytes(credential.id)
   window.localStorage.setItem(PASSKEY_CREDENTIAL_ID_KEY, bytesToBase64Url(idBytes))
   window.localStorage.setItem(PASSKEY_ENABLED_KEY, "true")
 }
@@ -75,21 +94,18 @@ export async function verifyPasskeyUnlock() {
     throw new Error("No hay Passkey registrada.")
   }
 
-  const assertion = await navigator.credentials.get({
-    publicKey: {
-      challenge: randomChallenge(),
+  await startAuthentication({
+    optionsJSON: {
+      challenge: randomChallengeBase64(),
+      rpId: getRpId(),
       allowCredentials: [{
         type: "public-key",
-        id: base64UrlToBytes(storedId),
+        id: storedId,
       }],
       userVerification: "required",
       timeout: 60000,
     },
   })
-
-  if (!assertion || !(assertion instanceof PublicKeyCredential)) {
-    throw new Error("No se pudo verificar con biometría.")
-  }
 }
 
 export function disablePasskey() {
