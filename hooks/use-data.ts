@@ -569,8 +569,7 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
 
   for (const row of refreshedCycles || []) {
     const isFinalized = !!row.is_finalized
-    const dueDate = toDateOnly(row.due_date)
-    const isOverdue = now.getTime() > dueDate.getTime()
+    const isOverdue = getLocalDateString() > row.due_date
     const statementPendingDop = Math.max(0, roundCurrencyAmount(Number(row.statement_balance_dop || 0) - Number(row.paid_amount_dop || 0)))
     const statementPendingUsd = Math.max(0, roundCurrencyAmount(Number(row.statement_balance_usd || 0) - Number(row.paid_amount_usd || 0)))
 
@@ -2870,7 +2869,7 @@ export async function payCreditCard(payment: {
         if (pendingAfter <= 0) {
           updates.status = "paid"
         } else if (nextPaid > 0) {
-          const isOverdue = new Date(`${cycleRow.due_date}T12:00:00`).getTime() < Date.now()
+          const isOverdue = getLocalDateString() > cycleRow.due_date
           updates.status = isOverdue ? "financed" : "partial"
         }
 

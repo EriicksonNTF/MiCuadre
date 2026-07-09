@@ -24,12 +24,17 @@ export function getCycleForDate(closingDay: number, dueDaysAfterCutoff: number, 
   const prevCutoff = safeDate(prevYear, prevMonth, closingDay)
   const cycleStart = new Date(prevCutoff.getTime())
   const dueDate = new Date(cycleEnd.getTime() + dueDaysAfterCutoff * DAY_MS)
+  const todayStr = getLocalDateString()
+  const dueStr = getLocalDateString(dueDate)
+  const remainingDays = Math.max(0, Math.round(
+    (new Date(`${dueStr}T00:00:00`).getTime() - new Date(`${todayStr}T00:00:00`).getTime()) / DAY_MS
+  ))
 
   return {
     cycleStartDate: getLocalDateString(cycleStart),
     cycleEndDate: getLocalDateString(cycleEnd),
-    dueDate: getLocalDateString(dueDate),
+    dueDate: dueStr,
     cycleKey: getLocalDateString(cycleEnd),
-    remainingDays: Math.max(0, Math.ceil((dueDate.getTime() - Date.now()) / DAY_MS)),
+    remainingDays,
   }
 }
