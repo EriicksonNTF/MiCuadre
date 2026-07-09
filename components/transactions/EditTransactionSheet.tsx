@@ -75,7 +75,7 @@ export function EditTransactionSheet({ open, onOpenChange, transaction }: EditTr
       setForm({
         amount: String(transaction.amount),
         description: transaction.description || "",
-        date: new Date(transaction.date),
+        date: new Date(`${transaction.date}T12:00:00`),
         categoryId: transaction.category_id,
         accountId: transaction.account_id,
         currency: transaction.currency,
