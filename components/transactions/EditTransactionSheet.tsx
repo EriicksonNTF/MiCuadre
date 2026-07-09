@@ -202,7 +202,8 @@ export function EditTransactionSheet({ open, onOpenChange, transaction }: EditTr
                     value={form.amount}
                     onValueChange={(v) => handleChange("amount", v)}
                     placeholder="0.00"
-                    className="text-input-hero tabular-nums"
+                    wrapperClassName="w-full rounded-xl border border-border bg-background px-4 py-3 focus-within:border-primary/40 transition-colors"
+                    className="text-input-hero tabular-nums w-full outline-none bg-transparent placeholder:text-muted-foreground/50"
                   />
                 </div>
 
