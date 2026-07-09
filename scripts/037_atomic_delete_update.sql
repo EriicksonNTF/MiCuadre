@@ -485,7 +485,7 @@ begin
   -- Step 5: Create new commission if the transaction type is expense and amount > 0
   v_commission_amount := 0;
   if v_new_type = 'expense' then
-    v_commission_amount := round(v_new_amount * 0.0015 * 100) / 100;
+    v_commission_amount := round(v_new_amount * 0.0020 * 100) / 100;
   end if;
 
   if v_commission_amount > 0 then
@@ -509,7 +509,7 @@ begin
       v_user_id, v_new_account_id, v_commission_category_id, 'expense', v_commission_amount, v_new_currency, v_commission_amount, 1,
       'Comisión de 0.15% de ' || coalesce(v_new_description, 'transacción'),
       v_new_date, p_transaction_id,
-      jsonb_build_object('kind', 'commission', 'rate', 0.0015)
+      jsonb_build_object('kind', 'commission', 'rate', 0.0020)
     )
     returning id into v_commission_category_id; -- reuse var, now holds commission tx id
 
