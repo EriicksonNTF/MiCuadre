@@ -167,9 +167,9 @@ begin
         declare
           v_ptx record;
         begin
-          for v_ptx in
-            select id, account_id, type, amount, currency
-            from public.transactions
+            for v_ptx in
+              select id, account_id, type, amount, currency, description
+              from public.transactions
             where (metadata->>'payment_group_id' = v_payment_group_id
                or metadata->>'payment_id' = v_payment_group_id)
               and user_id = v_user_id
