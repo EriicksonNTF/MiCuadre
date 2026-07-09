@@ -1540,6 +1540,11 @@ export async function createTransaction(
     await offlineDB.put("offline_outbox", outboxItem)
     mutate("accounts")
     mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+    mutate("planning_calendar_events")
+    mutate("planning_debts")
+    mutate("planning_debt_payments_month")
+    mutate("planning_budgets_with_usage")
+    mutate("planning_credit_card_debts")
 
     return {
       id: localId,
@@ -1727,6 +1732,11 @@ export async function createTransaction(
 
     await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
     await mutate("accounts")
+    await mutate("planning_calendar_events")
+    await mutate("planning_debts")
+    await mutate("planning_debt_payments_month")
+    await mutate("planning_budgets_with_usage")
+    await mutate("planning_credit_card_debts")
 
     const notificationMetadata = transactionToInsert.metadata as Record<string, unknown> | null
     const isCreditCardIncome = notificationMetadata?.kind === "credit_card_income"
@@ -1756,6 +1766,11 @@ export async function createTransaction(
       await offlineDB.put("offline_outbox", outboxItem)
       mutate("accounts")
       mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+      mutate("planning_calendar_events")
+      mutate("planning_debts")
+      mutate("planning_debt_payments_month")
+      mutate("planning_budgets_with_usage")
+      mutate("planning_credit_card_debts")
 
       return {
         id: localId,
@@ -1854,6 +1869,11 @@ export async function updateTransaction(
 
   await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   await mutate("accounts")
+  await mutate("planning_calendar_events")
+  await mutate("planning_debts")
+  await mutate("planning_debt_payments_month")
+  await mutate("planning_budgets_with_usage")
+  await mutate("planning_credit_card_debts")
 
   // Sync credit card cycles if account is a credit card
   try {
@@ -1906,13 +1926,14 @@ export async function deleteTransaction(id: string) {
 
   await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   await mutate("accounts")
+  await mutate("planning_calendar_events")
+  await mutate("planning_debts")
+  await mutate("planning_debt_payments_month")
+  await mutate("planning_budgets_with_usage")
+  await mutate("planning_credit_card_debts")
 
   if (existingMeta.kind === "transfer") {
     await mutate(["transfers", 100])
-  }
-  if (existingMeta.kind === "debt_payment") {
-    await mutate("planning_debts")
-    await mutate("planning_debt_payments_month")
   }
   if (existingMeta.kind === "credit_payment") {
     await mutate("notifications")
@@ -2568,6 +2589,11 @@ export async function createTransfer(transfer: {
   await mutate("accounts")
   await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   await mutate(["transfers", 100])
+  await mutate("planning_calendar_events")
+  await mutate("planning_debts")
+  await mutate("planning_debt_payments_month")
+  await mutate("planning_budgets_with_usage")
+  await mutate("planning_credit_card_debts")
 
   await createNotification({
     userId: user.id,

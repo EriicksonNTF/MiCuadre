@@ -14,6 +14,13 @@
 -- 1. create_transfer_safe
 -- =====================================================
 
+drop function if exists public.create_transfer_safe(
+  p_from_account_id uuid, p_amount numeric,
+  p_to_account_id uuid, p_to_beneficiary_id uuid,
+  p_currency text, p_description text,
+  p_apply_commission boolean, p_exchange_rate numeric
+);
+
 create or replace function public.create_transfer_safe(
   p_from_account_id uuid,
   p_amount numeric,

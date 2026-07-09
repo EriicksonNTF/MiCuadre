@@ -9,6 +9,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { mutate } from "swr"
 import { cn } from "@/lib/utils"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
 import { notify } from "@/lib/notifications"
@@ -120,6 +121,13 @@ export function EditTransactionSheet({ open, onOpenChange, transaction }: EditTr
           p_description: form.description || null,
           p_date: format(form.date, "yyyy-MM-dd"),
         })
+        mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+        mutate("accounts")
+        mutate("planning_calendar_events")
+        mutate("planning_debts")
+        mutate("planning_debt_payments_month")
+        mutate("planning_budgets_with_usage")
+        mutate("planning_credit_card_debts")
       } else {
         await updateTransaction(transaction.id, {
           account_id: form.accountId,

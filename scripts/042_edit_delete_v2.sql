@@ -521,6 +521,14 @@ $func$;
 --    the blanket rejection of transfers/credit_payments.
 --    For complex types, calls specialized handlers.
 -- ══════════════════════════════════════════════════════
+drop function if exists public.update_transaction_safe(
+  p_transaction_id uuid, p_account_id uuid,
+  p_type text, p_amount numeric, p_currency text,
+  p_description text, p_date date, p_category_id uuid,
+  p_notes text, p_amount_base numeric,
+  p_exchange_rate numeric, p_is_recurring boolean
+);
+
 create or replace function public.update_transaction_safe(
   p_transaction_id uuid,
   p_account_id uuid default null,
