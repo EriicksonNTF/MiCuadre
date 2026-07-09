@@ -320,7 +320,7 @@ export class LedgerService {
       .eq("active", true)
       .single()
 
-    if (error || !data) return 0.0015
+    if (error || !data) return 0.0020
     return Number(data.value)
   }
 

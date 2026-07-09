@@ -70,7 +70,7 @@ let creditCycleSchemaChecked = false
 let hasCreditCycleSchema = true
 let hasNotificationMetadataSchema = true
 
-const COMMISSION_RATE = 0.0015
+const COMMISSION_RATE = 0.0020
 const DEFAULT_MINIMUM_PAYMENT_PERCENTAGE = 0.0278
 const LATE_FEE_RATE = 0.12
 const COMMISSION_CATEGORY_NAME = "Commission / Fees"

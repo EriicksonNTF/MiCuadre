@@ -79,8 +79,8 @@ INSERT INTO public.fee_rules (plan_tier, rule_name, rule_type, value, applies_to
 VALUES
   ('free', 'commission_rate', 'percentage', 0.0030, 'transfer'),
   ('free', 'commission_rate', 'percentage', 0.0030, 'expense'),
-  ('pro',  'commission_rate', 'percentage', 0.0015, 'transfer'),
-  ('pro',  'commission_rate', 'percentage', 0.0015, 'expense'),
+  ('pro',  'commission_rate', 'percentage', 0.0020, 'transfer'),
+  ('pro',  'commission_rate', 'percentage', 0.0020, 'expense'),
   ('plus', 'commission_rate', 'percentage', 0.0000, 'transfer'),
   ('plus', 'commission_rate', 'percentage', 0.0000, 'expense'),
   ('free', 'late_fee_rate',    'percentage', 0.1200, 'late_payment'),
