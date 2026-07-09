@@ -125,7 +125,7 @@ export function ImpactPreview({
       {/* Commission */}
       {data.commission_action !== "unchanged" && (
         <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Comisión DGII (0.15%)</span>
+          <span className="text-muted-foreground">Comisión DGII (0.20%)</span>
           <div className="flex items-center gap-1.5 text-right tabular-nums">
             {data.old_commission > 0 && (
               <span className="text-muted-foreground line-through">

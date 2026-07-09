@@ -878,7 +878,7 @@ async function fetchAccounts(): Promise<Account[]> {
         const isExpense = payload.type === "expense"
         const amount = Number(payload.amount || 0)
         const isCommission = payload.applyCommission
-        const commission = isCommission ? Math.round(amount * 0.15) / 100 : 0
+        const commission = isCommission ? Math.round(amount * 0.20) / 100 : 0
         const totalAmount = amount + commission
 
         if (account.type === "credit") {
@@ -1663,7 +1663,7 @@ export async function createTransaction(
           currency: transactionToInsert.currency,
           amount_base: commissionAmount,
           exchange_rate: transactionToInsert.exchange_rate,
-          description: `Comisión de 0.15% de ${transactionToInsert.description || "transacción"}`,
+          description: `Comisión de 0.20% de ${transactionToInsert.description || "transacción"}`,
           date: transactionToInsert.date,
           notes: null,
           is_recurring: false,
@@ -2815,7 +2815,7 @@ export async function payCreditCard(payment: {
           currency: sourceCurrency,
           amount_base: commissionAmount,
           exchange_rate: 1,
-          description: `Comisión de 0.15% por pago a ${creditCard.name}`,
+          description: `Comisión de 0.20% por pago a ${creditCard.name}`,
           date: getLocalDateString(),
           notes: null,
           is_recurring: false,
@@ -3014,7 +3014,7 @@ export async function payCreditCard(payment: {
           currency: sourceCurrency,
           amount_base: commissionAmount,
           exchange_rate: 1,
-          description: `Comisión de 0.15% por pago a ${creditCard.name}`,
+          description: `Comisión de 0.20% por pago a ${creditCard.name}`,
           date: getLocalDateString(),
           notes: null,
           is_recurring: false,

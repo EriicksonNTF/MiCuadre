@@ -12,15 +12,6 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  Utensils,
-  Car,
-  Zap,
-  Film,
-  ShoppingBag,
-  Heart,
-  GraduationCap,
-  Plane,
-  MoreHorizontal,
   CalendarDays,
   AlertTriangle,
   Settings,
@@ -28,6 +19,8 @@ import {
   Pencil,
   Search,
   ChevronDown,
+  Lock,
+  Info,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -56,32 +49,6 @@ const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,
   debit: Building2,
   credit: CreditCard,
-}
-
-const categoryIcons: Record<string, typeof Utensils> = {
-  food: Utensils,
-  transport: Car,
-  utilities: Zap,
-  entertainment: Film,
-  shopping: ShoppingBag,
-  health: Heart,
-  education: GraduationCap,
-  travel: Plane,
-  income: TrendingUp,
-  other: MoreHorizontal,
-}
-
-const categoryColors: Record<string, string> = {
-  food: "bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400",
-  transport: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-  utilities: "bg-yellow-100/30 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
-  entertainment: "bg-purple-100/30 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-  shopping: "bg-pink-100/30 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
-  health: "bg-red-100/30 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-  education: "bg-indigo-100/30 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
-  travel: "bg-cyan-100/30 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400",
-  income: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
-  other: "bg-muted/50 text-muted-foreground",
 }
 
 const DETAIL_ICON_PRESETS = [
@@ -219,33 +186,13 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const account = accounts.find((a) => a.id === accountId)
   const hasUsdOnCard = Boolean(account && (Number(account.creditLimitUsd || 0) > 0 || Number(account.currentDebtUsd || 0) > 0 || Number(account.statementUsd || 0) > 0))
 
-  const nameToSlug: Record<string, string> = {
-    'Comida': 'food',
-    'Transporte': 'transport',
-    'Entretenimiento': 'entertainment',
-    'Compras': 'shopping',
-    'Servicios': 'utilities',
-    'Salud': 'health',
-    'Educacion': 'education',
-    'Hogar': 'other',
-    'Supermercado': 'shopping',
-    'Suscripciones': 'utilities',
-    'Otros Gastos': 'other',
-    'Salario': 'income',
-    'Freelance': 'income',
-    'Inversiones': 'income',
-    'Regalos': 'other',
-    'Reembolsos': 'income',
-    'Otros Ingresos': 'income',
-  }
-
   const transactions = useMemo(() => {
     return rawTransactions.map(tx => ({
       id: tx.id,
       accountId: tx.account_id,
       categoryId: tx.category_id,
       title: tx.description || "Sin descripción",
-      category: nameToSlug[tx.category?.name || ""] || "other",
+      category: tx.category?.icon || "other",
       amount: tx.amount,
       currency: tx.currency,
       type: tx.type,
@@ -584,6 +531,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   }
 
   const isCredit = account.type === "credit"
+  const cardHasBalance = isCredit && (Number(account.currentDebt) > 0 || Number(account.currentDebtDop) > 0 || Number(account.currentDebtUsd) > 0)
   const rawAccount = rawAccounts.find((a) => a.id === accountId)
   const brandingDefaults = getAccountBrandingDefaults(account.type)
   const headerPrimary = rawAccount?.primary_color || brandingDefaults.primaryColor
@@ -700,16 +648,41 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     </div>}
                   </div>
                   <div>
-                    <label htmlFor="account-closing-date" className="text-xs font-medium text-muted-foreground">Día de corte</label>
+                    <label htmlFor="account-closing-date" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      Día de corte
+                      {cardHasBalance && <Lock className="h-3 w-3" />}
+                    </label>
                     <input
                       id="account-closing-date"
                       type="text"
                       inputMode="numeric"
                       value={editForm.closing_date}
                       onChange={(e) => setEditForm({ ...editForm, closing_date: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })}
-                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none"
+                      disabled={cardHasBalance}
+                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none disabled:opacity-50"
                     />
                   </div>
+                  <div>
+                    <label htmlFor="account-due-date" className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      Día de pago
+                      {cardHasBalance && <Lock className="h-3 w-3" />}
+                    </label>
+                    <input
+                      id="account-due-date"
+                      type="text"
+                      inputMode="numeric"
+                      value={editForm.due_date}
+                      onChange={(e) => setEditForm({ ...editForm, due_date: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })}
+                      disabled={cardHasBalance}
+                      className="mt-1 w-full rounded-xl bg-muted p-3 text-sm text-foreground outline-none disabled:opacity-50"
+                    />
+                  </div>
+                  {cardHasBalance && (
+                    <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Info className="h-3 w-3 shrink-0" />
+                      El corte y pago no se pueden cambiar mientras la tarjeta tenga balance pendiente.
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground">Fecha de pago automática: corte + 20 días.</p>
                 </>
               )}
@@ -1271,7 +1244,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                     {conversionAppliesPay && sourceCurrency ? (
                       <p className="flex justify-between text-xs text-muted-foreground"><span>Total a descontar (sin DGII)</span><span>{formatCurrency(sourceDebitAmount, sourceCurrency)}</span></p>
                     ) : null}
-                    <p className="flex justify-between text-xs"><span className="text-muted-foreground">Impuesto DGII 0.15%</span><span className="text-amber-500">{formatCurrency(dgiiAmountPay, sourceCurrency || paymentCurrency)}</span></p>
+                    <p className="flex justify-between text-xs"><span className="text-muted-foreground">Impuesto DGII 0.20%</span><span className="text-amber-500">{formatCurrency(dgiiAmountPay, sourceCurrency || paymentCurrency)}</span></p>
                     <p className="flex justify-between border-t border-border pt-1 font-semibold"><span>Total a debitar</span><span>{formatCurrency(totalDebitPay, sourceCurrency || paymentCurrency)}</span></p>
                   </div>
                 </div>

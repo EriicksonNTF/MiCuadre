@@ -110,7 +110,7 @@ export default function SendPage() {
   const selectedBeneficiary = beneficiaries.find(b => b.id === selectedRecipient)
   const parsedAmount = parseFloat(amount.replace(/[^0-9.]/g, "")) || 0
   const availableBalance = selectedSourceAccount?.balance || 0
-  const commissionAmount = applyCommission ? Math.round(parsedAmount * 0.15) / 100 : 0
+  const commissionAmount = applyCommission ? Math.round(parsedAmount * 0.20) / 100 : 0
   const totalAmount = parsedAmount + commissionAmount
   const exceedsBalance = totalAmount > availableBalance
 
@@ -359,7 +359,7 @@ export default function SendPage() {
                   applyCommission ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                 )}
               >
-                Comisión 0.15%
+                Comisión 0.20%
               </button>
               {applyCommission && parsedAmount > 0 && (
                 <p className="mt-1 text-xs text-muted-foreground">

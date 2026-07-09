@@ -38,7 +38,7 @@ export function ConfirmPaymentSheet({ amount, taxAmount = 0, totalDebit, currenc
           </div>
           <div className="border-t border-border px-5 py-4">
             {taxAmount > 0 ? (
-              <div className="flex items-center justify-between gap-4"><p className="text-base text-foreground">Impuesto DGII 0.15%</p><p className="font-semibold text-foreground">{sym} {formatAmount(taxAmount)}</p></div>
+              <div className="flex items-center justify-between gap-4"><p className="text-base text-foreground">Impuesto DGII 0.20%</p><p className="font-semibold text-foreground">{sym} {formatAmount(taxAmount)}</p></div>
             ) : null}
             <div className={taxAmount > 0 ? "mt-4 flex items-center justify-between gap-4" : "flex items-center justify-between gap-4"}>
               <p className="text-base font-semibold text-foreground">Total a debitar</p>

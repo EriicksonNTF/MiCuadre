@@ -3,67 +3,14 @@
 import {
   Banknote,
   Building2,
-  Car,
   CreditCard,
-  Film,
-  GraduationCap,
-  Heart,
-  MoreHorizontal,
   Pencil,
-  Plane,
-  ShoppingBag,
   Trash2,
-  TrendingUp,
-  Utensils,
-  Zap,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatCurrency } from "@/lib/data"
+import { categoryIcons, categoryColors } from "@/lib/category-icons"
 import type { AccountType } from "@/lib/types/database"
-
-/* ──────────────────────────────────────────────────────────
-   CATEGORY MAPPING — single source of truth for all modules
-   ────────────────────────────────────────────────────────── */
-
-const categoryIcons: Record<string, typeof Utensils> = {
-  food: Utensils,
-  utensils: Utensils,
-  transport: Car,
-  car: Car,
-  utilities: Zap,
-  zap: Zap,
-  entertainment: Film,
-  film: Film,
-  shopping: ShoppingBag,
-  "shopping-bag": ShoppingBag,
-  health: Heart,
-  heart: Heart,
-  education: GraduationCap,
-  book: GraduationCap,
-  travel: Plane,
-  income: TrendingUp,
-  "trending-up": TrendingUp,
-  other: MoreHorizontal,
-  circle: MoreHorizontal,
-  "plus-circle": TrendingUp,
-  "minus-circle": MoreHorizontal,
-  briefcase: MoreHorizontal,
-  laptop: MoreHorizontal,
-  home: MoreHorizontal,
-}
-
-const categoryColors: Record<string, string> = {
-  food: "bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400",
-  transport: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-  utilities: "bg-yellow-100/30 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
-  entertainment: "bg-purple-100/30 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-  shopping: "bg-pink-100/30 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400",
-  health: "bg-red-100/30 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-  education: "bg-indigo-100/30 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400",
-  travel: "bg-cyan-100/30 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400",
-  income: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400",
-  other: "bg-muted/50 text-muted-foreground",
-}
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
   cash: Banknote,

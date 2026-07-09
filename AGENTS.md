@@ -585,3 +585,69 @@ npm run audit:visual-deep  # Deep form audit (modals/sheets/drawers)
 - Light: background–foreground 18.06:1 ✅
 - Dark: background–foreground 18.09:1 ✅
 - Sin cambios necesarios
+
+---
+
+## 14. ERRATA Y LECCIONES APRENDIDAS (HISTORIAL DE CORRECCIONES)
+
+### 14.1 `update_transaction_safe` — columna `description` faltante en SELECT (jul 2026)
+
+**Síntoma:** Al pagar tarjeta de crédito, error `42703: column "description" does not exist` en el bucle de crédito de `update_transaction_safe`.
+
+**Causa raíz:** La subconsulta `SELECT ... INTO v_ptx` dentro del loop `FOR v_tx IN ... LOOP` no incluía la columna `description`, pero `_record_ledger_entry(..., v_ptx.description, ...)` la requiere.
+
+**Fix:** Añadir `description` a la lista de columnas en `SELECT INTO v_ptx`.
+
+**Lección:** Cada vez que se agregue un parámetro a `_record_ledger_entry`, verificar que todas las llamadas en triggers/funciones existentes lo estén pasando.
+
+### 14.2 Date shift en `EditTransactionSheet` (jul 2026)
+
+**Síntoma:** Al editar una transacción, la fecha se desplazaba un día atrás. Ej: 2026-07-09 se mostraba como 2026-07-08.
+
+**Causa raíz:** `new Date(transaction.date)` interpreta `"2026-07-09"` como UTC midnight (`2026-07-09T00:00:00Z`). Al convertirlo a zona horaria local de República Dominicana (UTC-4), se convierte a `2026-07-08T20:00:00`, desplazando la fecha visible un día atrás.
+
+**Fix:** `new Date(\`${transaction.date}T12:00:00\`)` — forzando el mediodía UTC para evitar el cruce de medianoche.
+
+**Lección:** En husos horarios negativos (UTC-4, UTC-5, etc.), `new Date("YYYY-MM-DD")` siempre desplaza un día antes. Usar siempre `T12:00:00` al construir Dates desde fechas ISO.
+
+### 14.3 Amount field sin estilo consistente (jul 2026)
+
+**Síntoma:** El campo "Monto" en `EditTransactionSheet` aparecía sin bordes/bg, mientras "Descripción" sí los tenía.
+
+**Causa raíz:** `MoneyInput` se renderizaba sin wrapper, mientras `Input` usaba `rounded-xl border border-border bg-background`.
+
+**Fix:** Envolver `MoneyInput` en un `div` con `rounded-xl border border-border bg-background px-4 py-3 focus-within:border-primary/40`.
+
+**Lección:** `MoneyInput` no incluye estilos de borde/fondo por defecto. Siempre debe envolverse igual que los otros inputs del formulario.
+
+### 14.4 Rediseño "Resumen de tarjeta" — redundancias y layout (jul 2026)
+
+**Problemas detectados y corregidos en `account-detail.tsx`:**
+- **"Balance actual" era redundante** con "Deuda actual" en el hero section. Se eliminó del resumen.
+- **"Pagar antes del" era redundante** con la fecha de pago en el footer del hero card. Se eliminó del resumen.
+- **Layout de 2 cards side-by-side** cambiado a **1 card unificado** con **grid de 4 columnas**: Pendiente (pending), Compras (statement_balance), Mínimo (minimum_payment), Financiado (financed_balance).
+- **Se agregaron dos métricas nuevas** que antes no se mostraban: "Compras del período" (último corte) y "Financiado" (balance que genera intereses).
+- **Badge "Corte y pago" → "Ciclo"** por claridad.
+
+### 14.5 Cutoff date protection — deshabilitar edición de fechas con balance (jul 2026)
+
+**Problema:** Se podían editar las fechas de corte y pago de una tarjeta aunque ya tuviera movimientos registrados, lo que podía desincronizar el ciclo.
+
+**Fix en `edit-credit-card-dialog.tsx`:**
+- Los campos de `closing_date` y `due_date` se deshabilitan cuando `currentDebt > 0`.
+- Se muestra un `Lock` icon y un mensaje explicativo: *"No puedes cambiar las fechas de corte y pago mientras la tarjeta tenga balance pendiente"*.
+
+### 14.6 Unified icon system — eliminación de maps duplicados (jul 2026)
+
+**Problema:** Tres componentes distintos (`transaction-row.tsx`, `account-detail.tsx`, `expense-form.tsx`) tenían sus propios `categoryIcons`/`categoryColors`/`nameToSlug`/`categoryUiByName` hardcodeados. Las categorías personalizadas siempre caían a `MoreHorizontal` porque el nombre no estaba en el mapa. Además, el campo `icon` de la DB se ignoraba completamente.
+
+**Solución:**
+1. Crear `lib/category-icons.ts` — mapa único que cubre las 18 claves seed de la DB, slugs legacy, y claves del expense form. Exporta `categoryIcons` (Record<string, LucideIcon>) y `categoryColors` (Record<string, string>).
+2. Los 3 componentes ahora importan desde `lib/category-icons` en lugar de tener sus propios maps.
+3. `history-screen.tsx` también eliminó su `nameToSlug` y ahora usa `tx.category?.icon` directamente.
+4. La resolución ahora es `categoryIcons[cat.icon]` — si alguien crea una categoría con icon `"car"`, obtiene el ícono correcto.
+
+**Reglas a futuro:**
+- No crear nuevos maps de íconos/colores por componente. Importar desde `@/lib/category-icons`.
+- Si se agrega una categoría seed nueva, agregar su clave a `lib/category-icons.ts`.
+- El campo `categories.icon` en la DB es la fuente de verdad. Los componentes no deben adivinar el ícono por nombre.

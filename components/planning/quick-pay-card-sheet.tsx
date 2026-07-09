@@ -141,7 +141,7 @@ export function QuickPayCardSheet({
               <p className="flex items-center justify-between"><span>Monto a pagar</span><span className="text-lg font-bold">{formatCurrency(amount, target.currency)}</span></p>
               {selectedSource ? <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><span>Disponible en origen</span><span>{formatCurrency(Number(selectedSource.balance || 0), selectedSource.currency)}</span></p> : null}
               {selectedSource && conversionApplies ? <p className="mt-1 flex items-center justify-between text-xs"><span className="text-muted-foreground">Total a debitar (sin DGII)</span><span>{formatCurrency(sourceDebitAmount, sourceCurrency)}</span></p> : null}
-              {dgiiAmount > 0 ? <p className="mt-1 flex items-center justify-between text-xs"><span className="text-muted-foreground">Impuesto DGII 0.15%</span><span className="text-amber-500">{formatCurrency(dgiiAmount, sourceCurrency)}</span></p> : null}
+              {dgiiAmount > 0 ? <p className="mt-1 flex items-center justify-between text-xs"><span className="text-muted-foreground">Impuesto DGII 0.20%</span><span className="text-amber-500">{formatCurrency(dgiiAmount, sourceCurrency)}</span></p> : null}
               <p className="mt-1 flex items-center justify-between text-lg font-bold"><span>Total a debitar</span><span>{formatCurrency(totalDebit, sourceCurrency)}</span></p>
               <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><span>Nuevo balance de tarjeta</span><span>{formatCurrency(Math.max(0, target.currentDebt - amount), target.currency)}</span></p>
             </article>

@@ -58,26 +58,6 @@ function formatTime(value: string, createdAt?: string) {
   return date.toLocaleTimeString("es-DO", { hour: "2-digit", minute: "2-digit" })
 }
 
-const nameToSlug: Record<string, string> = {
-  Comida: "food",
-  Transporte: "transport",
-  Entretenimiento: "entertainment",
-  Compras: "shopping",
-  Servicios: "utilities",
-  Salud: "health",
-  Educacion: "education",
-  Hogar: "other",
-  Supermercado: "shopping",
-  Suscripciones: "utilities",
-  "Otros Gastos": "other",
-  Salario: "income",
-  Freelance: "income",
-  Inversiones: "income",
-  Regalos: "other",
-  Reembolsos: "income",
-  "Otros Ingresos": "income",
-}
-
 export function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
@@ -116,7 +96,7 @@ export function HistoryScreen() {
         accountId: tx.account_id,
         categoryId: tx.category_id,
         title: tx.description || "Sin descripción",
-        category: nameToSlug[tx.category?.name || ""] || "other",
+        category: tx.category?.icon || "other",
         categoryName: tx.category?.name || "Sin categoría",
         amount: tx.amount,
         type: tx.type,

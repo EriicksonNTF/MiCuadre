@@ -4,23 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
-  Utensils,
-  Car,
-  ShoppingBag,
-  Zap,
-  Smartphone,
-  Home,
-  Film,
-  Heart,
-  GraduationCap,
-  Dumbbell,
-  Gift,
   MoreHorizontal,
   ChevronLeft,
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  Briefcase,
   Repeat,
   Plus,
 } from "lucide-react"
@@ -37,6 +25,7 @@ import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { useAccounts, useCategories, createFinancialSubscription, createTransaction, createCategory, useTransactions } from "@/hooks/use-data"
 
+import { categoryIcons, categoryColors } from "@/lib/category-icons"
 import { formatCurrency, getAvailableCredit, getAvailableCreditByCurrency, getCurrencySymbol } from "@/lib/data"
 import { getLocalDateString } from "@/lib/data"
 import { EventBus } from "@/lib/event-bus"
@@ -47,21 +36,7 @@ import { UpsellModal } from "@/components/entitlements/upsell-modal"
 import { useEntitlements } from "@/hooks/use-entitlements"
 import { createBlockedResponse } from "@/lib/entitlements/entitlement-copy"
 
-const categoryUiByName: Record<string, { icon: typeof MoreHorizontal; color: string }> = {
-  comida: { icon: Utensils, color: "bg-orange-100/30 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400" },
-  transporte: { icon: Car, color: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" },
-  compras: { icon: ShoppingBag, color: "bg-pink-100/30 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400" },
-  servicios: { icon: Zap, color: "bg-amber-100/30 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" },
-  celular: { icon: Smartphone, color: "bg-violet-100/30 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400" },
-  vivienda: { icon: Home, color: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" },
-  entretenimiento: { icon: Film, color: "bg-red-100/30 dark:bg-red-900/30 text-red-600 dark:text-red-400" },
-  salud: { icon: Heart, color: "bg-rose-100/30 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400" },
-  educacion: { icon: GraduationCap, color: "bg-indigo-100/30 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400" },
-  ejercicio: { icon: Dumbbell, color: "bg-teal-100/30 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400" },
-  regalos: { icon: Gift, color: "bg-amber-100/30 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" },
-  salario: { icon: Briefcase, color: "bg-emerald-100/30 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" },
-  freelance: { icon: TrendingUp, color: "bg-blue-100/30 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" },
-}
+
 
 type Currency = "DOP" | "USD"
 type TransactionType = "expense" | "income"
@@ -177,8 +152,9 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
     return dbCategories
       .filter((cat) => allowedTypes.includes(cat.type))
       .map((cat) => {
-        const ui = categoryUiByName[cat.name.toLowerCase()] || { icon: MoreHorizontal, color: "bg-muted/50 text-muted-foreground" }
-        return { id: cat.id, label: cat.name, icon: ui.icon, color: ui.color }
+        const Icon = categoryIcons[cat.icon] || MoreHorizontal
+        const colorClass = categoryColors[cat.icon] || "bg-muted/50 text-muted-foreground"
+        return { id: cat.id, label: cat.name, icon: Icon, color: colorClass }
       })
   }, [dbCategories, transactionType])
 
@@ -214,7 +190,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
     return isNaN(num) ? null : num
   }, [amount])
 
-  const commissionAmount = parsedAmount ? Math.round(parsedAmount * 0.15) / 100 : 0
+  const commissionAmount = parsedAmount ? Math.round(parsedAmount * 0.20) / 100 : 0
   const totalWithCommission = parsedAmount ? parsedAmount + (transactionType === "expense" && applyCommission ? commissionAmount : 0) : 0
 
   useEffect(() => {
@@ -442,7 +418,7 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
                   applyCommission ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground"
                 )}
               >
-                +0.15%
+                +0.20%
               </button>
             )}
           </div>
