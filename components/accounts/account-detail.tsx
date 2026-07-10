@@ -12,15 +12,15 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
-  CalendarDays,
   AlertTriangle,
   Settings,
   Trash2,
   Pencil,
-  Search,
-  ChevronDown,
   Lock,
   Info,
+  Search,
+  X,
+  SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -31,7 +31,6 @@ import { AccountCarouselSelector } from "@/components/ui/account-carousel-select
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { useAccounts, useTransactions, updateAccount, deleteAccount, getAccountDeletionImpact, payCreditCard, updateTransaction, deleteTransaction, calculateCreditCardPaymentAmounts, syncCreditAccountCycle } from "@/hooks/use-data"
-import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, formatDate, getAccountBrandingDefaults, getAvailableCredit, getCurrencySymbol, getLocalDateString, getReadableTextColor } from "@/lib/data"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { isReportableExpense, isReportableIncome } from "@/lib/transactions/reporting"
@@ -42,6 +41,8 @@ import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
 import { HoldToConfirmButton } from "@/components/ui/hold-to-confirm-button"
 import { EditTransactionSheet, TransactionRow, TransactionGroup } from "@/components/transactions"
 import type { TransactionRowData } from "@/components/transactions"
+import { FilterSlideUpShell, AccountFilterContent } from "@/components/filters"
+import type { AccountFilterValues } from "@/components/filters"
 import { useUndoDelete } from "@/hooks/use-undo-delete"
 
 
@@ -71,8 +72,6 @@ const DETAIL_COLOR_PRESETS = [
   { key: "neutral", name: "Neutral", primary: "#334155", secondary: "#64748b" },
 ]
 
-type DateRange = "week" | "month" | "all"
-
 interface AccountDetailProps {
   accountId: string
 }
@@ -81,8 +80,17 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [dateFilter, setDateFilter] = usePersistentState<DateRange>(`account:${accountId}:dateFilter`, "all")
   const [txQuery, setTxQuery] = useState("")
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date()
+    const from = new Date(now.getFullYear(), now.getMonth(), 1)
+    return getLocalDateString(from)
+  })
+  const [endDate, setEndDate] = useState(() => getLocalDateString(new Date()))
+  const [amountMin, setAmountMin] = useState("")
+  const [amountMax, setAmountMax] = useState("")
+  const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
   const [showPayment, setShowPayment] = useState(false)
   const [paymentCurrency, setPaymentCurrency] = useState<"DOP" | "USD">("DOP")
   const [paymentSource, setPaymentSource] = useState<string>("")
@@ -103,7 +111,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteImpact, setDeleteImpact] = useState<{ count: number; hasMovements: boolean } | null>(null)
-  const [showSummaryPeriodMenu, setShowSummaryPeriodMenu] = useState(false)
   const [editForm, setEditForm] = useState<{ 
     name: string
     type: AccountType
@@ -186,6 +193,16 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const account = accounts.find((a) => a.id === accountId)
   const hasUsdOnCard = Boolean(account && (Number(account.creditLimitUsd || 0) > 0 || Number(account.currentDebtUsd || 0) > 0 || Number(account.statementUsd || 0) > 0))
 
+  useEffect(() => {
+    if (!account) {
+      document.title = "Cuenta · MiCuadre"
+      return
+    }
+    const typeLabel: Record<string, string> = { cash: "Efectivo", debit: "Cuenta", credit: "Tarjeta" }
+    const prefix = typeLabel[account.type] || "Cuenta"
+    document.title = `${account.name} · ${prefix} · MiCuadre`
+  }, [account])
+
   const transactions = useMemo(() => {
     return rawTransactions.map(tx => ({
       id: tx.id,
@@ -205,26 +222,31 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
 
   const accountTransactions = useMemo(() => {
-    const now = new Date()
     return transactions.filter((tx) => {
       if (tx.accountId !== accountId) return false
-      if (dateFilter === "all") return true
-      const txDate = new Date(tx.rawDate)
-      if (dateFilter === "week") {
-        return now.getTime() - txDate.getTime() <= 7 * 24 * 60 * 60 * 1000
-      }
-      return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear()
+      const txDate = getLocalDateString(new Date(tx.rawDate))
+      if (startDate && txDate < startDate) return false
+      if (endDate && txDate > endDate) return false
+      return true
     }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  }, [accountId, dateFilter, transactions])
+  }, [accountId, startDate, endDate, transactions])
 
   const visibleTransactions = useMemo(() => {
     const query = txQuery.trim().toLowerCase()
-    if (!query) return accountTransactions
+    const min = amountMin ? parseFloat(amountMin) : 0
+    const max = amountMax ? parseFloat(amountMax) : Infinity
     return accountTransactions.filter((tx) => {
-      const amountText = String(tx.amount)
-      return tx.title.toLowerCase().includes(query) || tx.category.toLowerCase().includes(query) || amountText.includes(query)
+      if (query) {
+        const amountText = String(tx.amount)
+        const match = tx.title.toLowerCase().includes(query) || tx.category.toLowerCase().includes(query) || amountText.includes(query)
+        if (!match) return false
+      }
+      if (filterType !== "all" && tx.type !== filterType) return false
+      if (min > 0 && tx.amount < min) return false
+      if (max < Infinity && tx.amount > max) return false
+      return true
     })
-  }, [accountTransactions, txQuery])
+  }, [accountTransactions, txQuery, amountMin, amountMax, filterType])
 
   useEffect(() => {
     const closeOnOutside = (event: PointerEvent) => {
@@ -924,44 +946,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
 
       {/* Summary Section */}
       <div className="px-6 pt-6">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-foreground">Resumen del mes</h2>
-          <button
-            type="button"
-            onClick={() => setShowSummaryPeriodMenu((prev) => !prev)}
-            className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-[0.6875rem] font-medium text-muted-foreground"
-          >
-            <CalendarDays className="h-3.5 w-3.5" />
-            <span>{dateFilter === "week" ? "7 días" : dateFilter === "month" ? "Este mes" : "Todo"}</span>
-            <ChevronDown className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {showSummaryPeriodMenu && (
-          <div className="mt-2 flex justify-end">
-            <div className="w-36 overflow-hidden rounded-xl border border-border bg-card shadow-lg">
-              {[
-                { value: "week", label: "7 días" },
-                { value: "month", label: "Este mes" },
-                { value: "all", label: "Todo" },
-              ].map((option) => (
-                <button type="button"
-                  key={option.value}
-                  onClick={() => {
-                    setDateFilter(option.value as DateRange)
-                    setShowSummaryPeriodMenu(false)
-                  }}
-                  className={cn(
-                    "w-full px-3 py-2 text-left text-xs",
-                    dateFilter === option.value ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <h2 className="text-sm font-semibold text-foreground">Resumen del mes</h2>
 
         <div className="mt-3 grid grid-cols-2 rounded-[1.45rem] border border-border/60 bg-card/82 shadow-sm backdrop-blur">
           <div className="min-w-0 border-r border-border/60 px-3 py-3.5">
@@ -990,50 +975,64 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         </div>
       </div>
 
-      {/* Date Filter */}
+      {/* Search + Date + Filter */}
       <div className="mt-6 px-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Movimientos</h2>
-          <div className="flex gap-1 rounded-xl bg-card p-1">
-            {[
-              { value: "week", label: "7d" },
-              { value: "month", label: "Mes" },
-              { value: "all", label: "Todo" },
-            ].map((option) => (
-              <button type="button"
-                key={option.value}
-                onClick={() => setDateFilter(option.value as DateRange)}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                  dateFilter === option.value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground"
-                )}
-              >
-                {option.label}
+        </div>
+
+        <div className="mt-3 flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={txQuery}
+              onChange={(e) => setTxQuery(e.target.value)}
+              placeholder="Buscar..."
+              className="h-10 w-full rounded-xl border border-border/60 bg-card pl-9 pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/25"
+            />
+            {txQuery && (
+              <button type="button" onClick={() => setTxQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+                <X className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
-            ))}
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => setFilterModalOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+          </button>
         </div>
-        <div className="mt-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-[0.6875rem] font-semibold text-muted-foreground">
-          Desliza a la izquierda para editar o eliminar movimientos.
-        </div>
-        <div className="mt-3 flex items-center gap-2 rounded-2xl border border-border/60 bg-card/82 px-3 py-2.5 shadow-sm backdrop-blur">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <input
-            value={txQuery}
-            onChange={(e) => setTxQuery(e.target.value)}
-            placeholder="Buscar por nombre, categoría o monto"
-            className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          />
-        </div>
+
+        <FilterSlideUpShell<AccountFilterValues>
+          isOpen={filterModalOpen}
+          onClose={() => setFilterModalOpen(false)}
+          initialFilters={{
+            dateRange: { from: startDate, to: endDate },
+            amountMin,
+            amountMax,
+            filterType,
+          }}
+          onApply={(values) => {
+            setStartDate(values.dateRange.from)
+            setEndDate(values.dateRange.to)
+            setAmountMin(values.amountMin)
+            setAmountMax(values.amountMax)
+            setFilterType(values.filterType)
+          }}
+          title="Filtrar movimientos"
+        >
+          <AccountFilterContent accountType={account?.type} />
+        </FilterSlideUpShell>
 
         {/* Transaction List */}
         <div className="mt-4 flex flex-col gap-4">
           {groupedTransactions.length === 0 ? (
             <div className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                {txQuery.trim() ? "No hay resultados para tu búsqueda" : "No hay movimientos en esta cuenta"}
+                {txQuery.trim() || amountMin || amountMax || filterType !== "all" ? "No hay resultados para tu búsqueda" : "No hay movimientos en esta cuenta"}
               </p>
             </div>
           ) : (

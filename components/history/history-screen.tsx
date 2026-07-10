@@ -1,7 +1,7 @@
 "use client"
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, Search, SlidersHorizontal, TrendingDown, TrendingUp, X } from "lucide-react"
+import { Search, SlidersHorizontal, TrendingDown, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { notify } from "@/lib/notifications"
@@ -9,14 +9,14 @@ import { useAccounts, useTransactions } from "@/hooks/use-data"
 import { mutate } from "swr"
 import { EditTransactionSheet, TransactionRow, TransactionGroup } from "@/components/transactions"
 import type { TransactionRowData } from "@/components/transactions"
+import { FilterSlideUpShell, HistoryFilterContent } from "@/components/filters"
+import type { HistoryFilterValues } from "@/components/filters"
 import { useUndoDelete } from "@/hooks/use-undo-delete"
 import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { isExcludedFromRealIncome } from "@/lib/transactions/reporting"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import type { Transaction } from "@/lib/types/database"
-
-type DatePreset = "today" | "week" | "month" | "custom"
 
 type HistoryTx = {
   id: string
@@ -62,12 +62,17 @@ export function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const [accountFilter, setAccountFilter] = usePersistentState<string>("history:accountFilter:v2", "all")
-  const [datePreset, setDatePreset] = usePersistentState<DatePreset>("history:datePreset", "month")
-  const [startDate, setStartDate] = usePersistentState<string>("history:startDate", "")
-  const [endDate, setEndDate] = usePersistentState<string>("history:endDate", "")
-  const [showFilters, setShowFilters] = usePersistentState("history:showFilters:v2", false)
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
-  const [accountSearch, setAccountSearch] = useState("")
+  const initialMonthRange = useMemo(() => {
+    const now = new Date()
+    const from = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { start: getLocalDateString(from), end: getLocalDateString(now) }
+  }, [])
+  const [startDate, setStartDate] = usePersistentState<string>("history:startDate", initialMonthRange.start)
+  const [endDate, setEndDate] = usePersistentState<string>("history:endDate", initialMonthRange.end)
+  const [amountMin, setAmountMin] = useState("")
+  const [amountMax, setAmountMax] = useState("")
+  const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")
+  const [filterModalOpen, setFilterModalOpen] = useState(false)
 
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -114,39 +119,25 @@ export function HistoryScreen() {
   useEffect(() => {
     const closeOnOutside = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null
-      if (target?.closest("[data-tx-row='true']") || target?.closest("[data-account-menu='true']")) return
+      if (target?.closest("[data-tx-row='true']")) return
       setOpenSwipeId(null)
       setSwipeOffset(null)
-      setAccountMenuOpen(false)
     }
     document.addEventListener("pointerdown", closeOnOutside)
     return () => document.removeEventListener("pointerdown", closeOnOutside)
   }, [])
 
-  const applyPreset = (preset: DatePreset) => {
-    const today = new Date()
-    const end = getLocalDateString(today)
-    if (preset === "today") { setStartDate(end); setEndDate(end); return }
-    if (preset === "week") {
-      const start = new Date(today); start.setDate(today.getDate() - 6)
-      setStartDate(getLocalDateString(start)); setEndDate(end); return
-    }
-    if (preset === "month") {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1)
-      setStartDate(getLocalDateString(start)); setEndDate(end)
-    }
-  }
-
-  useEffect(() => {
-    if (datePreset !== "custom") applyPreset(datePreset)
-  }, [datePreset])
-
   const filteredTransactions = useMemo(() => {
     const search = deferredSearchQuery.trim().toLowerCase()
+    const min = amountMin ? parseFloat(amountMin) : 0
+    const max = amountMax ? parseFloat(amountMax) : Infinity
     return transactions
       .filter((tx) => {
         if (search && !tx.title.toLowerCase().includes(search)) return false
         if (accountFilter !== "all" && tx.accountId !== accountFilter) return false
+        if (filterType !== "all" && tx.type !== filterType) return false
+        if (min > 0 && tx.amount < min) return false
+        if (max < Infinity && tx.amount > max) return false
         const txDate = getLocalDateString(parseTxDate(tx.date))
         if (startDate && txDate < startDate) return false
         if (endDate && txDate > endDate) return false
@@ -157,7 +148,7 @@ export function HistoryScreen() {
         if (byDate !== 0) return byDate
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       })
-  }, [transactions, deferredSearchQuery, accountFilter, startDate, endDate])
+  }, [transactions, deferredSearchQuery, accountFilter, startDate, endDate, amountMin, amountMax, filterType])
 
   const groupedTransactions = useMemo(() => {
     const groups = new Map<string, { label: string; date: Date; items: HistoryTx[] }>()
@@ -204,9 +195,6 @@ export function HistoryScreen() {
       notify({ title: "Error", message: "No se pudo eliminar la transacción." })
     }
   }
-
-  const selectedAccountLabel = accountFilter === "all" ? "Todas" : accounts.find((a) => a.id === accountFilter)?.name || "Todas"
-  const filteredAccounts = accounts.filter((account) => account.name.toLowerCase().includes(accountSearch.toLowerCase().trim()))
 
   const makeSwipeHandlers = (txId: string) => ({
     isOpen: openSwipeId === txId,
@@ -289,82 +277,36 @@ export function HistoryScreen() {
             )}
           </div>
           <button type="button"
-            onClick={() => setShowFilters(!showFilters)}
-            className={cn("tap-lift flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-colors", showFilters ? "bg-primary text-primary-foreground shadow-[var(--shadow-lift)]" : "bg-card/78 text-foreground ring-1 ring-border/60")}
+            onClick={() => setFilterModalOpen(true)}
+            className={cn("tap-lift flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-colors shrink-0", "bg-card/78 text-foreground ring-1 ring-border/60")}
           >
             <SlidersHorizontal className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {showFilters && (
-        <div className="mx-6 mt-4 flex flex-col gap-4 rounded-[1.45rem] border border-border/60 bg-card/76 p-4 shadow-sm backdrop-blur">
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Fecha</p>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { value: "today", label: "Hoy" },
-                { value: "week", label: "Esta semana" },
-                { value: "month", label: "Este mes" },
-                { value: "custom", label: "Personalizado" },
-              ].map((option) => (
-                <button type="button"
-                  key={option.value}
-                  onClick={() => setDatePreset(option.value as DatePreset)}
-                  className={cn("tap-lift rounded-xl px-2 py-2 text-[0.6875rem] font-bold transition-colors", datePreset === option.value ? "bg-primary text-primary-foreground" : "bg-background/70 text-foreground")}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <input type="date" value={startDate} onChange={(e) => { setDatePreset("custom"); setStartDate(e.target.value) }} className="h-11 rounded-xl border border-input bg-card px-3 text-sm" />
-              <input type="date" value={endDate} onChange={(e) => { setDatePreset("custom"); setEndDate(e.target.value) }} className="h-11 rounded-xl border border-input bg-card px-3 text-sm" />
-            </div>
-          </div>
-
-          <div className="relative" data-account-menu="true">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Cuenta</p>
-            <button type="button"
-              onClick={() => setAccountMenuOpen((prev) => !prev)}
-              className="flex h-11 w-full items-center justify-between rounded-xl border border-input bg-card px-3 text-sm"
-            >
-              <span className="text-reflow-1">{selectedAccountLabel}</span>
-              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", accountMenuOpen && "rotate-180")} />
-            </button>
-            {accountMenuOpen && (
-              <div className="absolute z-20 mt-2 w-full rounded-xl border border-border bg-popover p-2 shadow-lg">
-                <div className="relative mb-2">
-                  <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={accountSearch}
-                    onChange={(e) => setAccountSearch(e.target.value)}
-                    placeholder="Buscar cuenta..."
-                    className="h-9 w-full rounded-lg border border-input bg-background pl-7 pr-2 text-xs"
-                  />
-                </div>
-                <div className="max-h-44 flex flex-col gap-1 overflow-y-auto">
-                  <button type="button"
-                    onClick={() => { setAccountFilter("all"); setAccountMenuOpen(false) }}
-                    className={cn("w-full rounded-lg px-2 py-2 text-left text-xs", accountFilter === "all" ? "bg-primary/10 text-primary" : "hover:bg-muted")}
-                  >
-                    Todas
-                  </button>
-                  {filteredAccounts.map((account) => (
-                    <button type="button"
-                      key={account.id}
-                      onClick={() => { setAccountFilter(account.id); setAccountMenuOpen(false) }}
-                      className={cn("w-full rounded-lg px-2 py-2 text-left text-xs", accountFilter === account.id ? "bg-primary/10 text-primary" : "hover:bg-muted")}
-                    >
-                      {account.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <FilterSlideUpShell<HistoryFilterValues>
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        initialFilters={{
+          dateRange: { from: startDate, to: endDate },
+          amountMin,
+          amountMax,
+          filterType,
+          accountId: accountFilter,
+        }}
+        onApply={(values) => {
+          setStartDate(values.dateRange.from)
+          setEndDate(values.dateRange.to)
+          setAmountMin(values.amountMin)
+          setAmountMax(values.amountMax)
+          setFilterType(values.filterType)
+          setAccountFilter(values.accountId)
+        }}
+        title="Filtrar historial"
+      >
+        <HistoryFilterContent accounts={accounts} />
+      </FilterSlideUpShell>
 
       <div className="mt-6 px-6">
         <div className="flex items-center justify-between">
