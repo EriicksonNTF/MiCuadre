@@ -62,13 +62,14 @@ export function HistoryScreen() {
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const [accountFilter, setAccountFilter] = usePersistentState<string>("history:accountFilter:v2", "all")
-  const initialMonthRange = useMemo(() => {
+  const [startDate, setStartDate] = useState(() => {
     const now = new Date()
-    const from = new Date(now.getFullYear(), now.getMonth(), 1)
-    return { start: getLocalDateString(from), end: getLocalDateString(now) }
-  }, [])
-  const [startDate, setStartDate] = usePersistentState<string>("history:startDate", initialMonthRange.start)
-  const [endDate, setEndDate] = usePersistentState<string>("history:endDate", initialMonthRange.end)
+    return getLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1))
+  })
+  const [endDate, setEndDate] = useState(() => {
+    const now = new Date()
+    return getLocalDateString(new Date(now.getFullYear(), now.getMonth() + 1, 1))
+  })
   const [amountMin, setAmountMin] = useState("")
   const [amountMax, setAmountMax] = useState("")
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")

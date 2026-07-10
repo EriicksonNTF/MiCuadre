@@ -651,3 +651,36 @@ npm run audit:visual-deep  # Deep form audit (modals/sheets/drawers)
 - No crear nuevos maps de íconos/colores por componente. Importar desde `@/lib/category-icons`.
 - Si se agrega una categoría seed nueva, agregar su clave a `lib/category-icons.ts`.
 - El campo `categories.icon` en la DB es la fuente de verdad. Los componentes no deben adivinar el ícono por nombre.
+
+---
+
+## 15. MEJORAS DE FILTROS (HISTORY SCREEN) — 10 JUL 2026
+
+### Cambios aplicados en `history-screen.tsx`, `history-filter-content.tsx`, `account-filter-content.tsx`
+
+### 15.1 Reubicación del buscador
+El input de búsqueda ("Buscar transacciones...") ya estaba en la vista principal de `history-screen.tsx`, al lado del botón de filtros. No se movió nada — solo se confirmó que no hay búsqueda dentro del Bottom Sheet.
+
+### 15.2 Eliminación de botones de rango rápido
+Se eliminó toda la lógica de `DatePreset` (Hoy, 7d, Mes, Todo, Personalizado) que existía en la versión anterior del filtro inline. El Bottom Sheet solo tiene calendario popover para selección manual de fechas.
+
+### 15.3 Rolling 1-month window
+- **Antes:** El rango por defecto era `1ro del mes actual → hoy`.
+- **Ahora:** El rango por defecto es `1ro del mes actual → 1ro del mes siguiente`.
+- Se calcula con:
+  ```typescript
+  const from = new Date(now.getFullYear(), now.getMonth(), 1)
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  ```
+- `startDate` y `endDate` usan `useState` (no `usePersistentState`) para que siempre se reinicien al rango del mes actual al cargar la página.
+- El usuario puede sobrescribir el rango manualmente desde el Bottom Sheet si necesita salirse del default.
+
+### 15.4 Estilos modernizados
+- Todos los inputs (fecha, monto, cuenta) ahora usan `rounded-2xl border border-border` en lugar de `rounded-xl border border-input`.
+- Se eliminaron las constantes `HISTORY_FILTER_DEFAULTS` y `ACCOUNT_FILTER_DEFAULTS` (no se usaban en ningún lado).
+
+### Archivos modificados
+- `components/history/history-screen.tsx`
+- `components/filters/history-filter-content.tsx`
+- `components/filters/account-filter-content.tsx`
+- `components/filters/index.ts`

@@ -22,17 +22,11 @@ const TYPE_OPTIONS = [
   { value: "expense", label: "Gasto" },
 ] as const
 
-function getDefaultMonthRange() {
+function getDefaultMonthRange(): AccountFilterValues["dateRange"] {
   const now = new Date()
   const from = new Date(now.getFullYear(), now.getMonth(), 1)
-  return { from: from.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) }
-}
-
-export const ACCOUNT_FILTER_DEFAULTS: AccountFilterValues = {
-  dateRange: getDefaultMonthRange(),
-  amountMin: "",
-  amountMax: "",
-  filterType: "all",
+  const to = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  return { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) }
 }
 
 interface AccountFilterContentProps {
@@ -72,7 +66,7 @@ export function AccountFilterContent({ filters: _filters, setFilters: _setFilter
           <Popover open={fromOpen} onOpenChange={setFromOpen}>
             <PopoverTrigger asChild>
               <button type="button" className={cn(
-                "flex h-11 items-center gap-2 rounded-xl border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50",
+                "flex h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50",
                 !fromDate && "text-muted-foreground"
               )}>
                 <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -97,7 +91,7 @@ export function AccountFilterContent({ filters: _filters, setFilters: _setFilter
           <Popover open={toOpen} onOpenChange={setToOpen}>
             <PopoverTrigger asChild>
               <button type="button" className={cn(
-                "flex h-11 items-center gap-2 rounded-xl border border-input bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50",
+                "flex h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50",
                 !toDate && "text-muted-foreground"
               )}>
                 <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -131,7 +125,7 @@ export function AccountFilterContent({ filters: _filters, setFilters: _setFilter
               value={filters.amountMin}
               onChange={(e) => update("amountMin", e.target.value)}
               placeholder="RD$ 0"
-              className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
+              className="h-10 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
             />
           </div>
           <div>
@@ -142,7 +136,7 @@ export function AccountFilterContent({ filters: _filters, setFilters: _setFilter
               value={filters.amountMax}
               onChange={(e) => update("amountMax", e.target.value)}
               placeholder="RD$ 0"
-              className="h-10 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
+              className="h-10 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground"
             />
           </div>
         </div>
