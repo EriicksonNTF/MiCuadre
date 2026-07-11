@@ -72,6 +72,12 @@ const DETAIL_COLOR_PRESETS = [
   { key: "neutral", name: "Neutral", primary: "#334155", secondary: "#64748b" },
 ]
 
+function parseTxDate(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T12:00:00`)
+  const parsed = new Date(value)
+  return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
+}
+
 interface AccountDetailProps {
   accountId: string
 }
@@ -224,7 +230,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const accountTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       if (tx.accountId !== accountId) return false
-      const txDate = getLocalDateString(new Date(tx.rawDate))
+      const txDate = getLocalDateString(parseTxDate(tx.rawDate))
       if (startDate && txDate < startDate) return false
       if (endDate && txDate > endDate) return false
       return true
@@ -260,11 +266,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     return () => document.removeEventListener("pointerdown", closeOnOutside)
   }, [])
 
-  const parseTxDate = (value: string) => {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return new Date(`${value}T12:00:00`)
-    const parsed = new Date(value)
-    return Number.isNaN(parsed.getTime()) ? new Date(`${getLocalDateString()}T12:00:00`) : parsed
-  }
+
 
   const groupedTransactions = useMemo(() => {
     const groups: Record<string, { label: string; date: Date; items: typeof visibleTransactions }> = {}
@@ -1021,6 +1023,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             setAmountMin(values.amountMin)
             setAmountMax(values.amountMax)
             setFilterType(values.filterType)
+            setFilterModalOpen(false)
           }}
           title="Filtrar movimientos"
         >

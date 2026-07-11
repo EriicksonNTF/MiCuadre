@@ -807,25 +807,35 @@ export async function syncAccountBalance(accountId: string, currency?: string) {
     .select("id, type, currency")
     .eq("id", accountId)
     .single()
-  if (!account) return
+  if (!account) {
+    console.error(`[syncAccountBalance] Account ${accountId} not found — skipping balance sync`)
+    return
+  }
 
-  const { data: ledgerBalance } = await supabase.rpc("ledger_calc_balance", { p_account_id: accountId })
-  if (ledgerBalance === null || ledgerBalance === undefined) return
+  const { data: ledgerBalance, error: rpcError } = await supabase.rpc("ledger_calc_balance", { p_account_id: accountId })
+  if (rpcError || ledgerBalance === null || ledgerBalance === undefined) {
+    console.error(`[syncAccountBalance] Failed to get ledger balance for ${accountId}:`, rpcError || "null result")
+    return
+  }
 
   const ledgerSum = Number(ledgerBalance)
   if (account.type === "credit") {
     const cur = (currency || account.currency || "DOP") as "DOP" | "USD"
     const debtField = cur === "USD" ? "current_debt_usd" : "current_debt_dop"
-    await supabase.from("accounts").update({
+    const { error: updateError } = await supabase.from("accounts").update({
       [debtField]: Math.max(0, ledgerSum),
       current_debt: Math.max(0, ledgerSum),
     }).eq("id", accountId)
+    if (updateError) {
+      console.error(`[syncAccountBalance] Update failed for credit account ${accountId}:`, updateError)
+    }
   } else {
-    // Non-credit: ledger_calc_balance returns the cumulative balance
-    // (initial balance + all income - all expenses). Use it directly.
-    await supabase.from("accounts").update({
+    const { error: updateError } = await supabase.from("accounts").update({
       balance: Math.max(0, ledgerSum),
     }).eq("id", accountId)
+    if (updateError) {
+      console.error(`[syncAccountBalance] Update failed for account ${accountId}:`, updateError)
+    }
   }
 }
 
@@ -1481,7 +1491,7 @@ export async function createTransaction(
 
   // -- Validation: date --
   if (transaction.date) {
-    const txDate = new Date(transaction.date)
+    const txDate = toDateOnly(transaction.date)
     const today = new Date()
     today.setHours(23, 59, 59, 999)
     if (txDate > today) {
@@ -3033,6 +3043,12 @@ export async function payCreditCard(payment: {
 
     await syncCreditAccountCycle(payment.credit_account_id)
 
+    const ledger = LedgerService.create()
+    await ledger.recordCreditPayment(user.id, payment.source_account_id, payment.credit_account_id, sourceDebitAmount, payment.currency, paymentRecordId || undefined)
+    if (commissionAmount > 0) {
+      await ledger.recordCommission(user.id, payment.source_account_id, commissionAmount, sourceCurrency, "Comisión DGII por pago de tarjeta")
+    }
+
     const totalPaid = applyCommission ? totalSourceDebit : sourceDebitAmount
     const commissionText = applyCommission && commissionAmount > 0
       ? ` (incluye ${sourceCurrency} ${commissionAmount.toFixed(2)} de comisión)`
@@ -3059,16 +3075,6 @@ export async function payCreditCard(payment: {
     await mutate("planning_debts")
     await mutate("planning_debt_payments_month")
     await mutate("planning_budgets_with_usage")
-
-    try {
-      const ledger = LedgerService.create()
-      await ledger.recordCreditPayment(user.id, payment.source_account_id, payment.credit_account_id, sourceDebitAmount, payment.currency, paymentRecordId || undefined)
-      if (commissionAmount > 0) {
-        await ledger.recordCommission(user.id, payment.source_account_id, commissionAmount, sourceCurrency, "Comisión DGII por pago de tarjeta")
-      }
-    } catch (e) {
-      console.error("Ledger write failed (non-blocking):", e)
-    }
 
     await syncAccountBalance(payment.source_account_id, sourceCurrency)
     await syncAccountBalance(payment.credit_account_id, payment.currency)

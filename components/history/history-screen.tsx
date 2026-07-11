@@ -66,10 +66,7 @@ export function HistoryScreen() {
     const now = new Date()
     return getLocalDateString(new Date(now.getFullYear(), now.getMonth(), 1))
   })
-  const [endDate, setEndDate] = useState(() => {
-    const now = new Date()
-    return getLocalDateString(new Date(now.getFullYear(), now.getMonth() + 1, 1))
-  })
+  const [endDate, setEndDate] = useState(() => getLocalDateString(new Date()))
   const [amountMin, setAmountMin] = useState("")
   const [amountMax, setAmountMax] = useState("")
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all")
@@ -303,6 +300,7 @@ export function HistoryScreen() {
           setAmountMax(values.amountMax)
           setFilterType(values.filterType)
           setAccountFilter(values.accountId)
+          setFilterModalOpen(false)
         }}
         title="Filtrar historial"
       >

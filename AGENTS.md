@@ -637,7 +637,31 @@ npm run audit:visual-deep  # Deep form audit (modals/sheets/drawers)
 - Los campos de `closing_date` y `due_date` se deshabilitan cuando `currentDebt > 0`.
 - Se muestra un `Lock` icon y un mensaje explicativo: *"No puedes cambiar las fechas de corte y pago mientras la tarjeta tenga balance pendiente"*.
 
-### 14.6 Unified icon system — eliminación de maps duplicados (jul 2026)
+### 14.7 `reconcile_account_balance` — función DB con lógica invertida (jul 2026)
+
+**Síntoma:** Las transacciones se creaban pero los balances de las cuentas no se actualizaban en el frontend. Discrepancias de hasta RD$123,123 en cuentas de crédito.
+
+**Causa raíz:** La función `reconcile_account_balance` en la BD tenía la lógica de SUM invertida: `debit=+amount, credit=-amount` en lugar de `credit=+amount, debit=-amount`. Además retornaba `NUMERIC` en vez de `JSONB` y no actualizaba `current_debt_*` para cuentas de crédito — solo `balance`.
+
+**Fix:** Se reemplazó la función completa con la versión correcta del migration `040_backfill_initial_balances.sql` que:
+1. Usa `credit=+amount, debit=-amount` en el SUM
+2. Retorna `JSONB` con metadatos de corrección
+3. Actualiza `current_debt_dop/usd` para cuentas de crédito
+4. Usa `GREATEST(..., 0)` para evitar balances negativos
+
+Además, se eliminó el `SECURITY DEFINER` sin `SET search_path` explícito en la versión anterior.
+
+### 14.8 `payCreditCard` — ledger no bloqueante (jul 2026)
+
+**Síntoma:** `payCreditCard` en `hooks/use-data.ts` tenía el ledger write envuelto en un try-catch interno que lo hacía no bloqueante (non-blocking). Si el ledger fallaba, el pago se consideraba exitoso pero los balances quedaban desincronizados.
+
+**Causa raíz:** El ledger write ocurría después de las mutaciones SWR y dentro de `try {} catch(e) { console.error }` sin re-throw. No había rollback.
+
+**Fix:** Se movió el ledger write ANTES de la notificación y mutaciones SWR, y se eliminó el try-catch interno. Si el ledger falla ahora, la excepción propaga al catch exterior que ejecuta rollback completo de todas las operaciones DB.
+
+**Lección:** Cualquier operación de ledger debe ser blocking dentro del mismo try-catch que las DB writes, no después.
+
+### 14.9 Unified icon system — eliminación de maps duplicados (jul 2026)
 
 **Problema:** Tres componentes distintos (`transaction-row.tsx`, `account-detail.tsx`, `expense-form.tsx`) tenían sus propios `categoryIcons`/`categoryColors`/`nameToSlug`/`categoryUiByName` hardcodeados. Las categorías personalizadas siempre caían a `MoreHorizontal` porque el nombre no estaba en el mapa. Además, el campo `icon` de la DB se ignoraba completamente.
 
@@ -654,6 +678,27 @@ npm run audit:visual-deep  # Deep form audit (modals/sheets/drawers)
 
 ---
 
+### 14.10 `syncAccountBalance` — errores silenciosos (jul 2026)
+
+**Síntoma:** Transacciones creadas exitosamente (visibles en history) pero el balance de la cuenta no se actualiza. Discrepancia general entre el registro de movimientos y el saldo mostrado.
+
+**Causa raíz:** `syncAccountBalance` en `hooks/use-data.ts:804-830` tenía 3 fallas de robustez:
+1. **Silent return** si el RPC `ledger_calc_balance` devolvía null/undefined — sin error log, sin update.
+2. **Update sin verificación** — `await supabase.from("accounts").update(...)` sin capturar `error`.
+3. **Sin logging** — imposible diagnosticar por qué falló la sincronización.
+
+Cualquier fallo transitorio (RPC timeout, error de permiso, restricción DB) causaba que el balance quedara desactualizado sin que nadie lo notara.
+
+**Fix:**
+1. Se captura `error` del RPC explícitamente.
+2. Se verifica `updateError` en ambos paths (crédito y débito).
+3. Se agregaron `console.error` con tag `[syncAccountBalance]` para diagnóstico.
+4. Se mantiene el patrón **best-effort** (no throw, solo log) para no romper el flujo transaccional — la UI se actualiza vía SWR mutate y el balance se corrige en la próxima operación.
+
+**Lección:** Toda función de sincronización debe (a) verificar errores de cada paso, (b) loguear fallos con contexto suficiente para debugging, (c) decidir entre fail-hard o best-effort según el impacto en la UX transaccional.
+
+---
+
 ## 15. MEJORAS DE FILTROS (HISTORY SCREEN) — 10 JUL 2026
 
 ### Cambios aplicados en `history-screen.tsx`, `history-filter-content.tsx`, `account-filter-content.tsx`
@@ -665,15 +710,15 @@ El input de búsqueda ("Buscar transacciones...") ya estaba en la vista principa
 Se eliminó toda la lógica de `DatePreset` (Hoy, 7d, Mes, Todo, Personalizado) que existía en la versión anterior del filtro inline. El Bottom Sheet solo tiene calendario popover para selección manual de fechas.
 
 ### 15.3 Rolling 1-month window
-- **Antes:** El rango por defecto era `1ro del mes actual → hoy`.
-- **Ahora:** El rango por defecto es `1ro del mes actual → 1ro del mes siguiente`.
+- **Rango por defecto:** `1ro del mes actual → hoy`.
 - Se calcula con:
   ```typescript
   const from = new Date(now.getFullYear(), now.getMonth(), 1)
-  const to = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const to = new Date() // hoy
   ```
 - `startDate` y `endDate` usan `useState` (no `usePersistentState`) para que siempre se reinicien al rango del mes actual al cargar la página.
 - El usuario puede sobrescribir el rango manualmente desde el Bottom Sheet si necesita salirse del default.
+- **⚠️ Historial de cambios:** Primero se había cambiado a `1ro del mes → 1ro del mes siguiente` (jul 10), pero se revirtió a `1ro del mes → hoy` porque el rango futuro causaba que transacciones recién creadas no aparecieran en la vista por defecto.
 
 ### 15.4 Estilos modernizados
 - Todos los inputs (fecha, monto, cuenta) ahora usan `rounded-2xl border border-border` en lugar de `rounded-xl border border-input`.
