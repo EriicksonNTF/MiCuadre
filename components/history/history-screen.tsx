@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { notify } from "@/lib/notifications"
 import { useAccounts, useTransactions } from "@/hooks/use-data"
-import { mutate } from "swr"
 import { EditTransactionSheet, TransactionRow, TransactionGroup } from "@/components/transactions"
 import type { TransactionRowData } from "@/components/transactions"
 import { FilterSlideUpShell, HistoryFilterContent } from "@/components/filters"
@@ -75,10 +74,7 @@ export function HistoryScreen() {
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const { pending: undoPending, deleteWithUndo, undo } = useUndoDelete(() => {
-    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-    mutate("accounts")
-  })
+  const { deleteWithUndo } = useUndoDelete()
 
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
@@ -365,7 +361,7 @@ export function HistoryScreen() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
             <h3 className="text-lg font-bold text-foreground">Eliminar transacción</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada. Puedes deshacerla dentro de los próximos 10 segundos.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
             <div className="mt-6 flex flex-col gap-2">
               <Button variant="destructive" onClick={confirmDelete} className="h-12 w-full">Confirmar eliminación</Button>
               <Button variant="outline" onClick={() => setDeletingId(null)} className="h-12 w-full">Cancelar</Button>
@@ -374,19 +370,7 @@ export function HistoryScreen() {
         </div>
       )}
 
-      {undoPending && (
-        <div className="fixed bottom-20 left-4 right-4 z-[110] animate-slide-up">
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-lg backdrop-blur-md">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Transacción eliminada</p>
-              <p className="text-xs text-muted-foreground">Deshacer en {undoPending.count}s</p>
-            </div>
-            <Button variant="default" size="sm" onClick={async () => { await undo() }} disabled={false} className="shrink-0">
-              Deshacer
-            </Button>
-          </div>
-        </div>
-      )}
+
     </MobilePageShell>
   )
 }

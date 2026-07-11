@@ -155,6 +155,7 @@ export function TransactionRow({
           type="button"
           aria-label="Editar transacción"
           onClick={actions!.onEdit}
+          onPointerDown={(e) => e.stopPropagation()}
           className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground"
         >
           <Pencil className="h-4 w-4" />
@@ -163,6 +164,7 @@ export function TransactionRow({
           type="button"
           aria-label="Eliminar transacción"
           onClick={actions!.onDelete}
+          onPointerDown={(e) => e.stopPropagation()}
           className="tap-lift flex h-10 w-10 items-center justify-center rounded-xl bg-destructive text-destructive-foreground"
         >
           <Trash2 className="h-4 w-4" />

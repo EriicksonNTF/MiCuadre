@@ -729,3 +729,79 @@ Se eliminó toda la lógica de `DatePreset` (Hoy, 7d, Mes, Todo, Personalizado) 
 - `components/filters/history-filter-content.tsx`
 - `components/filters/account-filter-content.tsx`
 - `components/filters/index.ts`
+
+---
+
+## 16. SlideUpModal — Componente de Bottom Sheet Universal (10 JUL 2026)
+
+### Propósito
+Reemplazar todos los drawers/bottom sheets/modal forms del proyecto con un único contenedor que usa `framer-motion` con animación spring (`damping: 28, stiffness: 300`) para lograr consistencia visual en todos los formularios emergentes.
+
+### Archivo
+`components/ui/slide-up-modal.tsx`
+
+### Props
+```typescript
+interface SlideUpModalProps {
+  isOpen: boolean
+  onClose: () => void
+  title: string
+  children: React.ReactNode
+  footer?: React.ReactNode   // Sticky footer con safe-area + nav clearance
+}
+```
+
+### Comportamiento
+| Acción | Resultado |
+|--------|-----------|
+| Botón X / Escape | Cierra sin guardar |
+| Click backdrop | Cierra sin guardar |
+| Confirmar (footer) | Procesa datos → cierra |
+| Body scroll | Se bloquea mientras `isOpen === true` |
+
+### 🔴 REGLA CRÍTICA: Posición en el DOM
+**NUNCA** renderizar `SlideUpModal` (ni ningún componente que lo use) dentro de `MobilePageShell`.
+
+El CSS keyframe de `.mobile-page` crea un **containing block** que rompe `position: fixed`. Los elementos fijos se posicionan relativos al `.mobile-page` en lugar del viewport, causando que el modal no cubra toda la pantalla y los botones queden ocultos detrás del bottom nav.
+
+✅ **Correcto:**
+```tsx
+return (
+  <>
+    <MobilePageShell>
+      {/ * contenido de página */ }
+    </MobilePageShell>
+
+    {/ * SlideUpModal SIEMPRE fuera del shell */ }
+    <SlideUpModal isOpen={...} onClose={...} title="...">
+      {children}
+    </SlideUpModal>
+  </>
+)
+```
+
+### Footer padding para bottom nav
+El footer debe incluir `+4.5rem` en el padding inferior para que los botones queden justo sobre el navbar sin espacios:
+
+```typescript
+pb-[calc(1.25rem+env(safe-area-inset-bottom)+4.5rem)]
+```
+
+Esto coincide exactamente con `h-[4.5rem]` del bottom nav. Misma convención que `FilterSlideUpShell`.
+
+### Uso con formularios existentes
+#### Con wizard multi-paso (AccountCreationWizard)
+- El `title` del SlideUpModal cambia dinámicamente según el paso actual
+- El botón "Atrás" y los step indicators van dentro del `children`
+- El botón de acción (Siguiente/Continuar/Guardar) va en el `footer`
+- `handleClose()` resetea el estado interno del wizard
+
+#### Con formulario directo (Transferir)
+- Reemplaza uno-a-uno a `BaseModalForm` manteniendo el mismo `footer` y `children`
+- `onClose` resetea el formulario y cierra; el `onConfirm` del PaymentSlider persiste y cierra
+
+### Archivos de referencia
+- `components/ui/slide-up-modal.tsx` — componente base
+- `components/accounts/accounts-screen.tsx` — integración con transfer (SlideUpModal directo) + AccountCreationWizard
+- `components/accounts/account-creation-wizard.tsx` — wizard multi-paso dentro de SlideUpModal
+- `components/filters/filter-slide-up-shell.tsx` — patrón similar (referencia de padding + animación)

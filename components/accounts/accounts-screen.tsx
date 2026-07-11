@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowRightLeft, ChevronDown, Pencil, Plus, Trash2, Calen
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { PaymentSlider } from "@/components/payment-slider"
-import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { SlideUpModal } from "@/components/ui/slide-up-modal"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
@@ -437,8 +437,6 @@ if (!draggedId) return
         </>
       )}
 
-      <AccountCreationWizard open={showCreateAccount} onOpenChange={setShowCreateAccount} />
-
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) { setConfirmDeleteId(null); setDeleteImpact(null) } }}>
         <AlertDialogContent className="max-w-sm p-0 gap-0" onCloseAutoFocus={(e) => { e.preventDefault() }}>
           <div className="p-5">
@@ -468,64 +466,65 @@ if (!draggedId) return
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </MobilePageShell>
 
-    {showTransfer && (
-      <BaseModalForm
-        title="Transferir dinero"
-        onClose={() => {
-          setShowTransfer(false)
-          resetTransferForm()
-        }}
-        footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || fromAccount === toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
-      >
-        <div className="space-y-5">
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
-            <AccountCarouselSelector
-              compact
-              items={accounts.filter((a) => a.type !== "credit").map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
-              selectedId={fromAccount}
-              onSelect={setFromAccount}
-            />
-          </div>
-          <div className="flex justify-center"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"><ChevronDown className="h-4 w-4 text-muted-foreground" /></div></div>
-          <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Hacia</p>
-                <AccountCarouselSelector
-                  compact
-                  items={accounts.filter((a) => a.type !== "credit" && a.id !== fromAccount).map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
-                  selectedId={toAccount}
-                  onSelect={setToAccount}
-                />
-          </div>
-          <div className="mobile-card p-4">
-            <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
-            <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-input-hero font-extrabold leading-none tabular-nums min-w-[100px]" />
-          </div>
-          <div className="flex justify-center">
-            <Popover open={transferDatePickerOpen} onOpenChange={setTransferDatePickerOpen}>
-              <PopoverTrigger asChild>
-                <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold text-foreground">{format(transferDate, "d MMM yyyy", { locale: es })}</span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="center">
-                <Calendar
-                  mode="single"
-                  selected={transferDate}
-                  onSelect={(d) => {
-                    if (!d) return
-                    setTransferDate(d)
-                    setTransferDatePickerOpen(false)
-                  }}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-          </div>
-        </BaseModalForm>
-    )}
+    <AccountCreationWizard open={showCreateAccount} onOpenChange={setShowCreateAccount} />
+
+    <SlideUpModal
+      isOpen={showTransfer}
+      onClose={() => {
+        setShowTransfer(false)
+        resetTransferForm()
+      }}
+      title="Transferir dinero"
+      footer={<PaymentSlider amount={parsedTransferAmount} currency={selectedFromAccount?.currency || "DOP"} recipientName={accounts.find((a) => a.id === toAccount)?.name || "la cuenta"} onConfirm={handleTransfer} disabled={!fromAccount || !toAccount || fromAccount === toAccount || parsedTransferAmount <= 0 || exceedsFromBalance || isTransferring} loading={isTransferring} label="Desliza para transferir" />}
+    >
+      <div className="space-y-5">
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Desde</p>
+          <AccountCarouselSelector
+            compact
+            items={accounts.filter((a) => a.type !== "credit").map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
+            selectedId={fromAccount}
+            onSelect={setFromAccount}
+          />
+        </div>
+        <div className="flex justify-center"><div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted"><ChevronDown className="h-4 w-4 text-muted-foreground" /></div></div>
+        <div>
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Hacia</p>
+              <AccountCarouselSelector
+                compact
+                items={accounts.filter((a) => a.type !== "credit" && a.id !== fromAccount).map((a) => ({ id: a.id, title: a.name, subtitle: formatCurrency(Number(a.balance || 0), a.currency), detail: a.currency }))}
+                selectedId={toAccount}
+                onSelect={setToAccount}
+              />
+        </div>
+        <div className="mobile-card p-4">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Monto</p>
+          <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-input-hero font-extrabold leading-none tabular-nums min-w-[100px]" />
+        </div>
+        <div className="flex justify-center">
+          <Popover open={transferDatePickerOpen} onOpenChange={setTransferDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-semibold text-foreground">{format(transferDate, "d MMM yyyy", { locale: es })}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={transferDate}
+                onSelect={(d) => {
+                  if (!d) return
+                  setTransferDate(d)
+                  setTransferDatePickerOpen(false)
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+    </SlideUpModal>
     </>
   )
 }

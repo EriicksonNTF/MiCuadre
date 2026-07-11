@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { ChevronLeft, Check } from "lucide-react"
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { SlideUpModal } from "@/components/ui/slide-up-modal"
 import { MoneyInput } from "@/components/ui/money-input"
 import { BrandedAccountCard } from "@/components/accounts/branded-account-card"
 import { BANK_LOGO_OPTIONS, getBankLogoByKey } from "@/lib/bank-branding"
@@ -291,237 +291,231 @@ export function AccountCreationWizard({ open, onOpenChange }: AccountCreationWiz
 
   return (
     <>
-      <Drawer open={open} onOpenChange={(open) => { if (!open) handleClose() }} direction="bottom">
-        <DrawerContent className="mx-auto flex max-h-[90dvh] max-w-md flex-col rounded-t-[2rem] border-border bg-card p-0 shadow-2xl ring-1 ring-border">
-          <DrawerHeader className="shrink-0 border-b border-border px-5 pb-4 pt-5">
-            <div className="flex items-center gap-3">
-              {state.step > 1 && (
-                <button type="button" onClick={handleBack} className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground" aria-label="Atrás">
-                  <ChevronLeft className="h-4 w-4" />
-                </button>
-              )}
-              <div className="flex-1">
-                <DrawerTitle className="text-left text-base">{stepTitles[state.step - 1]}</DrawerTitle>
+      <SlideUpModal
+        isOpen={open}
+        onClose={handleClose}
+        title={stepTitles[state.step - 1]}
+        footer={
+          state.step < 3 ? (
+            <button type="button" disabled={!canGoNext()} onClick={handleNext} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
+              {state.step === 1 ? "Siguiente" : "Continuar"}
+            </button>
+          ) : (
+            <button type="button" disabled={!state.name.trim() || isSaving} onClick={handleSave} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
+              {isSaving ? "Creando cuenta..." : "Guardar cuenta"}
+            </button>
+          )
+        }
+      >
+        {state.step > 1 && (
+          <div className="mb-4">
+            <button type="button" onClick={handleBack} className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground" aria-label="Atrás">
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+        <div className={cn("flex items-center gap-1.5", state.step > 1 ? "mb-5" : "mb-5")}>
+          {([1, 2, 3] as const).map((s) => (
+            <div key={s} className={cn(
+              "flex items-center gap-1.5",
+              s > 1 && "ml-1.5"
+            )}>
+              {s > 1 && <div className="h-px w-4 bg-border" />}
+              <div className={cn(
+                "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold",
+                s === state.step ? "bg-primary text-primary-foreground" : s < state.step ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+              )}>
+                {s < state.step ? <Check className="h-3 w-3" /> : s}
               </div>
+              <span className={cn("text-[11px] font-medium", s === state.step ? "text-foreground" : "text-muted-foreground")}>{stepLabels[s - 1]}</span>
             </div>
-            <div className="mt-3 flex items-center gap-1.5">
-              {([1, 2, 3] as const).map((s) => (
-                <div key={s} className={cn(
-                  "flex items-center gap-1.5",
-                  s > 1 && "ml-1.5"
-                )}>
-                  {s > 1 && <div className="h-px w-4 bg-border" />}
-                  <div className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold",
-                    s === state.step ? "bg-primary text-primary-foreground" : s < state.step ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
-                  )}>
-                    {s < state.step ? <Check className="h-3 w-3" /> : s}
-                  </div>
-                  <span className={cn("text-[11px] font-medium", s === state.step ? "text-foreground" : "text-muted-foreground")}>{stepLabels[s - 1]}</span>
-                </div>
-              ))}
-            </div>
-          </DrawerHeader>
+          ))}
+        </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
-            {state.step === 1 && (
-              <div className="grid grid-cols-2 gap-3">
+        {state.step === 1 && (
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={selectEfectivoQuick}
+              className="relative flex flex-col items-center gap-2.5 rounded-2xl p-4 text-white transition-all active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg, #0f766e, #14b8a6)" }}
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20 text-2xl">
+                💵
+              </div>
+              <span className="text-center text-[13px] font-bold leading-tight drop-shadow-sm">Efectivo</span>
+            </button>
+            {banks.map((bank) => {
+              const selected = state.bankKey === bank.key
+              return (
                 <button
+                  key={bank.key}
                   type="button"
-                  onClick={selectEfectivoQuick}
-                  className="relative flex flex-col items-center gap-2.5 rounded-2xl p-4 text-white transition-all active:scale-[0.98]"
-                  style={{ background: "linear-gradient(135deg, #0f766e, #14b8a6)" }}
-                >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20 text-2xl">
-                    💵
-                  </div>
-                  <span className="text-center text-[13px] font-bold leading-tight drop-shadow-sm">Efectivo</span>
-                </button>
-                {banks.map((bank) => {
-                  const selected = state.bankKey === bank.key
-                  return (
-                    <button
-                      key={bank.key}
-                      type="button"
-                      onClick={() => selectBank(bank.key)}
-                      className={cn(
-                        "group relative flex flex-col items-center gap-2.5 rounded-2xl p-4 text-white transition-all active:scale-[0.98]",
-                        selected && "ring-2 ring-foreground ring-offset-2 ring-offset-card"
-                      )}
-                      style={{ background: `linear-gradient(135deg, ${bank.primaryColor}, ${bank.secondaryColor})` }}
-                    >
-                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20">
-                        <img src={bank.logoUrl} alt={bank.name} className="h-8 w-auto object-contain" />
-                      </div>
-                      <span className="text-center text-[13px] font-bold leading-tight drop-shadow-sm">{bank.name}</span>
-                      {selected && (
-                        <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-foreground shadow-lg">
-                          <Check className="h-3.5 w-3.5" />
-                        </div>
-                      )}
-                    </button>
-                  )
-                })}
-                <button
-                  type="button"
-                  onClick={() => selectBank("none")}
+                  onClick={() => selectBank(bank.key)}
                   className={cn(
-                    "relative flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed p-4 transition-all active:scale-[0.98]",
-                    state.bankKey === "other" ? "border-foreground bg-foreground/5" : "border-border"
+                    "group relative flex flex-col items-center gap-2.5 rounded-2xl p-4 text-white transition-all active:scale-[0.98]",
+                    selected && "ring-2 ring-foreground ring-offset-2 ring-offset-card"
                   )}
+                  style={{ background: `linear-gradient(135deg, ${bank.primaryColor}, ${bank.secondaryColor})` }}
                 >
-                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                    <span className="text-2xl">🏦</span>
+                  <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20">
+                    <img src={bank.logoUrl} alt={bank.name} className="h-8 w-auto object-contain" />
                   </div>
-                  <span className="text-center text-[13px] font-bold leading-tight text-foreground">Otro banco</span>
-                  {state.bankKey === "other" && (
-                    <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
+                  <span className="text-center text-[13px] font-bold leading-tight drop-shadow-sm">{bank.name}</span>
+                  {selected && (
+                    <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-foreground shadow-lg">
                       <Check className="h-3.5 w-3.5" />
                     </div>
                   )}
                 </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={() => selectBank("none")}
+              className={cn(
+                "relative flex flex-col items-center gap-2.5 rounded-2xl border-2 border-dashed p-4 transition-all active:scale-[0.98]",
+                state.bankKey === "other" ? "border-foreground bg-foreground/5" : "border-border"
+              )}
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <span className="text-2xl">🏦</span>
+              </div>
+              <span className="text-center text-[13px] font-bold leading-tight text-foreground">Otro banco</span>
+              {state.bankKey === "other" && (
+                <div className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-foreground text-background shadow-lg">
+                  <Check className="h-3.5 w-3.5" />
+                </div>
+              )}
+            </button>
+          </div>
+        )}
+
+        {state.step === 2 && (
+          <div className="space-y-3">
+            {TYPE_OPTIONS.filter((o) => !state.bankKey || o.value !== "cash").map((option) => {
+              const selected = state.type === option.value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => selectType(option.value)}
+                  className={cn(
+                    "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all active:scale-[0.99]",
+                    selected ? "border-foreground bg-foreground/5" : "border-border"
+                  )}
+                >
+                  <div className={cn(
+                    "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl",
+                    selected ? "bg-primary text-primary-foreground" : "bg-muted"
+                  )}>
+                    {option.icon}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-foreground">{option.label}</p>
+                    <p className="text-xs text-muted-foreground">{option.description}</p>
+                  </div>
+                  {selected && <Check className="h-5 w-5 text-primary shrink-0" />}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {state.step === 3 && (
+          <div className="space-y-5">
+            <input
+              value={state.name}
+              onChange={(e) => setState((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="Nombre de la cuenta"
+              className="h-14 w-full rounded-2xl border border-border bg-background px-4 text-foreground"
+            />
+
+            {state.type !== "cash" && (
+              <input
+                value={state.accountNumber}
+                onChange={(e) => setState((prev) => ({ ...prev, accountNumber: e.target.value.replace(/[^0-9]/g, "").slice(0, 24) }))}
+                placeholder="Número de cuenta"
+                className="h-14 w-full rounded-2xl border border-border bg-background px-4 text-foreground"
+              />
+            )}
+
+            <div className="grid grid-cols-2 gap-2">
+              {(["DOP", "USD"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setState((prev) => ({ ...prev, currency: c, creditUsed: "" }))}
+                  className={cn("rounded-xl px-3 py-2.5 text-xs font-semibold", state.currency === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                >
+                  {getCurrencySymbol(c)}
+                </button>
+              ))}
+            </div>
+
+            {state.type !== "credit" && (
+              <MoneyInput value={state.initialBalance} onValueChange={(v) => setState((prev) => ({ ...prev, initialBalance: v }))} placeholder="Balance" className="w-full rounded-xl bg-muted p-3 tabular-nums" />
+            )}
+
+            {state.type === "credit" && (
+              <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {state.currency !== "USD" && <MoneyInput value={state.creditLimitDop} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitDop: v }))} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />}
+                  {state.currency !== "DOP" && <MoneyInput value={state.creditLimitUsd} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitUsd: v }))} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />}
+                </div>
+                <MoneyInput value={state.creditUsed} onValueChange={(v) => setState((prev) => ({ ...prev, creditUsed: v }))} placeholder="Crédito utilizado" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />
+                <input type="text" inputMode="numeric" value={state.closingDate} onChange={(e) => setState((prev) => ({ ...prev, closingDate: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) }))} placeholder="Día de corte" className="w-full rounded-xl border border-border bg-background py-3 px-4 text-foreground" />
+                <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
               </div>
             )}
 
-            {state.step === 2 && (
-              <div className="space-y-3">
-                {TYPE_OPTIONS.filter((o) => !state.bankKey || o.value !== "cash").map((option) => {
-                  const selected = state.type === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => selectType(option.value)}
-                      className={cn(
-                        "flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition-all active:scale-[0.99]",
-                        selected ? "border-foreground bg-foreground/5" : "border-border"
-                      )}
-                    >
-                      <div className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl",
-                        selected ? "bg-primary text-primary-foreground" : "bg-muted"
-                      )}>
-                        {option.icon}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-bold text-foreground">{option.label}</p>
-                        <p className="text-xs text-muted-foreground">{option.description}</p>
-                      </div>
-                      {selected && <Check className="h-5 w-5 text-primary shrink-0" />}
-                    </button>
-                  )
-                })}
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-semibold text-foreground">Personalización visual</p>
+              <div className="grid grid-cols-2 gap-2">
+                {(["icon", "image"] as const).map((value) => (
+                  <button key={value} type="button" onClick={() => setState((prev) => ({ ...prev, iconType: value, iconValue: value === "icon" ? "building-2" : prev.bankKey && prev.bankKey !== "other" ? prev.bankKey : "", iconUrl: value === "icon" ? null : getBankLogoByKey(prev.bankKey)?.logoUrl || null }))} className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", state.iconType === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
+                    {value === "icon" ? "Ícono" : "Logo/Banco"}
+                  </button>
+                ))}
               </div>
-            )}
-
-            {state.step === 3 && (
-              <div className="space-y-5">
-                <input
-                  value={state.name}
-                  onChange={(e) => setState((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="Nombre de la cuenta"
-                  className="h-14 w-full rounded-2xl border border-border bg-background px-4 text-foreground"
-                />
-
-                {state.type !== "cash" && (
-                  <input
-                    value={state.accountNumber}
-                    onChange={(e) => setState((prev) => ({ ...prev, accountNumber: e.target.value.replace(/[^0-9]/g, "").slice(0, 24) }))}
-                    placeholder="Número de cuenta"
-                    className="h-14 w-full rounded-2xl border border-border bg-background px-4 text-foreground"
-                  />
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  {(["DOP", "USD"] as const).map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setState((prev) => ({ ...prev, currency: c, creditUsed: "" }))}
-                      className={cn("rounded-xl px-3 py-2.5 text-xs font-semibold", state.currency === c ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
-                    >
-                      {getCurrencySymbol(c)}
+              {state.iconType === "image" ? (
+                <div className="grid grid-cols-4 gap-2">
+                  {banks.map((bank) => (
+                    <button key={bank.key} type="button" onClick={() => setState((prev) => ({ ...prev, iconValue: bank.key, iconUrl: bank.logoUrl, primaryColor: bank.primaryColor, secondaryColor: bank.secondaryColor, bankKey: bank.key, bankName: bank.name }))} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", state.iconValue === bank.key ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                      <img src={bank.logoUrl} alt={bank.name} className="h-6 w-auto" />
+                      <span className="text-[10px] text-center leading-tight">{bank.name}</span>
                     </button>
                   ))}
                 </div>
-
-                {state.type !== "credit" && (
-                  <MoneyInput value={state.initialBalance} onValueChange={(v) => setState((prev) => ({ ...prev, initialBalance: v }))} placeholder="Balance" className="w-full rounded-xl bg-muted p-3 tabular-nums" />
-                )}
-
-                {state.type === "credit" && (
-                  <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {state.currency !== "USD" && <MoneyInput value={state.creditLimitDop} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitDop: v }))} placeholder="Límite de crédito" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />}
-                      {state.currency !== "DOP" && <MoneyInput value={state.creditLimitUsd} onValueChange={(v) => setState((prev) => ({ ...prev, creditLimitUsd: v }))} placeholder="Límite de crédito USD" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />}
-                    </div>
-                    <MoneyInput value={state.creditUsed} onValueChange={(v) => setState((prev) => ({ ...prev, creditUsed: v }))} placeholder="Crédito utilizado" className="w-full rounded-xl border border-border bg-background py-3 px-4 tabular-nums" />
-                    <input type="text" inputMode="numeric" value={state.closingDate} onChange={(e) => setState((prev) => ({ ...prev, closingDate: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) }))} placeholder="Día de corte" className="w-full rounded-xl border border-border bg-background py-3 px-4 text-foreground" />
-                    <p className="text-xs text-muted-foreground">Fecha de pago: automática (corte + 20 días)</p>
-                  </div>
-                )}
-
-                <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
-                  <p className="text-sm font-semibold text-foreground">Personalización visual</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(["icon", "image"] as const).map((value) => (
-                      <button key={value} type="button" onClick={() => setState((prev) => ({ ...prev, iconType: value, iconValue: value === "icon" ? "building-2" : prev.bankKey && prev.bankKey !== "other" ? prev.bankKey : "", iconUrl: value === "icon" ? null : getBankLogoByKey(prev.bankKey)?.logoUrl || null }))} className={cn("rounded-xl px-3 py-2 text-xs font-medium transition-colors", state.iconType === value ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                        {value === "icon" ? "Ícono" : "Logo/Banco"}
-                      </button>
-                    ))}
-                  </div>
-                  {state.iconType === "image" ? (
-                    <div className="grid grid-cols-4 gap-2">
-                      {banks.map((bank) => (
-                        <button key={bank.key} type="button" onClick={() => setState((prev) => ({ ...prev, iconValue: bank.key, iconUrl: bank.logoUrl, primaryColor: bank.primaryColor, secondaryColor: bank.secondaryColor, bankKey: bank.key, bankName: bank.name }))} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", state.iconValue === bank.key ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                          <img src={bank.logoUrl} alt={bank.name} className="h-6 w-auto" />
-                          <span className="text-[10px] text-center leading-tight">{bank.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {ICON_PRESETS.map((preset) => (
-                        <button key={preset.value} type="button" onClick={() => setState((prev) => ({ ...prev, iconValue: preset.value }))} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", state.iconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                          <span className="text-lg">{preset.label === "Efectivo" ? "💵" : preset.label === "Banco" ? "🏛️" : preset.label === "Tarjeta" ? "💳" : preset.label === "Institución" ? "🏦" : preset.label === "Ahorro" ? "🐷" : "👛"}</span>
-                          <span className="text-[10px]">{preset.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {COLOR_PRESETS.map((preset) => (
-                      <button key={preset.key} type="button" onClick={() => setState((prev) => ({ ...prev, primaryColor: preset.primary, secondaryColor: preset.secondary }))} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", state.primaryColor === preset.primary && state.secondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}>
-                        <span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["gradient", "solid", "glass"] as const).map((style) => (
-                      <button key={style} type="button" onClick={() => setState((prev) => ({ ...prev, backgroundStyle: style }))} className={cn("rounded-xl px-3 py-2 text-xs", state.backgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>
-                        {style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}
-                      </button>
-                    ))}
-                  </div>
-                  <BrandedAccountCard account={previewAccount as any} compact />
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {ICON_PRESETS.map((preset) => (
+                    <button key={preset.value} type="button" onClick={() => setState((prev) => ({ ...prev, iconValue: preset.value }))} className={cn("flex flex-col items-center gap-1 rounded-xl p-2", state.iconValue === preset.value ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                      <span className="text-lg">{preset.label === "Efectivo" ? "💵" : preset.label === "Banco" ? "🏛️" : preset.label === "Tarjeta" ? "💳" : preset.label === "Institución" ? "🏦" : preset.label === "Ahorro" ? "🐷" : "👛"}</span>
+                      <span className="text-[10px]">{preset.label}</span>
+                    </button>
+                  ))}
                 </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {COLOR_PRESETS.map((preset) => (
+                  <button key={preset.key} type="button" onClick={() => setState((prev) => ({ ...prev, primaryColor: preset.primary, secondaryColor: preset.secondary }))} className={cn("h-8 w-8 rounded-full ring-2 ring-offset-2 ring-offset-background", state.primaryColor === preset.primary && state.secondaryColor === preset.secondary ? "ring-primary" : "ring-transparent")} title={preset.name}>
+                    <span className="block h-full w-full rounded-full" style={{ background: `linear-gradient(135deg, ${preset.primary}, ${preset.secondary})` }} />
+                  </button>
+                ))}
               </div>
-            )}
+              <div className="grid grid-cols-3 gap-2">
+                {(["gradient", "solid", "glass"] as const).map((style) => (
+                  <button key={style} type="button" onClick={() => setState((prev) => ({ ...prev, backgroundStyle: style }))} className={cn("rounded-xl px-3 py-2 text-xs", state.backgroundStyle === style ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                    {style === "gradient" ? "Degradado" : style === "solid" ? "Sólido" : "Suave"}
+                  </button>
+                ))}
+              </div>
+              <BrandedAccountCard account={previewAccount as any} compact />
+            </div>
           </div>
-
-          <footer className="shrink-0 border-t border-border bg-card px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            {state.step < 3 ? (
-              <button type="button" disabled={!canGoNext()} onClick={handleNext} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
-                {state.step === 1 ? "Siguiente" : "Continuar"}
-              </button>
-            ) : (
-              <button type="button" disabled={!state.name.trim() || isSaving} onClick={handleSave} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
-                {isSaving ? "Creando cuenta..." : "Guardar cuenta"}
-              </button>
-            )}
-          </footer>
-        </DrawerContent>
-      </Drawer>
+        )}
+      </SlideUpModal>
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
     </>
   )

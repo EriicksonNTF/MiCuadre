@@ -107,9 +107,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   const [isPaying, setIsPaying] = useState(false)
   const [editingTx, setEditingTx] = useState<Transaction | null>(null)
   const [deletingTxId, setDeletingTxId] = useState<string | null>(null)
-  const [undoLoading, setUndoLoading] = useState(false)
-
-  const { pending: undoPending, deleteWithUndo, undo } = useUndoDelete()
+  const { deleteWithUndo } = useUndoDelete()
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [swipeOffset, setSwipeOffset] = useState<{ id: string; offset: number } | null>(null)
   const pointerRef = useRef<{ id: string; startX: number; startY: number; swiping: boolean } | null>(null)
@@ -257,7 +255,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
   useEffect(() => {
     const closeOnOutside = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null
-      if (target?.closest("[data-account-tx-row='true']")) return
+      if (target?.closest("[data-tx-row='true']")) return
       setOpenSwipeId(null)
       setSwipeOffset(null)
     }
@@ -319,14 +317,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       console.error("Delete error:", err)
       notify({ title: "Error", message: "No se pudo eliminar la transacción." })
     }
-  }
-
-  const handleUndo = async () => {
-    setUndoLoading(true)
-    await undo()
-    setUndoLoading(false)
-    mutate("accounts")
-    mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
   }
 
   const monthlyIncome = accountTransactions
@@ -1111,7 +1101,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
             <h3 className="text-lg font-bold text-foreground">Eliminar transacción</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada. Puedes deshacerla dentro de los próximos 10 segundos.</p>
+            <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>
             <div className="mt-6 space-y-2">
               <Button variant="destructive" onClick={confirmDeleteTx} className="h-12 w-full">Confirmar eliminación</Button>
               <Button variant="outline" onClick={() => setDeletingTxId(null)} className="h-12 w-full">Cancelar</Button>
@@ -1316,26 +1306,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </AlertDialogContent>
         </AlertDialog>
 
-      {/* Undo bar */}
-      {undoPending && (
-        <div className="fixed bottom-20 left-4 right-4 z-[110] animate-slide-up">
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-4 shadow-lg backdrop-blur-md">
-            <div className="flex-1">
-              <p className="text-sm font-medium text-foreground">Transacción eliminada</p>
-              <p className="text-xs text-muted-foreground">Deshacer en {undoPending.count}s</p>
-            </div>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleUndo}
-              disabled={undoLoading}
-              className="shrink-0"
-            >
-              {undoLoading ? "..." : "Deshacer"}
-            </Button>
-          </div>
-        </div>
-      )}
       </MobilePageShell>
     )
   }
