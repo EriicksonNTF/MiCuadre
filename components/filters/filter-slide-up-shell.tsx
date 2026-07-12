@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback, Children, cloneElement, type ReactElement, type Dispatch, type SetStateAction } from "react"
+import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
+import { Z_INDEX } from "@/lib/z-index"
 
 export interface FilterSlideUpShellProps<T> {
   isOpen: boolean
@@ -27,6 +29,14 @@ export function FilterSlideUpShell<T>({
     if (isOpen) setFilters(initialFilters)
   }, [isOpen, initialFilters])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    if (isOpen) window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onClose, isOpen])
+
   const handleBackdrop = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) onClose()
   }, [onClose])
@@ -34,10 +44,12 @@ export function FilterSlideUpShell<T>({
   const child = Children.only(children)
   const injected = cloneElement(child, { filters, setFilters } as any)
 
-  return (
+  if (typeof window === "undefined") return null
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50" onClick={handleBackdrop}>
+        <div className="fixed inset-0" style={{ zIndex: Z_INDEX.backdrop }} onClick={handleBackdrop}>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -51,6 +63,7 @@ export function FilterSlideUpShell<T>({
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
             className="absolute bottom-0 left-0 right-0 flex max-h-[calc(100dvb-5rem)] flex-col rounded-t-[2rem] border border-border/70 bg-card shadow-[var(--shadow-float)]"
+            style={{ zIndex: Z_INDEX.modal }}
           >
             <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
               <h2 className="text-lg font-bold text-foreground">{title}</h2>
@@ -88,6 +101,7 @@ export function FilterSlideUpShell<T>({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client"
 import { syncPendingOperations } from "@/lib/offline/sync-engine"
 import { EventBus } from "@/lib/event-bus"
 import { cn } from "@/lib/utils"
+import { Z_INDEX } from "@/lib/z-index"
 
 const supabase = createClient()
 
@@ -102,12 +103,12 @@ export function OfflineStatusBanner() {
   if (showSuccess && isOnline && !syncing && pendingCount === 0) {
     return (
       <div className={cn(
-        "sticky top-0 left-0 right-0 z-50 flex items-center justify-center gap-2",
+        "sticky top-0 left-0 right-0 flex items-center justify-center gap-2",
         "h-9 px-4 text-xs font-semibold",
         "border-b border-emerald-500/20 bg-emerald-500/10 text-emerald-700",
         "dark:bg-emerald-500/20 dark:text-emerald-300",
         "animate-in fade-in slide-in-from-top-1 duration-300",
-      )}>
+      )} style={{ zIndex: Z_INDEX.stickyHeader }}>
         <CheckCircle2 className="h-3.5 w-3.5" />
         <span>Movimientos sincronizados</span>
       </div>
@@ -116,7 +117,7 @@ export function OfflineStatusBanner() {
 
   return (
     <div className={cn(
-      "sticky top-0 left-0 right-0 z-50 flex items-center justify-between",
+      "sticky top-0 left-0 right-0 flex items-center justify-between",
       "h-9 px-4 text-xs font-semibold border-b backdrop-blur-md",
       !isOnline
         ? "border-amber-500/20 bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300"
@@ -126,7 +127,7 @@ export function OfflineStatusBanner() {
             ? "border-red-500/20 bg-red-500/10 text-red-800 dark:bg-red-500/20 dark:text-red-300"
             : "border-primary/20 bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary-foreground",
       "animate-in fade-in slide-in-from-top-1 duration-300"
-    )}>
+    )} style={{ zIndex: Z_INDEX.stickyHeader }}>
       <div className="flex items-center gap-2 min-w-0">
         {!isOnline ? (
           <WifiOff className="h-3.5 w-3.5 shrink-0" />

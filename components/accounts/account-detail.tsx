@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button"
 import { SlideUpModal } from "@/components/ui/slide-up-modal"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { MoneyInput } from "@/components/ui/money-input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
@@ -44,6 +45,7 @@ import type { TransactionRowData } from "@/components/transactions"
 import { FilterSlideUpShell, AccountFilterContent } from "@/components/filters"
 import type { AccountFilterValues } from "@/components/filters"
 import { useUndoDelete } from "@/hooks/use-undo-delete"
+import { Z_INDEX } from "@/lib/z-index"
 
 
 const accountIcons: Record<AccountType, typeof Banknote> = {
@@ -706,38 +708,52 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 <p className="text-sm font-semibold text-foreground">Personalización visual</p>
                 <div>
                   <p className="mb-1 text-xs text-muted-foreground">Tipo visual</p>
-                  <select value={editForm.icon_type} onChange={(e) => setEditForm({ ...editForm, icon_type: e.target.value as "icon" | "image" })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
-                    <option value="icon">Ícono</option>
-                    <option value="image">Logo/Banco</option>
-                  </select>
+                  <Select value={editForm.icon_type} onValueChange={(v) => setEditForm({ ...editForm, icon_type: v as "icon" | "image" })}>
+                    <SelectTrigger className="h-10 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="icon">Ícono</SelectItem>
+                      <SelectItem value="image">Logo/Banco</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {editForm.icon_type === "image" ? (
                   <div>
                     <p className="mb-1 text-xs text-muted-foreground">Banco / Logo</p>
-                    <select
+                    <Select
                       value={editForm.bank_logo_key || "none"}
-                      onChange={(e) => {
-                        const selected = getBankLogoByKey(e.target.value)
+                      onValueChange={(value) => {
+                        const selected = getBankLogoByKey(value)
                         if (!selected || selected.key === "none") {
                           setEditForm({ ...editForm, bank_logo_key: "none", bank_name: "", bank_logo_url: "", icon_type: "icon", icon_value: "building-2", icon_url: "" })
                           return
                         }
                         setEditForm({ ...editForm, bank_logo_key: selected.key, bank_name: selected.name, bank_logo_url: selected.logoUrl, icon_type: "image", icon_value: selected.key, icon_url: selected.logoUrl })
                       }}
-                      className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
                     >
-                      {BANK_LOGO_OPTIONS.map((option) => (
-                        <option key={option.key} value={option.key}>{option.name}</option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="h-11 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BANK_LOGO_OPTIONS.map((option) => (
+                          <SelectItem key={option.key} value={option.key}>{option.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 ) : (
                   <div>
                     <p className="mb-1 text-xs text-muted-foreground">Ícono</p>
-                    <select value={editForm.icon_value} onChange={(e) => setEditForm({ ...editForm, icon_value: e.target.value })} className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm">
-                      {DETAIL_ICON_PRESETS.map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}
-                    </select>
+                    <Select value={editForm.icon_value} onValueChange={(v) => setEditForm({ ...editForm, icon_value: v })}>
+                      <SelectTrigger className="h-10 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DETAIL_ICON_PRESETS.map((preset) => <SelectItem key={preset.value} value={preset.value}>{preset.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 
@@ -1081,7 +1097,7 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
       />
 
       {deletingTxId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm" style={{ zIndex: Z_INDEX.receipt }}>
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
             <h3 className="text-lg font-bold text-foreground">Eliminar transacción</h3>
             <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>

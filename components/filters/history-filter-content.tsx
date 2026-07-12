@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, type Dispatch, type SetStateAction } from "react"
-import { CalendarDays, ChevronDown } from "lucide-react"
+import { type Dispatch, type SetStateAction } from "react"
+import { CalendarDays } from "lucide-react"
 import { es } from "date-fns/locale"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { AccountType } from "@/lib/types/database"
 
 export interface HistoryFilterValues {
@@ -52,65 +52,30 @@ export function HistoryFilterContent({ filters: _filters, setFilters: _setFilter
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
 
-  const [fromOpen, setFromOpen] = useState(false)
-  const [toOpen, setToOpen] = useState(false)
-
-  const fromDate = filters.dateRange.from ? new Date(filters.dateRange.from + "T12:00:00") : undefined
-  const toDate = filters.dateRange.to ? new Date(filters.dateRange.to + "T12:00:00") : undefined
+  const fromDate = new Date(filters.dateRange.from + "T12:00:00")
+  const toDate = new Date(filters.dateRange.to + "T12:00:00")
 
   return (
     <div className="space-y-5">
       <FilterSection label="Fecha">
         <div className="grid grid-cols-2 gap-2">
-          <Popover open={fromOpen} onOpenChange={setFromOpen}>
-            <PopoverTrigger asChild>
-              <button type="button" className={cn(
-                "flex h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50",
-                !fromDate && "text-muted-foreground"
-              )}>
-                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="flex-1 text-left">{fromDate ? format(fromDate, "d MMM yyyy", { locale: es }) : "Desde"}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={fromDate}
-                onSelect={(d) => {
-                  if (d) {
-                    update("dateRange", { from: d.toISOString().slice(0, 10), to: filters.dateRange.to })
-                    setFromOpen(false)
-                  }
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <DateWheelPicker value={fromDate} onChange={(d) => update("dateRange", { from: d.toISOString().slice(0, 10), to: filters.dateRange.to })}>
+            <button type="button" className={cn(
+              "flex h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50"
+            )}>
+              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1 text-left">{format(fromDate, "d MMM yyyy", { locale: es })}</span>
+            </button>
+          </DateWheelPicker>
 
-          <Popover open={toOpen} onOpenChange={setToOpen}>
-            <PopoverTrigger asChild>
-              <button type="button" className={cn(
-                "flex h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50",
-                !toDate && "text-muted-foreground"
-              )}>
-                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="flex-1 text-left">{toDate ? format(toDate, "d MMM yyyy", { locale: es }) : "Hasta"}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-auto p-0">
-              <Calendar
-                mode="single"
-                selected={toDate}
-                onSelect={(d) => {
-                  if (d) {
-                    update("dateRange", { from: filters.dateRange.from, to: d.toISOString().slice(0, 10) })
-                    setToOpen(false)
-                  }
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <DateWheelPicker value={toDate} onChange={(d) => update("dateRange", { from: filters.dateRange.from, to: d.toISOString().slice(0, 10) })}>
+            <button type="button" className={cn(
+              "flex h-11 items-center gap-2 rounded-2xl border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50"
+            )}>
+              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <span className="flex-1 text-left">{format(toDate, "d MMM yyyy", { locale: es })}</span>
+            </button>
+          </DateWheelPicker>
         </div>
       </FilterSection>
 
@@ -162,18 +127,17 @@ export function HistoryFilterContent({ filters: _filters, setFilters: _setFilter
       </FilterSection>
 
       <FilterSection label="Cuenta">
-        <select
-          value={filters.accountId}
-          onChange={(e) => update("accountId", e.target.value)}
-          className="h-10 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground"
-        >
-          <option value="all">Todas las cuentas</option>
-          {accounts.map((acc) => (
-            <option key={acc.id} value={acc.id}>
-              {acc.name}
-            </option>
-          ))}
-        </select>
+        <Select value={filters.accountId} onValueChange={(v) => update("accountId", v)}>
+          <SelectTrigger className="h-10 w-full">
+            <SelectValue placeholder="Todas las cuentas" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas las cuentas</SelectItem>
+            {accounts.map((acc) => (
+              <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </FilterSection>
     </div>
   )

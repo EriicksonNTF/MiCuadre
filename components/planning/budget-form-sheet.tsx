@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { MoneyInput } from "@/components/ui/money-input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useCategories } from "@/hooks/use-data"
 import { createBudget, deactivateBudget, updateBudget } from "@/hooks/use-planning"
 import { notify } from "@/lib/notifications"
@@ -112,17 +113,20 @@ export function BudgetFormSheet({
         <div className="max-h-[60vh] space-y-3 overflow-y-auto px-0.5">
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Categoría</span>
-            <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={categoryId} onChange={(e) => {
-              const next = e.target.value
+            <Select value={categoryId} onValueChange={(next) => {
               setCategoryId(next)
               const picked = expenseCategories.find((c) => c.id === next)
               if (picked && !name) setName(`Presupuesto ${picked.name}`)
             }}>
-              <option value="">Selecciona categoria</option>
-              {expenseCategories.map((cat) => (
-                <option key={cat.id} value={cat.id}>{cat.name}</option>
-              ))}
-            </select>
+              <SelectTrigger className="h-11 w-full">
+                <SelectValue placeholder="Selecciona categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                {expenseCategories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Nombre</span>
@@ -134,10 +138,15 @@ export function BudgetFormSheet({
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Moneda</span>
-            <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={currency} onChange={(e) => setCurrency(e.target.value as "DOP" | "USD") }>
-              <option value="DOP">DOP</option>
-              <option value="USD">USD</option>
-            </select>
+            <Select value={currency} onValueChange={(v) => setCurrency(v as "DOP" | "USD")}>
+              <SelectTrigger className="h-11 w-full">
+                <SelectValue placeholder="Moneda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DOP">DOP</SelectItem>
+                <SelectItem value="USD">USD</SelectItem>
+              </SelectContent>
+            </Select>
           </label>
           <label className="block text-sm">
             <span className="mb-1 block text-muted-foreground">Alertarme cuando llegue a</span>

@@ -14,15 +14,11 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
 import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAccounts, useCategories, createFinancialSubscription, createTransaction, createCategory, useTransactions } from "@/hooks/use-data"
 
 import { categoryIcons, categoryColors } from "@/lib/category-icons"
@@ -86,7 +82,6 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
   const [accountId, setAccountId] = useState("cash")
   const [currency, setCurrency] = useState<Currency>("DOP")
   const [date, setDate] = useState<Date>(new Date())
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [applyCommission, setApplyCommission] = useState(false)
   const [creditCardIncomeKind, setCreditCardIncomeKind] = useState<CreditCardIncomeKind>("card_payment")
   const [isSaving, setIsSaving] = useState(false)
@@ -431,26 +426,12 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-            <PopoverTrigger asChild>
-              <button type="button" className="flex h-16 w-full flex-col items-start justify-center rounded-2xl bg-card px-4 ring-1 ring-border/60">
-                <span className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Fecha</span>
-                <span className="mt-1 text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) => {
-                  if (!d) return
-                  setDate(d)
-                  setDatePickerOpen(false)
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <DateWheelPicker value={date} onChange={setDate}>
+            <button type="button" className="flex h-16 w-full flex-col items-start justify-center rounded-2xl bg-card px-4 ring-1 ring-border/60">
+              <span className="text-[0.6875rem] uppercase tracking-wide text-muted-foreground">Fecha</span>
+              <span className="mt-1 text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
+            </button>
+          </DateWheelPicker>
 
           <button
             type="button"
@@ -485,11 +466,16 @@ export function ExpenseForm({ onBack, prefill }: { onBack?: () => void; prefill?
           <div className="rounded-2xl bg-card p-4 ring-1 ring-border/60">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Suscripción recurrente</p>
             <div className="grid grid-cols-2 gap-2">
-              <select value={subscriptionProvider} onChange={(event) => setSubscriptionProvider(event.target.value)} className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm">
+              <Select value={subscriptionProvider} onValueChange={setSubscriptionProvider}>
+                <SelectTrigger className="h-11 w-full">
+                  <SelectValue placeholder="Proveedor" />
+                </SelectTrigger>
+                <SelectContent>
                   {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => (
-                  <option key={provider.key} value={provider.key}>{provider.name}</option>
-                ))}
-              </select>
+                    <SelectItem key={provider.key} value={provider.key}>{provider.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} min={1} max={31} type="number" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" placeholder="Día" />
             </div>
           </div>

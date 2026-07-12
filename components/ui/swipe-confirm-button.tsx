@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Check, ChevronsRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { triggerHaptic } from "@/lib/haptics"
@@ -137,10 +137,31 @@ export function SwipeConfirmButton({
 
   const processing = Boolean(loading || isConfirmed)
 
+  const triggerConfirm = useCallback(async () => {
+    if (disabled || loading || isConfirmed || isSubmittingRef.current) return
+    const max = getMaxDrag()
+    paint(max)
+    setIsConfirmed(true)
+    isSubmittingRef.current = true
+    void triggerHaptic("medium")
+    try {
+      await onConfirm()
+    } catch {
+      reset()
+    }
+  }, [disabled, loading, isConfirmed, onConfirm])
+
   return (
     <div className={cn("rounded-2xl bg-card p-2", className)} data-no-edge-back="true" data-swipe-confirm="true">
       <p className="mb-3 text-center text-sm font-medium text-muted-foreground">{label}</p>
-      <div ref={trackRef} className={cn("relative h-[60px] select-none overflow-hidden rounded-[30px] bg-muted", disabled && "cursor-not-allowed opacity-50")}>
+      <div
+        ref={trackRef}
+        onClick={() => {
+          if (isSubmittingRef.current || isConfirmed || loading) return
+          triggerConfirm()
+        }}
+        className={cn("relative h-[60px] select-none overflow-hidden rounded-[30px] bg-muted", disabled && "cursor-not-allowed opacity-50")}
+      >
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <span className={cn("text-base font-semibold text-muted-foreground transition-opacity duration-300", processing ? "opacity-0" : "opacity-100")}>{label}</span>
         </div>
@@ -177,6 +198,15 @@ export function SwipeConfirmButton({
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : isConfirmed ? <Check className="h-6 w-6" /> : icon || <ChevronsRight className="h-6 w-6" />}
         </div>
       </div>
+      {!processing && !disabled && (
+        <button
+          type="button"
+          onClick={triggerConfirm}
+          className="mt-3 h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground"
+        >
+          Pagar ahora
+        </button>
+      )}
       {processing ? <p className="mt-2 text-center text-sm font-semibold text-foreground">{loading ? loadingLabel : completedLabel}</p> : null}
     </div>
   )

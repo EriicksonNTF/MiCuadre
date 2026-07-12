@@ -2,8 +2,11 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertCircle, CheckCircle2, ChevronLeft, Info, TriangleAlert } from "lucide-react"
+import { AlertCircle, CalendarDays, CheckCircle2, ChevronLeft, Info, TriangleAlert } from "lucide-react"
 import { format, subDays } from "date-fns"
+import { es } from "date-fns/locale"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts"
 import { useAccounts, useCategories, useFinancialSubscriptions, useTransactions } from "@/hooks/use-data"
 import { useDebtsSummary, useFinancialCalendarSummary, usePlanningSummary } from "@/hooks/use-planning"
@@ -27,8 +30,8 @@ export function ReportsScreen() {
   const [accountFilter, setAccountFilter] = useState("all")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [currencyFilter, setCurrencyFilter] = useState<"all" | "DOP" | "USD">("all")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
+  const [startDate, setStartDate] = useState<Date | null>(null)
+  const [endDate, setEndDate] = useState<Date | null>(null)
   const { data: transactions = [] } = useTransactions(500)
   const { data: subscriptions = [] } = useFinancialSubscriptions()
   const { data: accounts = [] } = useAccounts()
@@ -50,8 +53,8 @@ export function ReportsScreen() {
     const txDate = new Date(`${tx.date}T12:00:00`)
     if (isInternalTransfer(tx.metadata)) return false
     if (isExcludedFromRealIncome(tx.metadata)) return false
-    if (startDate && tx.date < startDate) return false
-    if (endDate && tx.date > endDate) return false
+    if (startDate && tx.date < format(startDate, "yyyy-MM-dd")) return false
+    if (endDate && tx.date > format(endDate, "yyyy-MM-dd")) return false
     if (!startDate && !endDate && txDate < dateFrom) return false
     if (typeFilter !== "all" && tx.type !== typeFilter) return false
     if (accountFilter !== "all" && tx.account_id !== accountFilter) return false
@@ -189,21 +192,46 @@ export function ReportsScreen() {
         </div>
 
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-card p-3">
-          <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs" />
-          <input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs" />
-          <select value={accountFilter} onChange={(event) => setAccountFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs">
-            <option value="all">{t.reports.allAccounts}</option>
-            {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
-          </select>
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-xs">
-            <option value="all">{t.reports.allCategories}</option>
-            {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-          </select>
-          <select value={currencyFilter} onChange={(event) => setCurrencyFilter(event.target.value as "all" | "DOP" | "USD")} className="col-span-2 h-10 rounded-xl border border-border bg-background px-3 text-xs">
-            <option value="all">{t.reports.allCurrencies}</option>
-            <option value="DOP">DOP</option>
-            <option value="USD">USD</option>
-          </select>
+          <DateWheelPicker value={startDate ?? new Date()} onChange={setStartDate}>
+            <button type="button" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-left text-sm text-foreground">
+              <CalendarDays className="mr-2 inline h-4 w-4 text-muted-foreground" />
+              {startDate ? format(startDate, "d MMM yyyy", { locale: es }) : "Fecha inicio"}
+            </button>
+          </DateWheelPicker>
+          <DateWheelPicker value={endDate ?? new Date()} onChange={setEndDate}>
+            <button type="button" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-left text-sm text-foreground">
+              <CalendarDays className="mr-2 inline h-4 w-4 text-muted-foreground" />
+              {endDate ? format(endDate, "d MMM yyyy", { locale: es }) : "Fecha fin"}
+            </button>
+          </DateWheelPicker>
+          <Select value={accountFilter} onValueChange={setAccountFilter}>
+            <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background px-3 text-xs">
+              <SelectValue placeholder={t.reports.allAccounts} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t.reports.allAccounts}</SelectItem>
+              {accounts.map((account) => <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-11 w-full rounded-xl border border-border bg-background px-3 text-xs">
+              <SelectValue placeholder={t.reports.allCategories} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t.reports.allCategories}</SelectItem>
+              {categories.map((category) => <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={currencyFilter} onValueChange={(value) => setCurrencyFilter(value as "all" | "DOP" | "USD")}>
+            <SelectTrigger className="col-span-2 h-11 w-full rounded-xl border border-border bg-background px-3 text-xs">
+              <SelectValue placeholder={t.reports.allCurrencies} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t.reports.allCurrencies}</SelectItem>
+              <SelectItem value="DOP">DOP</SelectItem>
+              <SelectItem value="USD">USD</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

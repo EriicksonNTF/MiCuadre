@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
 import { formatCurrency, formatAmount, getCurrencySymbol } from "@/lib/data"
 import { notify } from "@/lib/notifications"
@@ -122,12 +123,16 @@ export function QuickPayCardSheet({
 
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Cuenta de origen</span>
-              <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={sourceAccountId} onChange={(event) => { setSourceAccountId(event.target.value); setExchangeRate("") }}>
-                <option value="">Selecciona una cuenta</option>
-                {sourceAccounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>{acc.name} · {formatCurrency(Number(acc.balance || 0), acc.currency)} ({acc.currency})</option>
-                ))}
-              </select>
+              <Select value={sourceAccountId} onValueChange={(v) => { setSourceAccountId(v); setExchangeRate("") }}>
+                <SelectTrigger className="h-11 w-full">
+                  <SelectValue placeholder="Selecciona una cuenta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.name} · {formatCurrency(Number(acc.balance || 0), acc.currency)} ({acc.currency})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
 
             {conversionApplies && (

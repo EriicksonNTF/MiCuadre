@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { Home, Plus, Wallet, CalendarCog, Clock, Repeat, ReceiptText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ModalOverlay } from "@/components/ui/modal-overlay"
+import { Z_INDEX } from "@/lib/z-index"
 import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
@@ -87,8 +88,8 @@ export function BottomNav() {
       </ModalOverlay>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card hide-on-desktop"
-        style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        className="fixed bottom-0 left-0 right-0 border-t border-border bg-card hide-on-desktop"
+        style={{ zIndex: Z_INDEX.navigation, paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <div className="mx-auto flex h-[4.5rem] max-w-md items-center justify-around px-2">
           {navItems.map((item) => {

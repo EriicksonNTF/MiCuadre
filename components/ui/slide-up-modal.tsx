@@ -1,9 +1,11 @@
 "use client"
 
 import React, { useEffect } from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { X } from "lucide-react"
+import { Z_INDEX } from "@/lib/z-index"
 
 interface SlideUpModalProps {
   isOpen: boolean
@@ -19,23 +21,25 @@ export function SlideUpModal({ isOpen, onClose, title, children, footer, content
     if (isOpen) {
       document.body.style.overflow = "hidden"
     } else {
-      document.body.style.overflow = "unset"
+      document.body.style.overflow = ""
     }
-    return () => { document.body.style.overflow = "unset" }
+    return () => { document.body.style.overflow = "" }
   }, [isOpen])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()
     }
-    window.addEventListener("keydown", handleKeyDown)
+    if (isOpen) window.addEventListener("keydown", handleKeyDown)
     return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [onClose])
+  }, [onClose, isOpen])
 
-  return (
+  if (typeof window === "undefined") return null
+
+  return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 flex flex-col justify-end" style={{ zIndex: Z_INDEX.modal }}>
           <motion.div
             className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
             initial={{ opacity: 0 }}
@@ -77,6 +81,7 @@ export function SlideUpModal({ isOpen, onClose, title, children, footer, content
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   )
 }

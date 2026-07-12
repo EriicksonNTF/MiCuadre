@@ -48,7 +48,7 @@ export function MobileSheetLayout({ title, children, footer, onClose }: MobileSh
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">{children}</div>
 
-        <footer className="shrink-0 border-t border-border/55 bg-card/92 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] backdrop-blur">
+        <footer className="shrink-0 border-t border-border/55 bg-card/92 px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom)+4.5rem)] backdrop-blur">
           {footer}
         </footer>
       </section>

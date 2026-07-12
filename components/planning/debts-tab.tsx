@@ -150,16 +150,20 @@ export function DebtsTab() {
       <QuickPayCardSheet
         open={cardQuickOpen}
         onOpenChange={setCardQuickOpen}
-        target={selectedCardQuick ? {
-          id: selectedCardQuick.id,
-          name: selectedCardQuick.name,
-          currency: selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? "USD" : "DOP",
-          currentDebt: selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop,
-          statementBalance: selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop,
-          minimumPayment: selectedCardQuick.minimumPayment,
-          dueDate: selectedCardQuick.dueDate,
-          suggestedAmount: selectedCardQuick.minimumPayment > 0 ? selectedCardQuick.minimumPayment : (selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop),
-        } : null}
+        target={selectedCardQuick ? (() => {
+          const ccy = selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? "USD" : "DOP"
+          const debt = ccy === "USD" ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop
+          return {
+            id: selectedCardQuick.id,
+            name: selectedCardQuick.name,
+            currency: ccy,
+            currentDebt: debt,
+            statementBalance: debt,
+            minimumPayment: selectedCardQuick.minimumPayment,
+            dueDate: selectedCardQuick.dueDate,
+            suggestedAmount: selectedCardQuick.minimumPayment > 0 && ccy === "DOP" ? selectedCardQuick.minimumPayment : debt,
+          }
+        })() : null}
       />
     </section>
   )

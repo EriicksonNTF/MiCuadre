@@ -5,6 +5,7 @@ import { Fingerprint, ShieldCheck } from "lucide-react"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { isPasskeyEnabled, verifyPasskeyUnlock } from "@/lib/passkey"
+import { Z_INDEX } from "@/lib/z-index"
 
 const PASSKEY_UNLOCK_SESSION_KEY = "micuadre_passkey_unlocked_session"
 
@@ -57,7 +58,7 @@ export function PasskeyLockGate() {
   if (!locked) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/18 px-6 backdrop-blur-[6px] dark:bg-black/45">
+    <div className="fixed inset-0 flex items-center justify-center bg-foreground/18 px-6 backdrop-blur-[6px] dark:bg-black/45" style={{ zIndex: Z_INDEX.modal }}>
       <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-6 text-center shadow-2xl">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           <ShieldCheck className="h-8 w-8" />

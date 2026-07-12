@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect, type ReactNode } from "react"
-import { X } from "lucide-react"
+import { X, CalendarDays } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import {
   Drawer,
@@ -9,12 +11,20 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { AccountType } from "@/lib/types/database"
 
 export interface FilterValues {
   searchQuery: string
-  startDate: string
-  endDate: string
+  startDate: Date
+  endDate: Date
   amountMin: string
   amountMax: string
   filterType: "all" | "income" | "expense"
@@ -38,14 +48,11 @@ const TYPE_OPTIONS = [
   { value: "expense", label: "Gasto" },
 ] as const
 
-function getDefaultMonthRange(): { startDate: string; endDate: string } {
+function getDefaultMonthRange(): { startDate: Date; endDate: Date } {
   const now = new Date()
   const from = new Date(now.getFullYear(), now.getMonth(), 1)
   const to = new Date(now.getFullYear(), now.getMonth() + 1, 1)
-  return {
-    startDate: from.toISOString().slice(0, 10),
-    endDate: to.toISOString().slice(0, 10),
-  }
+  return { startDate: from, endDate: to }
 }
 
 const DEFAULT_VALUES: FilterValues = {
@@ -114,23 +121,23 @@ export function TransactionFilterModal({
                 <label className="mb-1 block text-[0.625rem] font-medium text-muted-foreground">
                   Desde
                 </label>
-                <input
-                  type="date"
-                  value={local.startDate}
-                  onChange={(e) => update("startDate", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground"
-                />
+                <DateWheelPicker value={local.startDate} onChange={(d) => update("startDate", d)}>
+                  <button type="button" className="flex h-10 w-full items-center rounded-2xl border border-border bg-background px-3 text-sm text-foreground">
+                    <CalendarDays className="mr-2 inline h-4 w-4 shrink-0 text-muted-foreground" />
+                    {format(local.startDate, "d MMM yyyy", { locale: es })}
+                  </button>
+                </DateWheelPicker>
               </div>
               <div>
                 <label className="mb-1 block text-[0.625rem] font-medium text-muted-foreground">
                   Hasta
                 </label>
-                <input
-                  type="date"
-                  value={local.endDate}
-                  onChange={(e) => update("endDate", e.target.value)}
-                  className="h-10 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground"
-                />
+                <DateWheelPicker value={local.endDate} onChange={(d) => update("endDate", d)}>
+                  <button type="button" className="flex h-10 w-full items-center rounded-2xl border border-border bg-background px-3 text-sm text-foreground">
+                    <CalendarDays className="mr-2 inline h-4 w-4 shrink-0 text-muted-foreground" />
+                    {format(local.endDate, "d MMM yyyy", { locale: es })}
+                  </button>
+                </DateWheelPicker>
               </div>
             </div>
           </FilterSection>
@@ -193,18 +200,19 @@ export function TransactionFilterModal({
           {/* Account (history only) */}
           {showAccountFilter && (
             <FilterSection label="Cuenta">
-              <select
-                value={local.accountId}
-                onChange={(e) => update("accountId", e.target.value)}
-                className="h-10 w-full rounded-2xl border border-border bg-background px-3 text-sm text-foreground"
-              >
-                <option value="all">Todas las cuentas</option>
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={local.accountId} onValueChange={(v) => update("accountId", v)}>
+                <SelectTrigger className="h-10 w-full">
+                  <SelectValue placeholder="Todas las cuentas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las cuentas</SelectItem>
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </FilterSection>
           )}
         </div>

@@ -153,10 +153,10 @@
   /* Monospace Numbers */
   --text-mono-lg: clamp(1.25rem, 4vw, 1.75rem);             /* 20-28px */
   --z-overlay-nav: 40;
-  --z-overlay: 50;
+  --z-overlay: 1000;
   --z-floating: 60;
-  --z-fullscreen: 200;
-  --z-toast: 9999;
+  --z-fullscreen: 1100;
+  --z-toast: 2000;
 }
 
 @layer base {

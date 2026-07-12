@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { ArrowLeft, Calendar as CalendarIcon, ChevronDown, Pencil, Save } from "lucide-react"
+import { ArrowLeft, CalendarDays, ChevronDown, Pencil, Save } from "lucide-react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { MoneyInput } from "@/components/ui/money-input"
 import { Button } from "@/components/ui/button"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
 import { mutate } from "swr"
 import { cn } from "@/lib/utils"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
@@ -68,7 +67,6 @@ export function EditTransactionSheet({ open, onOpenChange, transaction }: EditTr
     movementKind: "card_payment",
   })
   const [saving, setSaving] = useState(false)
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
 
   useEffect(() => {
     if (transaction) {
@@ -226,30 +224,16 @@ export function EditTransactionSheet({ open, onOpenChange, transaction }: EditTr
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Fecha
                   </label>
-                  <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="flex w-full items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-left text-base outline-none focus:border-primary/40"
-                      >
-                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                        <span>{format(form.date, "d MMM yyyy", { locale: es })}</span>
-                        <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="start" className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={form.date}
-                        onSelect={(d) => {
-                          if (d) {
-                            handleChange("date", d)
-                            setDatePickerOpen(false)
-                          }
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <DateWheelPicker value={form.date} onChange={(d) => handleChange("date", d)}>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-xl border border-border bg-background px-4 py-3 text-left text-base outline-none focus:border-primary/40"
+                    >
+                      <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                      <span>{format(form.date, "d MMM yyyy", { locale: es })}</span>
+                      <ChevronDown className="ml-auto h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </DateWheelPicker>
                 </div>
 
                 {/* Account selector (hidden for complex types) */}

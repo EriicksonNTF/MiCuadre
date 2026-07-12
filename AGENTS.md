@@ -805,3 +805,43 @@ Esto coincide exactamente con `h-[4.5rem]` del bottom nav. Misma convención que
 - `components/accounts/accounts-screen.tsx` — integración con transfer (SlideUpModal directo) + AccountCreationWizard
 - `components/accounts/account-creation-wizard.tsx` — wizard multi-paso dentro de SlideUpModal
 - `components/filters/filter-slide-up-shell.tsx` — patrón similar (referencia de padding + animación)
+
+---
+
+## 17. ERRATA (CONTINUACIÓN) — JUL 2026
+
+### 17.1 `MobileSheetLayout` — footer sin clearance para bottom nav (jul 2026)
+
+**Síntoma:** El botón "Desliza para pagar" en `ConfirmPaymentSheet` (usado desde `QuickPayCardSheet` y `PayDebtSheet`) quedaba oculto detrás del bottom nav, mezclándose con el header de planificación.
+
+**Causa raíz:** `MobileSheetLayout` tenía `pb-[calc(1rem+env(safe-area-inset-bottom))]` sin `+4.5rem` para el bottom nav. El `SwipeConfirmButton` quedaba detrás del navbar.
+
+**Fix:** Cambiar a `pb-[calc(1rem+env(safe-area-inset-bottom)+4.5rem)]` — mismo patrón que `FilterSlideUpShell` y `SlideUpModal`.
+
+**Lección:** Todo footer de modal/sheet que tenga botones de acción debe incluir `+4.5rem` en el padding inferior. Revisar cualquier wrapper (MobileSheetLayout, BaseModalForm, MobileFullscreenForm) que tenga footer.
+
+### 17.2 `QuickPayCardSheet` — `suggestedAmount` en moneda incorrecta (jul 2026)
+
+**Síntoma:** Al pagar una tarjeta de crédito desde la pestaña Deudas, error `"No puedes pagar más que la deuda actual"` cuando la tarjeta tiene deuda en USD y el minimum payment en DOP.
+
+**Causa raíz:** En `debts-tab.tsx`, `suggestedAmount` usaba `minimumPayment` (siempre en DOP según schema DB) incluso cuando `target.currency` era USD, causando que `payCreditCard` comparara un monto DOP contra la deuda USD.
+
+**Fix:** Extraer `currency` y `debt` antes de construir el target. Usar `minimumPayment` solo cuando `ccy === "DOP"`:
+
+```typescript
+const ccy = selectedCardQuick.debtUsd > 0 && selectedCardQuick.debtDop <= 0 ? "USD" : "DOP"
+const debt = ccy === "USD" ? selectedCardQuick.debtUsd : selectedCardQuick.debtDop
+suggestedAmount: selectedCardQuick.minimumPayment > 0 && ccy === "DOP" ? selectedCardQuick.minimumPayment : debt
+```
+
+**Lección:** Nunca asumir que `minimumPayment` está en la misma moneda que el target seleccionado. Validar la moneda antes de usar el valor.
+
+### 17.3 `aria-describedby={undefined}` — warnings en Dialog y AlertDialog (jul 2026)
+
+**Síntoma:** Warning en consola: `Missing Description or aria-describedby={undefined} for {DialogContent}`.
+
+**Causa raíz:** `dialog.tsx` y `alert-dialog.tsx` tenían `aria-describedby={undefined}` explícito. En React 19, pasar `undefined` como prop explícito causa advertencias.
+
+**Fix:** Eliminar `aria-describedby={undefined}` de ambos componentes. Radix maneja la accesibilidad internamente sin necesidad de la prop explícita.
+
+**Lección:** No agregar `aria-describedby={undefined}` a componentes Radix en React 19. Si no hay descripción, dejar que Radix lo maneje por defecto.

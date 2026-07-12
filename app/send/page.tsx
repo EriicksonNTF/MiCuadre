@@ -28,8 +28,7 @@ import { MovementReceipt } from "@/components/receipts/movement-receipt"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
 
 export default function SendPage() {
   const router = useRouter()
@@ -45,7 +44,6 @@ export default function SendPage() {
   const [description, setDescription] = useState("")
   const [applyCommission, setApplyCommission] = useState(false)
   const [date, setDate] = useState<Date>(new Date())
-  const [datePickerOpen, setDatePickerOpen] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [confirmSourceBalance, setConfirmSourceBalance] = useState<number | null>(null)
   const [receipt, setReceipt] = useState<{
@@ -374,27 +372,12 @@ export default function SendPage() {
             </div>
 
             <div className="flex justify-center">
-              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
-
-                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="center">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    onSelect={(d) => {
-                      if (!d) return
-                      setDate(d)
-                      setDatePickerOpen(false)
-                    }}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
+              <DateWheelPicker value={date} onChange={setDate}>
+                <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
+                </button>
+              </DateWheelPicker>
             </div>
 
             {/* Quick amounts */}

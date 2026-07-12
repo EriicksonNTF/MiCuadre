@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Pause, Play, Trash2, XCircle } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { SlideUpModal } from "@/components/ui/slide-up-modal"
@@ -176,30 +177,48 @@ export function SubscriptionsScreen({ initialOpenCreate = false }: { initialOpen
         footer={<button type="button" onClick={save} disabled={!canSaveSubscription} className="h-14 w-full rounded-2xl bg-primary font-semibold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Guardar suscripción</button>}
       >
           <div className="space-y-4 pb-safe-areas">
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Servicio</span>
-              <select value={providerKey} onChange={(event) => setProviderKey(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-                {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => <option key={provider.key} value={provider.key}>{provider.name}</option>)}
-              </select>
-            </label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Servicio</label>
+              <Select value={providerKey} onValueChange={setProviderKey}>
+                <SelectTrigger className="h-11 w-full">
+                  <SelectValue placeholder="Selecciona..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {FINANCIAL_SUBSCRIPTION_PROVIDERS.map((provider) => (
+                    <SelectItem key={provider.key} value={provider.key}>{provider.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Monto mensual</span>
               <MoneyInput value={amount} onValueChange={setAmount} placeholder="0.00" className="h-12 w-full rounded-xl border border-border bg-background px-4 tabular-nums" />
             </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Moneda</span>
-              <select value={currency} onChange={(event) => setCurrency(event.target.value as "DOP" | "USD")} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-                <option value="DOP">DOP</option>
-                <option value="USD">USD</option>
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Cuenta o tarjeta vinculada</span>
-              <select value={sourceAccountId} onChange={(event) => setSourceAccountId(event.target.value)} className="h-12 w-full rounded-xl border border-border bg-background px-4">
-                <option value="">Selecciona una cuenta o tarjeta</option>
-                {accounts.map((account) => <option key={account.id} value={account.id}>{account.name} · {account.type === "credit" ? "Tarjeta" : "Cuenta"}</option>)}
-              </select>
-            </label>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Moneda</label>
+              <Select value={currency} onValueChange={(value) => setCurrency(value as "DOP" | "USD")}>
+                <SelectTrigger className="h-11 w-full">
+                  <SelectValue placeholder="Selecciona..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DOP">DOP</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Cuenta o tarjeta vinculada</label>
+              <Select value={sourceAccountId} onValueChange={setSourceAccountId}>
+                <SelectTrigger className="h-11 w-full">
+                  <SelectValue placeholder="Selecciona una cuenta o tarjeta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>{account.name} · {account.type === "credit" ? "Tarjeta" : "Cuenta"}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Día de cobro</span>
               <input value={billingDay} onChange={(event) => setBillingDay(event.target.value)} type="number" min={1} max={31} className="h-12 w-full rounded-xl border border-border bg-background px-4" placeholder="Ej. 15" />

@@ -15,6 +15,7 @@ import { usePersistentState } from "@/hooks/use-persistent-state"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
 import { isExcludedFromRealIncome } from "@/lib/transactions/reporting"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
+import { Z_INDEX } from "@/lib/z-index"
 import type { Transaction } from "@/lib/types/database"
 
 type HistoryTx = {
@@ -330,6 +331,29 @@ export function HistoryScreen() {
 
     </MobilePageShell>
 
+      <FilterSlideUpShell<HistoryFilterValues>
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        onApply={(f) => {
+          setStartDate(f.dateRange.from)
+          setEndDate(f.dateRange.to)
+          setAmountMin(f.amountMin)
+          setAmountMax(f.amountMax)
+          setFilterType(f.filterType)
+          setAccountFilter(f.accountId)
+          setFilterModalOpen(false)
+        }}
+        initialFilters={{
+          dateRange: { from: startDate, to: endDate },
+          amountMin,
+          amountMax,
+          filterType,
+          accountId: accountFilter,
+        }}
+      >
+        <HistoryFilterContent accounts={accounts} />
+      </FilterSlideUpShell>
+
       <EditTransactionSheet
         open={!!editingTx}
         onOpenChange={(open) => { if (!open) setEditingTx(null) }}
@@ -337,7 +361,7 @@ export function HistoryScreen() {
       />
 
       {deletingId && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 flex items-center justify-center bg-foreground/20 p-4 backdrop-blur-sm" style={{ zIndex: Z_INDEX.receipt }}>
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-xl">
             <h3 className="text-lg font-bold text-foreground">Eliminar transacción</h3>
             <p className="mt-2 text-sm text-muted-foreground">Esta acción revertirá el impacto en el balance de la cuenta asociada.</p>

@@ -1,8 +1,13 @@
 "use client"
 
 import { useMemo, useState, useRef } from "react"
+import { CalendarDays } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { MoneyInput } from "@/components/ui/money-input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
 import { useAccounts } from "@/hooks/use-data"
 import { payDebt } from "@/hooks/use-planning"
 import { formatCurrency, getCurrencySymbol } from "@/lib/data"
@@ -38,6 +43,7 @@ export function PayDebtSheet({
   const [mode, setMode] = useState<"installment" | "custom">("installment")
   const [customAmount, setCustomAmount] = useState("")
   const [notes, setNotes] = useState("")
+  const [dateVar, setDateVar] = useState(new Date())
   const continueRef = useRef(false)
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
@@ -129,12 +135,16 @@ export function PayDebtSheet({
 
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Cuenta de origen</span>
-              <select className="h-11 w-full rounded-xl border border-border bg-background px-3" value={sourceAccountId} onChange={(e) => setSourceAccountId(e.target.value)}>
-                <option value="">Selecciona una cuenta</option>
-                {sourceAccounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>{acc.name} · {formatCurrency(acc.balance || 0, acc.currency)}</option>
-                ))}
-              </select>
+              <Select value={sourceAccountId} onValueChange={setSourceAccountId}>
+                <SelectTrigger className="h-11 w-full">
+                  <SelectValue placeholder="Selecciona una cuenta" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sourceAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.name} · {formatCurrency(acc.balance || 0, acc.currency)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
 
             <article className="rounded-xl border border-border bg-background p-3 text-sm">
@@ -167,6 +177,16 @@ export function PayDebtSheet({
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Nota</span>
               <textarea className="min-h-[82px] w-full rounded-xl border border-border bg-background px-3 py-2" value={notes} onChange={(e) => setNotes(e.target.value)} />
+            </label>
+
+            <label className="block text-sm">
+              <span className="mb-1 block text-muted-foreground">Fecha del pago</span>
+              <DateWheelPicker value={dateVar} onChange={setDateVar}>
+                <button type="button" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-left text-sm text-foreground">
+                  <CalendarDays className="mr-2 inline h-4 w-4 text-muted-foreground" />
+                  {format(dateVar, "d MMM yyyy", { locale: es })}
+                </button>
+              </DateWheelPicker>
             </label>
 
             <button type="button" onClick={() => { continueRef.current = true; onOpenChange(false); setShowConfirm(true) }} disabled={!sourceAccountId || !amount || amount <= 0} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">

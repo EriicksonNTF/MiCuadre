@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ChevronLeft, Send, Sparkles, Plus, Trash2 } from "lucide-react"
+import { Z_INDEX } from "@/lib/z-index"
 import { Button } from "@/components/ui/button"
 import type { CoachResponse, CoachUIBlock, CoachAction } from "@/lib/coach-ia"
 import { useAuth } from "@/hooks/use-auth"
@@ -445,7 +446,7 @@ export default function CoachIAPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-[5.5rem] left-0 right-0 z-[60] border-t border-border bg-background/95 px-4 pb-safe pt-3 backdrop-blur-xl">
+      <div className="fixed bottom-[5.5rem] left-0 right-0 border-t border-border bg-background/95 px-4 pb-safe pt-3 backdrop-blur-xl" style={{ zIndex: Z_INDEX.fab }}>
         <div className="mx-auto flex max-w-md items-center gap-2">
           <input
             value={input}

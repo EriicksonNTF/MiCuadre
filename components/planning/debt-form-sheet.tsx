@@ -7,6 +7,11 @@ import { useAccounts } from "@/hooks/use-data"
 import { createDebt } from "@/hooks/use-planning"
 import { notify } from "@/lib/notifications"
 import type { Debt } from "@/types/planning"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { CalendarDays } from "lucide-react"
 
 const debtTypes: Array<{ value: Debt["debt_type"]; label: string }> = [
   { value: "loan", label: "Préstamo" },
@@ -34,7 +39,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
   const [fixedPayment, setFixedPayment] = useState("")
   const [frequency, setFrequency] = useState<Debt["payment_frequency"]>("monthly")
   const [paymentDay, setPaymentDay] = useState("")
-  const [startDate, setStartDate] = useState("")
+  const [startDate, setStartDate] = useState<Date | null>(null)
   const [interestRate, setInterestRate] = useState("")
   const [notes, setNotes] = useState("")
   const [saving, setSaving] = useState(false)
@@ -50,7 +55,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     setFixedPayment("")
     setFrequency("monthly")
     setPaymentDay("")
-    setStartDate("")
+    setStartDate(null)
     setInterestRate("")
     setNotes("")
     setFormError(null)
@@ -106,7 +111,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
         fixed_payment_amount: parsedFixedPayment,
         payment_frequency: frequency,
         payment_day: parsedPaymentDay,
-        start_date: startDate || null,
+        start_date: startDate ? format(startDate, "yyyy-MM-dd") : null,
         interest_rate: interestRate ? Number(interestRate) : null,
         notes: notes.trim() || null,
       })
@@ -145,11 +150,16 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
 
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Tipo</span>
-              <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={debtType} onChange={(e) => setDebtType(e.target.value as Debt["debt_type"])}>
-                {debtTypes.map((item) => (
-                  <option key={item.value} value={item.value}>{item.label}</option>
-                ))}
-              </select>
+              <Select value={debtType} onValueChange={(v) => setDebtType(v as Debt["debt_type"])}>
+                <SelectTrigger className="h-12 w-full">
+                  <SelectValue placeholder="Selecciona..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {debtTypes.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </label>
 
             <div className="grid grid-cols-2 gap-2">
@@ -166,19 +176,29 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Moneda</span>
-                <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={currency} onChange={(e) => setCurrency(e.target.value as "DOP" | "USD")}> 
-                  <option value="DOP">DOP</option>
-                  <option value="USD">USD</option>
-                </select>
+                <Select value={currency} onValueChange={(v) => setCurrency(v as "DOP" | "USD")}>
+                  <SelectTrigger className="h-12 w-full">
+                    <SelectValue placeholder="Selecciona..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DOP">DOP</SelectItem>
+                    <SelectItem value="USD">USD</SelectItem>
+                  </SelectContent>
+                </Select>
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Cuenta asociada</span>
-                <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={linkedAccount} onChange={(e) => setLinkedAccount(e.target.value)}>
-                  <option value="">Opcional</option>
-                  {sourceAccounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>{acc.name}</option>
-                  ))}
-                </select>
+                <Select value={linkedAccount || ""} onValueChange={setLinkedAccount}>
+                  <SelectTrigger className="h-12 w-full">
+                    <SelectValue placeholder="Opcional" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Opcional</SelectItem>
+                    {sourceAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
             </div>
 
@@ -189,11 +209,16 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Frecuencia</span>
-                <select className="h-12 w-full rounded-xl border border-border bg-background px-3" value={frequency} onChange={(e) => setFrequency(e.target.value as Debt["payment_frequency"])}>
-                  {frequencies.map((f) => (
-                    <option key={f.value} value={f.value}>{f.label}</option>
-                  ))}
-                </select>
+                <Select value={frequency} onValueChange={(v) => setFrequency(v as Debt["payment_frequency"])}>
+                  <SelectTrigger className="h-12 w-full">
+                    <SelectValue placeholder="Selecciona..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {frequencies.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </label>
             </div>
 
@@ -204,7 +229,12 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Fecha de inicio</span>
-                <input type="date" className="h-12 w-full rounded-xl border border-border bg-background px-3" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                <DateWheelPicker value={startDate ?? new Date()} onChange={setStartDate}>
+                    <button type="button" className="h-12 w-full rounded-xl border border-border bg-background px-3 text-left text-sm text-foreground flex items-center gap-2">
+                      <CalendarDays className="size-4 text-muted-foreground shrink-0" />
+                      {startDate ? format(startDate, "d MMM yyyy", { locale: es }) : "Seleccionar fecha"}
+                    </button>
+                  </DateWheelPicker>
               </label>
             </div>
 

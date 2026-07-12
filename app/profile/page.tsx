@@ -8,6 +8,7 @@ import { useProfile, updateProfile } from "@/hooks/use-data"
 import { useAuth } from "@/hooks/use-auth"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { useToast } from "@/hooks/use-toast"
 import type { Profile } from "@/lib/types/database"
@@ -292,10 +293,15 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-currency" className="mb-1 block text-xs font-medium text-muted-foreground">Moneda</label>
               {isEditing ? (
-                <select id="profile-currency" value={formState.preferredCurrency} onChange={(e) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, preferredCurrency: e.target.value as "DOP" | "USD" } })} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
-                  <option value="DOP">DOP</option>
-                  <option value="USD">USD</option>
-                </select>
+                <Select value={formState.preferredCurrency} onValueChange={(v) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, preferredCurrency: v as "DOP" | "USD" } })}>
+                  <SelectTrigger id="profile-currency" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DOP">RD$ (DOP)</SelectItem>
+                    <SelectItem value="USD">US$ (USD)</SelectItem>
+                  </SelectContent>
+                </Select>
               ) : (
                 <p className="rounded-xl bg-muted px-3 py-3 text-foreground">{profile?.preferred_currency || "DOP"}</p>
               )}
@@ -303,11 +309,16 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-theme" className="mb-1 block text-xs font-medium text-muted-foreground">Tema</label>
               {isEditing ? (
-                <select id="profile-theme" value={formState.theme} onChange={(e) => { const t = e.target.value as "light" | "dark" | "system"; dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, theme: t } }); setAppTheme(t) }} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
-                  <option value="system">Sistema</option>
-                  <option value="light">Claro</option>
-                  <option value="dark">Oscuro</option>
-                </select>
+                <Select value={formState.theme} onValueChange={(v) => { const t = v as "light" | "dark" | "system"; dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, theme: t } }); setAppTheme(t) }}>
+                  <SelectTrigger id="profile-theme" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="system">Sistema</SelectItem>
+                    <SelectItem value="light">Claro</SelectItem>
+                    <SelectItem value="dark">Oscuro</SelectItem>
+                  </SelectContent>
+                </Select>
               ) : (
                 <p className="rounded-xl bg-muted px-3 py-3 text-foreground">{profile?.theme || "system"}</p>
               )}
@@ -315,10 +326,15 @@ export default function ProfilePage() {
             <div>
               <label htmlFor="profile-language" className="mb-1 block text-xs font-medium text-muted-foreground">Idioma</label>
               {isEditing ? (
-                <select id="profile-language" value={formState.language} onChange={(e) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, language: e.target.value as "es" | "en" } })} className="w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground">
-                  <option value="es">Español</option>
-                  <option value="en">English</option>
-                </select>
+                <Select value={formState.language} onValueChange={(v) => dispatch({ type: "UPDATE_FROM_PROFILE", payload: { ...formState, language: v as "es" | "en" } })}>
+                  <SelectTrigger id="profile-language" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="es">Español</SelectItem>
+                    <SelectItem value="en">English</SelectItem>
+                  </SelectContent>
+                </Select>
               ) : (
                 <p className="rounded-xl bg-muted px-3 py-3 text-foreground">{profile?.language || "es"}</p>
               )}

@@ -21,8 +21,7 @@ import { parseAmount, transferSchema } from "@/lib/validation"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
 import type { Account } from "@/lib/types/database"
 import { AccountCreationWizard } from "@/components/accounts/account-creation-wizard"
 import { useEntitlements } from "@/hooks/use-entitlements"
@@ -62,7 +61,6 @@ export function AccountsScreen() {
   const [transferAmount, setTransferAmount] = useState("")
   const [isTransferring, setIsTransferring] = useState(false)
   const [transferDate, setTransferDate] = useState<Date>(new Date())
-  const [transferDatePickerOpen, setTransferDatePickerOpen] = useState(false)
 
   
   const resetTransferForm = () => {
@@ -503,26 +501,12 @@ if (!draggedId) return
           <MoneyInput value={transferAmount} onValueChange={setTransferAmount} className="hero-amount w-full rounded-2xl bg-muted p-3 text-center text-input-hero font-extrabold leading-none tabular-nums min-w-[100px]" />
         </div>
         <div className="flex justify-center">
-          <Popover open={transferDatePickerOpen} onOpenChange={setTransferDatePickerOpen}>
-            <PopoverTrigger asChild>
-              <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
-                <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-semibold text-foreground">{format(transferDate, "d MMM yyyy", { locale: es })}</span>
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="center">
-              <Calendar
-                mode="single"
-                selected={transferDate}
-                onSelect={(d) => {
-                  if (!d) return
-                  setTransferDate(d)
-                  setTransferDatePickerOpen(false)
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <DateWheelPicker value={transferDate} onChange={setTransferDate}>
+            <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-semibold text-foreground">{format(transferDate, "d MMM yyyy", { locale: es })}</span>
+            </button>
+          </DateWheelPicker>
         </div>
       </div>
     </SlideUpModal>

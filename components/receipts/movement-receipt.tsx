@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { CheckCircle2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Z_INDEX } from "@/lib/z-index"
 
 type ReceiptLine = {
   label: string
@@ -57,8 +58,8 @@ export function MovementReceipt({
 
   return createPortal(
     <>
-      <div className="fixed inset-0 z-[90] bg-foreground/18 backdrop-blur-[6px] animate-in fade-in duration-200 dark:bg-black/45" onClick={onClose} aria-hidden="true" />
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-5">
+      <div className="fixed inset-0 bg-foreground/18 backdrop-blur-[6px] animate-in fade-in duration-200 dark:bg-black/45" onClick={onClose} aria-hidden="true" style={{ zIndex: Z_INDEX.backdrop }} />
+      <div className="fixed inset-0 flex items-center justify-center p-5" style={{ zIndex: Z_INDEX.receipt }}>
         <div className="mx-auto flex w-full max-w-sm flex-col rounded-[20px] border border-border/15 bg-card shadow-[0_20px_60px_rgba(0,0,0,0.55)] animate-in fade-in zoom-in-95 duration-200 max-h-[calc(100dvh-2.5rem)]">
           <div className="overflow-y-auto p-5">
             <div className="flex items-start justify-between">

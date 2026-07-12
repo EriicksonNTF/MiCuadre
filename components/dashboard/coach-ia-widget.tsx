@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import { MessageCircle, Send, Sparkles, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { Z_INDEX } from "@/lib/z-index"
 import type { CoachResponse, CoachUIBlock, CoachAction } from "@/lib/coach-ia"
 import { COACH_NAME } from "@/lib/coach-ia"
 import { useAuth } from "@/hooks/use-auth"
@@ -233,7 +234,7 @@ export function CoachIAWidget() {
   }
 
   return (
-    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-[60] sm:right-6">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 sm:right-6" style={{ zIndex: Z_INDEX.fab }}>
       {!open && (
         <button type="button"
           onClick={() => setOpen(true)}
