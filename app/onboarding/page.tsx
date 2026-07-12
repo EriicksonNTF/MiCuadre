@@ -98,6 +98,7 @@ export default function OnboardingPage() {
   }
 
   return (
+    <>
     <MobilePageShell fullBleed noBottomNav>
       <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-[calc(1rem+env(safe-area-inset-top))]">
         <header className="flex items-center justify-between py-2">
@@ -195,6 +196,7 @@ export default function OnboardingPage() {
           ) : null}
         </footer>
       </div>
+    </MobilePageShell>
 
       <PlanSelectorSheet
         open={plansOpen}
@@ -203,7 +205,7 @@ export default function OnboardingPage() {
         reasonTitle="Planificación Pro"
         reasonBody="Presupuestos, calendario financiero, deudas y automatizaciones cuando necesites más control."
       />
-    </MobilePageShell>
+    </>
   )
 }
 

@@ -21,7 +21,7 @@ import { PaymentSlider } from "@/components/payment-slider"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
 import { mutate } from "swr"
-import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { SlideUpModal } from "@/components/ui/slide-up-modal"
 import { notify } from "@/lib/notifications"
 import { EventBus } from "@/lib/event-bus"
 import { MovementReceipt } from "@/components/receipts/movement-receipt"
@@ -180,8 +180,8 @@ export default function SendPage() {
     setReceipt(null)
     router.push("/dashboard")
   }
-
   return (
+    <>
     <MobilePageShell fullBleed className="pb-nav-safe">
       {/* Header */}
       <header className="flex items-center gap-3 px-6 pb-4 pt-8">
@@ -377,6 +377,7 @@ export default function SendPage() {
               <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                 <PopoverTrigger asChild>
                   <button type="button" className="flex h-12 items-center gap-2 rounded-full bg-card pl-4 pr-5 ring-1 ring-border/60">
+
                     <CalendarDays className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm font-semibold text-foreground">{format(date, "d MMM yyyy", { locale: es })}</span>
                   </button>
@@ -496,47 +497,47 @@ export default function SendPage() {
           </div>
         )}
       </div>
+    </MobilePageShell>
 
       {/* Add Beneficiary Modal */}
-      {showAddBeneficiary && (
-        <BaseModalForm
-          title="Nuevo beneficiario"
-          onClose={() => setShowAddBeneficiary(false)}
-          footer={
-            <Button
-              onClick={handleAddBeneficiary}
-              disabled={!newBeneficiaryName || !newBeneficiaryAccount || isAddingBeneficiary}
-              className="h-14 w-full rounded-2xl text-base font-semibold"
-            >
-              {isAddingBeneficiary ? "Agregando..." : "Agregar beneficiario"}
-            </Button>
-          }
-        >
-          <div className="space-y-4 pt-4">
-            <div>
-              <label htmlFor="beneficiary-name" className="mb-2 block text-sm font-medium text-muted-foreground">Nombre</label>
-              <Input
-                id="beneficiary-name"
-                value={newBeneficiaryName}
-                onChange={e => setNewBeneficiaryName(e.target.value)}
-                placeholder="Ej. Juan Pérez"
-                className="h-12"
-              />
-            </div>
-            <div>
-              <label htmlFor="beneficiary-account" className="mb-2 block text-sm font-medium text-muted-foreground">Número de cuenta</label>
-              <Input
-                id="beneficiary-account"
-                value={newBeneficiaryAccount}
-                onChange={e => setNewBeneficiaryAccount(e.target.value)}
-                placeholder="000000000"
-                className="h-12"
-                inputMode="numeric"
-              />
-            </div>
+      <SlideUpModal
+        isOpen={showAddBeneficiary}
+        onClose={() => setShowAddBeneficiary(false)}
+        title="Nuevo beneficiario"
+        footer={
+          <Button
+            onClick={handleAddBeneficiary}
+            disabled={!newBeneficiaryName || !newBeneficiaryAccount || isAddingBeneficiary}
+            className="h-14 w-full rounded-2xl text-base font-semibold"
+          >
+            {isAddingBeneficiary ? "Agregando..." : "Agregar beneficiario"}
+          </Button>
+        }
+      >
+        <div className="space-y-4 pt-4">
+          <div>
+            <label htmlFor="beneficiary-name" className="mb-2 block text-sm font-medium text-muted-foreground">Nombre</label>
+            <Input
+              id="beneficiary-name"
+              value={newBeneficiaryName}
+              onChange={e => setNewBeneficiaryName(e.target.value)}
+              placeholder="Ej. Juan Pérez"
+              className="h-12"
+            />
           </div>
-        </BaseModalForm>
-      )}
+          <div>
+            <label htmlFor="beneficiary-account" className="mb-2 block text-sm font-medium text-muted-foreground">Número de cuenta</label>
+            <Input
+              id="beneficiary-account"
+              value={newBeneficiaryAccount}
+              onChange={e => setNewBeneficiaryAccount(e.target.value)}
+              placeholder="000000000"
+              className="h-12"
+              inputMode="numeric"
+            />
+          </div>
+        </div>
+      </SlideUpModal>
       <MovementReceipt
         open={Boolean(receipt)}
         title="Transferencia registrada"
@@ -573,6 +574,6 @@ export default function SendPage() {
           },
         ]}
       />
-    </MobilePageShell>
+    </>
   )
 }

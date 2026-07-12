@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { SlideUpModal } from "@/components/ui/slide-up-modal"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { MoneyInput } from "@/components/ui/money-input"
 import { AccountCarouselSelector } from "@/components/ui/account-carousel-selector"
@@ -559,8 +559,9 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
     : `linear-gradient(145deg, color-mix(in oklab, ${headerPrimary} 82%, white), color-mix(in oklab, ${headerSecondary} 72%, white))`
 
   return (
-    <MobilePageShell fullBleed className="pb-nav-safe">
-      {showEditModal ? (
+    <>
+      <MobilePageShell fullBleed className="pb-nav-safe">
+        {showEditModal ? (
         <div className="flex min-h-full flex-col">
           <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border bg-background px-5 py-4 pt-[calc(1rem+env(safe-area-inset-top))]">
             <button type="button" onClick={closeEditModal} aria-label="Volver" className="tap-lift flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -998,28 +999,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
           </button>
         </div>
 
-        <FilterSlideUpShell<AccountFilterValues>
-          isOpen={filterModalOpen}
-          onClose={() => setFilterModalOpen(false)}
-          initialFilters={{
-            dateRange: { from: startDate, to: endDate },
-            amountMin,
-            amountMax,
-            filterType,
-          }}
-          onApply={(values) => {
-            setStartDate(values.dateRange.from)
-            setEndDate(values.dateRange.to)
-            setAmountMin(values.amountMin)
-            setAmountMax(values.amountMax)
-            setFilterType(values.filterType)
-            setFilterModalOpen(false)
-          }}
-          title="Filtrar movimientos"
-        >
-          <AccountFilterContent accountType={account?.type} />
-        </FilterSlideUpShell>
-
         {/* Transaction List */}
         <div className="mt-4 flex flex-col gap-4">
           {groupedTransactions.length === 0 ? (
@@ -1091,6 +1070,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         </div>
       </div>
 
+        </>
+      )}
+      </MobilePageShell>
+
       <EditTransactionSheet
         open={!!editingTx}
         onOpenChange={(open) => { if (!open) setEditingTx(null) }}
@@ -1110,16 +1093,15 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
         </div>
       )}
 
-      {/* Payment Modal */}
-      {showPayment && (
-        <BaseModalForm
-          title="Pagar tarjeta"
-          onClose={() => setShowPayment(false)}
-          contentClassName="space-y-4"
-          footer={
-            <Button
-              onClick={handlePayment}
-              disabled={
+      <SlideUpModal
+        isOpen={showPayment}
+        onClose={() => setShowPayment(false)}
+        title="Pagar tarjeta"
+        contentClassName="space-y-4"
+        footer={
+          <Button
+            onClick={handlePayment}
+            disabled={
                 !paymentSource ||
                 parsedAmount <= 0 ||
                 parsedAmount > currentDebtByCurrency ||
@@ -1148,11 +1130,8 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
             </div>
 
             <div className="space-y-4 pb-2">
-              {/* Source Account */}
               <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Pagar desde
-                </p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Pagar desde</p>
                 <AccountCarouselSelector
                   compact
                   items={accounts
@@ -1164,7 +1143,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 />
               </div>
 
-              {/* Exchange Rate (cross-currency) */}
               {conversionAppliesPay && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
                   <p className="mb-1 text-xs font-medium text-muted-foreground">Tasa de cambio ({sourceCurrency} a {paymentCurrency})</p>
@@ -1172,13 +1150,10 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 </div>
               )}
 
-              {/* Amount */}
               <div>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Monto a pagar
-                </p>
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Monto a pagar</p>
                 <div className="flex items-center gap-2 rounded-xl bg-muted p-4 overflow-x-auto scrollbar-none">
-                    <span className="shrink-0 amount-inline font-medium text-muted-foreground">{getCurrencySymbol(paymentCurrency)}</span>
+                  <span className="shrink-0 amount-inline font-medium text-muted-foreground">{getCurrencySymbol(paymentCurrency)}</span>
                   <MoneyInput
                     value={paymentAmount}
                     onValueChange={(value) => {
@@ -1227,7 +1202,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 </div>
               </div>
 
-              {/* Summary with DGII */}
               {parsedAmount > 0 && sourceAccount && (
                 <div className="rounded-xl border border-border bg-card p-3 text-sm">
                   <p className="text-xs font-semibold text-muted-foreground mb-2">Resumen del pago</p>
@@ -1242,7 +1216,6 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 </div>
               )}
 
-              {/* Warning if insufficient funds */}
               {sourceAccount && totalDebitPay > Number(sourceAccount.balance || 0) && (
                 <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-red-600 dark:bg-red-950/30 dark:text-red-400">
                   <AlertTriangle className="h-4 w-4" />
@@ -1262,50 +1235,64 @@ export function AccountDetail({ accountId }: AccountDetailProps) {
                 </p>
               )}
             </div>
-        </BaseModalForm>
-      )}
+      </SlideUpModal>
 
-        </>
+      <FilterSlideUpShell<AccountFilterValues>
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        initialFilters={{
+          dateRange: { from: startDate, to: endDate },
+          amountMin,
+          amountMax,
+          filterType,
+        }}
+        onApply={(values) => {
+          setStartDate(values.dateRange.from)
+          setEndDate(values.dateRange.to)
+          setAmountMin(values.amountMin)
+          setAmountMax(values.amountMax)
+          setFilterType(values.filterType)
+          setFilterModalOpen(false)
+        }}
+        title="Filtrar movimientos"
+      >
+        <AccountFilterContent accountType={account?.type} />
+      </FilterSlideUpShell>
 
-      )}
-
-
-
-        <AlertDialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) } }}>
-          <AlertDialogContent className="max-w-sm p-0 gap-0" onCloseAutoFocus={(e) => { e.preventDefault() }}>
-            <div className="p-5">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
-                <AlertTriangle className="h-7 w-7" />
-              </div>
-              <div className="mt-4 text-center">
-                <AlertDialogTitle className="text-lg font-black text-foreground">Eliminar {account.type === "credit" ? "tarjeta" : "cuenta"}</AlertDialogTitle>
-                <AlertDialogDescription className="mt-2 text-sm font-semibold text-foreground">
-                  {deleteImpact?.hasMovements
-                    ? account.type === "credit" ? "Esta tarjeta tiene movimientos registrados." : "Esta cuenta tiene movimientos registrados."
-                    : `¿Eliminar ${account.name}?`}
-                </AlertDialogDescription>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                  {deleteImpact?.hasMovements
-                    ? "Si la eliminas, también se perderán sus movimientos, historial e información asociada. Esta acción no se puede deshacer."
-                    : "Esta acción no se puede deshacer."}
-                </p>
-                {deleteError && (
-                  <div className="mt-4 flex items-center gap-2 rounded-xl bg-destructive/10 p-3 text-left text-destructive">
-                    <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                    <span className="text-xs">{deleteError}</span>
-                  </div>
-                )}
-              </div>
-              <div className="mt-5 grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-12 rounded-2xl" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }}>
-                  Cancelar
-                </Button>
-                <HoldToConfirmButton onConfirm={handleDeleteAccount} loading={isDeleting} className="w-full" label="Eliminar" />
-              </div>
+      <AlertDialog open={showDeleteModal} onOpenChange={(open) => { if (!open) { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) } }}>
+        <AlertDialogContent className="max-w-sm p-0 gap-0" onCloseAutoFocus={(e) => { e.preventDefault() }}>
+          <div className="p-5">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/12 text-destructive">
+              <AlertTriangle className="h-7 w-7" />
             </div>
-          </AlertDialogContent>
-        </AlertDialog>
-
-      </MobilePageShell>
-    )
-  }
+            <div className="mt-4 text-center">
+              <AlertDialogTitle className="text-lg font-black text-foreground">Eliminar {account.type === "credit" ? "tarjeta" : "cuenta"}</AlertDialogTitle>
+              <AlertDialogDescription className="mt-2 text-sm font-semibold text-foreground">
+                {deleteImpact?.hasMovements
+                  ? account.type === "credit" ? "Esta tarjeta tiene movimientos registrados." : "Esta cuenta tiene movimientos registrados."
+                  : `¿Eliminar ${account.name}?`}
+              </AlertDialogDescription>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                {deleteImpact?.hasMovements
+                  ? "Si la eliminas, también se perderán sus movimientos, historial e información asociada. Esta acción no se puede deshacer."
+                  : "Esta acción no se puede deshacer."}
+              </p>
+              {deleteError && (
+                <div className="mt-4 flex items-center gap-2 rounded-xl bg-destructive/10 p-3 text-left text-destructive">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span className="text-xs">{deleteError}</span>
+                </div>
+              )}
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <Button variant="outline" className="h-12 rounded-2xl" onClick={() => { setShowDeleteModal(false); setDeleteError(""); setDeleteImpact(null) }}>
+                Cancelar
+              </Button>
+              <HoldToConfirmButton onConfirm={handleDeleteAccount} loading={isDeleting} className="w-full" label="Eliminar" />
+            </div>
+          </div>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}

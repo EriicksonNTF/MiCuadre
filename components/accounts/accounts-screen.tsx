@@ -437,6 +437,8 @@ if (!draggedId) return
         </>
       )}
 
+    </MobilePageShell>
+
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(open) => { if (!open) { setConfirmDeleteId(null); setDeleteImpact(null) } }}>
         <AlertDialogContent className="max-w-sm p-0 gap-0" onCloseAutoFocus={(e) => { e.preventDefault() }}>
           <div className="p-5">
@@ -464,7 +466,6 @@ if (!draggedId) return
         </AlertDialogContent>
       </AlertDialog>
       <UpsellModal open={isUpsellOpen} onClose={closeUpsell} blocked={blocked} />
-    </MobilePageShell>
 
     <AccountCreationWizard open={showCreateAccount} onOpenChange={setShowCreateAccount} />
 

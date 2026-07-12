@@ -315,6 +315,8 @@ export function DashboardContent() {
           )}
         </div>
 
+    </MobilePageShell>
+
       {showCreditReminder && creditWarnings[activeWarningIndex] && (
         <ModalOverlay open={true} onClose={closeCreditReminder} className="bg-foreground/80 dark:bg-black/80">
           <div className="flex min-h-full items-center justify-center p-4">
@@ -328,7 +330,6 @@ export function DashboardContent() {
       )}
       <PlanSelectorSheet open={showWelcomePlanPrompt} onOpenChange={setShowWelcomePlanPrompt} welcome />
       <PlanSelectorSheet open={planningUpsellOpen} onOpenChange={setPlanningUpsellOpen} reasonTitle="Planificación Pro" reasonBody="Desbloquea presupuestos, calendario y deudas con Pro." />
-    </MobilePageShell>
 
     {!showWelcomePlanPrompt && !planningUpsellOpen && <CoachIAWidget />}
     </>

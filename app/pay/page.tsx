@@ -254,6 +254,7 @@ function PayPageContent() {
   }
 
   return (
+    <>
     <MobilePageShell className="pb-nav-safe">
       <div className="mb-5 flex items-center gap-3">
         <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
@@ -344,13 +345,14 @@ function PayPageContent() {
               <p className="mb-2 text-xs font-medium text-muted-foreground">Comentario opcional</p>
               <input value={paymentComment} onChange={(e) => setPaymentComment(e.target.value)} placeholder="Pago de mayo" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none" />
             </section>
-
-            <StickyFormFooter className="fixed left-0 right-0">
-              <button type="button" disabled={!valid || isPaying} onClick={() => setShowConfirmSheet(true)} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Continuar</button>
-            </StickyFormFooter>
           </>
         )}
       </div>
+    </MobilePageShell>
+
+      <StickyFormFooter className="fixed left-0 right-0">
+        <button type="button" disabled={!valid || isPaying} onClick={() => setShowConfirmSheet(true)} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Continuar</button>
+      </StickyFormFooter>
       <CustomAmountSheet
         currencySymbol={currencySymbol}
         maxAmount={balanceToDate}
@@ -405,6 +407,6 @@ function PayPageContent() {
           },
         ]}
       />
-    </MobilePageShell>
+    </>
   )
 }

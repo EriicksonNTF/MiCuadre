@@ -223,85 +223,62 @@ export function HistoryScreen() {
   })
 
   return (
-    <MobilePageShell fullBleed className="pb-nav-safe">
-      <header className="px-6 pb-4 pt-8">
-        <p className="section-kicker">Actividad</p>
-        <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">Historial</h1>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">Revisa el pulso de tu dinero y encuentra cualquier movimiento.</p>
-        <div className="relative mt-5 overflow-hidden rounded-[1.8rem] border border-border/70 bg-card shadow-[var(--shadow-soft)]">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent" />
-          <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-accent/[0.04] blur-2xl" />
-          <div className="relative px-5 py-5">
-            <p className="section-kicker">Balance del filtro</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-[0.6875rem] font-semibold text-muted-foreground text-reflow-1">Ingresos</span>
+    <>
+      <MobilePageShell fullBleed className="pb-nav-safe">
+        <header className="px-6 pb-4 pt-8">
+          <p className="section-kicker">Actividad</p>
+          <h1 className="mt-1 text-3xl font-black tracking-tight text-foreground">Historial</h1>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">Revisa el pulso de tu dinero y encuentra cualquier movimiento.</p>
+          <div className="relative mt-5 overflow-hidden rounded-[1.8rem] border border-border/70 bg-card shadow-[var(--shadow-soft)]">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent" />
+            <div className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-accent/[0.04] blur-2xl" />
+            <div className="relative px-5 py-5">
+              <p className="section-kicker">Balance del filtro</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <span className="text-[0.6875rem] font-semibold text-muted-foreground text-reflow-1">Ingresos</span>
+                  </div>
+                  <p className="mt-1 amount-fluid font-bold tabular-nums text-income">{formatCurrency(totals.income)}</p>
                 </div>
-                <p className="mt-1 amount-fluid font-bold tabular-nums text-income">{formatCurrency(totals.income)}</p>
-              </div>
-              <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <TrendingDown className="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" />
-                  <span className="text-[0.6875rem] font-semibold text-muted-foreground text-reflow-1">Gastos</span>
+                <div className="rounded-2xl bg-muted/60 p-3 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <TrendingDown className="h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400" />
+                    <span className="text-[0.6875rem] font-semibold text-muted-foreground text-reflow-1">Gastos</span>
+                  </div>
+                  <p className="mt-1 amount-fluid font-bold tabular-nums text-expense">-{formatCurrency(totals.expenses)}</p>
                 </div>
-                <p className="mt-1 amount-fluid font-bold tabular-nums text-expense">-{formatCurrency(totals.expenses)}</p>
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <div className="px-6 pt-2">
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar transacciones..."
-              className="h-12 w-full rounded-2xl border border-border/60 bg-card/78 pl-11 pr-4 text-sm text-foreground shadow-sm outline-none backdrop-blur placeholder:text-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/25"
-            />
-            {searchQuery && (
-              <button type="button" onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2">
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
-            )}
+        <div className="px-6 pt-2">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar transacciones..."
+                className="h-12 w-full rounded-2xl border border-border/60 bg-card/78 pl-11 pr-4 text-sm text-foreground shadow-sm outline-none backdrop-blur placeholder:text-muted-foreground/50 focus:border-ring focus:ring-2 focus:ring-ring/25"
+              />
+              {searchQuery && (
+                <button type="button" onClick={() => setSearchQuery("")} className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              )}
+            </div>
+            <button type="button"
+              onClick={() => setFilterModalOpen(true)}
+              className={cn("tap-lift flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-colors shrink-0", "bg-card/78 text-foreground ring-1 ring-border/60")}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </button>
           </div>
-          <button type="button"
-            onClick={() => setFilterModalOpen(true)}
-            className={cn("tap-lift flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-colors shrink-0", "bg-card/78 text-foreground ring-1 ring-border/60")}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </button>
         </div>
-      </div>
-
-      <FilterSlideUpShell<HistoryFilterValues>
-        isOpen={filterModalOpen}
-        onClose={() => setFilterModalOpen(false)}
-        initialFilters={{
-          dateRange: { from: startDate, to: endDate },
-          amountMin,
-          amountMax,
-          filterType,
-          accountId: accountFilter,
-        }}
-        onApply={(values) => {
-          setStartDate(values.dateRange.from)
-          setEndDate(values.dateRange.to)
-          setAmountMin(values.amountMin)
-          setAmountMax(values.amountMax)
-          setFilterType(values.filterType)
-          setAccountFilter(values.accountId)
-          setFilterModalOpen(false)
-        }}
-        title="Filtrar historial"
-      >
-        <HistoryFilterContent accounts={accounts} />
-      </FilterSlideUpShell>
 
       <div className="mt-6 px-6">
         <div className="flex items-center justify-between">
@@ -351,6 +328,8 @@ export function HistoryScreen() {
         </div>
       </div>
 
+    </MobilePageShell>
+
       <EditTransactionSheet
         open={!!editingTx}
         onOpenChange={(open) => { if (!open) setEditingTx(null) }}
@@ -369,8 +348,6 @@ export function HistoryScreen() {
           </div>
         </div>
       )}
-
-
-    </MobilePageShell>
+    </>
   )
 }

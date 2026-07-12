@@ -26,7 +26,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "@/components/providers/theme-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { BaseModalForm } from "@/components/ui/base-modal-form"
+import { SlideUpModal } from "@/components/ui/slide-up-modal"
 import { createClient } from "@/lib/supabase/client"
 import { useProfile, updateProfile } from "@/hooks/use-data"
 import { isPasskeyEnabled, verifyPasskeyUnlock } from "@/lib/passkey"
@@ -347,6 +347,7 @@ export function SettingsScreen() {
   const displayEmail = authEmail ?? "sin correo"
 
   return (
+    <>
     <MobilePageShell fullBleed className="pb-nav-safe">
       <div className="sticky top-0 z-10 border-b border-border/55 bg-background/88 backdrop-blur-xl">
         <div className="mx-auto flex max-w-md items-center gap-4 px-5 py-4">
@@ -536,165 +537,158 @@ export function SettingsScreen() {
 
         <p className="pb-2 pt-2 text-center text-xs text-muted-foreground">MiCuadre v1.0.0</p>
       </div>
+    </MobilePageShell>
 
-      {showThemePicker ? (
-        <BaseModalForm title="Seleccionar tema" onClose={() => setShowThemePicker(false)}>
-          <div role="radiogroup" aria-label="Tema" className="space-y-2 pb-2">
-            {THEME_OPTIONS.map((option) => {
-              const Icon = option.icon
-              return (
-                <button
-                  type="button"
-                  key={option.value}
-                  role="radio"
-                  aria-checked={currentTheme === option.value}
-                  onClick={() => {
-                    handleThemeChange(option.value)
-                    setShowThemePicker(false)
-                  }}
-                  className={
-                    currentTheme === option.value
-                      ? "flex w-full items-center gap-4 rounded-2xl bg-accent p-4 text-accent-foreground"
-                      : "flex w-full items-center gap-4 rounded-2xl bg-muted p-4 text-foreground"
-                  }
-                >
-                  <Icon className="h-5 w-5" aria-hidden />
-                  <span className="font-medium">{option.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </BaseModalForm>
-      ) : null}
-
-      {showCurrencyPicker ? (
-        <BaseModalForm title="Moneda principal" onClose={() => setShowCurrencyPicker(false)}>
-          <div role="radiogroup" aria-label="Moneda principal" className="space-y-2 pb-2">
-            {CURRENCY_OPTIONS.map((option) => (
+      <SlideUpModal isOpen={showThemePicker} onClose={() => setShowThemePicker(false)} title="Seleccionar tema">
+        <div role="radiogroup" aria-label="Tema" className="space-y-2 pb-2">
+          {THEME_OPTIONS.map((option) => {
+            const Icon = option.icon
+            return (
               <button
                 type="button"
                 key={option.value}
                 role="radio"
-                aria-checked={preferredCurrency === option.value}
+                aria-checked={currentTheme === option.value}
                 onClick={() => {
-                  handleCurrencyChange(option.value)
-                  setShowCurrencyPicker(false)
+                  handleThemeChange(option.value)
+                  setShowThemePicker(false)
                 }}
                 className={
-                  preferredCurrency === option.value
-                    ? "flex w-full items-center justify-between rounded-2xl bg-accent p-4 text-accent-foreground"
-                    : "flex w-full items-center justify-between rounded-2xl bg-muted p-4 text-foreground"
+                  currentTheme === option.value
+                    ? "flex w-full items-center gap-4 rounded-2xl bg-accent p-4 text-accent-foreground"
+                    : "flex w-full items-center gap-4 rounded-2xl bg-muted p-4 text-foreground"
                 }
               >
+                <Icon className="h-5 w-5" aria-hidden />
                 <span className="font-medium">{option.label}</span>
-                <span className="text-sm opacity-70">{getCurrencySymbol(option.value)}</span>
               </button>
-            ))}
-          </div>
-        </BaseModalForm>
-      ) : null}
+            )
+          })}
+        </div>
+      </SlideUpModal>
 
-      {showLanguagePicker ? (
-        <BaseModalForm title="Idioma" onClose={() => setShowLanguagePicker(false)}>
-          <div role="radiogroup" aria-label="Idioma" className="space-y-2 pb-2">
-            {LANGUAGE_OPTIONS.map((option) => (
-              <button
-                type="button"
-                key={option.value}
-                role="radio"
-                aria-checked={currentLanguage === option.value}
-                onClick={() => {
-                  handleLanguageChange(option.value)
-                  setShowLanguagePicker(false)
-                }}
-                className={
-                  currentLanguage === option.value
-                    ? "flex w-full items-center justify-between rounded-2xl bg-accent p-4 text-accent-foreground"
-                    : "flex w-full items-center justify-between rounded-2xl bg-muted p-4 text-foreground"
-                }
-              >
-                <span className="font-medium">{option.label}</span>
-              </button>
-            ))}
+      <SlideUpModal isOpen={showCurrencyPicker} onClose={() => setShowCurrencyPicker(false)} title="Moneda principal">
+        <div role="radiogroup" aria-label="Moneda principal" className="space-y-2 pb-2">
+          {CURRENCY_OPTIONS.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              role="radio"
+              aria-checked={preferredCurrency === option.value}
+              onClick={() => {
+                handleCurrencyChange(option.value)
+                setShowCurrencyPicker(false)
+              }}
+              className={
+                preferredCurrency === option.value
+                  ? "flex w-full items-center justify-between rounded-2xl bg-accent p-4 text-accent-foreground"
+                  : "flex w-full items-center justify-between rounded-2xl bg-muted p-4 text-foreground"
+              }
+            >
+              <span className="font-medium">{option.label}</span>
+              <span className="text-sm opacity-70">{getCurrencySymbol(option.value)}</span>
+            </button>
+          ))}
+        </div>
+      </SlideUpModal>
+
+      <SlideUpModal isOpen={showLanguagePicker} onClose={() => setShowLanguagePicker(false)} title="Idioma">
+        <div role="radiogroup" aria-label="Idioma" className="space-y-2 pb-2">
+          {LANGUAGE_OPTIONS.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              role="radio"
+              aria-checked={currentLanguage === option.value}
+              onClick={() => {
+                handleLanguageChange(option.value)
+                setShowLanguagePicker(false)
+              }}
+              className={
+                currentLanguage === option.value
+                  ? "flex w-full items-center justify-between rounded-2xl bg-accent p-4 text-accent-foreground"
+                  : "flex w-full items-center justify-between rounded-2xl bg-muted p-4 text-foreground"
+              }
+            >
+              <span className="font-medium">{option.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Más idiomas estarán disponibles próximamente.
+        </p>
+      </SlideUpModal>
+
+      <SlideUpModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        footer={
+          <div className="space-y-3">
+            <button type="button" onClick={handleLogout} disabled={isLoggingOut}
+              className="h-12 w-full rounded-xl bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
+              {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
+            </button>
+            <button type="button" onClick={() => setShowLogoutConfirm(false)}
+              className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
+              Cancelar
+            </button>
           </div>
-          <p className="mt-3 rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-            Más idiomas estarán disponibles próximamente.
+        }
+      >
+        <div className="space-y-2 py-2 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+            <LogOut className="h-7 w-7 text-destructive" aria-hidden />
+          </div>
+          <h2 className="text-xl font-bold">¿Cerrar sesión?</h2>
+          <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
+        </div>
+      </SlideUpModal>
+
+      <SlideUpModal
+        isOpen={showDeleteAccount}
+        onClose={() => setShowDeleteAccount(false)}
+        title="Eliminar cuenta"
+        footer={
+          <div className="space-y-3">
+            <button type="button" onClick={handleDeleteAccount} disabled={isDeletingAccount}
+              className="h-12 w-full rounded-xl bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
+              {isDeletingAccount ? "Procesando..." : "Eliminar cuenta"}
+            </button>
+            <button type="button" onClick={() => setShowDeleteAccount(false)}
+              className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
+              Cancelar
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-3 py-1 text-center">
+          <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+            <Trash2 className="h-7 w-7 text-destructive" aria-hidden />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Esta acción es permanente. Todos tus datos, transacciones, planificación y cuentas serán eliminados para siempre y no podrán ser recuperados.
           </p>
-        </BaseModalForm>
-      ) : null}
-
-      {showLogoutConfirm ? (
-        <BaseModalForm
-          onClose={() => setShowLogoutConfirm(false)}
-          footer={
-            <div className="space-y-3">
-              <button type="button" onClick={handleLogout} disabled={isLoggingOut}
-                className="h-12 w-full rounded-xl bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
-                {isLoggingOut ? "Cerrando sesión..." : "Sí, cerrar sesión"}
-              </button>
-              <button type="button" onClick={() => setShowLogoutConfirm(false)}
-                className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
-                Cancelar
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-2 py-2 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
-              <LogOut className="h-7 w-7 text-destructive" aria-hidden />
-            </div>
-            <h2 className="text-xl font-bold">¿Cerrar sesión?</h2>
-            <p className="text-sm text-muted-foreground">Tu sesión se cerrará y necesitarás iniciar sesión nuevamente para acceder a tu cuenta.</p>
+          <div className="text-left">
+            <label htmlFor="delete-confirmation" className="mb-1 block text-xs font-medium text-muted-foreground">
+              Escribe ELIMINAR para confirmar
+            </label>
+            <input
+              id="delete-confirmation"
+              value={deleteConfirmationText}
+              onChange={(event) => setDeleteConfirmationText(event.target.value)}
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"
+              placeholder="ELIMINAR"
+            />
           </div>
-        </BaseModalForm>
-      ) : null}
-
-      {showDeleteAccount ? (
-        <BaseModalForm
-          title="Eliminar cuenta"
-          onClose={() => setShowDeleteAccount(false)}
-          footer={
-            <div className="space-y-3">
-              <button type="button" onClick={handleDeleteAccount} disabled={isDeletingAccount}
-                className="h-12 w-full rounded-xl bg-destructive text-base font-semibold text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50">
-                {isDeletingAccount ? "Procesando..." : "Eliminar cuenta"}
-              </button>
-              <button type="button" onClick={() => setShowDeleteAccount(false)}
-                className="h-12 w-full rounded-xl bg-muted text-base font-semibold">
-                Cancelar
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-3 py-1 text-center">
-            <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
-              <Trash2 className="h-7 w-7 text-destructive" aria-hidden />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Esta acción es permanente. Todos tus datos, transacciones, planificación y cuentas serán eliminados para siempre y no podrán ser recuperados.
+          {deleteAccountError ? (
+            <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+              {deleteAccountError}
             </p>
-            <div className="text-left">
-              <label htmlFor="delete-confirmation" className="mb-1 block text-xs font-medium text-muted-foreground">
-                Escribe ELIMINAR para confirmar
-              </label>
-              <input
-                id="delete-confirmation"
-                value={deleteConfirmationText}
-                onChange={(event) => setDeleteConfirmationText(event.target.value)}
-                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-foreground"
-                placeholder="ELIMINAR"
-              />
-            </div>
-            {deleteAccountError ? (
-              <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                {deleteAccountError}
-              </p>
-            ) : null}
-          </div>
-        </BaseModalForm>
-      ) : null}
+          ) : null}
+        </div>
+      </SlideUpModal>
 
       <PlanSelectorSheet open={showPlanSelector} onOpenChange={setShowPlanSelector} />
-    </MobilePageShell>
+    </>
   )
 }

@@ -182,6 +182,7 @@ export function ReceiptScanner() {
   };
 
   return (
+    <>
     <MobilePageShell fullBleed className="pb-nav-safe">
       <header className="flex items-center gap-3 px-6 pb-4 pt-8">
         <button
@@ -195,34 +196,6 @@ export function ReceiptScanner() {
       </header>
 
       <div className="px-6 pb-8">
-        {isProcessing && (
-          <ModalOverlay open={true} blocking>
-            <div className="flex min-h-full items-center justify-center p-4">
-              <div className="w-[92%] max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
-                <div className="mb-4 flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  </div>
-                  <div>
-                    <p className="text-base font-semibold text-foreground">Procesando recibo</p>
-                    <p className="text-xs text-muted-foreground">IA de MiCuadre analizando la imagen</p>
-                  </div>
-                </div>
-
-                <div className="h-2 rounded-full bg-muted">
-                  <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
-                </div>
-                <p className="mt-2 text-xs text-muted-foreground">{status}</p>
-
-                <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-                  <div className={`rounded-lg px-2 py-2 text-center ${step === "uploading" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Subir</div>
-                  <div className={`rounded-lg px-2 py-2 text-center ${step === "processing" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Procesar</div>
-                  <div className={`rounded-lg px-2 py-2 text-center ${step === "done" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Listo</div>
-                </div>
-              </div>
-            </div>
-          </ModalOverlay>
-        )}
 
         <div className="rounded-2xl bg-card p-4">
           <p className="text-sm font-medium text-foreground">{status}</p>
@@ -394,5 +367,35 @@ export function ReceiptScanner() {
         )}
       </div>
     </MobilePageShell>
+
+      {isProcessing && (
+        <ModalOverlay open={true} blocking>
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="w-[92%] max-w-md rounded-3xl border border-border bg-card p-6 shadow-2xl">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+                <div>
+                  <p className="text-base font-semibold text-foreground">Procesando recibo</p>
+                  <p className="text-xs text-muted-foreground">IA de MiCuadre analizando la imagen</p>
+                </div>
+              </div>
+
+              <div className="h-2 rounded-full bg-muted">
+                <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">{status}</p>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                <div className={`rounded-lg px-2 py-2 text-center ${step === "uploading" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Subir</div>
+                <div className={`rounded-lg px-2 py-2 text-center ${step === "processing" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Procesar</div>
+                <div className={`rounded-lg px-2 py-2 text-center ${step === "done" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>Listo</div>
+              </div>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+    </>
   );
 }

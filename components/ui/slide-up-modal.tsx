@@ -1,18 +1,20 @@
 "use client"
 
 import React, { useEffect } from "react"
+import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { X } from "lucide-react"
 
 interface SlideUpModalProps {
   isOpen: boolean
   onClose: () => void
-  title: string
+  title?: string
   children: React.ReactNode
   footer?: React.ReactNode
+  contentClassName?: string
 }
 
-export function SlideUpModal({ isOpen, onClose, title, children, footer }: SlideUpModalProps) {
+export function SlideUpModal({ isOpen, onClose, title, children, footer, contentClassName }: SlideUpModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden"
@@ -51,18 +53,20 @@ export function SlideUpModal({ isOpen, onClose, title, children, footer }: Slide
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
           >
-            <div className="flex items-center justify-between border-b p-4">
-              <h2 className="text-lg font-semibold">{title}</h2>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-full p-1 transition-colors hover:bg-muted"
-                aria-label="Cerrar modal"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4">
+            {title && (
+              <div className="flex items-center justify-between border-b p-4">
+                <h2 className="text-lg font-semibold">{title}</h2>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-full p-1 transition-colors hover:bg-muted"
+                  aria-label="Cerrar modal"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+            <div className={cn("flex-1 overflow-y-auto p-4", contentClassName)}>
               {children}
             </div>
             {footer && (
