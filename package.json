@@ -7,7 +7,7 @@
   },
   "scripts": {
     "predev": "node scripts/predev.mjs",
-    "dev": "next dev --turbo -p 3000",
+    "dev": "cross-env TURBOPACK_PERSISTENT_CACHE=0 next dev --turbopack -p 3000",
     "dev:turbo": "cross-env TURBOPACK_PERSISTENT_CACHE=0 next dev --turbopack -p 3000",
     "dev:webpack": "cross-env NEXT_DISABLE_TURBOPACK=1 next dev --webpack -p 3000",
     "dev:reset": "node scripts/predev.mjs && node -e \"const fs = require('fs'); fs.rmSync('.next', {recursive: true, force: true})\" && pnpm dev",
