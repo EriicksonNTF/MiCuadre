@@ -1,4 +1,7 @@
+const isExport = process.env.BUILD_EXPORT === "true"
+
 export default {
+  output: isExport ? "export" : undefined,
   logging: {
     fetches: false,
     browserToTerminal: false,
