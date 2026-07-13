@@ -16,7 +16,7 @@ function getDaysInMonth(year: number, month: number) {
 interface DateWheelPickerProps {
   value: Date
   onChange: (date: Date) => void
-  children: ReactElement<{ onClick?: () => void; ref?: React.Ref<unknown> }>
+  children: ReactElement<{ onClick?: (e: React.MouseEvent) => void; ref?: React.Ref<unknown> }>
 }
 
 export function DateWheelPicker({ value, onChange, children }: DateWheelPickerProps) {
@@ -49,7 +49,7 @@ export function DateWheelPicker({ value, onChange, children }: DateWheelPickerPr
       trigger.props.onClick?.(e)
       handleOpen()
     },
-  } as Partial<React.ComponentProps<typeof trigger.type>>)
+  })
 
   return (
     <>
