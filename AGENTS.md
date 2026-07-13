@@ -845,3 +845,75 @@ suggestedAmount: selectedCardQuick.minimumPayment > 0 && ccy === "DOP" ? selecte
 **Fix:** Eliminar `aria-describedby={undefined}` de ambos componentes. Radix maneja la accesibilidad internamente sin necesidad de la prop explícita.
 
 **Lección:** No agregar `aria-describedby={undefined}` a componentes Radix en React 19. Si no hay descripción, dejar que Radix lo maneje por defecto.
+
+### 17.4 Sistema unificado de z-index + SlideUpPortal + Vaul Drawer z-index (jul 2026)
+
+**Problema:** Z-index inconsistente en toda la app: algunos modales usaban `z-[60]`, `z-[90]`, `z-[100]`, `z-50`; bottom nav, dialogs, vaul drawers, y overlays tenían valores hardcodeados dispares. Como resultado, elementos como el bottom nav (z-500) quedaban por encima de drawers y modales que usaban z-index menor.
+
+**Soluciones:**
+
+1. **`lib/z-index.ts`** — constantes centralizadas:
+   ```typescript
+   base: 0, stickyHeader: 100, navigation: 500, backdrop: 1000,
+   modal: 1100, fab: 1200, receipt: 1500, toast: 2000
+   ```
+
+2. **`app/globals.css`** — CSS vars para Radix altos:
+   ```css
+   --z-overlay: 1000; --z-fullscreen: 1100; --z-toast: 2000;
+   ```
+
+3. **`SlideUpModal`** y **`FilterSlideUpShell`** migrados a `createPortal(document.body)` + `Z_INDEX.modal`/`Z_INDEX.backdrop`. Ya no importa dónde se rendericen en el árbol React.
+
+4. **Dialog/AlertDialog** overlay→`z-[--z-overlay]`, content→`z-[--z-fullscreen]`.
+
+5. **Vaul Drawer** (drawer.tsx):
+   - `DrawerOverlay`→`z-[--z-overlay]` (antes z-50)
+   - `DrawerContent`→`z-[--z-fullscreen]` (antes z-50)
+
+6. **11 archivos de componente** migrados de z-index hardcodeados a `Z_INDEX.*`.
+
+**Lecciones:**
+- Los Radix primitives (popover, dropdown, select, tooltip, etc.) usan `z-50` por convención shadcn y deben quedarse ahí. Son floating elements locales, no fullscreen overlays. Su z-index bajo es correcto porque el bottom nav (z-500) DEBE estar sobre ellos.
+- Los data-attribute selectors de Vaul (`data-[vaul-drawer-direction=bottom]:max-h-[80vh]`) tienen mayor especificidad que clases Tailwind normales. Para override, usar inline `style={{ maxHeight: '90dvh' }}` en el JSX.
+- Vaul detecta scroll automáticamente, pero para drawer content scrollable, el elemento con `overflow-y-auto` necesita `data-vaul-no-drag` para que Vaul no intercepte el scroll gesture.
+
+### 17.5 Vaul drawer scroll — contenido no scrolleable sin footer sticky (jul 2026)
+
+**Síntoma:** El contenido del drawer no scrolleaba; los botones de acción quedaban fuera del viewport o el footer se superponía al contenido.
+
+**Causa raíz:** Vaul DrawerContent es `fixed bottom-0` con `max-h-[80vh]` y `flex`. Sin una estructura explícita de header/scrollable-content/footer, el contenido se desbordaba invisiblemente.
+
+**Fix en cualquier drawer que necesite scroll + footer sticky:**
+```tsx
+<DrawerContent className="..." style={{ maxHeight: '90dvh' }}>
+  <DrawerHeader className="shrink-0">...</DrawerHeader>
+
+  <div className="min-h-0 flex-1 overflow-y-auto" data-vaul-no-drag>
+    {/ * contenido scrolleable */ }
+  </div>
+
+  <DrawerFooter>
+    {/ * botones siempre visibles */ }
+  </DrawerFooter>
+</DrawerContent>
+```
+
+**Lecciones:**
+- `DrawerHeader` + contenido scrollable + `DrawerFooter` = estructura requerida.
+- `min-h-0 flex-1` en el div contenido permite que `overflow-y-auto` funcione dentro de un contenedor `flex`.
+- `max-h` override mediante `style={{}}` (inline) para vencer data-attribute de Vaul.
+- `data-vaul-no-drag` desactiva el drag-to-close de Vaul sobre el scroll content, permitiendo scroll vertical sin conflictos.
+
+### 17.6 QuickPayCardSheet — flujo en 2 pasos redundante (jul 2026)
+
+**Problema:** QuickPayCardSheet tenía un flujo de 2 pasos (Step 1: selector de cuenta → Step 2: ConfirmPaymentSheet con SwipeConfirmButton). Esto forzaba al usuario a tocar "Continuar", cerrar el drawer, esperar otro sheet, y solo entonces pagar. Además, el botón "Cancelar pago" no existía — no había forma de abortar sin tocar el backdrop.
+
+**Fix:** Unificar en un solo Vaul Drawer con tres zonas:
+- **Header:** título "Pago rápido"
+- **Scroll content:** target card info + Select de cuenta origen + tasa de cambio + desglose + advertencias
+- **Footer sticky:** `SwipeConfirmButton` + botón "Cancelar pago"
+
+Se eliminó `ConfirmPaymentSheet` del flujo y el `MovementReceipt` quedó como sibling del Drawer (no dentro).
+
+**Lección:** Cualquier formulario de pago/transferencia con selector, desglose y confirmación debe ser un único modal con footer sticky, no un wizard de 2 pasos. El footer siempre debe incluir un botón de cancelación explícito.

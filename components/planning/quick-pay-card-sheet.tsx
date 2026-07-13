@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo, useState, useCallback, useRef } from "react"
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { useMemo, useState, useRef, useEffect } from "react"
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
+import { SwipeConfirmButton } from "@/components/ui/swipe-confirm-button"
 import { formatCurrency, formatAmount, getCurrencySymbol } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { payCreditCard, useAccounts, calculateCreditCardPaymentAmounts } from "@/hooks/use-data"
@@ -20,8 +20,6 @@ type QuickCardTarget = {
   suggestedAmount: number
 }
 
-const LAST_RATE_KEY = "micuadre:last-card-payment-rate"
-
 export function QuickPayCardSheet({
   open,
   onOpenChange,
@@ -34,9 +32,7 @@ export function QuickPayCardSheet({
   const { data: accounts = [] } = useAccounts()
   const [sourceAccountId, setSourceAccountId] = useState("")
   const [exchangeRate, setExchangeRate] = useState("")
-  const continueRef = useRef(false)
   const [loading, setLoading] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [receipt, setReceipt] = useState<{
     amount: number
     currency: "DOP" | "USD"
@@ -47,6 +43,13 @@ export function QuickPayCardSheet({
     date: string
     dgiiAmount: number
   } | null>(null)
+  const preventResetRef = useRef(false)
+
+  useEffect(() => {
+    if (open) document.documentElement.dataset.modalOpen = "true"
+    else delete document.documentElement.dataset.modalOpen
+    return () => { delete document.documentElement.dataset.modalOpen }
+  }, [open])
 
   const sourceAccounts = useMemo(
     () => accounts.filter((acc) => acc.type === "cash" || acc.type === "debit"),
@@ -82,37 +85,66 @@ export function QuickPayCardSheet({
   const totalDebit = paymentCalculations?.totalDebit || sourceDebitAmount
 
   const warning = !selectedSource
-    ? "Selecciona una cuenta de origen."
+    ? null
     : totalDebit > Number(selectedSource.balance || 0)
       ? "Tu balance disponible es insuficiente."
       : null
 
-  const validRate = !conversionApplies || (Number.isFinite(parsedRate) && parsedRate > 0)
+  const canPay = Boolean(selectedSource) && !warning && (!conversionApplies || (Number.isFinite(parsedRate) && parsedRate > 0))
+
+  const handlePayment = async () => {
+    if (!selectedSource || !canPay) return
+    setLoading(true)
+    try {
+      await payCreditCard({
+        credit_account_id: target.id,
+        source_account_id: selectedSource.id,
+        amount,
+        currency: target.currency,
+        exchange_rate: conversionApplies ? parsedRate : undefined,
+        payment_kind: "custom",
+        notes: "Pago rápido desde planificación",
+        apply_commission: true,
+      })
+      notify({ title: "Pago registrado", message: "Tu pago de tarjeta fue aplicado." })
+      setReceipt({
+        amount,
+        currency: target.currency,
+        sourceName: selectedSource.name,
+        sourceLast4: selectedSource.account_number?.slice(-4) || "",
+        cardName: target.name,
+        cardLast4: target.id.slice(-4),
+        date: new Date().toISOString(),
+        dgiiAmount,
+      })
+    } catch (error: any) {
+      notify({ title: "No se pudo pagar", message: error?.message || "Inténtalo nuevamente." })
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resetState = () => {
+    setSourceAccountId("")
+    setExchangeRate("")
+    setReceipt(null)
+  }
 
   return (
     <>
       <Drawer open={open} onOpenChange={(newOpen) => {
-        if (newOpen) {
-          setSourceAccountId("")
-          setExchangeRate("")
-          setShowConfirm(false)
-          setReceipt(null)
-        }
-        if (!newOpen && !continueRef.current) {
-          setSourceAccountId("")
-          setExchangeRate("")
-          setShowConfirm(false)
-          setReceipt(null)
-        }
-        continueRef.current = false
+        if (newOpen) resetState()
+        if (!newOpen && !preventResetRef.current) resetState()
+        preventResetRef.current = false
         onOpenChange(newOpen)
       }} direction="bottom">
-        <DrawerContent className="mx-auto max-w-md rounded-t-2xl border-border bg-card px-4 pb-6 shadow-2xl ring-1 ring-border">
-          <DrawerHeader className="px-0">
+        <DrawerContent className="mx-auto max-w-md flex flex-col rounded-t-2xl border-border bg-card shadow-2xl ring-1 ring-border" style={{ maxHeight: '90dvh' }}>
+          <DrawerHeader className="shrink-0 px-4">
             <DrawerTitle>Pago rápido</DrawerTitle>
           </DrawerHeader>
 
-          <div className="space-y-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-2" data-vaul-no-drag>
             <article className="rounded-xl border border-border bg-muted/40 p-3">
               <p className="text-sm font-semibold text-foreground">{target.name}</p>
               <p className="text-xs text-muted-foreground">Deuda actual: {formatCurrency(target.currentDebt, target.currency)}</p>
@@ -138,73 +170,73 @@ export function QuickPayCardSheet({
             {conversionApplies && (
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Tasa de cambio ({sourceCurrency} a {target.currency})</span>
-                <input value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="59.50" className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm" />
+                <input
+                  value={exchangeRate}
+                  onChange={(e) => setExchangeRate(e.target.value.replace(/[^0-9.]/g, ""))}
+                  inputMode="decimal"
+                  placeholder="59.50"
+                  className="h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
+                />
               </label>
             )}
 
-            <article className="rounded-xl border border-border bg-background p-3 text-sm">
-              <p className="flex items-center justify-between"><span>Monto a pagar</span><span className="text-lg font-bold">{formatCurrency(amount, target.currency)}</span></p>
-              {selectedSource ? <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><span>Disponible en origen</span><span>{formatCurrency(Number(selectedSource.balance || 0), selectedSource.currency)}</span></p> : null}
-              {selectedSource && conversionApplies ? <p className="mt-1 flex items-center justify-between text-xs"><span className="text-muted-foreground">Total a debitar (sin DGII)</span><span>{formatCurrency(sourceDebitAmount, sourceCurrency)}</span></p> : null}
-              {dgiiAmount > 0 ? <p className="mt-1 flex items-center justify-between text-xs"><span className="text-muted-foreground">Impuesto DGII 0.20%</span><span className="text-amber-500">{formatCurrency(dgiiAmount, sourceCurrency)}</span></p> : null}
-              <p className="mt-1 flex items-center justify-between text-lg font-bold"><span>Total a debitar</span><span>{formatCurrency(totalDebit, sourceCurrency)}</span></p>
-              <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground"><span>Nuevo balance de tarjeta</span><span>{formatCurrency(Math.max(0, target.currentDebt - amount), target.currency)}</span></p>
-            </article>
+            {selectedSource && (
+              <article className="rounded-xl border border-border bg-background p-3 text-sm">
+                <p className="flex items-center justify-between">
+                  <span>Monto a pagar</span>
+                  <span className="text-lg font-bold">{formatCurrency(amount, target.currency)}</span>
+                </p>
+                <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Disponible en origen</span>
+                  <span>{formatCurrency(Number(selectedSource.balance || 0), selectedSource.currency)}</span>
+                </p>
+                {conversionApplies && (
+                  <p className="mt-1 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Total a debitar (sin DGII)</span>
+                    <span>{formatCurrency(sourceDebitAmount, sourceCurrency)}</span>
+                  </p>
+                )}
+                {dgiiAmount > 0 && (
+                  <p className="mt-1 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Impuesto DGII 0.20%</span>
+                    <span className="text-amber-500">{formatCurrency(dgiiAmount, sourceCurrency)}</span>
+                  </p>
+                )}
+                <p className="mt-1 flex items-center justify-between text-lg font-bold">
+                  <span>Total a debitar</span>
+                  <span>{formatCurrency(totalDebit, sourceCurrency)}</span>
+                </p>
+                <p className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Nuevo balance de tarjeta</span>
+                  <span>{formatCurrency(Math.max(0, target.currentDebt - amount), target.currency)}</span>
+                </p>
+              </article>
+            )}
 
-            <button type="button" disabled={Boolean(warning) || !validRate} onClick={() => { continueRef.current = true; onOpenChange(false); setShowConfirm(true) }} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Continuar</button>
+            {warning && (
+              <div className="rounded-xl bg-destructive/10 p-3 text-sm font-medium text-destructive">
+                {warning}
+              </div>
+            )}
           </div>
+
+          <DrawerFooter>
+            <SwipeConfirmButton
+              label="Desliza para pagar"
+              loading={loading}
+              disabled={!canPay}
+              onConfirm={handlePayment}
+            />
+            <button
+              type="button"
+              onClick={() => { preventResetRef.current = true; onOpenChange(false) }}
+              className="h-11 w-full rounded-xl text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              Cancelar pago
+            </button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
-
-      {showConfirm && selectedSource ? (
-        <ConfirmPaymentSheet
-          amount={amount}
-          taxAmount={dgiiAmount}
-          totalDebit={totalDebit}
-          currencySymbol={getCurrencySymbol(target.currency)}
-          sourceCurrencySymbol={getCurrencySymbol(sourceCurrency)}
-          sourceAccountName={selectedSource.name}
-          sourceAvailable={formatCurrency(Number(selectedSource.balance || 0), selectedSource.currency)}
-          cardName={target.name}
-          warning={warning}
-          loading={loading}
-          conversionSummary={conversionApplies ? `Al pagar ${getCurrencySymbol(target.currency)}${formatAmount(amount)} se debitaran ${getCurrencySymbol(sourceCurrency)}${formatAmount(sourceDebitAmount)}` : undefined}
-          onClose={() => setShowConfirm(false)}
-          onConfirm={async () => {
-            if (!selectedSource || !validRate) return
-            setLoading(true)
-            try {
-              await payCreditCard({
-                credit_account_id: target.id,
-                source_account_id: selectedSource.id,
-                amount,
-                currency: target.currency,
-                exchange_rate: conversionApplies ? parsedRate : undefined,
-                payment_kind: "custom",
-                notes: "Pago rápido desde planificación",
-                apply_commission: true,
-              })
-              notify({ title: "Pago registrado", message: "Tu pago de tarjeta fue aplicado." })
-              setShowConfirm(false)
-              setReceipt({
-                amount,
-                currency: target.currency,
-                sourceName: selectedSource.name,
-                sourceLast4: selectedSource.account_number?.slice(-4) || "",
-                cardName: target.name,
-                cardLast4: target.id.slice(-4),
-                date: new Date().toISOString(),
-                dgiiAmount,
-              })
-            } catch (error: any) {
-              notify({ title: "No se pudo pagar", message: error?.message || "Inténtalo nuevamente." })
-              throw error
-            } finally {
-              setLoading(false)
-            }
-          }}
-        />
-      ) : null}
 
       <MovementReceipt
         open={receipt !== null}
@@ -226,7 +258,7 @@ export function QuickPayCardSheet({
         primaryActionLabel="Cerrar"
         secondaryActionLabel="Nuevo pago"
         onPrimaryAction={() => { setReceipt(null); onOpenChange(false) }}
-        onSecondaryAction={() => setReceipt(null)}
+        onSecondaryAction={() => { setReceipt(null); resetState() }}
         onClose={() => { setReceipt(null); onOpenChange(false) }}
       />
     </>

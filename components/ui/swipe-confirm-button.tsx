@@ -198,15 +198,6 @@ export function SwipeConfirmButton({
           {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : isConfirmed ? <Check className="h-6 w-6" /> : icon || <ChevronsRight className="h-6 w-6" />}
         </div>
       </div>
-      {!processing && !disabled && (
-        <button
-          type="button"
-          onClick={triggerConfirm}
-          className="mt-3 h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground"
-        >
-          Pagar ahora
-        </button>
-      )}
       {processing ? <p className="mt-2 text-center text-sm font-semibold text-foreground">{loading ? loadingLabel : completedLabel}</p> : null}
     </div>
   )

@@ -8,6 +8,7 @@ import { BalanceCard } from "@/components/dashboard/balance-card"
 import { AccountsList } from "@/components/dashboard/accounts-list"
 import { QuickActions } from "@/components/dashboard/quick-actions"
 import { TransactionsList } from "@/components/dashboard/transactions-list"
+import { motion, AnimatePresence } from "framer-motion"
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { processDueFinancialSubscriptions, useProfile } from "@/hooks/use-data"
@@ -20,7 +21,6 @@ import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-spla
 import { ActivationPanel } from "@/components/dashboard/activation-panel"
 import { PlanningSummaryCard } from "@/components/dashboard/planning-summary-card"
 import { CalendarPreviewCard } from "@/components/dashboard/calendar-preview-card"
-import { ModalOverlay } from "@/components/ui/modal-overlay"
 import { showToast } from "@/components/toast/smart-toast"
 import { EventBus } from "@/lib/event-bus"
 import { PlanSelectorSheet } from "@/components/billing/plan-selector-sheet"
@@ -317,17 +317,36 @@ export function DashboardContent() {
 
     </MobilePageShell>
 
-      {showCreditReminder && creditWarnings[activeWarningIndex] && (
-        <ModalOverlay open={true} onClose={closeCreditReminder} className="bg-foreground/80 dark:bg-black/80">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div className="w-full max-w-sm animate-in fade-in-0 zoom-in-95 duration-300 ease-[var(--ease-sheet-ios)] rounded-[1.6rem] border border-border/70 bg-card/96 p-5 shadow-[var(--shadow-float)] backdrop-blur-2xl">
-              <p className="text-sm font-semibold text-foreground">{creditWarnings[activeWarningIndex].title}</p>
-              <p className="mt-2 text-sm text-muted-foreground">{creditWarnings[activeWarningIndex].message}</p>
-              <Button className="mt-4 h-11 w-full" onClick={closeCreditReminder}>Entendido</Button>
-            </div>
-          </div>
-        </ModalOverlay>
-      )}
+      <AnimatePresence>
+        {showCreditReminder && creditWarnings[activeWarningIndex] && (
+          <motion.div
+            key="credit-reminder"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[--z-overlay] flex min-h-dvh items-center justify-center bg-foreground/80 p-6 backdrop-blur-[6px] dark:bg-black/80"
+            onClick={closeCreditReminder}
+          >
+            <motion.div
+              key="card"
+              initial={{ opacity: 0, scale: 0.92, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 20 }}
+              transition={{ type: "spring", damping: 26, stiffness: 280, mass: 0.8 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-[1.6rem] border border-border/70 bg-card/96 p-6 shadow-[var(--shadow-float)] backdrop-blur-2xl"
+            >
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <TriangleAlert className="h-6 w-6 text-amber-500" />
+              </div>
+              <p className="text-lg font-bold text-foreground">{creditWarnings[activeWarningIndex].title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{creditWarnings[activeWarningIndex].message}</p>
+              <Button className="mt-6 h-12 w-full rounded-xl text-sm font-bold" onClick={closeCreditReminder}>Entendido</Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <PlanSelectorSheet open={showWelcomePlanPrompt} onOpenChange={setShowWelcomePlanPrompt} welcome />
       <PlanSelectorSheet open={planningUpsellOpen} onOpenChange={setPlanningUpsellOpen} reasonTitle="Planificación Pro" reasonBody="Desbloquea presupuestos, calendario y deudas con Pro." />
 

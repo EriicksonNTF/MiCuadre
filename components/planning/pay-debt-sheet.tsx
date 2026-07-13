@@ -1,19 +1,19 @@
 "use client"
 
-import { useMemo, useState, useRef } from "react"
+import { useMemo, useState, useRef, useEffect } from "react"
 import { CalendarDays } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer"
 import { MoneyInput } from "@/components/ui/money-input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
+import { SwipeConfirmButton } from "@/components/ui/swipe-confirm-button"
 import { useAccounts } from "@/hooks/use-data"
 import { payDebt } from "@/hooks/use-planning"
-import { formatCurrency, getCurrencySymbol } from "@/lib/data"
+import { formatCurrency } from "@/lib/data"
 import { notify } from "@/lib/notifications"
 import { MovementReceipt } from "@/components/receipts/movement-receipt"
-import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
 import type { DebtWithProgress } from "@/types/planning"
 
 type PaymentReceipt = {
@@ -44,10 +44,15 @@ export function PayDebtSheet({
   const [customAmount, setCustomAmount] = useState("")
   const [notes, setNotes] = useState("")
   const [dateVar, setDateVar] = useState(new Date())
-  const continueRef = useRef(false)
   const [loading, setLoading] = useState(false)
-  const [showConfirm, setShowConfirm] = useState(false)
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null)
+  const preventResetRef = useRef(false)
+
+  useEffect(() => {
+    if (open) document.documentElement.dataset.modalOpen = "true"
+    else delete document.documentElement.dataset.modalOpen
+    return () => { delete document.documentElement.dataset.modalOpen }
+  }, [open])
 
   if (!debt) return null
 
@@ -58,8 +63,12 @@ export function PayDebtSheet({
 
   const amount = mode === "installment" ? suggestedInstallment : Number(customAmount || 0)
   const nextDebtBalance = Math.max(0, Number(debt.current_balance || 0) - Number(amount || 0))
+  const warning = selectedAccount && amount > Number(selectedAccount.balance || 0)
+    ? "Tu balance disponible es insuficiente."
+    : null
+  const canPay = Boolean(selectedAccount) && amount > 0 && !warning
 
-  const reset = () => {
+  const resetState = () => {
     setSourceAccountId("")
     setMode("installment")
     setCustomAmount("")
@@ -97,7 +106,7 @@ export function PayDebtSheet({
         notes: result.notes,
       })
       notify({ title: "Pago registrado", message: "La cuota fue aplicada correctamente." })
-      reset()
+      resetState()
     } catch (error: any) {
       notify({ title: "No se pudo registrar el pago", message: error?.message || "Inténtalo nuevamente." })
       throw error
@@ -109,28 +118,20 @@ export function PayDebtSheet({
   return (
     <>
       <Drawer open={open} onOpenChange={(newOpen) => {
-        if (newOpen) {
-          reset()
-          setShowConfirm(false)
-          setReceipt(null)
-        }
-        if (!newOpen && !continueRef.current) {
-          reset()
-          setShowConfirm(false)
-          setReceipt(null)
-        }
-        continueRef.current = false
+        if (newOpen) resetState()
+        if (!newOpen && !preventResetRef.current) resetState()
+        preventResetRef.current = false
         onOpenChange(newOpen)
       }} direction="bottom">
-        <DrawerContent className="mx-auto max-w-md rounded-t-2xl border-border bg-card px-4 pb-6 shadow-2xl ring-1 ring-border">
-          <DrawerHeader className="px-0">
+        <DrawerContent className="mx-auto max-w-md flex flex-col rounded-t-2xl border-border bg-card shadow-2xl ring-1 ring-border" style={{ maxHeight: '90dvh' }}>
+          <DrawerHeader className="shrink-0 px-4">
             <DrawerTitle>Pagar deuda</DrawerTitle>
           </DrawerHeader>
 
-          <div className="space-y-3">
-            <article className="rounded-xl border border-border bg-muted/40 p-3 text-sm">
-              <p className="font-semibold text-foreground">{debt.name}</p>
-              <p className="text-xs text-muted-foreground">Pendiente actual: {formatCurrency(debt.current_balance, debt.currency)}</p>
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 pb-2" data-vaul-no-drag>
+            <article className="rounded-xl border border-border bg-muted/40 p-3">
+              <p className="text-sm font-semibold text-foreground">{debt.name}</p>
+              <p className="text-xs text-muted-foreground">Pendiente: {formatCurrency(debt.current_balance, debt.currency)}</p>
             </article>
 
             <label className="block text-sm">
@@ -149,8 +150,8 @@ export function PayDebtSheet({
 
             <article className="rounded-xl border border-border bg-background p-3 text-sm">
               <p className="text-xs text-muted-foreground">Resumen</p>
-              <div className="mt-2 space-y-1 text-sm">
-              <p className="flex items-center justify-between"><span>Pendiente actual</span><span className="text-lg font-bold">{formatCurrency(debt.current_balance, debt.currency)}</span></p>
+              <div className="mt-2 space-y-1">
+                <p className="flex items-center justify-between"><span>Pendiente</span><span className="text-lg font-bold">{formatCurrency(debt.current_balance, debt.currency)}</span></p>
                 <p className="flex items-center justify-between"><span>Cuota sugerida</span><span className="text-lg font-bold">{formatCurrency(suggestedInstallment, debt.currency)}</span></p>
                 <p className="flex items-center justify-between"><span>Nuevo pendiente</span><span className="text-lg font-bold">{formatCurrency(nextDebtBalance, debt.currency)}</span></p>
                 {selectedAccount && (
@@ -176,7 +177,7 @@ export function PayDebtSheet({
 
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Nota</span>
-              <textarea className="min-h-[82px] w-full rounded-xl border border-border bg-background px-3 py-2" value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <textarea className="min-h-[82px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </label>
 
             <label className="block text-sm">
@@ -189,28 +190,30 @@ export function PayDebtSheet({
               </DateWheelPicker>
             </label>
 
-            <button type="button" onClick={() => { continueRef.current = true; onOpenChange(false); setShowConfirm(true) }} disabled={!sourceAccountId || !amount || amount <= 0} className="h-12 w-full rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
-              Continuar
-            </button>
+            {warning && (
+              <div className="rounded-xl bg-destructive/10 p-3 text-sm font-medium text-destructive">
+                {warning}
+              </div>
+            )}
           </div>
+
+          <DrawerFooter>
+            <SwipeConfirmButton
+              label="Desliza para pagar"
+              loading={loading}
+              disabled={!canPay}
+              onConfirm={onConfirm}
+            />
+            <button
+              type="button"
+              onClick={() => { preventResetRef.current = true; onOpenChange(false) }}
+              className="h-11 w-full rounded-xl text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              Cancelar pago
+            </button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
-
-      {showConfirm && selectedAccount ? (
-        <ConfirmPaymentSheet
-          amount={amount || 0}
-          taxAmount={0}
-          totalDebit={amount || 0}
-          currencySymbol={getCurrencySymbol(debt.currency)}
-          sourceAccountName={selectedAccount.name}
-          sourceAvailable={formatCurrency(Number(selectedAccount.balance || 0), selectedAccount.currency)}
-          cardName={debt.name}
-          warning={amount > Number(selectedAccount.balance || 0) ? "Tu balance disponible es insuficiente." : null}
-          loading={loading}
-          onClose={() => setShowConfirm(false)}
-          onConfirm={onConfirm}
-        />
-      ) : null}
 
       <MovementReceipt
         open={!!receipt}
@@ -243,9 +246,9 @@ export function PayDebtSheet({
         ]}
         primaryActionLabel="Ver deuda"
         secondaryActionLabel="Listo"
-        onPrimaryAction={() => setReceipt(null)}
-        onSecondaryAction={() => setReceipt(null)}
-        onClose={() => setReceipt(null)}
+        onPrimaryAction={() => { setReceipt(null); onOpenChange(false) }}
+        onSecondaryAction={() => { setReceipt(null); resetState() }}
+        onClose={() => { setReceipt(null); onOpenChange(false) }}
       />
     </>
   )
