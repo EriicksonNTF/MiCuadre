@@ -628,13 +628,17 @@ export async function payDebt(input: {
   const previousDebtBalance = normalizeAmount((debt as any).current_balance || 0)
   if (amount > previousDebtBalance) throw new Error("El monto no puede superar el pendiente de la deuda")
 
+  if ((sourceAccount as any).type !== "credit" && amount > Number((sourceAccount as any).balance || 0)) {
+    throw new Error("Fondos insuficientes en la cuenta origen")
+  }
+
   const newDebtBalance = normalizeAmount(Math.max(0, previousDebtBalance - amount))
 
   let debtPaymentId: string | null = null
   let transactionId: string | null = null
 
   try {
-    // Step 1: Debit source account via applyAccountImpact (validates currency + funds).
+    // Step 1: Debit source account via applyAccountImpact (ledger-only for non-credit; funds already validated above).
     await applyAccountImpact({
       accountId: input.source_account_id,
       type: "expense",

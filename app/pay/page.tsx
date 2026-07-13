@@ -14,8 +14,6 @@ import { MovementReceipt } from "@/components/receipts/movement-receipt"
 import { PaymentOptionCard } from "@/components/credit-cards/pay-card/payment-option-card"
 import { CustomAmountSheet } from "@/components/credit-cards/pay-card/custom-amount-sheet"
 import { ConfirmPaymentSheet } from "@/components/credit-cards/pay-card/confirm-payment-sheet"
-import { MobilePageShell, MobileSectionHeader, StickyFormFooter } from "@/components/ui/mobile-foundation"
-
 
 type PaymentMode = "balance_to_date" | "statement_balance" | "minimum_payment" | "custom"
 
@@ -29,7 +27,6 @@ function roundMoney(value: number) {
   return Math.round(value * 100) / 100
 }
 
-// Lazy initializer for exchangeRate - reads localStorage only once on mount
 function getInitialExchangeRate(): string {
   if (typeof window === "undefined") return ""
   const stored = window.localStorage.getItem(LAST_RATE_KEY)
@@ -108,8 +105,6 @@ function PayPageContent() {
     return currencies.length ? Array.from(new Set(currencies)) : [card.currency || "DOP"]
   }, [card])
 
-  // React 19: Handle URL search params once on mount using useSearchParams
-  // instead of useEffect with window.location.search
   useEffect(() => {
     if (preselectedCardHandled.current) return
     const preselectedCardId = searchParams?.get("card")
@@ -123,9 +118,6 @@ function PayPageContent() {
     preselectedCardHandled.current = true
   }, [creditCards])
 
-  // React 19: Handle currency change by deriving state instead of useEffect+setState cascade
-  // The resets are now handled in the currency button onClick (line ~276)
-  // This effect only adjusts currencyTab if it becomes invalid
   useEffect(() => {
     if (!card) return
     const isValid = activeCurrencies.includes(currencyTab)
@@ -175,8 +167,6 @@ function PayPageContent() {
       ? "Tu balance disponible es insuficiente."
       : null
 
-  // exchangeRate now uses lazy initializer (getInitialExchangeRate) - no effect needed
-
   const selectAmount = (mode: PaymentMode, amount: number) => {
     setPaymentMode(mode)
     setCustomAmount(amount > 0 ? String(amount) : "")
@@ -202,7 +192,6 @@ function PayPageContent() {
         window.localStorage.setItem(LAST_RATE_KEY, String(parsedRate))
       }
       notify({ title: "Pago registrado", message: "Tu tarjeta y cuenta origen fueron actualizadas." })
-      // Generate transaction ID once per payment (not on every render)
       const transactionId = Math.random().toString(36).slice(2, 14).toUpperCase()
       setReceipt({
         id: result?.payment?.id || transactionId,
@@ -253,106 +242,136 @@ function PayPageContent() {
     router.push("/dashboard")
   }
 
+  const canPay = valid && !isPaying
+
   return (
     <>
-    <MobilePageShell className="pb-nav-safe">
-      <div className="mb-5 flex items-center gap-3">
-        <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <h1 className="text-lg font-semibold">Pagar tarjeta</h1>
+      <div className="flex flex-col min-h-dvh bg-background">
+        {/* Header fijo */}
+        <header className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 z-[--z-floating]">
+          <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="text-lg font-semibold">Pagar tarjeta</h1>
+        </header>
+
+        {/* Cuerpo con scroll interno */}
+        <main className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-4">
+          <section>
+            <p className="mb-2 text-sm font-semibold text-foreground">Tarjeta que se va a pagar</p>
+            <AccountCarouselSelector
+              items={creditCards.map((c) => ({
+                id: c.id,
+                title: c.name,
+                subtitle: [
+                  Number(c.current_debt_dop || 0) > 0 ? formatCurrency(Number(c.current_debt_dop || 0), "DOP") : null,
+                  Number(c.current_debt_usd || 0) > 0 ? formatCurrency(Number(c.current_debt_usd || 0), "USD") : null,
+                ].filter(Boolean).join(" · ") || formatCurrency(Number(c.current_debt || 0), c.currency),
+                detail: "Tarjeta",
+              }))}
+              selectedId={selectedCardId}
+              onSelect={(id) => {
+                setSelectedCard(id)
+                setSourceAccount("")
+                setCustomAmount("")
+              }}
+              emptyMessage="Crea tu primera tarjeta"
+            />
+          </section>
+
+          {card && (
+            <>
+              {activeCurrencies.length > 1 && (
+                <section className="rounded-2xl border border-border bg-card p-4">
+                  <p className="mb-3 text-sm font-semibold">¿Qué balance quieres pagar?</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {activeCurrencies.map((currency) => (
+                      <button
+                        type="button"
+                        key={currency}
+                        onClick={() => { setCurrencyTab(currency); setSourceAccount(""); setCustomAmount("") }}
+                        className={cn("h-10 rounded-xl text-sm font-bold transition", currencyTab === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}
+                      >
+                        {getCurrencySymbol(currency)}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              <section>
+                <p className="mb-2 text-sm font-semibold text-foreground">Cuenta de origen</p>
+                <AccountCarouselSelector
+                  compact
+                  items={sources.map((acc) => ({ id: acc.id, title: acc.name, subtitle: formatCurrency(Number(acc.balance || 0), acc.currency), detail: acc.currency }))}
+                  selectedId={sourceAccount}
+                  onSelect={setSourceAccount}
+                  emptyMessage="No hay cuentas disponibles"
+                />
+              </section>
+
+              <section className="space-y-3">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-base font-semibold">Elige el monto</p>
+                  {card.statement_due_date ? (
+                    <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground shrink-0">
+                      Pagar antes del {formatDate(card.statement_due_date)}
+                    </span>
+                  ) : null}
+                </div>
+                <PaymentOptionCard title="Mínimo pendiente" description="Evita afectar tu historial crediticio" amount={formatCurrency(minimumPayment, currencyTab)} selected={paymentMode === "minimum_payment"} onClick={() => selectAmount("minimum_payment", minimumPayment)} />
+                <PaymentOptionCard title="Pendiente al corte" description="Evita cargos por interés" amount={formatCurrency(pendingStatement, currencyTab)} selected={paymentMode === "statement_balance"} onClick={() => selectAmount("statement_balance", pendingStatement)} />
+                <PaymentOptionCard title="Balance a la fecha" description="Pagarás todo lo consumido." amount={formatCurrency(balanceToDate, currencyTab)} selected={paymentMode === "balance_to_date"} onClick={() => selectAmount("balance_to_date", balanceToDate)} />
+                <PaymentOptionCard title="Otro monto" amount={selectedAmount > 0 && paymentMode === "custom" ? formatCurrency(selectedAmount, currencyTab) : ""} selected={paymentMode === "custom"} onClick={() => { setPaymentMode("custom"); setCustomAmount(""); setShowCustomSheet(true) }} />
+                <button type="button" className="text-sm font-semibold text-primary">¿Cómo pagar mi tarjeta?</button>
+              </section>
+
+              {conversionApplies && source && (
+                <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+                  <p className="text-sm font-bold">Tasa de cambio</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{getCurrencySymbol("DOP")} por {getCurrencySymbol("USD")}1. Puedes ajustar esta tasa si tu banco usa otra.</p>
+                  <input
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(e.target.value.replace(/[^0-9.]/g, ""))}
+                    inputMode="decimal"
+                    placeholder="59.50"
+                    className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold outline-none"
+                  />
+                  <div className="mt-3 rounded-xl bg-background/70 p-3 text-sm">
+                    <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total a descontar</span><span className="text-xl font-bold">{formatCurrency(sourceDebitAmount, source.currency)}</span></div>
+                    {selectedAmount > 0 ? <div className="mt-2 flex justify-between gap-4 text-xs"><span className="text-muted-foreground">Impuesto DGII 0.20%</span><span className="text-amber-600 dark:text-amber-400">{formatCurrency(dgiiAmount, source.currency)}</span></div> : null}
+                    {selectedAmount > 0 ? <div className="mt-1 flex justify-between gap-4 border-t border-amber-500/20 pt-2 text-xl font-bold"><span className="text-muted-foreground">Total a debitar</span><span>{formatCurrency(totalDebit, source.currency)}</span></div> : null}
+                    <p className="mt-1 text-xs text-muted-foreground">Tasa guardada para esta transacción.</p>
+                  </div>
+                </section>
+              )}
+
+              <section className="rounded-2xl bg-card p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Comentario opcional</p>
+                <input
+                  value={paymentComment}
+                  onChange={(e) => setPaymentComment(e.target.value)}
+                  placeholder="Pago de mayo"
+                  className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none"
+                />
+              </section>
+            </>
+          )}
+        </main>
+
+        {/* Footer fijo con acciones — siempre visible sobre el BottomNav */}
+        <footer className="shrink-0 border-t border-border bg-background pt-4 px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] z-[--z-fullscreen]">
+          <button
+            type="button"
+            disabled={!canPay}
+            onClick={() => setShowConfirmSheet(true)}
+            className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground"
+          >
+            Continuar
+          </button>
+        </footer>
       </div>
 
-      <div className="space-y-5">
-        <section>
-          <p className="mb-2 text-sm font-semibold text-foreground">Tarjeta que se va a pagar</p>
-          <AccountCarouselSelector
-            items={creditCards.map((c) => ({
-              id: c.id,
-              title: c.name,
-              subtitle: [
-                Number(c.current_debt_dop || 0) > 0 ? formatCurrency(Number(c.current_debt_dop || 0), "DOP") : null,
-                Number(c.current_debt_usd || 0) > 0 ? formatCurrency(Number(c.current_debt_usd || 0), "USD") : null,
-              ].filter(Boolean).join(" · ") || formatCurrency(Number(c.current_debt || 0), c.currency),
-              detail: "Tarjeta",
-            }))}
-            selectedId={selectedCardId}
-            onSelect={(id) => {
-              setSelectedCard(id)
-              setSourceAccount("")
-              setCustomAmount("")
-            }}
-            emptyMessage="Crea tu primera tarjeta"
-          />
-        </section>
-
-        {card && (
-          <>
-            {activeCurrencies.length > 1 && (
-              <section className="rounded-2xl border border-border bg-card p-4">
-                <p className="mb-3 text-sm font-semibold">¿Qué balance quieres pagar?</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {activeCurrencies.map((currency) => (
-                    <button type="button" key={currency} onClick={() => { setCurrencyTab(currency); setSourceAccount(""); setCustomAmount("") }} className={cn("h-10 rounded-xl text-sm font-bold transition", currencyTab === currency ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
-                      {getCurrencySymbol(currency)}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section>
-              <p className="mb-2 text-sm font-semibold text-foreground">Cuenta de origen</p>
-              <AccountCarouselSelector
-                compact
-                items={sources.map((acc) => ({ id: acc.id, title: acc.name, subtitle: formatCurrency(Number(acc.balance || 0), acc.currency), detail: acc.currency }))}
-                selectedId={sourceAccount}
-                onSelect={setSourceAccount}
-                emptyMessage="No hay cuentas disponibles"
-              />
-            </section>
-
-            <section className="space-y-3">
-              <MobileSectionHeader title="Elige el monto" description="Selecciona una opción segura antes de confirmar el pago." action={
-                card.statement_due_date ? (
-                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
-                    Pagar antes del {formatDate(card.statement_due_date)}
-                  </span>
-                ) : null
-              } />
-              <PaymentOptionCard title="Mínimo pendiente" description="Evita afectar tu historial crediticio" amount={formatCurrency(minimumPayment, currencyTab)} selected={paymentMode === "minimum_payment"} onClick={() => selectAmount("minimum_payment", minimumPayment)} />
-              <PaymentOptionCard title="Pendiente al corte" description="Evita cargos por interés" amount={formatCurrency(pendingStatement, currencyTab)} selected={paymentMode === "statement_balance"} onClick={() => selectAmount("statement_balance", pendingStatement)} />
-              <PaymentOptionCard title="Balance a la fecha" description="Pagarás todo lo consumido." amount={formatCurrency(balanceToDate, currencyTab)} selected={paymentMode === "balance_to_date"} onClick={() => selectAmount("balance_to_date", balanceToDate)} />
-              <PaymentOptionCard title="Otro monto" amount={selectedAmount > 0 && paymentMode === "custom" ? formatCurrency(selectedAmount, currencyTab) : ""} selected={paymentMode === "custom"} onClick={() => { setPaymentMode("custom"); setCustomAmount(""); setShowCustomSheet(true) }} />
-              <button type="button" className="text-sm font-semibold text-primary">¿Cómo pagar mi tarjeta?</button>
-            </section>
-
-            {conversionApplies && source && (
-              <section className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-                <p className="text-sm font-bold">Tasa de cambio</p>
-                <p className="mt-1 text-xs text-muted-foreground">{getCurrencySymbol("DOP")} por {getCurrencySymbol("USD")}1. Puedes ajustar esta tasa si tu banco usa otra.</p>
-                <input value={exchangeRate} onChange={(e) => setExchangeRate(e.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal" placeholder="59.50" className="mt-3 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold outline-none" />
-                <div className="mt-3 rounded-xl bg-background/70 p-3 text-sm">
-                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Total a descontar</span><span className="text-xl font-bold">{formatCurrency(sourceDebitAmount, source.currency)}</span></div>
-                  {selectedAmount > 0 ? <div className="mt-2 flex justify-between gap-4 text-xs"><span className="text-muted-foreground">Impuesto DGII 0.20%</span><span className="text-amber-600 dark:text-amber-400">{formatCurrency(dgiiAmount, source.currency)}</span></div> : null}
-                  {selectedAmount > 0 ? <div className="mt-1 flex justify-between gap-4 border-t border-amber-500/20 pt-2 text-xl font-bold"><span className="text-muted-foreground">Total a debitar</span><span>{formatCurrency(totalDebit, source.currency)}</span></div> : null}
-                  <p className="mt-1 text-xs text-muted-foreground">Tasa guardada para esta transacción.</p>
-                </div>
-              </section>
-            )}
-
-            <section className="rounded-2xl bg-card p-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Comentario opcional</p>
-              <input value={paymentComment} onChange={(e) => setPaymentComment(e.target.value)} placeholder="Pago de mayo" className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none" />
-            </section>
-          </>
-        )}
-      </div>
-    </MobilePageShell>
-
-      <StickyFormFooter className="fixed left-0 right-0">
-        <button type="button" disabled={!valid || isPaying} onClick={() => setShowConfirmSheet(true)} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">Continuar</button>
-      </StickyFormFooter>
       <CustomAmountSheet
         currencySymbol={currencySymbol}
         maxAmount={balanceToDate}

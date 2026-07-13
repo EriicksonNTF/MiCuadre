@@ -3529,12 +3529,13 @@ export async function processDueFinancialSubscriptions() {
 
   const { data: upcomingSubscriptions } = await supabase
     .from("subscriptions")
-    .select("id, name, next_payment_date")
+    .select("id, name, next_payment_date, pre_alert_enabled")
     .eq("user_id", user.id)
     .eq("status", "active")
 
   if (upcomingSubscriptions?.length && schema.hasNotificationMetadataSchema) {
     const upcomingDueTomorrow = upcomingSubscriptions.filter(item => {
+      if (!(item as any).pre_alert_enabled) return false
       const daysUntil = Math.ceil((new Date(`${item.next_payment_date}T12:00:00`).getTime() - now.getTime()) / oneDayMs)
       return daysUntil === 1
     })

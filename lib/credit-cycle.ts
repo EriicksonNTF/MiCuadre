@@ -2,7 +2,7 @@ import { getLocalDateString } from "@/lib/data"
 
 const DAY_MS = 86400000
 
-function clampDay(year: number, monthIndex: number, day: number) {
+export function clampDay(year: number, monthIndex: number, day: number) {
   return Math.min(day, new Date(year, monthIndex + 1, 0).getDate())
 }
 

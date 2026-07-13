@@ -107,7 +107,7 @@ begin
 
   v_commission_amount := 0;
   if p_apply_commission then
-    v_commission_amount := round(v_source_debit_amount * 0.0015 * 100) / 100;
+    v_commission_amount := round(v_source_debit_amount * 0.0020 * 100) / 100;
   end if;
   v_total_source_debit := round((v_source_debit_amount + v_commission_amount) * 100) / 100;
 
@@ -257,7 +257,7 @@ begin
       v_user_id, p_source_account_id, v_commission_category_id, 'expense', v_commission_amount, v_source_currency, v_commission_amount, 1,
       'Comision de 0.15% por pago de tarjeta',
       v_local_date,
-      jsonb_build_object('kind', 'commission', 'rate', 0.0015, 'payment_group_id', v_payment_group_id)
+      jsonb_build_object('kind', 'commission', 'rate', 0.0020, 'payment_group_id', v_payment_group_id)
     )
     returning id into v_commission_tx_id;
 

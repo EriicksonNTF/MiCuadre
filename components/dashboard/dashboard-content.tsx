@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import { Header } from "@/components/dashboard/header"
@@ -12,11 +12,14 @@ import { motion, AnimatePresence } from "framer-motion"
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import { processDueFinancialSubscriptions, useProfile } from "@/hooks/use-data"
-import { useAccounts, useFinancialSubscriptions, useTransactions } from "@/hooks/use-data"
+import { useAccounts, useFinancialSubscriptions, useTransactions, useGoals } from "@/hooks/use-data"
+import { useBudgetsWithUsage } from "@/hooks/use-planning"
 import { Button } from "@/components/ui/button"
 import { MobilePageShell } from "@/components/ui/mobile-foundation"
 import { formatCurrency, getLocalDateString } from "@/lib/data"
+import { clampDay } from "@/lib/credit-cycle"
 import { generateFinancialInsights } from "@/lib/insights"
+import { generateSmartNotifications } from "@/lib/smart-notifications"
 import { AppSplash, DashboardLoadingIcon } from "@/components/dashboard/app-splash"
 import { ActivationPanel } from "@/components/dashboard/activation-panel"
 import { PlanningSummaryCard } from "@/components/dashboard/planning-summary-card"
@@ -45,6 +48,8 @@ export function DashboardContent() {
   const { data: recentTransactions = [] } = useTransactions(120)
   const { isPro } = useEntitlements()
   const [planningUpsellOpen, setPlanningUpsellOpen] = useState(false)
+  const { data: budgetsWithUsage = [] } = useBudgetsWithUsage()
+  const { data: goals = [] } = useGoals()
 
   useEffect(() => {
     if (!user) return
@@ -115,10 +120,10 @@ export function DashboardContent() {
       const warnings: Array<{ key: string; kind: "credit_cutoff_warning" | "credit_payment_warning"; title: string; message: string }> = []
       const closingDay = Number(account.closing_day || 0)
       if (closingDay >= 1 && closingDay <= 31) {
-        const cutoff = new Date(now.getFullYear(), now.getMonth(), Math.min(closingDay, 28))
+        const cutoff = new Date(now.getFullYear(), now.getMonth(), clampDay(now.getFullYear(), now.getMonth(), closingDay))
         if (cutoff.getTime() < now.getTime()) cutoff.setMonth(cutoff.getMonth() + 1)
         const cutoffDays = Math.ceil((new Date(cutoff.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / (1000 * 60 * 60 * 24))
-        if (cutoffDays === 3) {
+        if (cutoffDays <= 3 && cutoffDays >= 1) {
           warnings.push({
             key: `${account.id}-credit_cutoff_warning-${today}`,
             kind: "credit_cutoff_warning",
@@ -130,17 +135,26 @@ export function DashboardContent() {
 
       const dopPending = Math.max(0, Number(account.statement_balance_dop ?? 0) - Number(account.paid_statement_amount_dop ?? 0))
       const usdPending = Math.max(0, Number(account.statement_balance_usd ?? 0) - Number(account.paid_statement_amount_usd ?? 0))
-      const pending = dopPending + usdPending
-      if (account.statement_due_date && pending > 0) {
+      if (account.statement_due_date) {
         const due = new Date(`${account.statement_due_date}T12:00:00`)
         const dueDays = Math.ceil((new Date(due.toDateString()).getTime() - new Date(now.toDateString()).getTime()) / (1000 * 60 * 60 * 24))
-        if (dueDays === 5) {
-          warnings.push({
-            key: `${account.id}-credit_payment_warning-${today}`,
-            kind: "credit_payment_warning",
-            title: `Pago próximo: ${account.name}`,
-            message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${formatCurrency(pending, account.currency)}.`,
-          })
+        if (dueDays <= 5 && dueDays >= 1) {
+          if (dopPending > 0) {
+            warnings.push({
+              key: `${account.id}-credit_payment_warning_dop-${today}`,
+              kind: "credit_payment_warning",
+              title: `Pago próximo: ${account.name} (DOP)`,
+              message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${formatCurrency(dopPending, "DOP")}.`,
+            })
+          }
+          if (usdPending > 0) {
+            warnings.push({
+              key: `${account.id}-credit_payment_warning_usd-${today}`,
+              kind: "credit_payment_warning",
+              title: `Pago próximo: ${account.name} (USD)`,
+              message: `Tu pago de tarjeta ${account.name} vence en 5 días. Balance pendiente: ${formatCurrency(usdPending, "USD")}.`,
+            })
+          }
         }
       }
 
@@ -176,6 +190,27 @@ export function DashboardContent() {
       setShowCreditReminder(false)
     }
   }, [creditWarnings, isReady, loading, profileLoading, user])
+
+  const shownBudgetNotifications = useRef(new Set<string>())
+  useEffect(() => {
+    if (!isReady || budgetsWithUsage.length === 0) return
+    const notifications = generateSmartNotifications(recentTransactions, accounts, goals, {
+      budgets: budgetsWithUsage,
+      subscriptions,
+    })
+    for (const n of notifications) {
+      if (shownBudgetNotifications.current.has(n.id)) continue
+      if (n.type === "budget_exceeded" || n.type === "budget_near_limit") {
+        shownBudgetNotifications.current.add(n.id)
+        showToast({
+          title: n.title,
+          body: n.body,
+          type: n.type === "budget_exceeded" ? "warning" : "info",
+          duration: 5000,
+        })
+      }
+    }
+  }, [isReady, budgetsWithUsage, recentTransactions, accounts, goals, subscriptions])
 
   useEffect(() => {
     if (!user || !isReady) return

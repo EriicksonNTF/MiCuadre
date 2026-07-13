@@ -128,7 +128,7 @@ function StickyFormFooter({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-20 border-t border-border/55 bg-card/92 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-18px_45px_-34px_rgba(0,0,0,0.38)] backdrop-blur-xl",
+        "sticky bottom-0 border-t border-border/55 bg-card/92 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-18px_45px_-34px_rgba(0,0,0,0.38)] backdrop-blur-xl",
         className,
       )}
       {...props}

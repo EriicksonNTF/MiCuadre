@@ -43,7 +43,7 @@ export function CustomAmountSheet({ currencySymbol, maxAmount, open, onOpenChang
           {error ? <p className="rounded-2xl bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">{error}</p> : null}
         </div>
 
-        <footer className="shrink-0 border-t border-border bg-card px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <footer className="shrink-0 border-t border-border bg-card px-5 py-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
           <button type="button" disabled={!canSubmit} onClick={() => { onConfirm(amount); onOpenChange(false) }} className="h-14 w-full rounded-full bg-primary text-base font-bold text-primary-foreground disabled:bg-muted disabled:text-muted-foreground">
             Listo
           </button>

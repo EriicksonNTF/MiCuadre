@@ -26,7 +26,14 @@ export function ConfirmPaymentSheet({ amount, taxAmount = 0, totalDebit, currenc
     <MobileSheetLayout
       title="Confirma la informacion"
       onClose={onClose}
-      footer={<SwipeConfirmButton label="Desliza para pagar" loading={loading} disabled={Boolean(warning)} onConfirm={onConfirm} />}
+      footer={
+        <div className="space-y-3">
+          <SwipeConfirmButton label="Desliza para pagar" loading={loading} disabled={Boolean(warning)} onConfirm={onConfirm} />
+          <button type="button" onClick={onClose} className="flex h-12 w-full items-center justify-center rounded-2xl text-sm font-semibold text-muted-foreground transition hover:text-foreground">
+            Cancelar pago
+          </button>
+        </div>
+      }
     >
       <div className="space-y-5">
         {warning ? <div className="rounded-[24px] bg-destructive/10 p-4 text-sm font-medium text-destructive">{warning}</div> : null}
