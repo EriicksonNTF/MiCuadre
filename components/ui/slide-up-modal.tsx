@@ -39,7 +39,7 @@ export function SlideUpModal({ isOpen, onClose, title, children, footer, content
   return createPortal(
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 flex flex-col justify-end" style={{ zIndex: Z_INDEX.modal }}>
+        <div className="fixed inset-0 flex flex-col justify-end" style={{ zIndex: Z_INDEX.modal, pointerEvents: "auto" }}>
           <motion.div
             className="absolute inset-0 bg-foreground/20 backdrop-blur-sm"
             initial={{ opacity: 0 }}
