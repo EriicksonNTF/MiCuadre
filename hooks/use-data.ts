@@ -818,18 +818,12 @@ export async function syncAccountBalance(accountId: string, currency?: string) {
     return
   }
 
-  const ledgerSum = Number(ledgerBalance)
   if (account.type === "credit") {
-    const cur = (currency || account.currency || "DOP") as "DOP" | "USD"
-    const debtField = cur === "USD" ? "current_debt_usd" : "current_debt_dop"
-    const { error: updateError } = await supabase.from("accounts").update({
-      [debtField]: Math.max(0, ledgerSum),
-      current_debt: Math.max(0, ledgerSum),
-    }).eq("id", accountId)
-    if (updateError) {
-      console.error(`[syncAccountBalance] Update failed for credit account ${accountId}:`, updateError)
-    }
-  } else {
+    return
+  }
+
+  const ledgerSum = Number(ledgerBalance)
+  {
     const { error: updateError } = await supabase.from("accounts").update({
       balance: Math.max(0, ledgerSum),
     }).eq("id", accountId)
