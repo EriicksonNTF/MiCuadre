@@ -123,18 +123,24 @@ function WheelColumn<T extends string | number>({
   const ref = useRef<HTMLDivElement>(null)
   const tickingRef = useRef(false)
 
+  // container.children[0] is the leading spacer, so row `i` in `items` lives at
+  // container.children[i + 1] — index off it via the [data-wheel-item] rows
+  // directly rather than hardcoding that offset everywhere.
+  const getRow = useCallback((container: HTMLDivElement, i: number) => {
+    return container.querySelectorAll<HTMLElement>("[data-wheel-item]")[i]
+  }, [])
+
   const handleScroll = useCallback(() => {
     const container = ref.current
     if (!container || tickingRef.current) return
     tickingRef.current = true
     requestAnimationFrame(() => {
       const center = container.scrollTop + container.clientHeight / 2
-      const children = container.children
+      const rows = container.querySelectorAll<HTMLElement>("[data-wheel-item]")
       let closestIdx = 0
       let closestDist = Infinity
-      for (let i = 0; i < children.length; i++) {
-        const child = children[i] as HTMLElement
-        const itemCenter = child.offsetTop + child.offsetHeight / 2
+      for (let i = 0; i < rows.length; i++) {
+        const itemCenter = rows[i].offsetTop + rows[i].offsetHeight / 2
         const dist = Math.abs(center - itemCenter)
         if (dist < closestDist) {
           closestDist = dist
@@ -157,11 +163,11 @@ function WheelColumn<T extends string | number>({
   // which can land a row off-center while the parent modal is still animating in.
   const scrollToIndex = useCallback((i: number, behavior: ScrollBehavior) => {
     const container = ref.current
-    const child = container?.children[i] as HTMLElement | undefined
+    const child = container ? getRow(container, i) : undefined
     if (!container || !child) return
     const targetTop = child.offsetTop + child.offsetHeight / 2 - container.clientHeight / 2
     container.scrollTo({ top: targetTop, behavior })
-  }, [])
+  }, [getRow])
 
   useEffect(() => {
     const idx = items.indexOf(selected)

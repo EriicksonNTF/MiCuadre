@@ -15,7 +15,10 @@ export function getCycleForDate(closingDay: number, dueDaysAfterCutoff: number, 
   const month = targetDate.getMonth()
   const thisMonthCutoff = safeDate(year, month, closingDay)
 
-  const cycleEnd = targetDate > thisMonthCutoff
+  // Compare by calendar day, not timestamp: the cutoff day itself still
+  // belongs to the closing cycle for its entire duration — it only rolls
+  // over to the next cycle starting the following day.
+  const cycleEnd = getLocalDateString(targetDate) > getLocalDateString(thisMonthCutoff)
     ? safeDate(month === 11 ? year + 1 : year, (month + 1) % 12, closingDay)
     : thisMonthCutoff
 

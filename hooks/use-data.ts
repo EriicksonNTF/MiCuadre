@@ -506,8 +506,8 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
               statement_balance_usd: Math.max(0, grouped.statement_balance_usd),
               paid_amount_dop: 0,
               paid_amount_usd: 0,
-              status: grouped.cycleEndDate <= getLocalDateString() ? "closed" : "open",
-              is_finalized: grouped.cycleEndDate <= getLocalDateString(),
+              status: grouped.cycleEndDate < getLocalDateString() ? "closed" : "open",
+              is_finalized: grouped.cycleEndDate < getLocalDateString(),
             })
             .select("id")
             .single()
@@ -557,7 +557,7 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
 
   let latestClosedCycle: any = null
   for (const row of refreshedCycles || []) {
-    if (row.cycle_end_date <= getLocalDateString()) {
+    if (row.cycle_end_date < getLocalDateString()) {
       latestClosedCycle = row
     }
   }
@@ -617,7 +617,7 @@ export async function syncCreditAccountCycle(creditAccountId: string) {
         status = "paid"
       } else if (Number(row.paid_amount_dop || 0) > 0 || Number(row.paid_amount_usd || 0) > 0) {
         status = "partial"
-      } else if (row.cycle_end_date <= getLocalDateString()) {
+      } else if (row.cycle_end_date < getLocalDateString()) {
         status = "closed"
         makeFinalized = true
       } else {
