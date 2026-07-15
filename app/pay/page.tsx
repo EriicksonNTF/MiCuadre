@@ -248,7 +248,7 @@ function PayPageContent() {
     <>
       <div className="flex flex-col min-h-dvh bg-background">
         {/* Header fijo */}
-        <header className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 z-[--z-floating]">
+        <header className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 z-[var(--z-floating)]">
           <Link href="/" className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -360,7 +360,7 @@ function PayPageContent() {
         </main>
 
         {/* Footer fijo con acciones — siempre visible sobre el BottomNav */}
-        <footer className="shrink-0 border-t border-border bg-background pt-4 px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] z-[--z-fullscreen]">
+        <footer className="shrink-0 border-t border-border bg-background pt-4 px-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] z-[var(--z-fullscreen)]">
           <button
             type="button"
             disabled={!canPay}

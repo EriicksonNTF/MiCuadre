@@ -33,7 +33,7 @@ export function MobileFullscreenForm({
     <div
       ref={containerRef}
       data-app-modal="true"
-      className="fixed inset-0 z-[--z-fullscreen] flex h-[100dvh] w-screen animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden bg-background"
+      className="fixed inset-0 z-[var(--z-fullscreen)] flex h-[100dvh] w-screen animate-in fade-in-0 slide-in-from-bottom-5 duration-500 ease-[var(--ease-sheet-ios)] flex-col overflow-hidden bg-background"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}

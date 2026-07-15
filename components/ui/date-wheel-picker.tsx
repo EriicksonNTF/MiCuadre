@@ -153,44 +153,61 @@ function WheelColumn<T extends string | number>({
     return () => container.removeEventListener("scroll", handleScroll)
   }, [handleScroll])
 
-  useEffect(() => {
-    if (!ref.current) return
-    const idx = items.indexOf(selected)
-    if (idx < 0) return
-    const child = ref.current.children[idx] as HTMLElement | undefined
-    child?.scrollIntoView({ block: "center" })
+  // Centers row `i` by computing scrollTop directly instead of scrollIntoView,
+  // which can land a row off-center while the parent modal is still animating in.
+  const scrollToIndex = useCallback((i: number, behavior: ScrollBehavior) => {
+    const container = ref.current
+    const child = container?.children[i] as HTMLElement | undefined
+    if (!container || !child) return
+    const targetTop = child.offsetTop + child.offsetHeight / 2 - container.clientHeight / 2
+    container.scrollTo({ top: targetTop, behavior })
   }, [])
 
+  useEffect(() => {
+    const idx = items.indexOf(selected)
+    if (idx < 0) return
+    scrollToIndex(idx, "instant" as ScrollBehavior)
+  }, [])
+
+  const selectItem = (item: T, i: number) => {
+    onSelect(item)
+    scrollToIndex(i, "smooth")
+  }
+
+  // Container is h-48 (12rem), rows are h-12 (3rem): spacer = (12rem - 3rem) / 2 = 4.5rem,
+  // so the first/last row's center lands exactly on the container's center line when scrolled fully.
   return (
     <div className="relative flex-1">
       <p className="mb-2 text-center text-xs font-medium text-muted-foreground">{label}</p>
       <div className="relative overflow-hidden rounded-2xl border border-border bg-background">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-background to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-background to-transparent" />
-        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 -translate-y-1/2 border-t border-b border-border/50" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 h-12 -translate-y-1/2 rounded-xl bg-muted/60" />
         <div
           ref={ref}
-          className="h-40 snap-y snap-mandatory overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="h-48 snap-y snap-mandatory overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <div className="h-[calc(5rem-0.5px)] shrink-0" />
+          <div className="h-[calc(4.5rem-0.5px)] shrink-0" />
           {items.map((item, i) => {
             const isSelected = item === selected
             return (
-              <div
+              <button
                 key={i}
+                type="button"
                 data-wheel-item
+                onClick={() => selectItem(item, i)}
                 className={cn(
-                  "flex h-10 snap-center items-center justify-center text-sm transition-colors",
+                  "relative z-20 flex h-12 w-full snap-center items-center justify-center text-base transition-all",
                   isSelected
-                    ? "font-bold text-foreground"
-                    : "text-muted-foreground/60",
+                    ? "scale-110 font-bold text-foreground"
+                    : "text-muted-foreground/50",
                 )}
               >
                 {displayItem(item)}
-              </div>
+              </button>
             )
           })}
-          <div className="h-[calc(5rem-0.5px)] shrink-0" />
+          <div className="h-[calc(4.5rem-0.5px)] shrink-0" />
         </div>
       </div>
     </div>

@@ -1867,15 +1867,9 @@ export async function updateTransaction(
     throw rpcError
   }
 
-  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  await mutate("accounts")
-  await mutate("planning_calendar_events")
-  await mutate("planning_debts")
-  await mutate("planning_debt_payments_month")
-  await mutate("planning_budgets_with_usage")
-  await mutate("planning_credit_card_debts")
-
-  // Sync credit card cycles if account is a credit card
+  // Sync credit card cycles if account is a credit card — must run before the
+  // "accounts" mutate below, otherwise SWR refetches before the fresh
+  // statement/cycle figures are written and the UI shows stale summary data.
   try {
     const { data: acct } = await supabase
       .from("accounts")
@@ -1888,6 +1882,14 @@ export async function updateTransaction(
   } catch (cycleErr) {
     console.error("[updateTransaction] Sync cycle error:", cycleErr)
   }
+
+  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await mutate("accounts")
+  await mutate("planning_calendar_events")
+  await mutate("planning_debts")
+  await mutate("planning_debt_payments_month")
+  await mutate("planning_budgets_with_usage")
+  await mutate("planning_credit_card_debts")
 
   return result
 }
@@ -1924,22 +1926,9 @@ export async function deleteTransaction(id: string) {
     throw rpcError
   }
 
-  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
-  await mutate("accounts")
-  await mutate("planning_calendar_events")
-  await mutate("planning_debts")
-  await mutate("planning_debt_payments_month")
-  await mutate("planning_budgets_with_usage")
-  await mutate("planning_credit_card_debts")
-
-  if (existingMeta.kind === "transfer") {
-    await mutate(["transfers", 100])
-  }
-  if (existingMeta.kind === "credit_payment") {
-    await mutate("notifications")
-  }
-
-  // Sync credit card cycles if the deleted transaction belongs to a credit account
+  // Sync credit card cycles before mutating "accounts" below, otherwise SWR
+  // refetches before the fresh statement/cycle figures are written and the
+  // UI shows stale summary data.
   if (result) {
     try {
       const accountId = (result as any)?.account_id
@@ -1956,6 +1945,21 @@ export async function deleteTransaction(id: string) {
     } catch (cycleErr) {
       console.error("[deleteTransaction] Sync cycle error:", cycleErr)
     }
+  }
+
+  await mutate((key: any) => Array.isArray(key) && key[0] === "transactions")
+  await mutate("accounts")
+  await mutate("planning_calendar_events")
+  await mutate("planning_debts")
+  await mutate("planning_debt_payments_month")
+  await mutate("planning_budgets_with_usage")
+  await mutate("planning_credit_card_debts")
+
+  if (existingMeta.kind === "transfer") {
+    await mutate(["transfers", 100])
+  }
+  if (existingMeta.kind === "credit_payment") {
+    await mutate("notifications")
   }
 
   return result
