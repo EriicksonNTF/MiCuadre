@@ -1,12 +1,12 @@
 ﻿"use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer"
 import { MoneyInput } from "@/components/ui/money-input"
 import { useAccounts } from "@/hooks/use-data"
-import { createDebt } from "@/hooks/use-planning"
+import { createDebt, updateDebt } from "@/hooks/use-planning"
 import { notify } from "@/lib/notifications"
-import type { Debt } from "@/types/planning"
+import type { Debt, DebtWithProgress } from "@/types/planning"
 import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { format } from "date-fns"
@@ -26,7 +26,16 @@ const frequencies: Array<{ value: Debt["payment_frequency"]; label: string }> = 
   { value: "weekly", label: "Semanal" },
 ]
 
-export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function DebtFormSheet({
+  open,
+  onOpenChange,
+  debt,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  debt?: DebtWithProgress | null
+}) {
+  const isEditing = Boolean(debt)
   const { data: accounts = [] } = useAccounts()
   const sourceAccounts = useMemo(() => accounts.filter((acc) => acc.type === "cash" || acc.type === "debit"), [accounts])
 
@@ -60,6 +69,28 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     setNotes("")
     setFormError(null)
   }
+
+  useEffect(() => {
+    if (!open) return
+    if (debt) {
+      setName(debt.name)
+      setDebtType(debt.debt_type)
+      setOriginalAmount(String(debt.original_amount ?? ""))
+      setCurrentBalance(String(debt.current_balance ?? ""))
+      setCurrency(debt.currency)
+      setLinkedAccount(debt.linked_account_id || "")
+      setFixedPayment(debt.fixed_payment_amount ? String(debt.fixed_payment_amount) : "")
+      setFrequency(debt.payment_frequency || "monthly")
+      setPaymentDay(debt.payment_day ? String(debt.payment_day) : "")
+      setStartDate(debt.start_date ? new Date(`${debt.start_date}T12:00:00`) : null)
+      setInterestRate(debt.interest_rate ? String(debt.interest_rate) : "")
+      setNotes(debt.notes || "")
+      setFormError(null)
+    } else {
+      reset()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, debt])
 
   const onSave = async () => {
     const parsedOriginal = Number(originalAmount)
@@ -101,7 +132,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     setFormError(null)
     setSaving(true)
     try {
-      await createDebt({
+      const payload = {
         name: name.trim(),
         debt_type: debtType,
         original_amount: parsedOriginal,
@@ -114,9 +145,15 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
         start_date: startDate ? format(startDate, "yyyy-MM-dd") : null,
         interest_rate: interestRate ? Number(interestRate) : null,
         notes: notes.trim() || null,
-      })
+      }
 
-      notify({ title: "Guardado correctamente.", message: "Deuda guardada correctamente." })
+      if (isEditing && debt) {
+        await updateDebt({ debt_id: debt.id, ...payload })
+      } else {
+        await createDebt(payload)
+      }
+
+      notify({ title: "Guardado correctamente.", message: isEditing ? "Deuda actualizada correctamente." : "Deuda guardada correctamente." })
       onOpenChange(false)
       reset()
     } catch (error: any) {
@@ -132,7 +169,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
     <Drawer open={open} onOpenChange={onOpenChange} direction="bottom">
       <DrawerContent className="mx-auto flex max-h-[90dvh] max-w-md flex-col rounded-t-[2rem] border-border bg-card p-0 shadow-2xl ring-1 ring-border">
         <DrawerHeader className="shrink-0 border-b border-border px-5 pb-4 pt-5">
-          <DrawerTitle>Nueva deuda</DrawerTitle>
+          <DrawerTitle>{isEditing ? "Editar deuda" : "Nueva deuda"}</DrawerTitle>
         </DrawerHeader>
 
         <form
@@ -188,12 +225,12 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
               </label>
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Cuenta asociada</span>
-                <Select value={linkedAccount || ""} onValueChange={setLinkedAccount}>
+                <Select value={linkedAccount || "none"} onValueChange={(v) => setLinkedAccount(v === "none" ? "" : v)}>
                   <SelectTrigger className="h-12 w-full">
                     <SelectValue placeholder="Opcional" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Opcional</SelectItem>
+                    <SelectItem value="none">Opcional</SelectItem>
                     {sourceAccounts.map((acc) => (
                       <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                     ))}
@@ -265,7 +302,7 @@ export function DebtFormSheet({ open, onOpenChange }: { open: boolean; onOpenCha
                 Cancelar
               </button>
               <button type="submit" disabled={saving} className="h-12 rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60">
-                {saving ? "Guardando..." : "Guardar deuda"}
+                {saving ? "Guardando..." : isEditing ? "Guardar cambios" : "Guardar deuda"}
               </button>
             </div>
           </footer>

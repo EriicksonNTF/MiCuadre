@@ -602,6 +602,70 @@ export async function createDebt(input: {
   }
 }
 
+export async function updateDebt(input: {
+  debt_id: string
+  name: string
+  debt_type: Debt["debt_type"]
+  original_amount: number
+  current_balance: number
+  currency: "DOP" | "USD"
+  linked_account_id?: string | null
+  fixed_payment_amount?: number | null
+  payment_frequency?: Debt["payment_frequency"]
+  payment_day?: number | null
+  start_date?: string | null
+  interest_rate?: number | null
+  notes?: string | null
+}) {
+  const userData = await getAuthenticatedUser()
+  if (!userData) throw new Error("No autenticado")
+  const userId = userData.id
+
+  const outboxItem = buildOutboxItem({
+    userId, operation: "update_debt", entity: "debts",
+    payload: input,
+  })
+  if (await tryEnqueueOffline(outboxItem, ["planning_debts", "planning_calendar_events"])) {
+    return { id: input.debt_id, user_id: userId, ...input } as unknown as Debt
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("debts")
+      .update({
+        name: input.name,
+        debt_type: input.debt_type,
+        original_amount: normalizePositiveAmount(input.original_amount),
+        current_balance: normalizePositiveAmount(input.current_balance),
+        currency: input.currency,
+        linked_account_id: input.linked_account_id || null,
+        fixed_payment_amount: input.fixed_payment_amount ? normalizeAmount(input.fixed_payment_amount) : null,
+        payment_frequency: input.payment_frequency || "monthly",
+        payment_day: input.payment_day || null,
+        start_date: input.start_date || null,
+        interest_rate: input.interest_rate || null,
+        notes: input.notes || null,
+        is_active: normalizePositiveAmount(input.current_balance) > 0,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", input.debt_id)
+      .eq("user_id", userId)
+      .select("*")
+      .single()
+
+    if (error) throw error
+    mutate("planning_debts")
+    mutate("planning_calendar_events")
+    return data as Debt
+  } catch (err: any) {
+    if (isOfflineError(err)) {
+      await enqueueOfflineFallback(outboxItem, ["planning_debts", "planning_calendar_events"])
+      return { id: input.debt_id, user_id: userId, ...input } as unknown as Debt
+    }
+    throw err
+  }
+}
+
 export async function payDebt(input: {
   debt_id: string
   source_account_id: string

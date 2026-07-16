@@ -26,6 +26,7 @@ export type OutboxOperation =
   | "update_budget"
   | "delete_budget"
   | "create_debt"
+  | "update_debt"
   | "pay_debt"
   | "mark_notification_read"
   | "mark_all_notifications_read"

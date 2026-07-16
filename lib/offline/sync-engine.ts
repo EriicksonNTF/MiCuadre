@@ -292,6 +292,17 @@ async function processOutboxItem(item: OutboxItem): Promise<boolean> {
       return true
     }
 
+    case "update_debt": {
+      const { debt_id, ...updates } = payload
+      const { error } = await supabase
+        .from("debts")
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq("id", debt_id)
+        .eq("user_id", item.user_id)
+      if (error) throw error
+      return true
+    }
+
     case "pay_debt": {
       const { debt_id, source_account_id, amount, notes } = payload
       const { error } = await supabase.rpc("pay_debt_safe", {

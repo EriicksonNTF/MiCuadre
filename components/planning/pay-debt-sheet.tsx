@@ -37,7 +37,14 @@ export function PayDebtSheet({
   debt: DebtWithProgress | null
 }) {
   const { data: accounts = [] } = useAccounts()
-  const sourceAccounts = useMemo(() => accounts.filter((acc) => acc.type === "cash" || acc.type === "debit"), [accounts])
+  // Must match the debt's own currency: payDebt debits the source account and
+  // reduces the debt balance by the same raw number with no conversion, so a
+  // DOP account paying toward a USD debt (or vice versa) would silently treat
+  // 1 DOP as 1 USD.
+  const sourceAccounts = useMemo(
+    () => accounts.filter((acc) => (acc.type === "cash" || acc.type === "debit") && acc.currency === (debt?.currency || "DOP")),
+    [accounts, debt?.currency]
+  )
 
   const [sourceAccountId, setSourceAccountId] = useState("")
   const [mode, setMode] = useState<"installment" | "custom">("installment")

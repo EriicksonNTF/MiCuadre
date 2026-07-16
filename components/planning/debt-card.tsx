@@ -1,5 +1,6 @@
 "use client"
 
+import { Pencil } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { formatCurrency } from "@/lib/data"
 import type { DebtWithProgress } from "@/types/planning"
@@ -11,7 +12,15 @@ const typeLabel: Record<string, string> = {
   other: "Otro",
 }
 
-export function DebtCard({ debt, onPay }: { debt: DebtWithProgress; onPay: (debt: DebtWithProgress) => void }) {
+export function DebtCard({
+  debt,
+  onPay,
+  onEdit,
+}: {
+  debt: DebtWithProgress
+  onPay: (debt: DebtWithProgress) => void
+  onEdit: (debt: DebtWithProgress) => void
+}) {
   return (
     <article className="rounded-2xl border border-border bg-card p-4 text-card-foreground">
       <div className="flex items-start justify-between gap-3">
@@ -19,9 +28,19 @@ export function DebtCard({ debt, onPay }: { debt: DebtWithProgress; onPay: (debt
           <p className="text-sm font-semibold">{debt.name}</p>
           <p className="text-xs text-muted-foreground">{typeLabel[debt.debt_type] || "Deuda"}</p>
         </div>
-        <button type="button" onClick={() => onPay(debt)} className="h-9 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground">
-          Pagar cuota
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onEdit(debt)}
+            aria-label="Editar deuda"
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button type="button" onClick={() => onPay(debt)} className="h-9 rounded-lg bg-primary px-3 text-xs font-bold text-primary-foreground">
+            Pagar cuota
+          </button>
+        </div>
       </div>
 
       <p className="mt-3 amount-secondary font-bold">Pendiente {formatCurrency(debt.current_balance, debt.currency)}</p>

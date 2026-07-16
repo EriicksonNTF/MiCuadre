@@ -35,6 +35,8 @@ export function DebtsTab() {
   const [createOpen, setCreateOpen] = useState(false)
   const [payOpen, setPayOpen] = useState(false)
   const [selectedDebt, setSelectedDebt] = useState<DebtWithProgress | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingDebt, setEditingDebt] = useState<DebtWithProgress | null>(null)
   const [cardQuickOpen, setCardQuickOpen] = useState(false)
   const [selectedCardQuick, setSelectedCardQuick] = useState<CreditDebtCard | null>(null)
 
@@ -64,6 +66,11 @@ export function DebtsTab() {
   const onPay = (debt: DebtWithProgress) => {
     setSelectedDebt(debt)
     setPayOpen(true)
+  }
+
+  const onEdit = (debt: DebtWithProgress) => {
+    setEditingDebt(debt)
+    setEditOpen(true)
   }
 
   const onQuickPayCard = (card: CreditDebtCard) => {
@@ -121,7 +128,7 @@ export function DebtsTab() {
       ) : (
         <article className="space-y-3">
           <p className="text-sm font-semibold text-foreground">Prestamos y deudas</p>
-          {debts.map((debt) => <DebtCard key={debt.id} debt={debt} onPay={onPay} />)}
+          {debts.map((debt) => <DebtCard key={debt.id} debt={debt} onPay={onPay} onEdit={onEdit} />)}
         </article>
       )}
 
@@ -146,6 +153,7 @@ export function DebtsTab() {
       </article>
 
       <DebtFormSheet open={createOpen} onOpenChange={setCreateOpen} />
+      <DebtFormSheet open={editOpen} onOpenChange={setEditOpen} debt={editingDebt} />
       <PayDebtSheet open={payOpen} onOpenChange={setPayOpen} debt={selectedDebt} />
       <QuickPayCardSheet
         open={cardQuickOpen}
