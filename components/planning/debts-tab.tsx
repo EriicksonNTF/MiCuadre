@@ -73,6 +73,11 @@ export function DebtsTab() {
     setEditOpen(true)
   }
 
+  const onNeedsAccount = (debt: DebtWithProgress) => {
+    notify({ title: "Falta cuenta de origen", message: "Asigna una cuenta de origen a esta deuda para poder pagarla." })
+    onEdit(debt)
+  }
+
   const onQuickPayCard = (card: CreditDebtCard) => {
     setSelectedCardQuick(card)
     setCardQuickOpen(true)
@@ -154,7 +159,7 @@ export function DebtsTab() {
 
       <DebtFormSheet open={createOpen} onOpenChange={setCreateOpen} />
       <DebtFormSheet open={editOpen} onOpenChange={setEditOpen} debt={editingDebt} />
-      <PayDebtSheet open={payOpen} onOpenChange={setPayOpen} debt={selectedDebt} />
+      <PayDebtSheet open={payOpen} onOpenChange={setPayOpen} debt={selectedDebt} onNeedsAccount={onNeedsAccount} />
       <QuickPayCardSheet
         open={cardQuickOpen}
         onOpenChange={setCardQuickOpen}

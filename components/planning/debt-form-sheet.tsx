@@ -26,6 +26,15 @@ const frequencies: Array<{ value: Debt["payment_frequency"]; label: string }> = 
   { value: "weekly", label: "Semanal" },
 ]
 
+// Guards against malformed stored dates (e.g. a stray extra digit in the
+// year) producing an Invalid Date, which crashes date-fns' format() with
+// "RangeError: Invalid time value" anywhere this gets rendered.
+function parseDebtDate(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const parsed = new Date(`${value}T12:00:00`)
+  return Number.isNaN(parsed.getTime()) ? null : parsed
+}
+
 export function DebtFormSheet({
   open,
   onOpenChange,
@@ -37,7 +46,6 @@ export function DebtFormSheet({
 }) {
   const isEditing = Boolean(debt)
   const { data: accounts = [] } = useAccounts()
-  const sourceAccounts = useMemo(() => accounts.filter((acc) => acc.type === "cash" || acc.type === "debit"), [accounts])
 
   const [name, setName] = useState("")
   const [debtType, setDebtType] = useState<Debt["debt_type"]>("loan")
@@ -45,6 +53,14 @@ export function DebtFormSheet({
   const [currentBalance, setCurrentBalance] = useState("")
   const [currency, setCurrency] = useState<"DOP" | "USD">("DOP")
   const [linkedAccount, setLinkedAccount] = useState("")
+
+  // The linked account is the fixed payment source used by "Pagar cuota" — it
+  // must share the debt's currency, otherwise a payment would silently treat
+  // 1 DOP as 1 USD (see pay-debt-sheet.tsx).
+  const sourceAccounts = useMemo(
+    () => accounts.filter((acc) => (acc.type === "cash" || acc.type === "debit") && acc.currency === currency),
+    [accounts, currency]
+  )
   const [fixedPayment, setFixedPayment] = useState("")
   const [frequency, setFrequency] = useState<Debt["payment_frequency"]>("monthly")
   const [paymentDay, setPaymentDay] = useState("")
@@ -82,7 +98,7 @@ export function DebtFormSheet({
       setFixedPayment(debt.fixed_payment_amount ? String(debt.fixed_payment_amount) : "")
       setFrequency(debt.payment_frequency || "monthly")
       setPaymentDay(debt.payment_day ? String(debt.payment_day) : "")
-      setStartDate(debt.start_date ? new Date(`${debt.start_date}T12:00:00`) : null)
+      setStartDate(parseDebtDate(debt.start_date))
       setInterestRate(debt.interest_rate ? String(debt.interest_rate) : "")
       setNotes(debt.notes || "")
       setFormError(null)
@@ -213,7 +229,13 @@ export function DebtFormSheet({
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-muted-foreground">Moneda</span>
-                <Select value={currency} onValueChange={(v) => setCurrency(v as "DOP" | "USD")}>
+                <Select
+                  value={currency}
+                  onValueChange={(v) => {
+                    setCurrency(v as "DOP" | "USD")
+                    setLinkedAccount("")
+                  }}
+                >
                   <SelectTrigger className="h-12 w-full">
                     <SelectValue placeholder="Selecciona..." />
                   </SelectTrigger>
@@ -224,13 +246,13 @@ export function DebtFormSheet({
                 </Select>
               </label>
               <label className="block text-sm">
-                <span className="mb-1 block text-muted-foreground">Cuenta asociada</span>
+                <span className="mb-1 block text-muted-foreground">Cuenta de origen</span>
                 <Select value={linkedAccount || "none"} onValueChange={(v) => setLinkedAccount(v === "none" ? "" : v)}>
                   <SelectTrigger className="h-12 w-full">
-                    <SelectValue placeholder="Opcional" />
+                    <SelectValue placeholder="Sin asignar" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Opcional</SelectItem>
+                    <SelectItem value="none">Sin asignar</SelectItem>
                     {sourceAccounts.map((acc) => (
                       <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                     ))}
@@ -238,6 +260,9 @@ export function DebtFormSheet({
                 </Select>
               </label>
             </div>
+            <p className="-mt-2 text-xs text-muted-foreground">
+              Esta es la cuenta desde la que se descontará cada "Pagar cuota". Sin una cuenta asignada no podrás pagar la deuda.
+            </p>
 
             <div className="grid grid-cols-2 gap-2">
               <label className="block text-sm">

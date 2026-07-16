@@ -1,12 +1,11 @@
 "use client"
 
 import { useMemo, useState, useRef, useEffect } from "react"
-import { CalendarDays } from "lucide-react"
+import { CalendarDays, Wallet } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerFooter } from "@/components/ui/drawer"
 import { MoneyInput } from "@/components/ui/money-input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DateWheelPicker } from "@/components/ui/date-wheel-picker"
 import { SwipeConfirmButton } from "@/components/ui/swipe-confirm-button"
 import { useAccounts } from "@/hooks/use-data"
@@ -31,22 +30,24 @@ export function PayDebtSheet({
   open,
   onOpenChange,
   debt,
+  onNeedsAccount,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   debt: DebtWithProgress | null
+  /** Called when the debt has no linked account to pay from — caller should open the edit sheet. */
+  onNeedsAccount?: (debt: DebtWithProgress) => void
 }) {
   const { data: accounts = [] } = useAccounts()
-  // Must match the debt's own currency: payDebt debits the source account and
-  // reduces the debt balance by the same raw number with no conversion, so a
-  // DOP account paying toward a USD debt (or vice versa) would silently treat
-  // 1 DOP as 1 USD.
-  const sourceAccounts = useMemo(
-    () => accounts.filter((acc) => (acc.type === "cash" || acc.type === "debit") && acc.currency === (debt?.currency || "DOP")),
-    [accounts, debt?.currency]
+
+  // The payment source is fixed to whatever account is linked to the debt
+  // (set in "Editar deuda") — this sheet is a preview + confirm, not a place
+  // to pick a different account each time.
+  const sourceAccount = useMemo(
+    () => accounts.find((acc) => acc.id === debt?.linked_account_id) || null,
+    [accounts, debt?.linked_account_id]
   )
 
-  const [sourceAccountId, setSourceAccountId] = useState("")
   const [mode, setMode] = useState<"installment" | "custom">("installment")
   const [customAmount, setCustomAmount] = useState("")
   const [notes, setNotes] = useState("")
@@ -61,22 +62,28 @@ export function PayDebtSheet({
     return () => { delete document.documentElement.dataset.modalOpen }
   }, [open])
 
-  if (!debt) return null
+  useEffect(() => {
+    if (open && debt && !debt.linked_account_id) {
+      onOpenChange(false)
+      onNeedsAccount?.(debt)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, debt])
 
-  const selectedAccount = sourceAccounts.find((acc) => acc.id === sourceAccountId) || null
+  if (!debt || !debt.linked_account_id) return null
+
   const suggestedInstallment = Number(debt.fixed_payment_amount || 0) > 0
     ? Math.min(Number(debt.fixed_payment_amount || 0), Number(debt.current_balance || 0))
     : Math.min(Number(debt.current_balance || 0), Number(debt.original_amount || 0))
 
   const amount = mode === "installment" ? suggestedInstallment : Number(customAmount || 0)
   const nextDebtBalance = Math.max(0, Number(debt.current_balance || 0) - Number(amount || 0))
-  const warning = selectedAccount && amount > Number(selectedAccount.balance || 0)
+  const warning = sourceAccount && amount > Number(sourceAccount.balance || 0)
     ? "Tu balance disponible es insuficiente."
     : null
-  const canPay = Boolean(selectedAccount) && amount > 0 && !warning
+  const canPay = Boolean(sourceAccount) && amount > 0 && !warning
 
   const resetState = () => {
-    setSourceAccountId("")
     setMode("installment")
     setCustomAmount("")
     setNotes("")
@@ -84,8 +91,8 @@ export function PayDebtSheet({
   }
 
   const onConfirm = async () => {
-    if (!sourceAccountId) {
-      notify({ title: "Cuenta requerida", message: "Selecciona la cuenta de origen." })
+    if (!sourceAccount) {
+      notify({ title: "Cuenta requerida", message: "Esta deuda no tiene una cuenta de origen asignada. Edítala primero." })
       throw new Error("missing_source")
     }
     if (!amount || amount <= 0) {
@@ -97,7 +104,7 @@ export function PayDebtSheet({
     try {
       const result = await payDebt({
         debt_id: debt.id,
-        source_account_id: sourceAccountId,
+        source_account_id: sourceAccount.id,
         amount,
         notes: notes.trim() || null,
       })
@@ -141,32 +148,6 @@ export function PayDebtSheet({
               <p className="text-xs text-muted-foreground">Pendiente: {formatCurrency(debt.current_balance, debt.currency)}</p>
             </article>
 
-            <label className="block text-sm">
-              <span className="mb-1 block text-muted-foreground">Cuenta de origen</span>
-              <Select value={sourceAccountId} onValueChange={setSourceAccountId}>
-                <SelectTrigger className="h-11 w-full">
-                  <SelectValue placeholder="Selecciona una cuenta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sourceAccounts.map((acc) => (
-                    <SelectItem key={acc.id} value={acc.id}>{acc.name} · {formatCurrency(acc.balance || 0, acc.currency)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-
-            <article className="rounded-xl border border-border bg-background p-3 text-sm">
-              <p className="text-xs text-muted-foreground">Resumen</p>
-              <div className="mt-2 space-y-1">
-                <p className="flex items-center justify-between"><span>Pendiente</span><span className="text-lg font-bold">{formatCurrency(debt.current_balance, debt.currency)}</span></p>
-                <p className="flex items-center justify-between"><span>Cuota sugerida</span><span className="text-lg font-bold">{formatCurrency(suggestedInstallment, debt.currency)}</span></p>
-                <p className="flex items-center justify-between"><span>Nuevo pendiente</span><span className="text-lg font-bold">{formatCurrency(nextDebtBalance, debt.currency)}</span></p>
-                {selectedAccount && (
-                  <p className="flex items-center justify-between text-xs text-muted-foreground"><span>Balance cuenta</span><span>{formatCurrency(selectedAccount.balance || 0, selectedAccount.currency)}</span></p>
-                )}
-              </div>
-            </article>
-
             <div>
               <p className="mb-2 text-sm text-muted-foreground">Monto a pagar</p>
               <div className="grid grid-cols-2 gap-2">
@@ -181,6 +162,24 @@ export function PayDebtSheet({
                 <MoneyInput value={customAmount} onValueChange={setCustomAmount} className="mt-2 h-11 w-full rounded-xl border border-border bg-background px-3" />
               )}
             </div>
+
+            <article className="rounded-xl border border-border bg-background p-3 text-sm">
+              <p className="text-xs text-muted-foreground">Previsualización del movimiento</p>
+              <div className="mt-2 flex items-center gap-2 rounded-lg bg-muted/50 p-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                  <Wallet className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold text-foreground">{sourceAccount?.name}</p>
+                  <p className="text-xs text-muted-foreground">Balance actual: {formatCurrency(sourceAccount?.balance || 0, sourceAccount?.currency)}</p>
+                </div>
+                <p className="shrink-0 text-sm font-bold text-destructive">-{formatCurrency(amount, debt.currency)}</p>
+              </div>
+              <div className="mt-3 space-y-1">
+                <p className="flex items-center justify-between"><span>Pendiente actual</span><span className="font-bold">{formatCurrency(debt.current_balance, debt.currency)}</span></p>
+                <p className="flex items-center justify-between"><span>Nuevo pendiente</span><span className="font-bold">{formatCurrency(nextDebtBalance, debt.currency)}</span></p>
+              </div>
+            </article>
 
             <label className="block text-sm">
               <span className="mb-1 block text-muted-foreground">Nota</span>
